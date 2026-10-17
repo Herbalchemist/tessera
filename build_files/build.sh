@@ -17,3 +17,7 @@ dnf5 install -y nodejs npm
 export HOME=/tmp/build-home
 mkdir -p "$HOME"
 npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact electron
+
+### Don't start Steam automatically for new users
+# /etc/skel is copied into each new account's home at creation time.
+rm -f /etc/skel/.config/autostart/steam.desktop
