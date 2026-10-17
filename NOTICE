@@ -1,0 +1,12 @@
+Tessera
+Copyright (C) 2026 Herbalchemist
+
+Original files in this repository are licensed under
+GPL-3.0-or-later (see LICENSE).
+
+This project started from ublue-os/image-template (Apache-2.0,
+see LICENSES/Apache-2.0.txt). Files derived from it keep that license.
+
+Images built from this repo include software from Bazzite, Fedora
+and many other projects under their own licenses. This repo's
+license does not change those.
