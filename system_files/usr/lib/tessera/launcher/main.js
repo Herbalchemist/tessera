@@ -5,53 +5,121 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 
-// Games live outside the app so you can edit them without touching code.
-// Override with LAUNCHER_GAMES=/path/to/games.json
 // Mutable data lives outside the read-only image, never under /usr.
-// Override with TESSERA_DATA_DIR. Games are listed in games.json inside it.
+// Override the folder with TESSERA_DATA_DIR, or the file with LAUNCHER_LIBRARY.
+// The library is library.json; an older games.json (a plain list) still works.
 const DATA_DIR =
   process.env.TESSERA_DATA_DIR ||
   path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'tessera');
-const GAMES_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
+const LIBRARY_FILE = process.env.LAUNCHER_LIBRARY || path.join(DATA_DIR, 'library.json');
+const LEGACY_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
+
+const TABS = ['home', 'library', 'apps'];
+const KINDS = ['game', 'app'];
 
 let mainWindow = null;
-let games = [];
+let items = [];   // launchable things, with paths. Never sent to the renderer.
 let running = false;
 
-function loadGames() {
-  let raw;
-  try {
-    raw = fs.readFileSync(GAMES_FILE, 'utf8');
-  } catch {
-    return { games: [], error: `No game list found. Create ${GAMES_FILE}` };
+// Library format:
+//   items:      [{ id, kind: "game"|"app", title, path }]
+//   categories: [{ id, title, tab?: "home"|"library"|"apps", entries: [id, ...] }]
+// An entry is an item id or another category id (shown as a folder tile).
+// A category with a tab is a row on that tab; without one it is only a folder.
+function readLibraryFile() {
+  for (const file of [LIBRARY_FILE, LEGACY_FILE]) {
+    let raw;
+    try {
+      raw = fs.readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    try {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) return { data: { items: data, categories: [] } };
+      if (data && typeof data === 'object') return { data };
+      return { error: `${path.basename(file)} has the wrong shape.` };
+    } catch (e) {
+      return { error: `${path.basename(file)} is not valid JSON: ${e.message}` };
+    }
   }
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch (e) {
-    return { games: [], error: `games.json is not valid JSON: ${e.message}` };
-  }
-  if (!Array.isArray(data)) {
-    return { games: [], error: 'games.json must be a list of games.' };
-  }
-  const seen = new Set();
-  const valid = data.filter((g) => {
+  return { error: `No library found. Create ${LIBRARY_FILE}` };
+}
+
+function loadLibrary() {
+  const empty = { tabs: { home: [], library: [], apps: [] }, folders: {} };
+  const { data, error } = readLibraryFile();
+  if (error) return { ...empty, items: [], error };
+
+  let skipped = 0;
+  const ids = new Set();
+  const good = [];
+  for (const g of Array.isArray(data.items) ? data.items : []) {
     const ok =
       g &&
       typeof g.id === 'string' &&
       typeof g.title === 'string' &&
       typeof g.path === 'string' &&
       path.isAbsolute(g.path) &&
-      !seen.has(g.id);
-    if (ok) seen.add(g.id);
-    return ok;
-  });
-  const skipped = data.length - valid.length;
+      (g.kind === undefined || KINDS.includes(g.kind)) &&
+      !ids.has(g.id);
+    if (!ok) { skipped++; continue; }
+    ids.add(g.id);
+    good.push({ id: g.id, kind: g.kind || 'game', title: g.title, path: g.path });
+  }
+
+  const cats = new Map();
+  for (const c of Array.isArray(data.categories) ? data.categories : []) {
+    const ok =
+      c &&
+      typeof c.id === 'string' &&
+      typeof c.title === 'string' &&
+      Array.isArray(c.entries) &&
+      (c.tab === undefined || TABS.includes(c.tab)) &&
+      !ids.has(c.id) &&
+      !cats.has(c.id);
+    if (!ok) { skipped++; continue; }
+    cats.set(c.id, c);
+  }
+
+  const byId = new Map(good.map((g) => [g.id, g]));
+  // Turn entry ids into tiles. Unknown ids and self-references are dropped.
+  const tilesFor = (c) =>
+    c.entries
+      .map((ref) => {
+        if (typeof ref !== 'string' || ref === c.id) return null;
+        const it = byId.get(ref);
+        if (it) return { id: it.id, title: it.title, kind: it.kind };
+        const sub = cats.get(ref);
+        if (sub) return { id: sub.id, title: sub.title, kind: 'folder' };
+        return null;
+      })
+      .filter(Boolean);
+
+  const tabs = { home: [], library: [], apps: [] };
+  const folders = {};
+  for (const c of cats.values()) {
+    const tiles = tilesFor(c);
+    folders[c.id] = { title: c.title, tiles };
+    if (c.tab) tabs[c.tab].push({ id: c.id, title: c.title, tiles });
+  }
+
+  // Automatic rows so a fresh install is never empty.
+  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind });
+  const games = good.filter((i) => i.kind === 'game').map(tileOf);
+  const apps = good.filter((i) => i.kind === 'app').map(tileOf);
+  if (!tabs.library.length && games.length) tabs.library.push({ id: '_all_games', title: 'All games', tiles: games });
+  if (!tabs.apps.length && apps.length) tabs.apps.push({ id: '_all_apps', title: 'All apps', tiles: apps });
+  if (!tabs.home.length) {
+    if (games.length) tabs.home.push({ id: '_home_games', title: 'Games', tiles: games });
+    if (apps.length) tabs.home.push({ id: '_home_apps', title: 'Apps', tiles: apps });
+  }
+
   return {
-    games: valid,
-    error: skipped
-      ? `${skipped} game(s) skipped: each needs a unique id, a title, and an absolute path.`
-      : null,
+    items: good,
+    tabs,
+    folders,
+    error: skipped ? `${skipped} entry(ies) skipped: check ids, titles and absolute paths.` : null,
   };
 }
 
@@ -77,13 +145,10 @@ function createWindow() {
   mainWindow.loadFile('index.html');
 
   mainWindow.webContents.on('did-finish-load', () => {
-    const result = loadGames();
-    games = result.games;
-    // The renderer only ever sees ids and titles, never file paths.
-    send('init', {
-      games: games.map((g) => ({ id: g.id, title: g.title })),
-      error: result.error,
-    });
+    const lib = loadLibrary();
+    items = lib.items;
+    // The renderer only ever sees ids, titles and kinds, never file paths.
+    send('init', { tabs: lib.tabs, folders: lib.folders, error: lib.error });
   });
 
   // Keyboard fallback exit. Local to this window, so it never steals keys from a game.
@@ -104,7 +169,7 @@ if (!app.requestSingleInstanceLock()) {
 ipcMain.on('launch', (_event, id) => {
   if (running || typeof id !== 'string') return;
 
-  const game = games.find((g) => g.id === id);
+  const game = items.find((g) => g.id === id);
   if (!game) return send('launch-failed', 'Unknown game.');
 
   try {
