@@ -11,4 +11,9 @@ chmod 0755 /usr/bin/tessera-session
 ### Tessera launcher
 # Node is only needed here, to fetch Electron into the launcher folder.
 dnf5 install -y nodejs npm
+
+# /root is a dangling link during the image build, so npm can't create its
+# cache there. Point HOME (npm and Electron caches) at a scratch folder.
+export HOME=/tmp/build-home
+mkdir -p "$HOME"
 npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact electron
