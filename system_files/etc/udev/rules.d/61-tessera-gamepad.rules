@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Bluetooth Xbox controllers were tagged as keyboards, so Chromium ignored them.
+# Tag them as joysticks. Tested on an Xbox Elite 2 only.
+SUBSYSTEM=="input", ATTRS{name}=="*Xbox*Controller*", ENV{ID_INPUT_JOYSTICK}="1"

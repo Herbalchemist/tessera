@@ -1,0 +1,23 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'">
+  <title>Launcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <div class="viewport"><div class="rail" id="rail"></div></div>
+    <h1 id="title"></h1>
+    <p id="status" role="status"></p>
+  </main>
+  <footer>
+    <span><b>A</b> Play</span>
+    <span><b>D-pad</b> Browse</span>
+    <span><b>Hold Start + Select</b> Quit</span>
+  </footer>
+  <script src="renderer.js"></script>
+</body>
+</html>
