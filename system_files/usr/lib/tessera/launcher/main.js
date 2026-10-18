@@ -265,7 +265,7 @@ function buildView() {
     .filter(Boolean)
     .slice(0, 12)
     .map(tileOf);
-  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, error: state.warn };
+  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, prefs: prefsPayload(), error: state.warn };
 }
 
 // Remember what was launched, newest first. Only the id and a time are stored.
@@ -451,7 +451,23 @@ function addItem({ title, kind, file, args }) {
 const DEFAULT_KEYS = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 };
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 
-let settings = { scanRoots: [], keys: { ...DEFAULT_KEYS } };
+// Controller preferences. Deadzone and trigger threshold are percentages.
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'xbox' };
+const PAD_CHOICES = {
+  rumble: ['off', 'low', 'normal', 'high'],
+  style: ['split', 'both', 'pulse'],
+  glyphs: ['xbox', 'playstation', 'nintendo'],
+};
+const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50] };
+
+let settings = {
+  scanRoots: [],
+  keys: { ...DEFAULT_KEYS },
+  theme: { active: 'stock', values: {} }, // values[themeId][settingId]
+  pad: { ...PAD_DEFAULTS },
+  calib: {}, // per controller: resting offsets of each axis
+  driveNames: {}, // drive key -> the name the person gave it
+};
 
 function loadSettings() {
   try {
@@ -464,6 +480,37 @@ function loadSettings() {
         if (Number.isInteger(v) && v >= 0 && v < 32 && !RESERVED_BUTTONS.includes(v)) settings.keys[k] = v;
       }
     }
+    if (d && d.theme && typeof d.theme === 'object') {
+      if (typeof d.theme.active === 'string' && THEME_ID_RE.test(d.theme.active)) settings.theme.active = d.theme.active;
+      const vals = d.theme.values;
+      if (vals && typeof vals === 'object') {
+        for (const [tid, tv] of Object.entries(vals).slice(0, 32)) {
+          if (!THEME_ID_RE.test(tid) || !tv || typeof tv !== 'object') continue;
+          const clean = {};
+          for (const [sid, v] of Object.entries(tv).slice(0, 80)) {
+            if (SETTING_ID_RE.test(sid) && (typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && v.length < 600))) clean[sid] = v;
+          }
+          settings.theme.values[tid] = clean;
+        }
+      }
+    }
+    if (d && d.pad && typeof d.pad === 'object') {
+      for (const k of Object.keys(PAD_DEFAULTS)) {
+        const v = d.pad[k];
+        if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(v)) settings.pad[k] = v;
+        else if (PAD_RANGES[k] && Number.isFinite(v) && v >= PAD_RANGES[k][0] && v <= PAD_RANGES[k][1]) settings.pad[k] = Math.round(v);
+      }
+    }
+    if (d && d.calib && typeof d.calib === 'object') {
+      for (const [id, arr] of Object.entries(d.calib).slice(0, 16)) {
+        if (id.length < 90 && Array.isArray(arr) && arr.length <= 8 && arr.every((n) => Number.isFinite(n) && Math.abs(n) <= 0.5))
+          settings.calib[id] = arr.map((n) => Math.round(n * 1000) / 1000);
+      }
+    }
+    if (d && d.driveNames && typeof d.driveNames === 'object') {
+      for (const [k, v] of Object.entries(d.driveNames).slice(0, 64))
+        if (k.length < 200 && typeof v === 'string' && v.trim() && v.length <= 40) settings.driveNames[k] = v.trim();
+    }
   } catch {
     /* none yet */
   }
@@ -474,6 +521,186 @@ function saveSettings() {
   fs.writeFileSync(tmp, JSON.stringify(settings, null, 2));
   fs.renameSync(tmp, SETTINGS_FILE);
 }
+// ------------------------------------------------------------ theme settings
+// A theme is a list of settings the person can change. The stock list below
+// is always there; a theme can change its defaults and add settings of its
+// own in themes/<id>/theme.json. Values only ever become CSS custom
+// properties (never code), so a theme can't run anything.
+const THEME_ID_RE = /^[a-z0-9][a-z0-9._-]{0,39}$/;
+const SETTING_ID_RE = /^[a-zA-Z][a-zA-Z0-9]{0,23}$/;
+const VAR_RE = /^--(theme-)?[a-z][a-z0-9-]{0,30}$/;
+const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+const MAX_IMAGE = 12 * 1024 * 1024;
+const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim'];
+const STOCK_THEME = {
+  id: 'stock',
+  name: 'Tessera (stock)',
+  author: 'Tessera',
+  settings: [
+    { id: 'screenUse', group: 'Screen', label: 'Screen area used', type: 'range', min: 70, max: 100, step: 5, unit: '%', default: 100, var: '--use', scale: 0.01, hint: 'Lower this if your TV cuts off the edges' },
+    { id: 'fontScale', group: 'Screen', label: 'Text size', type: 'range', min: 80, max: 160, step: 10, unit: '%', default: 100, var: '--font-scale', scale: 0.01 },
+    { id: 'radius', group: 'Shape', label: 'Corner roundness', type: 'choice', default: '14px', var: '--radius',
+      options: [{ label: 'Sharp', value: '4px' }, { label: 'Normal', value: '14px' }, { label: 'Round', value: '28px' }] },
+    { id: 'borderW', group: 'Shape', label: 'Border thickness', type: 'choice', default: '0px', var: '--border-w',
+      options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Medium', value: '4px' }, { label: 'Thick', value: '6px' }] },
+    { id: 'accent', group: 'Colors', label: 'Highlight color', type: 'color', default: '#7fb2ff', var: '--accent' },
+    { id: 'border', group: 'Colors', label: 'Border color', type: 'color', default: '#3b475a', var: '--border' },
+    { id: 'card', group: 'Colors', label: 'Tile fill', type: 'color', default: '#1a222c', var: '--card' },
+    { id: 'panel', group: 'Colors', label: 'Menu fill', type: 'color', default: '#161d27', var: '--panel' },
+    { id: 'bg', group: 'Colors', label: 'Background color', type: 'color', default: '#10151c', var: '--bg' },
+    { id: 'text', group: 'Colors', label: 'Text color', type: 'color', default: '#e9e4d8', var: '--text' },
+    { id: 'muted', group: 'Colors', label: 'Small text color', type: 'color', default: '#8b95a3', var: '--muted' },
+    { id: 'background', group: 'Background', label: 'Background picture', type: 'image', default: '', var: '--bg-image' },
+    { id: 'bgDim', group: 'Background', label: 'Picture dimming', type: 'range', min: 0, max: 90, step: 10, unit: '%', default: 50, var: '--bg-dim', scale: 0.01 },
+  ],
+};
+const clip = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : '');
+
+let themes = new Map(); // id -> { id, name, author, defaults, extra }
+function scanThemes() {
+  themes = new Map([['stock', { id: 'stock', name: STOCK_THEME.name, author: STOCK_THEME.author, defaults: {}, extra: [] }]]);
+  let names = [];
+  try { names = fs.readdirSync(addonDir('themes'), { withFileTypes: true }); } catch { return; }
+  for (const e of names.slice(0, 64)) {
+    if (!e.isDirectory() || e.isSymbolicLink() || !THEME_ID_RE.test(e.name) || e.name === 'stock') continue;
+    let m;
+    try {
+      const f = path.join(addonDir('themes'), e.name, 'theme.json');
+      if (fs.statSync(f).size > 64 * 1024) continue;
+      m = JSON.parse(fs.readFileSync(f, 'utf8'));
+    } catch { continue; }
+    if (!m || typeof m !== 'object') continue;
+    const extra = [];
+    for (const s of (Array.isArray(m.settings) ? m.settings : []).slice(0, 40)) {
+      const d = cleanSetting(s);
+      if (d) extra.push(d);
+    }
+    const defaults = {};
+    if (m.defaults && typeof m.defaults === 'object')
+      for (const [k, v] of Object.entries(m.defaults).slice(0, 80))
+        if (SETTING_ID_RE.test(k) && (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string')) defaults[k] = v;
+    themes.set(e.name, { id: e.name, name: clip(m.name, 40) || e.name, author: clip(m.author, 60), defaults, extra });
+  }
+}
+// One setting from a theme file, or null if it doesn't make sense.
+function cleanSetting(s) {
+  if (!s || typeof s !== 'object' || !SETTING_ID_RE.test(s.id) || !['range', 'choice', 'color', 'toggle', 'image'].includes(s.type)) return null;
+  const out = { id: s.id, type: s.type, label: clip(s.label, 40) || s.id, group: clip(s.group, 30) || 'Theme', hint: clip(s.hint, 120) };
+  if (s.var !== undefined) {
+    if (typeof s.var !== 'string' || !VAR_RE.test(s.var)) return null;
+    if (!s.var.startsWith('--theme-') && !STOCK_VARS.includes(s.var)) return null;
+    out.var = s.var;
+  }
+  if (s.type === 'range') {
+    const n = (v, d) => (Number.isFinite(v) ? v : d);
+    out.min = n(s.min, 0); out.max = n(s.max, 100); out.step = Math.max(n(s.step, 1), (out.max - out.min) / 100 || 1);
+    if (out.max <= out.min) return null;
+    out.unit = clip(s.unit, 4);
+    out.scale = Number.isFinite(s.scale) ? s.scale : 1;
+    out.default = Math.min(out.max, Math.max(out.min, n(s.default, out.min)));
+  } else if (s.type === 'choice') {
+    out.options = (Array.isArray(s.options) ? s.options : []).slice(0, 12)
+      .map((o) => ({ label: clip(o && o.label, 30), value: o && typeof o.value === 'string' ? o.value : '' }))
+      .filter((o) => o.label && SAFE_VALUE_RE.test(o.value) && !/url\(/i.test(o.value));
+    if (!out.options.length) return null;
+    out.default = out.options.some((o) => o.value === s.default) ? s.default : out.options[0].value;
+  } else if (s.type === 'color') {
+    out.default = HEX_RE.test(s.default) ? s.default.toLowerCase() : '#ffffff';
+  } else if (s.type === 'toggle') {
+    out.default = Boolean(s.default);
+    out.on = typeof s.on === 'string' && SAFE_VALUE_RE.test(s.on) ? s.on : '1';
+    out.off = typeof s.off === 'string' && SAFE_VALUE_RE.test(s.off) ? s.off : '0';
+  } else {
+    out.default = '';
+  }
+  return out;
+}
+function schemaFor(id) {
+  const t = themes.get(id) || themes.get('stock');
+  const list = STOCK_THEME.settings.map((s) => {
+    const d = { ...s };
+    const v = t.defaults[s.id];
+    if (v !== undefined) {
+      const c = cleanValue(d, v);
+      if (c !== undefined) d.default = c;
+    }
+    return d;
+  });
+  for (const x of t.extra) {
+    const at = list.findIndex((s) => s.id === x.id);
+    if (at >= 0) list[at] = x;
+    else list.push(x);
+  }
+  return list;
+}
+// A value for this setting, or undefined if it isn't allowed.
+function cleanValue(def, v) {
+  if (def.type === 'range') {
+    if (!Number.isFinite(v)) return undefined;
+    const snapped = Math.round((v - def.min) / def.step) * def.step + def.min;
+    return Math.min(def.max, Math.max(def.min, Math.round(snapped * 1000) / 1000));
+  }
+  if (def.type === 'choice') return def.options.some((o) => o.value === v) ? v : undefined;
+  if (def.type === 'color') return typeof v === 'string' && HEX_RE.test(v) ? v.toLowerCase() : undefined;
+  if (def.type === 'toggle') return typeof v === 'boolean' ? v : undefined;
+  if (def.type === 'image') return v === '' ? '' : typeof v === 'string' && path.isAbsolute(v) ? v : undefined;
+  return undefined;
+}
+function activeTheme() {
+  return themes.has(settings.theme.active) ? settings.theme.active : 'stock';
+}
+function themePayload() {
+  const id = activeTheme();
+  const saved = settings.theme.values[id] || {};
+  const list = schemaFor(id).map((d) => {
+    const c = saved[d.id] !== undefined ? cleanValue(d, saved[d.id]) : undefined;
+    const value = c === undefined ? d.default : c;
+    // The page never sees where a picture lives, only its file name.
+    return { ...d, default: d.type === 'image' ? '' : d.default, value: d.type === 'image' ? (value ? path.basename(value) : '') : value };
+  });
+  return {
+    rev: themeRev,
+    active: id,
+    themes: [...themes.values()].map((t) => ({ id: t.id, name: t.name, author: t.author })),
+    settings: list,
+  };
+}
+let themeRev = 0; // bumps whenever a theme value changes, so the page knows to reload pictures
+function setThemeValue(sid, value) {
+  const id = activeTheme();
+  const def = schemaFor(id).find((s) => s.id === sid);
+  if (!def) return false;
+  const c = cleanValue(def, value);
+  if (c === undefined) return false;
+  settings.theme.values[id] = { ...(settings.theme.values[id] || {}), [sid]: c };
+  themeRev++;
+  saveSettings();
+  return true;
+}
+// The picture for an image setting, as a data: URL. Only files inside the
+// places Tessera may browse, only real PNG / JPEG / WebP files, and not huge.
+function themeImage(sid) {
+  const id = activeTheme();
+  const def = schemaFor(id).find((s) => s.id === sid && s.type === 'image');
+  const file = def && ((settings.theme.values[id] || {})[sid] || '');
+  if (!file) return { dataUrl: '' };
+  const rp = real(file);
+  const mime = rp && IMG_EXT[path.extname(rp).toLowerCase()];
+  if (!rp || !mime || !underRoot(path.dirname(rp))) return { dataUrl: '', error: "That picture can't be used." };
+  const st = fs.statSync(rp);
+  if (!st.isFile() || st.size > MAX_IMAGE) return { dataUrl: '', error: 'That picture is too large (12 MB max).' };
+  const buf = fs.readFileSync(rp);
+  const head = buf.subarray(0, 12);
+  const ok = mime === 'image/png' ? head.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    : mime === 'image/jpeg' ? head.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))
+    : head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP';
+  if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
+  return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
+}
+const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, theme: themePayload() });
+
 const display = (p) => {
   const home = os.homedir();
   return p === home ? '~' : p.startsWith(home + path.sep) ? '~' + p.slice(home.length) : p;
@@ -493,6 +720,77 @@ const real = (p) => {
 const browseRoots = () =>
   [os.homedir(), '/run/media', '/mnt', '/var/mnt'].map(real).filter((r) => r && isDir(r));
 const underRoot = (rp) => browseRoots().some((r) => rp === r || rp.startsWith(r + path.sep));
+
+// ------------------------------------------------------------------ drives
+// Where drives show up. Each gets a friendly name (the one the person chose,
+// else the drive's label, else its model and size) and a technical line.
+const unescapeMount = (s) => s.replace(/\\([0-7]{3})/g, (_m, o) => String.fromCharCode(parseInt(o, 8)));
+function mountSources() {
+  const out = new Map();
+  try {
+    for (const line of fs.readFileSync('/proc/self/mountinfo', 'utf8').split('\n')) {
+      const [left, right] = line.split(' - ');
+      if (!right) continue;
+      const mp = unescapeMount(left.split(' ')[4] || '');
+      const [fstype, source] = right.split(' ');
+      if (mp && source && source.startsWith('/dev/')) out.set(real(mp) || mp, { fstype, source });
+    }
+  } catch { /* no mountinfo */ }
+  return out;
+}
+let lsblkCache = { at: 0, map: new Map() };
+function lsblkLabels() {
+  if (Date.now() - lsblkCache.at < 4000) return lsblkCache.map;
+  const map = new Map(); // device path -> { label, uuid, size, model }
+  const walk = (devs, parentModel) => {
+    for (const d of devs || []) {
+      const model = d.model || parentModel || '';
+      if (d.path) map.set(d.path, { label: d.label || '', uuid: d.uuid || '', size: d.size || '', model: (model || '').trim() });
+      walk(d.children, model);
+    }
+  };
+  try {
+    const out = execFileSync('lsblk', ['-J', '-o', 'PATH,LABEL,UUID,SIZE,MODEL'], { timeout: 2000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    walk(JSON.parse(out).blockdevices, '');
+  } catch { /* lsblk missing: fall back to folder names */ }
+  lsblkCache = { at: Date.now(), map };
+  return map;
+}
+function driveList() {
+  const found = new Map(); // real path -> mount folder
+  const add = (p) => { const rp = real(p); if (rp && isDir(rp) && !found.has(rp)) found.set(rp, p); };
+  const subdirs = (d) => {
+    try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => path.join(d, e.name)); } catch { return []; }
+  };
+  for (const u of subdirs('/run/media')) subdirs(u).forEach(add);
+  subdirs('/mnt').forEach(add);
+  subdirs('/var/mnt').forEach(add);
+  const src = mountSources();
+  const labels = lsblkLabels();
+  const taken = new Set();
+  return [...found.keys()].map((rp) => {
+    const s = src.get(rp);
+    const info = s && labels.get(s.source);
+    const key = (info && info.uuid) || 'dir:' + rp;
+    const auto = (info && info.label) || (info && info.model && info.size ? `${info.model} (${info.size})` : '') || path.basename(rp);
+    let name = settings.driveNames[key] || auto;
+    if (taken.has(name)) name = `${name} (${path.basename(rp)})`;
+    taken.add(name);
+    return { key, mount: rp, name, auto, custom: Boolean(settings.driveNames[key]), tech: [s && s.source, display(rp)].filter(Boolean).join(' · ') };
+  });
+}
+// Home first, then every drive. Going "up" from any of these lands on this list.
+const topLevels = () => {
+  const home = real(os.homedir());
+  return [...(home ? [home] : []), ...driveList().map((d) => d.mount)];
+};
+// A path shown the way a person would say it: "Games SSD / SteamLibrary".
+function friendly(p) {
+  const rp = real(p) || p;
+  const d = driveList().find((x) => rp === x.mount || rp.startsWith(x.mount + path.sep));
+  if (d) return { name: [d.name, ...rp.slice(d.mount.length).split(path.sep).filter(Boolean)].join(' / '), tech: display(rp) };
+  return { name: display(rp), tech: '' };
+}
 
 // Launchers worth a shortcut. Shown only if installed. Fixed list, so nothing
 // the page sends can add to it.
@@ -524,12 +822,16 @@ let browse = null; // { purpose: 'addGame'|'addApp'|'addRoot', into?: id, dir: s
 
 function browseView() {
   const b = browse;
-  const pub = () => b.entries.map((e) => ({ name: e.name, isDir: e.isDir }));
+  const pub = () => b.entries.map((e) => ({ name: e.name, isDir: e.isDir, sub: e.sub, key: e.key }));
   if (!b.dir) {
-    b.entries = browseRoots().map((r) => ({ name: display(r), isDir: true, full: r }));
+    const home = real(os.homedir());
+    b.entries = [
+      ...(home ? [{ name: 'Home folder', sub: display(home), isDir: true, full: home }] : []),
+      ...driveList().map((d) => ({ name: d.name, sub: d.tech, key: d.key, isDir: true, full: d.mount })),
+    ];
     if (b.purpose === 'addApp')
       b.entries.unshift({ name: 'Suggested apps', isDir: true, virtual: true });
-    return { crumb: 'Choose a location', canUp: false, canChooseHere: false, entries: pub() };
+    return { crumb: 'Choose a location  ·  Y renames a drive', canUp: false, canChooseHere: false, entries: pub(), renamable: true };
   }
   if (b.dir === SUGGESTED) {
     b.entries = suggestedApps().map((a) => ({
@@ -559,7 +861,9 @@ function browseView() {
       }
     }
     if (dir) rows.push({ name: e.name, isDir: true, full });
-    else if (file && b.purpose !== 'addRoot') {
+    else if (file && b.purpose === 'pickImage') {
+      if (IMG_EXT[path.extname(e.name).toLowerCase()]) rows.push({ name: e.name, isDir: false, full });
+    } else if (file && b.purpose !== 'addRoot') {
       try { fs.accessSync(full, fs.constants.X_OK); } catch { continue; }
       rows.push({ name: e.name, isDir: false, full });
     }
@@ -567,7 +871,7 @@ function browseView() {
   rows.sort((a, c) => (a.isDir === c.isDir ? a.name.localeCompare(c.name) : a.isDir ? -1 : 1));
   b.entries = rows.slice(0, BROWSE_MAX);
   return {
-    crumb: display(b.dir),
+    crumb: friendly(b.dir).name,
     canUp: true,
     canChooseHere: b.purpose === 'addRoot',
     entries: pub(),
@@ -577,7 +881,7 @@ function browseView() {
 
 function browseOp(op, p) {
   if (op === 'start') {
-    if (!['addGame', 'addApp', 'addRoot'].includes(p.purpose)) return { error: 'Bad request.' };
+    if (!['addGame', 'addApp', 'addRoot', 'pickImage'].includes(p.purpose)) return { error: 'Bad request.' };
     browse = {
       purpose: p.purpose,
       into: typeof p.into === 'string' && catById(p.into) ? p.into : null,
@@ -591,11 +895,12 @@ function browseOp(op, p) {
     browse = null;
     return { ok: true };
   }
+  if (op === 'refresh') return browseView();
   if (op === 'up') {
     if (browse.dir === SUGGESTED) browse.dir = null;
     else if (browse.dir) {
       const here = real(browse.dir);
-      browse.dir = browseRoots().includes(here) ? null : path.dirname(here);
+      browse.dir = topLevels().includes(here) ? null : path.dirname(here);
     }
     return browseView();
   }
@@ -612,6 +917,16 @@ function browseOp(op, p) {
     return browseView();
   }
   if (op === 'choose') {
+    if (browse.purpose === 'pickImage') {
+      if (!entry || entry.isDir) return { error: 'Pick a picture.' };
+      const rp = real(entry.full);
+      if (!rp || !underRoot(path.dirname(rp))) return { error: "Tessera can't use that file." };
+      if (!setThemeValue('background', rp)) return { error: "This theme doesn't use a background picture." };
+      const t = themeImage('background');
+      if (!t.dataUrl) { setThemeValue('background', ''); return { error: t.error || "That picture can't be used." }; }
+      browse = null;
+      return { ok: true, message: 'Background set.', theme: themePayload() };
+    }
     if (browse.purpose === 'addRoot') {
       const rp = browse.dir && real(browse.dir);
       if (!rp || !underRoot(rp)) return { error: 'Pick a folder first.' };
@@ -619,7 +934,7 @@ function browseOp(op, p) {
       settings.scanRoots.push(rp);
       saveSettings();
       browse = null;
-      return { ok: true, message: `Added ${display(rp)} to your library folders.` };
+      return { ok: true, message: `Added ${friendly(rp).name} to your library folders.` };
     }
     if (state.locked) return { error: `Can't edit: ${state.locked}` };
     if (!entry || entry.isDir) return { error: 'Pick a file.' };
@@ -928,8 +1243,31 @@ starting size (default 3 x 2). Set "resizable" to let people stretch it between
 Widgets cannot use the network or touch your files.
 Restart Tessera or use Settings > Add-ons > Reload to pick up changes.
 `,
-  themes: `Themes go here, one folder each. Theme support is coming; for now this
-folder just reserves the spot so downloads have somewhere to land.
+  themes: `One folder per theme, with a theme.json inside. A theme starts from the
+stock Theme Settings (screen area, text size, colors, corners, background
+picture) and can change their defaults and add settings of its own.
+
+  my-theme/
+    theme.json
+
+theme.json:
+  {
+    "name": "My Theme",
+    "author": "You",
+    "defaults": { "accent": "#ff00aa", "radius": "28px" },
+    "settings": [
+      { "id": "glow", "label": "Glow", "group": "My Theme", "type": "range",
+        "min": 0, "max": 10, "step": 2, "default": 4, "unit": "px",
+        "var": "--theme-glow" }
+    ]
+  }
+
+Setting types: range, choice (with "options": [{ "label", "value" }]), color
+(#rrggbb), toggle ("on" / "off" values), image (stock background only).
+A setting's value becomes a CSS variable named in "var". Variables must start
+with --theme- (or be one of the stock ones: --accent, --bg, --card, ...).
+Themes only set values; they cannot run code or load files from the network.
+Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
 };
 
@@ -1093,6 +1431,7 @@ function addonsInfo() {
     rejected,
     dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
     themeCount: countDirs('themes'),
+    themes: [...themes.values()].filter((t) => t.id !== 'stock').map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
   };
 }
 
@@ -1118,6 +1457,7 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     ensureTree();
     scanAddons();
+    scanThemes();
     loadState();
     loadSettings();
     send('init', buildView());
@@ -1168,19 +1508,75 @@ ipcMain.handle('library', safe((op, p) => {
 ipcMain.handle('browse', safe((op, p) => browseOp(op, p)));
 
 ipcMain.handle('addons', safe((op) => {
-  if (op === 'rescan') scanAddons();
+  if (op === 'rescan') { scanAddons(); scanThemes(); }
   if (op === 'list' || op === 'rescan') return addonsInfo();
   return { error: 'Unknown action.' };
 }));
 
 ipcMain.handle('settings', safe((op, p) => {
-  if (op === 'get') return { roots: settings.scanRoots.map(display) };
+  const rootsView = () => settings.scanRoots.map(friendly);
+  if (op === 'get') return { roots: rootsView() };
   if (op === 'removeRoot') {
     if (Number.isInteger(p.index) && p.index >= 0 && p.index < settings.scanRoots.length) {
       settings.scanRoots.splice(p.index, 1);
       saveSettings();
     }
-    return { roots: settings.scanRoots.map(display) };
+    return { roots: rootsView() };
+  }
+  if (op === 'drives') return { drives: driveList().map(({ key, name, auto, custom, tech }) => ({ key, name, auto, custom, tech })) };
+  if (op === 'driveName') {
+    const d = driveList().find((x) => x.key === p.key);
+    if (!d) return { ok: false, error: "That drive isn't connected." };
+    const nm = typeof p.name === 'string' ? p.name.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 40) : '';
+    if (nm) settings.driveNames[d.key] = nm;
+    else delete settings.driveNames[d.key]; // empty goes back to the automatic name
+    saveSettings();
+    lsblkCache.at = 0;
+    return { ok: true };
+  }
+  if (op === 'themeGet') return themePayload();
+  if (op === 'themeSet') {
+    if (typeof p.id !== 'string' || !setThemeValue(p.id, p.value)) return { ok: false, error: "That can't be set.", theme: themePayload() };
+    return { ok: true, theme: themePayload() };
+  }
+  if (op === 'themeUse') {
+    if (typeof p.id !== 'string' || !themes.has(p.id)) return { ok: false, theme: themePayload() };
+    settings.theme.active = p.id;
+    themeRev++;
+    saveSettings();
+    return { ok: true, theme: themePayload() };
+  }
+  if (op === 'themeReset') {
+    delete settings.theme.values[activeTheme()];
+    themeRev++;
+    saveSettings();
+    return { ok: true, theme: themePayload() };
+  }
+  if (op === 'themeImage') return themeImage(typeof p.id === 'string' ? p.id : '');
+  if (op === 'padGet') return { pad: { ...settings.pad }, calib: settings.calib };
+  if (op === 'padSet') {
+    const k = p.key;
+    if (!Object.keys(PAD_DEFAULTS).includes(k)) return { ok: false };
+    if (PAD_CHOICES[k]) {
+      if (!PAD_CHOICES[k].includes(p.value)) return { ok: false };
+      settings.pad[k] = p.value;
+    } else {
+      if (!Number.isFinite(p.value) || p.value < PAD_RANGES[k][0] || p.value > PAD_RANGES[k][1]) return { ok: false };
+      settings.pad[k] = Math.round(p.value);
+    }
+    saveSettings();
+    return { ok: true, pad: { ...settings.pad }, calib: settings.calib };
+  }
+  if (op === 'padCalib') {
+    const id = typeof p.id === 'string' ? p.id.slice(0, 80) : '';
+    const offs = Array.isArray(p.offsets) ? p.offsets.slice(0, 8) : null;
+    if (!id) return { ok: false };
+    if (offs === null) delete settings.calib[id];
+    else if (offs.every((n) => Number.isFinite(n) && Math.abs(n) <= 0.5)) settings.calib[id] = offs.map((n) => Math.round(n * 1000) / 1000);
+    else return { ok: false, error: 'Let go of the sticks and try again.' };
+    if (Object.keys(settings.calib).length > 16) delete settings.calib[Object.keys(settings.calib)[0]];
+    saveSettings();
+    return { ok: true, pad: { ...settings.pad }, calib: settings.calib };
   }
   if (op === 'getKeys') return { keys: settings.keys };
   if (op === 'setKey') {

@@ -3,15 +3,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; frame-src tessera-widget:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src data:; frame-src tessera-widget:">
   <title>Tessera</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <span class="hint">LB</span>
+    <span class="hint" data-g="4">LB</span>
     <div class="navport"><nav id="tabs"></nav></div>
-    <span class="hint">RB</span>
+    <span class="hint" data-g="5">RB</span>
   </header>
   <div id="crumb"></div>
   <main>
@@ -20,11 +20,11 @@
   <h1 id="title"></h1>
   <p id="status" role="status"></p>
   <footer>
-    <span><b>A</b> Open</span>
-    <span><b>B</b> Back</span>
-    <span><b>Y</b> Options</span>
-    <span><b>LB / RB</b> Switch tab</span>
-    <span><b>Hold View + Menu</b> Quit</span>
+    <span><b data-g="0">A</b> Open</span>
+    <span><b data-g="1">B</b> Back</span>
+    <span><b data-g="3">Y</b> Options</span>
+    <span><b data-g="4,5">LB / RB</b> Switch tab</span>
+    <span><b data-g="8,9">Hold View + Menu</b> Quit</span>
   </footer>
   <div id="modal" hidden></div>
   <script src="renderer.js"></script>

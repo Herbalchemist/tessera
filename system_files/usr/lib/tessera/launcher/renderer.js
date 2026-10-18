@@ -99,7 +99,98 @@ const BUTTON_NAMES = {
   0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
   8: 'View', 9: 'Menu', 10: 'L3', 11: 'R3', 16: 'Guide',
 };
-const buttonName = (n) => BUTTON_NAMES[n] || `Button ${n}`;
+// Button labels follow the controller family the person picked (Settings → Controller).
+const GLYPH_SETS = {
+  xbox: BUTTON_NAMES,
+  playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
+  nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
+};
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'xbox' };
+let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null };
+const glyph = (n) => (GLYPH_SETS[prefs.pad.glyphs] || BUTTON_NAMES)[n];
+const buttonName = (n) => glyph(n) || `Button ${n}`;
+function applyGlyphs() {
+  for (const el of document.querySelectorAll('[data-g]')) {
+    const ids = el.dataset.g.split(',').map(Number);
+    el.textContent = ids.length === 1 ? buttonName(ids[0]) : ids[0] === 8 ? `Hold ${buttonName(8)} + ${buttonName(9)}` : ids.map(buttonName).join(' / ');
+  }
+}
+
+// ------------------------------------------------------- screen + theme
+// --auto follows the resolution, so the same layout reads right on a 720p
+// handheld and a 4K TV. The person's own scale choices sit on top of it.
+function fitScreen() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.documentElement.style.setProperty('--auto', Math.min(2.5, Math.max(0.6, s)).toFixed(3));
+}
+window.addEventListener('resize', fitScreen);
+fitScreen();
+
+let appliedVars = new Set();
+let imageRev = null;
+function applyTheme(t) {
+  if (!t || !Array.isArray(t.settings)) return;
+  prefs.theme = t;
+  const root = document.documentElement;
+  const now = new Set();
+  let dim = 0;
+  let hasPicture = false;
+  for (const s of t.settings) {
+    if (s.id === 'accent' && /^#[0-9a-f]{6}$/i.test(s.value)) {
+      const n = parseInt(s.value.slice(1), 16);
+      // Dark or white text, whichever reads better on this accent (WCAG contrast).
+      const lin = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+      const lum = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+      root.style.setProperty('--on-accent', (lum + 0.05) / 0.057 >= 1.05 / (lum + 0.05) ? '#10151c' : '#ffffff');
+    }
+    if (s.id === 'bgDim') dim = s.value * (s.scale || 1);
+    if (!s.var) continue;
+    let v;
+    if (s.type === 'image') { hasPicture = Boolean(s.value); continue; }
+    if (s.type === 'range') v = s.scale && s.scale !== 1 ? String(+(s.value * s.scale).toFixed(4)) : s.value + (s.unit || '');
+    else if (s.type === 'toggle') v = s.value ? s.on : s.off;
+    else v = String(s.value);
+    root.style.setProperty(s.var, v);
+    now.add(s.var);
+  }
+  for (const v of appliedVars) if (!now.has(v) && v !== '--bg-image') root.style.removeProperty(v);
+  appliedVars = now;
+  root.style.setProperty('--bg-dim-on', hasPicture ? String(dim) : '0');
+  const img = t.settings.find((s) => s.type === 'image' && s.var);
+  if (!img || !hasPicture) {
+    root.style.setProperty('--bg-image', 'none');
+    imageRev = null;
+  } else if (imageRev !== t.rev + ':' + t.active) {
+    imageRev = t.rev + ':' + t.active;
+    api.settings('themeImage', { id: img.id }).then((r) => {
+      if (r && r.dataUrl) root.style.setProperty(img.var, `url("${r.dataUrl}")`);
+      else {
+        root.style.setProperty(img.var, 'none');
+        if (r && r.error) setStatus(r.error, true);
+      }
+    });
+  }
+}
+function applyPrefs(p) {
+  if (!p) return;
+  prefs.pad = { ...PAD_DEFAULTS, ...(p.pad || {}) };
+  prefs.calib = p.calib || {};
+  applyGlyphs();
+  applyTheme(p.theme);
+}
+// Stick value after this controller's resting-offset fix and the deadzone.
+const padKey = (pad) => pad.id.slice(0, 80);
+function axisValue(pad, i) {
+  const off = (prefs.calib[padKey(pad)] || [])[i] || 0;
+  const v = (pad.axes[i] || 0) - off;
+  const dz = prefs.pad.deadzone / 100;
+  const a = Math.abs(v);
+  return a < dz ? 0 : Math.sign(v) * Math.min(1, (a - dz) / (1 - dz));
+}
+const triggerValue = (pad, n) => {
+  const v = pad.buttons[n] ? pad.buttons[n].value : 0;
+  return v * 100 < prefs.pad.trigger ? 0 : v;
+};
 const BUTTON_NAMES_BY_ROLE = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb' };
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 let keymap = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 };
@@ -113,10 +204,10 @@ const SETTINGS_ROWS = [
       { id: '_roots', title: 'Library folders', kind: 'action' },
       { id: '_scan', title: 'Scan for games', kind: 'action' },
       { id: '_pad', title: 'Controller', kind: 'action' },
-      { id: '_controls', title: 'Controls', kind: 'action' },
+      { id: '_controls', title: 'Button mapping', kind: 'action' },
+      { id: '_theme', title: 'Theme Settings', kind: 'action' },
       { id: '_addons', title: 'Add-ons', kind: 'action' },
       { id: '_desktop', title: 'Desktop Mode', kind: 'action' },
-      { id: '_quit', title: 'Exit to login screen', kind: 'action' },
     ],
   },
 ];
@@ -585,6 +676,7 @@ function applyView(view) {
   if (!view) return;
   data = { tabs: view.tabs, folders: view.folders, mosaics: view.mosaics || [], tabOrder: view.tabOrder || data.tabOrder, recent: view.recent || [] };
   if (view.keys) keymap = view.keys;
+  if (view.prefs) applyPrefs(view.prefs);
   if (!tabList().includes(page)) {
     page = 'home';
     stack = [];
@@ -605,10 +697,10 @@ function activate() {
   } else if (t.kind === 'inlay') {
     openMenu(); // widgets are display-only; A offers move / resize / remove
   } else if (t.kind === 'action') {
-    if (t.id === '_quit') api.quit();
-    else if (t.id === '_roots') flowRoots();
+    if (t.id === '_roots') flowRoots();
     else if (t.id === '_scan') flowScan();
-    else if (t.id === '_pad') flowPad();
+    else if (t.id === '_pad') flowPadMenu();
+    else if (t.id === '_theme') flowTheme();
     else if (t.id === '_controls') flowControls();
     else if (t.id === '_desktop') flowDesktop();
     else if (t.id === '_addons') flowAddons();
@@ -623,15 +715,19 @@ function activate() {
 // ------------------------------------------------------------------ modal
 
 function closeModal() {
+  const done = modal && modal.onClose;
   modal = null;
   modalEl.hidden = true;
   modalEl.className = '';
   modalEl.replaceChildren();
+  if (done) done();
 }
 
 // A list the controller can scroll. Used for menus, pickers and the browser.
-function openList({ title, items, index = 0, multi = false, onChoose, onBack }) {
-  modal = { kind: 'list', title, items, index, multi, onChoose, onBack };
+function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY }) {
+  // Never start on a section heading.
+  while (items[index] && items[index].header && index < items.length - 1) index++;
+  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY };
   renderModal();
 }
 // Resolves with the chosen item, or null if the user backs out.
@@ -732,7 +828,7 @@ function buildKeys() {
     line.className = 'krow';
     const els = row.map((k) => {
       const el = document.createElement('div');
-      el.className = 'key' + (SPECIAL[k] ? ' wide' : '');
+      el.className = 'key' + (SPECIAL[k] ? ' wide' : '') + (k === 'cancel' ? ' cancel' : '');
       line.appendChild(el);
       return el;
     });
@@ -791,7 +887,8 @@ function renderModal() {
   list.className = 'mlist';
   modal.items.forEach((it, n) => {
     const el = document.createElement('div');
-    el.className = 'mitem' + (n === modal.index ? ' active' : '');
+    const danger = it.danger || /^(cancel|close)\b/i.test(it.label);
+    el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (danger ? ' danger' : '');
     const mark = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
     el.textContent = mark + it.label;
     if (it.sub) {
@@ -817,9 +914,14 @@ function modalPress(act) {
   if (modal.kind === 'capture' || modal.kind === 'pad') return;
   if (modal.kind === 'list') {
     const n = modal.items.length;
-    if (act === 'up') modal.index = Math.max(0, modal.index - 1);
-    else if (act === 'down') modal.index = Math.min(Math.max(0, n - 1), modal.index + 1);
-    else if (act === 'a' && n) modal.onChoose(modal.items[modal.index]);
+    const step = (d) => {
+      let i = modal.index + d;
+      while (modal.items[i] && modal.items[i].header) i += d; // skip section headings
+      if (modal.items[i]) modal.index = i;
+    };
+    if (act === 'up') step(-1);
+    else if (act === 'down') step(1);
+    else if (act === 'a' && n && !modal.items[modal.index].header) modal.onChoose(modal.items[modal.index]);
     else if (act === 'b') modal.onBack();
     renderModal();
     return;
@@ -849,7 +951,7 @@ async function lib(op, payload, { quiet = false } = {}) {
   return r;
 }
 
-async function confirm(question, yesLabel) {
+async function confirm(question, yesLabel = 'Yes') {
   const r = await pick(question, [{ label: yesLabel, yes: true }, { label: 'Cancel' }]);
   return Boolean(r && r.yes);
 }
@@ -912,27 +1014,71 @@ function flowPlaceExisting(t) {
   startPlace({ id: t.id, name: t.title, def, x: t.x, y: t.y, w: t.w, h: t.h });
 }
 
-// Settings → Add-ons: what's installed, where downloads go, and why a widget
-// was rejected (handy for people making their own).
+// Settings → Add-ons: what's installed and where downloads go, sorted into
+// sections. Rejected widgets say why (handy for people making their own).
 async function flowAddons() {
   let op = 'list';
+  let view = 'top';
+  let index = 0;
   for (;;) {
     busy = true;
     let info;
     try { info = await api.addons(op); } finally { busy = false; }
-    const items = [{ label: `Widgets (${info.widgets.length})`, sub: info.dirs.widgets, info: true }];
-    info.widgets.forEach((w) =>
-      items.push({ label: '    ' + w.name, sub: [w.author, `${w.size.w} × ${w.size.h}${w.resizable ? ' · resizable' : ''}`].filter(Boolean).join(' · '), info: true })
-    );
-    info.rejected.forEach((r) => items.push({ label: '    ⚠ ' + r.id, sub: r.reason, info: true }));
-    items.push({ label: `Themes (${info.themeCount} found, support coming)`, sub: info.dirs.themes, info: true });
-    items.push({ label: 'Art', sub: info.dirs.art, info: true });
-    items.push({ label: 'Fonts', sub: info.dirs.fonts, info: true });
-    items.push({ label: 'Sounds', sub: info.dirs.sounds, info: true });
-    items.push({ label: '↻  Reload add-ons', op: 'reload' });
-    const it = await pick('Add-ons · downloads go in these folders', items, items.length - 1);
-    if (!it) return;
-    op = it.op === 'reload' ? 'rescan' : 'list';
+    op = 'list';
+    const inert = (label, sub) => ({ label, sub, info: true });
+    let items;
+    let title;
+    if (view === 'top') {
+      title = 'Add-ons';
+      items = [
+        { label: 'Installed', header: true },
+        { label: 'Widgets', sub: `${info.widgets.length} installed${info.rejected.length ? ` · ${info.rejected.length} problem${info.rejected.length === 1 ? '' : 's'}` : ''}`, view: 'widgets' },
+        { label: 'Themes', sub: info.themes.length ? `${info.themes.length} installed` : 'none installed', view: 'themes' },
+        { label: 'Built in', sub: info.presets.map((p) => p.name).join(', '), view: 'builtin' },
+        { label: 'Get more', header: true },
+        { label: 'Where to put downloads', sub: 'widgets, themes, art, fonts, sounds', view: 'folders' },
+        { label: '↻  Reload add-ons', op: 'reload' },
+      ];
+    } else if (view === 'widgets') {
+      title = 'Add-ons · Widgets';
+      items = info.widgets.map((w) => inert(w.name, [w.author, `${w.size.w} × ${w.size.h}${w.resizable ? ' · resizable' : ''}`].filter(Boolean).join(' · ')));
+      info.rejected.forEach((x) => items.push(inert('⚠  ' + x.id, x.reason)));
+      if (!items.length) items.push(inert('No widgets installed yet', info.dirs.widgets));
+    } else if (view === 'themes') {
+      title = 'Add-ons · Themes (A to switch)';
+      items = [{ label: 'Tessera (stock)', sub: 'built in', theme: 'stock' }];
+      info.themes.forEach((t) => items.push({ label: t.name, sub: [t.author, t.settings ? `${t.settings} extra setting${t.settings === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), theme: t.id }));
+      items.push(inert('Theme packs go in', info.dirs.themes));
+    } else if (view === 'builtin') {
+      title = 'Add-ons · Built in';
+      items = info.presets.map((p) => inert(p.name, p.description || ''));
+    } else {
+      title = 'Add-ons · Where downloads go';
+      items = [
+        inert('Widgets', info.dirs.widgets),
+        inert('Themes', info.dirs.themes),
+        inert('Art', info.dirs.art),
+        inert('Fonts', info.dirs.fonts),
+        inert('Sounds', info.dirs.sounds),
+      ];
+    }
+    const it = await pick(title, items, view === 'top' ? Math.max(index, 1) : 0);
+    if (!it) {
+      if (view === 'top') return;
+      view = 'top';
+      continue;
+    }
+    if (view === 'top') index = items.indexOf(it);
+    if (it.view) view = it.view;
+    else if (it.op === 'reload') op = 'rescan';
+    else if (it.theme) {
+      busy = true;
+      try {
+        const r = await api.settings('themeUse', { id: it.theme });
+        if (r.theme) applyTheme(r.theme);
+        setStatus(`Theme: ${it.label}`);
+      } finally { busy = false; }
+    }
   }
 }
 
@@ -1087,7 +1233,7 @@ function showBrowse(r, purpose, after) {
   if (r.canUp) items.push({ label: '⬆  Up one level', op: 'up' });
   if (r.canChooseHere) items.push({ label: '✔  Use this folder', op: 'here' });
   r.entries.forEach((e, i) =>
-    items.push({ label: e.isDir ? e.name + '/' : e.name, op: e.isDir ? 'enter' : 'choose', i })
+    items.push({ label: e.isDir && !r.renamable ? e.name + '/' : e.name, sub: e.sub, key: e.key, op: e.isDir ? 'enter' : 'choose', i })
   );
   const go = async (op, payload) => {
     busy = true;
@@ -1105,10 +1251,19 @@ function showBrowse(r, purpose, after) {
       const res = await go('choose', { index: it.op === 'here' ? -1 : it.i });
       if (res.error) return setStatus(res.error, true);
       closeModal();
-      applyView(res.view);
+      if (res.view) applyView(res.view);
+      if (res.theme) applyTheme(res.theme);
       setStatus(res.message);
       if (after) after();
     },
+    // Y on a drive: give it a name you'd actually say.
+    onY: r.renamable
+      ? async (it) => {
+          if (!it || !it.key) return;
+          await renameDrive(it.key, '');
+          showBrowse(await go('refresh'), purpose, after);
+        }
+      : undefined,
     onBack: async () => {
       if (r.canUp) return showBrowse(await go('up'), purpose, after);
       await go('close');
@@ -1118,15 +1273,41 @@ function showBrowse(r, purpose, after) {
   });
 }
 
+async function renameDrive(key, current) {
+  const name = await ask('Name this drive (empty = automatic name)', current || '');
+  if (name === null) return false;
+  busy = true;
+  try { await api.settings('driveName', { key, name }); } finally { busy = false; }
+  return true;
+}
+
+// Settings → Library folders → Name your drives.
+async function flowDrives() {
+  let index = 0;
+  for (;;) {
+    busy = true;
+    let r;
+    try { r = await api.settings('drives'); } finally { busy = false; }
+    const items = r.drives.map((d) => ({ label: d.name, sub: d.tech, key: d.key, custom: d.custom }));
+    if (!items.length) items.push({ label: 'No extra drives found', sub: 'Plug one in and open this again', header: true });
+    const it = await pick('Your drives · A to rename', items, index);
+    if (!it) return;
+    if (!it.key) continue;
+    index = items.indexOf(it);
+    await renameDrive(it.key, it.custom ? it.label : '');
+  }
+}
+
 async function flowRoots() {
   busy = true;
   let r;
   try { r = await api.settings('get'); } finally { busy = false; }
-  const items = [{ label: '+  Add a folder…', op: 'add' }];
-  r.roots.forEach((p, i) => items.push({ label: p, sub: 'A to remove', op: 'rm', i }));
+  const items = [{ label: '+  Add a folder…', op: 'add' }, { label: '✎  Name your drives…', op: 'drives' }];
+  r.roots.forEach((p, i) => items.push({ label: p.name, sub: p.tech || 'A to remove', op: 'rm', i }));
   const it = await pick('Library folders (scanned for games)', items);
   if (!it) return;
   if (it.op === 'add') return flowBrowse('addRoot', flowRoots);
+  if (it.op === 'drives') { await flowDrives(); return flowRoots(); }
   if (await confirm(`Stop scanning ${it.label}?`, 'Remove from list (files are not touched)')) {
     busy = true;
     try { await api.settings('removeRoot', { index: it.i }); } finally { busy = false; }
@@ -1134,7 +1315,9 @@ async function flowRoots() {
   flowRoots();
 }
 
-// Settings → Controls. For now: which buttons the on-screen keyboard uses.
+// Settings → Button mapping. For now: which buttons the on-screen keyboard
+// uses. Any button the system reports works here, including paddles and
+// other extra buttons (numbered 17 and up in the Controller test).
 async function flowControls() {
   let index = 0;
   for (;;) {
@@ -1142,7 +1325,7 @@ async function flowControls() {
     try { keymap = (await api.settings('getKeys')).keys; } finally { busy = false; }
     const items = KEY_ACTIONS.map((a) => ({ label: a.label, sub: buttonName(keymap[a.id]), id: a.id }));
     items.push({ label: 'Reset to defaults', op: 'reset' });
-    const it = await pick('Controls · On-screen keyboard buttons', items, index);
+    const it = await pick('Button mapping · On-screen keyboard buttons', items, index);
     if (!it) return;
     index = items.indexOf(it);
     busy = true;
@@ -1171,7 +1354,7 @@ async function flowControls() {
 // (password and all) to whichever session they pick. See tessera-session.
 async function flowDesktop() {
   if (modal || busy) return;
-  const ok = await confirm('Switch to Desktop Mode?', 'Yes: close Tessera and show the login screen');
+  const ok = await confirm('Switch to Desktop Mode?  Tessera will close and the login screen will appear.');
   if (ok) api.quit();
 }
 
@@ -1211,13 +1394,13 @@ function buildPad() {
   // body
   svgEl('path', { class: 'pbody', d: 'M120 70 H480 Q560 70 575 170 L590 290 Q595 330 560 322 Q520 316 495 262 H105 Q80 316 40 322 Q5 330 10 290 L25 170 Q40 70 120 70 Z' }, svg);
   // shoulders and triggers
-  btn(4, 'rect', { x: 95, y: 36, width: 120, height: 26, rx: 10 }, 'LB', 155, 49);
-  btn(5, 'rect', { x: 385, y: 36, width: 120, height: 26, rx: 10 }, 'RB', 445, 49);
+  btn(4, 'rect', { x: 95, y: 36, width: 120, height: 26, rx: 10 }, buttonName(4), 155, 49);
+  btn(5, 'rect', { x: 385, y: 36, width: 120, height: 26, rx: 10 }, buttonName(5), 445, 49);
   parts.lt = svgEl('rect', { x: 105, y: 4, width: 100, height: 22, rx: 6, class: 'ptrig' }, svg);
   parts.ltf = svgEl('rect', { x: 105, y: 4, width: 0, height: 22, rx: 6, class: 'ptrigfill' }, svg);
   parts.rt = svgEl('rect', { x: 395, y: 4, width: 100, height: 22, rx: 6, class: 'ptrig' }, svg);
   parts.rtf = svgEl('rect', { x: 395, y: 4, width: 0, height: 22, rx: 6, class: 'ptrigfill' }, svg);
-  for (const [x, t] of [[155, 'LT'], [445, 'RT']]) { const l = svgEl('text', { x, y: 15, class: 'pl', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, svg); l.textContent = t; }
+  for (const [x, t] of [[155, buttonName(6)], [445, buttonName(7)]]) { const l = svgEl('text', { x, y: 15, class: 'pl', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, svg); l.textContent = t; }
   // sticks: ring lights up on press (L3 / R3), the dot follows the stick
   const stick = (cx, cy, press, key) => {
     const g = svgEl('g', { class: 'pb' }, svg);
@@ -1231,10 +1414,10 @@ function buildPad() {
   const dp = (i, x, y, w, h) => btn(i, 'rect', { x, y, width: w, height: h, rx: 6 });
   dp(12, 218, 200, 28, 34); dp(13, 218, 250, 28, 34); dp(14, 186, 232, 34, 28); dp(15, 246, 232, 34, 28);
   // face buttons
-  btn(0, 'circle', { cx: 480, cy: 185, r: 22 }, 'A', 480, 185);
-  btn(1, 'circle', { cx: 520, cy: 148, r: 22 }, 'B', 520, 148);
-  btn(2, 'circle', { cx: 440, cy: 148, r: 22 }, 'X', 440, 148);
-  btn(3, 'circle', { cx: 480, cy: 111, r: 22 }, 'Y', 480, 111);
+  btn(0, 'circle', { cx: 480, cy: 185, r: 22 }, buttonName(0), 480, 185);
+  btn(1, 'circle', { cx: 520, cy: 148, r: 22 }, buttonName(1), 520, 148);
+  btn(2, 'circle', { cx: 440, cy: 148, r: 22 }, buttonName(2), 440, 148);
+  btn(3, 'circle', { cx: 480, cy: 111, r: 22 }, buttonName(3), 480, 111);
   // centre
   btn(8, 'circle', { cx: 262, cy: 130, r: 13 });
   btn(9, 'circle', { cx: 338, cy: 130, r: 13 });
@@ -1245,7 +1428,7 @@ function buildPad() {
   raw.className = 'padraw';
   const hint = document.createElement('div');
   hint.className = 'khint padhint';
-  hint.textContent = 'Press anything to see it light up. Triggers also rumble.   Hold B to close.';
+  hint.textContent = `Press anything to see it light up. Triggers also rumble.   Hold ${buttonName(1)} to close.`;
   const bar = document.createElement('div');
   bar.className = 'padbar';
   const barFill = document.createElement('div');
@@ -1272,18 +1455,20 @@ function updatePad(pad, now) {
     `${standard ? 'Standard layout' : 'Non-standard layout (raw numbers only)'}  ·  ${pad.buttons.length} buttons  ·  ${pad.axes.length} axes` +
     (pads.length > 1 ? `  ·  ${pads.length} controllers connected` : '') +
     (modal.last === null ? '' : `  ·  last button: ${modal.last}`);
-  const val = (n) => (pad.buttons[n] ? pad.buttons[n].value : 0);
+  const val = (n) => (n === 6 || n === 7 ? triggerValue(pad, n) : pad.buttons[n] ? pad.buttons[n].value : 0);
   const on = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
   for (const n of [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
     if (d.parts[n]) d.parts[n].classList.toggle('on', standard && on(n));
   }
   d.parts.ltf.setAttribute('width', String(Math.round(100 * val(6))));
   d.parts.rtf.setAttribute('width', String(Math.round(100 * val(7))));
-  const ax = (i) => pad.axes[i] || 0;
+  const ax = (i) => axisValue(pad, i); // after the person's calibration and deadzone
   d.parts.ls.setAttribute('transform', `translate(${(ax(0) * 26).toFixed(1)} ${(ax(1) * 26).toFixed(1)})`);
   d.parts.rs.setAttribute('transform', `translate(${(ax(2) * 26).toFixed(1)} ${(ax(3) * 26).toFixed(1)})`);
+  const extra = pad.buttons.length - 17;
   d.note.textContent = standard
-    ? `Left stick ${ax(0).toFixed(2)}, ${ax(1).toFixed(2)}   ·   Right stick ${ax(2).toFixed(2)}, ${ax(3).toFixed(2)}   ·   LT ${val(6).toFixed(2)}   RT ${val(7).toFixed(2)}`
+    ? `Left stick ${ax(0).toFixed(2)}, ${ax(1).toFixed(2)}   ·   Right stick ${ax(2).toFixed(2)}, ${ax(3).toFixed(2)}   ·   ${buttonName(6)} ${val(6).toFixed(2)}   ${buttonName(7)} ${val(7).toFixed(2)}` +
+      (extra > 0 ? `   ·   ${extra} extra button${extra === 1 ? '' : 's'} (dashed): paddles, share or touchpad` : '')
     : 'This controller does not report the standard layout, so the picture above may not match. The numbers below are always right.';
   // raw numbers: built once per controller, then only toggled
   if (d.rawCount !== pad.buttons.length + ':' + pad.axes.length) {
@@ -1295,7 +1480,7 @@ function updatePad(pad, now) {
     bw.className = 'rawbtns';
     for (let n = 0; n < pad.buttons.length; n++) {
       const c = document.createElement('span');
-      c.className = 'rawb';
+      c.className = 'rawb' + (n >= 17 ? ' extra' : '');
       c.textContent = n;
       bw.appendChild(c);
       d.rawBtns.push(c);
@@ -1325,15 +1510,8 @@ function updatePad(pad, now) {
     a.dot.style.left = ((ax(n) + 1) * 50).toFixed(1) + '%';
     a.num.textContent = ax(n).toFixed(2);
   });
-  // Rumble follows the triggers (left motor: LT, right motor: RT), like desktop testers.
-  const lt = val(6);
-  const rt = val(7);
-  if ((lt > 0.05 || rt > 0.05) && pad.vibrationActuator && now - (modal.rumbleAt || 0) > 180) {
-    modal.rumbleAt = now;
-    try {
-      pad.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 220, strongMagnitude: lt, weakMagnitude: rt });
-    } catch { /* not every controller can rumble */ }
-  }
+  // Rumble follows the triggers, in the strength and style the person picked.
+  rumble(pad, val(6), val(7), now);
   // Hold B for a second to close (a quick B press is just a test of B).
   if (on(1)) {
     modal.bSince = modal.bSince || now;
@@ -1346,12 +1524,213 @@ function updatePad(pad, now) {
   }
 }
 
+const RUMBLE_LEVEL = { off: 0, low: 0.4, normal: 0.7, high: 1 };
+function rumble(pad, lt, rt, now) {
+  const level = RUMBLE_LEVEL[prefs.pad.rumble] ?? 0.7;
+  if (!level || (lt <= 0 && rt <= 0) || !pad.vibrationActuator || now - (modal.rumbleAt || 0) < 180) return;
+  modal.rumbleAt = now;
+  const style = prefs.pad.style;
+  let strong = lt;
+  let weak = rt;
+  if (style === 'both') strong = weak = Math.max(lt, rt);
+  else if (style === 'pulse' && Math.floor(now / 180) % 2) strong = weak = 0;
+  try {
+    pad.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 220, strongMagnitude: strong * level, weakMagnitude: weak * level });
+  } catch { /* not every controller can rumble */ }
+}
+
+// Resolves when the tester is closed.
 function flowPad() {
+  return new Promise((resolve) => {
+    modal = { kind: 'pad', dom: null, last: null, bSince: 0, onClose: resolve };
+    modalEl.hidden = false;
+    buildPad();
+    updatePad(activePad(), performance.now());
+  });
+}
+
+// Settings → Controller: the live test, plus what the system should do with
+// what the controller reports.
+const PAD_LABELS = {
+  rumble: { off: 'Off', low: 'Low', normal: 'Normal', high: 'High' },
+  style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
+  glyphs: { xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
+};
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+async function padSet(key, value) {
+  busy = true;
+  try {
+    const r = await api.settings('padSet', { key, value });
+    if (r.ok) { prefs.pad = { ...PAD_DEFAULTS, ...r.pad }; prefs.calib = r.calib; applyGlyphs(); }
+  } finally { busy = false; }
+}
+async function calibratePad() {
+  const first = activePad();
+  if (!first) return setStatus('No controller detected. Press a button on it first.', true);
+  const id = padKey(first);
+  const it = await pick('Let go of both sticks and triggers, then choose Calibrate', [
+    { label: 'Calibrate now', op: 'go' },
+    { label: 'Clear calibration', op: 'clear' },
+    { label: 'Cancel' },
+  ]);
+  if (!it || !it.op) return;
+  busy = true;
+  try {
+    let offsets = null;
+    if (it.op === 'go') {
+      const sums = new Array(Math.min(first.axes.length, 8)).fill(0);
+      let n = 0;
+      for (let i = 0; i < 24; i++) {
+        await sleep(25);
+        const p = activePad();
+        if (!p || padKey(p) !== id) break;
+        sums.forEach((_s, k) => { sums[k] += p.axes[k] || 0; });
+        n++;
+      }
+      if (!n) return setStatus('Lost the controller. Try again.', true);
+      // Only small drifts are "resting offset". A trigger that rests at -1 isn't one.
+      offsets = sums.map((s) => (Math.abs(s / n) <= 0.4 ? s / n : 0));
+    }
+    const r = await api.settings('padCalib', { id, offsets });
+    if (r.ok) { prefs.calib = r.calib; setStatus(it.op === 'go' ? 'Sticks calibrated.' : 'Calibration cleared.'); }
+    else setStatus(r.error || "Couldn't save that.", true);
+  } finally { busy = false; }
+}
+async function flowPadMenu() {
   if (modal || busy) return;
-  modal = { kind: 'pad', dom: null, last: null, bSince: 0 };
-  modalEl.hidden = false;
-  buildPad();
-  updatePad(activePad(), performance.now());
+  let index = 1;
+  const steps = (lo, hi, st) => { const o = []; for (let v = lo; v <= hi; v += st) o.push(v); return o; };
+  const pickNumber = async (title, key, lo, hi, st) => {
+    const vals = steps(lo, hi, st);
+    const items = vals.map((v) => ({ label: v + '%', sub: v === prefs.pad[key] ? 'current' : '', v }));
+    const it = await pick(title, items, Math.max(0, vals.indexOf(prefs.pad[key])));
+    if (it) await padSet(key, it.v);
+  };
+  const pickChoice = async (title, key) => {
+    const opts = Object.entries(PAD_LABELS[key]);
+    const items = opts.map(([v, label]) => ({ label, sub: v === prefs.pad[key] ? 'current' : '', v }));
+    const it = await pick(title, items, Math.max(0, opts.findIndex(([v]) => v === prefs.pad[key])));
+    if (it) await padSet(key, it.v);
+  };
+  for (;;) {
+    const calibrated = prefs.calib[(activePad() || { id: '' }).id.slice(0, 80)];
+    const items = [
+      { label: 'Test', header: true },
+      { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
+      { label: 'Sticks and triggers', header: true },
+      { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
+      { label: 'Calibrate sticks', sub: calibrated ? 'calibrated' : 'not calibrated', op: 'calib' },
+      { label: 'Trigger sensitivity', sub: prefs.pad.trigger + '% to register', op: 'trigger' },
+      { label: 'Vibration', header: true },
+      { label: 'Vibration strength', sub: PAD_LABELS.rumble[prefs.pad.rumble], op: 'rumble' },
+      { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
+      { label: 'Labels', header: true },
+      { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs], op: 'glyphs' },
+    ];
+    const it = await pick('Controller', items, index);
+    if (!it) return;
+    index = items.indexOf(it);
+    if (it.op === 'test') await flowPad();
+    else if (it.op === 'deadzone') await pickNumber('Stick deadzone · ignore small movements', 'deadzone', 0, 40, 5);
+    else if (it.op === 'trigger') await pickNumber('Trigger sensitivity · how far to pull before it counts', 'trigger', 0, 50, 5);
+    else if (it.op === 'calib') await calibratePad();
+    else if (it.op === 'rumble') await pickChoice('Vibration strength', 'rumble');
+    else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
+    else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
+  }
+}
+
+// Settings → Theme Settings. What's here comes from the active theme, so a
+// theme can add settings of its own (see themes/<id>/theme.json).
+const COLOR_PRESETS = [
+  ['Blue', '#7fb2ff'], ['Sky', '#5ad1ff'], ['Teal', '#3ddc97'], ['Green', '#7ed957'], ['Yellow', '#ffd166'],
+  ['Orange', '#ff9f45'], ['Red', '#ff6b6b'], ['Pink', '#ff7ac8'], ['Purple', '#b794f6'], ['White', '#ffffff'],
+  ['Light gray', '#c9ced6'], ['Gray', '#3b475a'], ['Charcoal', '#1a222c'], ['Midnight', '#10151c'], ['Black', '#000000'],
+];
+function themeValueText(s) {
+  if (s.type === 'range') return s.value + (s.unit || '');
+  if (s.type === 'choice') return (s.options.find((o) => o.value === s.value) || {}).label || String(s.value);
+  if (s.type === 'toggle') return s.value ? 'On' : 'Off';
+  if (s.type === 'image') return s.value || 'None';
+  const hit = COLOR_PRESETS.find(([, hex]) => hex === s.value);
+  return hit ? `${hit[0]}  ${s.value}` : s.value;
+}
+async function themeSet(id, value) {
+  busy = true;
+  try {
+    const r = await api.settings('themeSet', { id, value });
+    if (r.theme) applyTheme(r.theme);
+    if (!r.ok) setStatus(r.error, true);
+  } finally { busy = false; }
+}
+async function flowTheme() {
+  if (modal || busy) return;
+  let index = 1;
+  for (;;) {
+    busy = true;
+    let t;
+    try { t = await api.settings('themeGet'); } finally { busy = false; }
+    applyTheme(t);
+    const active = t.themes.find((x) => x.id === t.active);
+    const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera (stock)', sub: t.themes.length > 1 ? 'A to switch' : 'more themes: Add-ons', op: 'switch' }];
+    let group = null;
+    for (const s of t.settings) {
+      if (s.group !== group) { group = s.group; items.push({ label: group, header: true }); }
+      items.push({ label: s.label, sub: themeValueText(s), op: 'set', s });
+    }
+    items.push({ label: 'Reset', header: true });
+    items.push({ label: 'Reset this theme to defaults', op: 'reset' });
+    const it = await pick('Theme Settings', items, index);
+    if (!it) return;
+    index = items.indexOf(it);
+    if (it.op === 'reset') {
+      if (await confirm('Reset every Theme Setting to its default?')) {
+        busy = true;
+        try { const r = await api.settings('themeReset'); if (r.theme) applyTheme(r.theme); } finally { busy = false; }
+      }
+    } else if (it.op === 'switch') {
+      const pickT = await pick('Choose a theme', t.themes.map((x) => ({ label: x.name, sub: x.id === t.active ? 'current' : x.author, id: x.id })));
+      if (pickT) {
+        busy = true;
+        try { const r = await api.settings('themeUse', { id: pickT.id }); if (r.theme) applyTheme(r.theme); } finally { busy = false; }
+      }
+    } else if (it.op === 'set') await editThemeSetting(it.s);
+  }
+}
+async function editThemeSetting(s) {
+  if (s.type === 'toggle') return themeSet(s.id, !s.value);
+  if (s.type === 'range') {
+    const vals = [];
+    for (let v = s.min; v <= s.max + 1e-9; v += s.step) vals.push(Math.round(v * 1000) / 1000);
+    const it = await pick(s.label + (s.hint ? '  ·  ' + s.hint : ''), vals.slice(0, 60).map((v) => ({ label: v + (s.unit || ''), sub: v === s.value ? 'current' : '', v })), Math.max(0, vals.indexOf(s.value)));
+    if (it) await themeSet(s.id, it.v);
+  } else if (s.type === 'choice') {
+    const it = await pick(s.label, s.options.map((o) => ({ label: o.label, sub: o.value === s.value ? 'current' : '', v: o.value })), Math.max(0, s.options.findIndex((o) => o.value === s.value)));
+    if (it) await themeSet(s.id, it.v);
+  } else if (s.type === 'color') {
+    const items = [
+      ...COLOR_PRESETS.map(([name, hex]) => ({ label: name, sub: hex + (hex === s.value ? '  ·  current' : ''), v: hex })),
+      { label: 'Custom color…', sub: 'type a hex code', op: 'custom' },
+      { label: 'Default', sub: s.default, v: s.default },
+    ];
+    const it = await pick(s.label, items, Math.max(0, COLOR_PRESETS.findIndex(([, h]) => h === s.value)));
+    if (!it) return;
+    if (it.op === 'custom') {
+      const txt = await ask('Hex color, like #ff8800', s.value);
+      const m = txt && /^#?([0-9a-f]{6})$/i.exec(txt.trim());
+      if (txt !== null && !m) return setStatus('That is not a 6-digit hex color.', true);
+      if (m) await themeSet(s.id, '#' + m[1].toLowerCase());
+    } else await themeSet(s.id, it.v);
+  } else if (s.type === 'image') {
+    const it = await pick(s.label, [
+      { label: 'Choose a picture…', sub: 'PNG, JPEG or WebP, up to 12 MB', op: 'pick' },
+      ...(s.value ? [{ label: 'Remove picture', op: 'none' }] : []),
+      { label: 'Cancel' },
+    ]);
+    if (!it || !it.op) return;
+    if (it.op === 'none') await themeSet(s.id, '');
+    else await new Promise((res) => flowBrowse('pickImage', res));
+  }
 }
 
 async function flowScan(into) {
@@ -1484,12 +1863,18 @@ function onButton(n) {
   if (suspended || busy) return;
   if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
   if (modal && modal.kind === 'keys') return keysButton(n);
+  if (modal && modal.kind === 'list') {
+    if (n === 3 && modal.onY) modal.onY(modal.items[modal.index]);
+    else if (n === 3) return;
+    else { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm) press(nm); }
+    return;
+  }
   if (n === 3) return yDown();
   const name = BUTTON_NAMES_BY_ROLE[n];
   if (name) press(name);
 }
 function onRelease(n) {
-  if (n === 3) yUp();
+  if (n === 3 && !modal) yUp();
 }
 
 api.onInit((payload) => {
@@ -1527,10 +1912,12 @@ function loop(now) {
       setStatus(`Controller: ${pad.id} [${pad.mapping || 'non-standard'}]`);
     }
     const b = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
-    const left = b(14) || pad.axes[0] < -0.5;
-    const right = b(15) || pad.axes[0] > 0.5;
-    const up = b(12) || pad.axes[1] < -0.5;
-    const down = b(13) || pad.axes[1] > 0.5;
+    const sx = axisValue(pad, 0);
+    const sy = axisValue(pad, 1);
+    const left = b(14) || sx < -0.5;
+    const right = b(15) || sx > 0.5;
+    const up = b(12) || sy < -0.5;
+    const down = b(13) || sy > 0.5;
 
     if ((left || right || up || down) && now - lastNav > NAV_REPEAT_MS) {
       if (!(modal && modal.kind === 'capture')) press(left ? 'left' : right ? 'right' : up ? 'up' : 'down');
