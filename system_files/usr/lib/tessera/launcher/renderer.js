@@ -154,6 +154,8 @@ function applyTheme(t) {
   prefs.theme = t;
   const fx = t.settings.find((s) => s.id === 'backdrop');
   document.body.dataset.fx = fx ? fx.value : 'none';
+  const wgs = t.settings.find((s) => s.id === 'widgetStyle');
+  document.body.dataset.wg = wgs && ['glass', 'frosted', 'outline', 'solid'].includes(wgs.value) ? wgs.value : 'frosted';
   const root = document.documentElement;
   const now = new Set();
   let dim = 0;
@@ -351,7 +353,9 @@ function currentRows() {
   // and tiles (D-pad, selection, menus) works on these rows like on any other.
   const tiles = base.flatMap((r) => r.tiles);
   const out = [];
-  for (let i = 0; i < tiles.length; i += cols) out.push({ id: 'grid:' + i / cols, title: '', tiles: tiles.slice(i, i + cols) });
+  // Flow grids are wider than the screen: two extra columns wait off to the sides.
+  const per = mode === 'flow' ? cols + 2 : cols;
+  for (let i = 0; i < tiles.length; i += per) out.push({ id: 'grid:' + i / per, title: '', tiles: tiles.slice(i, i + per) });
   return out.length ? out : base;
 }
 
@@ -626,7 +630,9 @@ function sizeGrid() {
   const w = Math.max(200, vp.clientWidth - gap * 4);
   const h = Math.max(160, vp.clientHeight);
   const cw = (w - (cols - 1) * gap) / cols;
-  const ch = Math.max(90, Math.min(cw * 1.5, (h - rows * gap) / rows));
+  const padv = gap * 0.9; // room above and below each row for the selected tile's grow and outline
+  const ch = Math.max(90, Math.min(cw * 1.5, (h - rows * (gap + 2 * padv)) / rows));
+  rowsEl.style.setProperty('--padv', padv.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-w', cw.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-h', ch.toFixed(1) + 'px');
   rowsEl.style.setProperty('--gap', gap.toFixed(1) + 'px');
@@ -679,8 +685,15 @@ function update() {
     const col = (rows[r] && c.cols[rows[r].id]) || 0;
     [...rail.children].forEach((card, n) => card.classList.toggle('active', inTiles && active && n === col));
     const card = rail.children[col];
-    if (layoutCfg().mode !== 'rails') rail.style.transform = 'none';
-    else if (card) {
+    const lmode = layoutCfg().mode;
+    if (lmode === 'grid') rail.style.transform = 'none';
+    else if (lmode === 'flow') {
+      // The grid slides under the selector: whatever column is selected sits in the middle.
+      const sel = rows[c.row] ? c.cols[rows[c.row].id] || 0 : 0;
+      const ref = rowsEl.querySelectorAll('.row')[c.row].querySelector('.rail').children[sel];
+      const w = rail.parentElement.clientWidth;
+      rail.style.transform = ref ? `translateX(${w / 2 - (ref.offsetLeft + ref.offsetWidth / 2)}px)` : 'none';
+    } else if (card) {
       const w = rail.parentElement.clientWidth;
       rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
     }
@@ -1745,7 +1758,7 @@ async function calibratePad() {
 }
 async function flowPadMenu() {
   if (modal || busy) return;
-  let index = 1;
+  let index = 0;
   const steps = (lo, hi, st) => { const o = []; for (let v = lo; v <= hi; v += st) o.push(v); return o; };
   const pickNumber = async (title, key, lo, hi, st) => {
     const vals = steps(lo, hi, st);
@@ -1762,7 +1775,6 @@ async function flowPadMenu() {
   for (;;) {
     const calibrated = prefs.calib[(activePad() || { id: '' }).id.slice(0, 80)];
     const items = [
-      { label: 'Test', header: true, fold: 'pad.test', open: true },
       { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
       { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
       { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
@@ -1771,7 +1783,7 @@ async function flowPadMenu() {
       { label: 'Vibration', header: true, fold: 'pad.rumble', open: true },
       { label: 'Vibration strength', sub: PAD_LABELS.rumble[prefs.pad.rumble], op: 'rumble' },
       { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
-      { label: 'Labels', header: true, fold: 'pad.labels', open: true },
+      { label: 'Labels', header: true },
       { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
     ];
     const it = await pick('Controller', items, index);
@@ -1965,8 +1977,11 @@ async function flowTheme() {
     const active = t.themes.find((x) => x.id === t.active);
     const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera Bright', sub: t.themes.length > 1 ? 'A to switch' : 'more themes: Add-ons', op: 'switch', plain: true }];
     let group = null;
+    const sizes = {};
+    t.settings.forEach((s) => { sizes[s.group] = (sizes[s.group] || 0) + 1; });
     for (const s of t.settings) {
-      if (s.group !== group) { group = s.group; items.push({ label: group, header: true, fold: 'theme.' + group }); }
+      // a group with a single setting needs no dropdown, just its label
+      if (s.group !== group) { group = s.group; items.push(sizes[group] > 1 ? { label: group, header: true, fold: 'theme.' + group } : { label: group, header: true }); }
       items.push({ label: s.label, sub: themeValueText(s), op: 'set', s, plain: true });
     }
     items.push({ label: 'Reset', header: true });

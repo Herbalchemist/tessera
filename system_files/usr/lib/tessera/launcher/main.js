@@ -550,7 +550,7 @@ const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
-const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion'];
+const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen'];
 // Two themes ship with Tessera. They share one list of settings and differ
 // only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
 const BUILTIN_THEMES = [
@@ -560,6 +560,7 @@ const BUILTIN_THEMES = [
       bg: '#fff3dc', card: '#ffffff', panel: '#ffffff', text: '#24213d', muted: '#6b6786', accent: '#ff4d8d',
       border: '#24213d', borderW: '4px', radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
       backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
+      widgetStyle: 'frosted', widgetTint: 60, widgetBlur: 14, widgetColor: '#ffffff',
     },
   },
   {
@@ -568,6 +569,7 @@ const BUILTIN_THEMES = [
       bg: '#0a0714', card: '#1a1230', panel: '#150e29', text: '#e9defc', muted: '#9a8bc0', accent: '#9d7bff',
       border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
       backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
+      widgetStyle: 'glass', widgetTint: 45, widgetBlur: 18, widgetColor: '#1a1230',
     },
   },
 ];
@@ -605,6 +607,12 @@ const STOCK_THEME = {
       ] },
     { id: 'gridCols', group: 'Layout', label: 'Custom grid: columns', type: 'range', min: 2, max: 12, step: 1, unit: '', default: 5 },
     { id: 'gridRows', group: 'Layout', label: 'Custom grid: rows on screen', type: 'range', min: 1, max: 8, step: 1, unit: '', default: 3 },
+    { id: 'widgetStyle', group: 'Widgets', label: 'Widget style', type: 'choice', default: 'frosted',
+      options: [{ label: 'Frosted glass', value: 'frosted' }, { label: 'Clear glass (see-through, with shine)', value: 'glass' }, { label: 'Outline only (see-through)', value: 'outline' }, { label: 'Solid color', value: 'solid' }] },
+    { id: 'widgetTint', group: 'Widgets', label: 'Frosted glass: tint strength', type: 'range', min: 0, max: 100, step: 5, unit: '%', default: 55, var: '--wg-tint', scale: 0.01 },
+    { id: 'widgetBlur', group: 'Widgets', label: 'Frosted glass: blur', type: 'range', min: 0, max: 40, step: 2, unit: 'px', default: 16, var: '--wg-blur' },
+    { id: 'widgetColor', group: 'Widgets', label: 'Solid color: fill', type: 'color', default: '#ffffff', var: '--wg-color' },
+    { id: 'widgetSheen', group: 'Widgets', label: 'Glass shine', type: 'toggle', default: true, var: '--wg-sheen', on: '1', off: '0' },
     { id: 'motion', group: 'Motion', label: 'Animations', type: 'toggle', default: true, var: '--motion', on: '1', off: '0', hint: 'Turn off if movement makes you dizzy' },
   ],
 };
@@ -1393,6 +1401,10 @@ Home is a grid of 12 x 6 cells spread over the whole screen, so a widget is
 sized in cells, not pixels, and looks right on any display. "size" is the
 starting size (default 3 x 2). Set "resizable" to let people stretch it between
 "min" and "max". Make your page fill its frame (width and height 100%).
+The frame is transparent: Tessera draws the widget's pane (glass, frosted,
+outline or solid, chosen in Theme Settings) behind it, so the pane only shows
+where your page leaves empty space. Leave your page background transparent to
+let it through, or paint your own background to cover the pane.
 Widgets cannot use the network or touch your files.
 Restart Tessera or use Settings > Add-ons > Reload to pick up changes.
 `,
@@ -1420,6 +1432,9 @@ Setting types: range, choice (with "options": [{ "label", "value" }]), color
 A setting's value becomes a CSS variable named in "var". Variables must start
 with --theme- (or be one of the stock ones: --accent, --bg, --card, ...).
 Themes only set values; they cannot run code or load files from the network.
+Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
+or "solid", plus "widgetTint" (0-100), "widgetBlur" (0-40) and "widgetColor".
+Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
 };
