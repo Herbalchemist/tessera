@@ -2,32 +2,50 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Boot straight into Tessera, and make the login screen the way to the desktop.
 #
-# SDDM logs one user into one session when the machine starts ("Autologin"),
-# and never again after that: when the Tessera session ends (Desktop Mode, or
-# Exit), SDDM shows its normal login screen, so reaching the desktop needs the
-# account password. Relogin stays off on purpose; it would loop back into Tessera.
+# The login manager logs one user into one session when the machine starts
+# ("Autologin"), and never again after that: when the Tessera session ends
+# (Desktop Mode, or Exit) it shows its normal login screen, so reaching the
+# desktop needs the account password. Relogin stays off on purpose; it would
+# loop straight back into Tessera.
 #
-# Runs at every boot before the display manager, so it also works on a machine
-# whose account was created after the install.
+# Two login managers are handled: SDDM, and KDE's Plasma Login Manager (a fork of
+# SDDM, used by newer Plasma images). Both read [Autologin] User/Session/Relogin
+# from a drop-in folder. Runs at every boot before the login manager starts, so
+# it also works on a machine whose account was created after the install.
 #
 # Turn it off:  sudo touch /etc/tessera/no-autologin   (then reboot)
 # Pick the user: echo NAME | sudo tee /etc/tessera/autologin-user
 #
-# TESSERA_ROOT is only for tests.
+# TESSERA_ROOT / TESSERA_PASSWD are only for tests.
 
 set -u
 ROOT="${TESSERA_ROOT:-}"
-CONF_DIR="$ROOT/etc/sddm.conf.d"
-# Named to sort after any autologin file the base image ships; the last one wins.
-CONF="$CONF_DIR/zzz-tessera-autologin.conf"
 PASSWD="${TESSERA_PASSWD:-$ROOT/etc/passwd}"
 SESSION_FILE="$ROOT/usr/share/wayland-sessions/tessera.desktop"
+NAME="zzz-tessera-autologin.conf"   # sorts last in its folder, so it wins there
+SDDM_CONF="$ROOT/etc/sddm.conf.d/$NAME"
+PLASMA_CONF="$ROOT/etc/plasmalogin.conf.d/$NAME"
 
-off() { rm -f "$CONF"; exit 0; }
+say() { echo "tessera-autologin: $*"; }
+off() { rm -f "$SDDM_CONF" "$PLASMA_CONF"; [ $# -gt 0 ] && say "$*"; exit 0; }
 
-[ -e "$ROOT/etc/tessera/no-autologin" ] && off
-[ -x "$ROOT/usr/bin/sddm" ] || off        # only SDDM is handled here
-[ -f "$SESSION_FILE" ] || off
+[ -e "$ROOT/etc/tessera/no-autologin" ] && off "disabled by /etc/tessera/no-autologin"
+[ -f "$SESSION_FILE" ] || off "tessera.desktop session file not found"
+
+# Which login manager is this machine using?
+dm=""
+if [ -e "$ROOT/etc/systemd/system/display-manager.service" ]; then
+  dm=$(basename "$(readlink -f "$ROOT/etc/systemd/system/display-manager.service")")
+fi
+case "$dm" in
+  sddm.service) kind=sddm ;;
+  plasmalogin.service) kind=plasma ;;
+  *)
+    if [ -x "$ROOT/usr/bin/sddm" ]; then kind=sddm
+    elif [ -e "$ROOT/usr/lib/systemd/system/plasmalogin.service" ]; then kind=plasma
+    else off "login manager '${dm:-unknown}' is not supported (SDDM or Plasma Login Manager)"; fi
+    ;;
+esac
 
 user=""
 if [ -f "$ROOT/etc/tessera/autologin-user" ]; then
@@ -43,10 +61,11 @@ if [ -z "$user" ]; then
       if [ -d "$ROOT$home" ] && [[ "$name" =~ ^[a-z_][a-z0-9_-]*$ ]]; then echo "$name"; break; fi
     done)
 fi
-[ -n "$user" ] || off
+[ -n "$user" ] || off "no normal user account yet"
 
-mkdir -p "$CONF_DIR"
-tmp="$CONF.tmp.$$"
+if [ "$kind" = sddm ]; then conf="$SDDM_CONF"; rm -f "$PLASMA_CONF"; else conf="$PLASMA_CONF"; rm -f "$SDDM_CONF"; fi
+mkdir -p "$(dirname "$conf")"
+tmp="$conf.tmp.$$"
 cat >"$tmp" <<CONFEOF
 # Written by tessera-autologin.service at boot. Do not edit: see autologin-setup.
 [Autologin]
@@ -54,4 +73,14 @@ User=$user
 Session=tessera.desktop
 Relogin=false
 CONFEOF
-mv -f "$tmp" "$CONF"
+mv -f "$tmp" "$conf"
+say "$kind: will log in $user to Tessera at boot ($conf)"
+
+# Plasma Login Manager gives the main file priority over drop-ins. If something
+# (for instance Plasma's own autologin setting) already put a user there, ours
+# is ignored. Say so rather than failing quietly.
+main="$ROOT/etc/plasmalogin.conf"
+if [ "$kind" = plasma ] && [ -f "$main" ] && awk '/^\[Autologin\]/{a=1;next} /^\[/{a=0} a&&/^User=.+/{f=1} END{exit !f}' "$main"; then
+  say "warning: $main already sets an autologin user and takes priority over this file"
+fi
+exit 0

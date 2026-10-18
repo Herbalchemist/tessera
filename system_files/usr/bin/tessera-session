@@ -12,13 +12,22 @@ LOG="$STATE/session.log"
 MAX_QUICK_FAILS=3
 QUICK_SECS=30
 
+# Windows that other programs open (a web browser, say) should fill the screen
+# like the launcher does, not sit at their own size. Newer Gamescope can force
+# that; only ask for it if this build knows the option, so an older one can
+# never fail to start because of it.
+FORCE_FULL=""
+if gamescope --help 2>&1 | grep -q -- '--force-windows-fullscreen'; then
+  FORCE_FULL="--force-windows-fullscreen"
+fi
+
 mkdir -p "$STATE"
 echo "session start $(date -Is)" >"$LOG"
 
 fails=0
 while true; do
   started=$(date +%s)
-  gamescope -f -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  gamescope -f $FORCE_FULL -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
 
