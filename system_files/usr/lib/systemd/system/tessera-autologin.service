@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Unit]
+Description=Boot into Tessera (SDDM autologin), login screen for the desktop
+Before=display-manager.service sddm.service
+After=local-fs.target
+ConditionPathExists=/usr/bin/sddm
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/libexec/tessera/autologin-setup
+
+[Install]
+WantedBy=multi-user.target

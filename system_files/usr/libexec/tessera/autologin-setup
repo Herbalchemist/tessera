@@ -1,0 +1,57 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Boot straight into Tessera, and make the login screen the way to the desktop.
+#
+# SDDM logs one user into one session when the machine starts ("Autologin"),
+# and never again after that: when the Tessera session ends (Desktop Mode, or
+# Exit), SDDM shows its normal login screen, so reaching the desktop needs the
+# account password. Relogin stays off on purpose; it would loop back into Tessera.
+#
+# Runs at every boot before the display manager, so it also works on a machine
+# whose account was created after the install.
+#
+# Turn it off:  sudo touch /etc/tessera/no-autologin   (then reboot)
+# Pick the user: echo NAME | sudo tee /etc/tessera/autologin-user
+#
+# TESSERA_ROOT is only for tests.
+
+set -u
+ROOT="${TESSERA_ROOT:-}"
+CONF_DIR="$ROOT/etc/sddm.conf.d"
+# Named to sort after any autologin file the base image ships; the last one wins.
+CONF="$CONF_DIR/zzz-tessera-autologin.conf"
+PASSWD="${TESSERA_PASSWD:-$ROOT/etc/passwd}"
+SESSION_FILE="$ROOT/usr/share/wayland-sessions/tessera.desktop"
+
+off() { rm -f "$CONF"; exit 0; }
+
+[ -e "$ROOT/etc/tessera/no-autologin" ] && off
+[ -x "$ROOT/usr/bin/sddm" ] || off        # only SDDM is handled here
+[ -f "$SESSION_FILE" ] || off
+
+user=""
+if [ -f "$ROOT/etc/tessera/autologin-user" ]; then
+  want=$(head -n1 "$ROOT/etc/tessera/autologin-user" | tr -d '[:space:]')
+  if [[ "$want" =~ ^[a-z_][a-z0-9_-]*$ ]] && awk -F: -v u="$want" '$1==u{f=1} END{exit !f}' "$PASSWD"; then
+    user="$want"
+  fi
+fi
+if [ -z "$user" ]; then
+  # First normal account: real UID range, a real shell, and a home folder.
+  user=$(awk -F: '$3>=1000 && $3<60000 && $7!~/(nologin|false)$/ {print $1" "$6}' "$PASSWD" |
+    while read -r name home; do
+      if [ -d "$ROOT$home" ] && [[ "$name" =~ ^[a-z_][a-z0-9_-]*$ ]]; then echo "$name"; break; fi
+    done)
+fi
+[ -n "$user" ] || off
+
+mkdir -p "$CONF_DIR"
+tmp="$CONF.tmp.$$"
+cat >"$tmp" <<CONFEOF
+# Written by tessera-autologin.service at boot. Do not edit: see autologin-setup.
+[Autologin]
+User=$user
+Session=tessera.desktop
+Relogin=false
+CONFEOF
+mv -f "$tmp" "$CONF"

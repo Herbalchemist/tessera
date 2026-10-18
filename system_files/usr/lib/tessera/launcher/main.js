@@ -38,7 +38,12 @@ const BUILTIN_INLAYS = {
     name: 'Clock', description: 'Time and date',
     size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 12, h: 6 }, resizable: true,
   },
+  recent: {
+    name: 'Recently played', description: 'Your latest games and apps',
+    size: { w: 4, h: 3 }, min: { w: 3, h: 2 }, max: { w: 8, h: 6 }, resizable: true,
+  },
 };
+const RECENT_MAX = 30; // remembered plays (the widget shows as many as fit)
 const WIDGET_TYPE_RE = /^widget:[a-z0-9][a-z0-9._-]{0,63}$/;
 const TAB_ID_RE = /^(home|library|apps|m:[A-Za-z0-9._-]{1,80})$/;
 const HOME_ID = '_home'; // Home is a built-in page that holds entries like any mosaic
@@ -46,6 +51,7 @@ const MAX_TITLE = 40;
 const SCAN_DEPTH = 3;       // folders below a library folder
 const SCAN_MAX_VISITS = 20000;
 const BROWSE_MAX = 500;
+const LOG_DIR = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'tessera', 'logs');
 
 let mainWindow = null;
 let running = false;
@@ -58,7 +64,7 @@ let running = false;
 // An entry is an item, an inlay, or another category (shown as a folder tile).
 // A "top" category is a mosaic: it gets its own tab, in the order listed.
 // The built-in Home category holds Home's tiles and cannot be renamed or deleted.
-let state = { items: [], inlays: [], categories: [], tabOrder: [], warn: null, locked: null };
+let state = { items: [], inlays: [], categories: [], tabOrder: [], recent: [], warn: null, locked: null };
 
 function homeCat() {
   return { id: HOME_ID, title: 'Home', entries: [], builtin: true };
@@ -154,11 +160,17 @@ function loadState() {
   const tabOrder = (Array.isArray(data.tabOrder) ? data.tabOrder : [])
     .filter((t) => typeof t === 'string' && TAB_ID_RE.test(t))
     .slice(0, 200);
+  const itemIds = new Set(items.map((i) => i.id));
+  const recent = (Array.isArray(data.recent) ? data.recent : [])
+    .filter((r) => r && typeof r.id === 'string' && itemIds.has(r.id) && Number.isFinite(r.at))
+    .slice(0, RECENT_MAX)
+    .map((r) => ({ id: r.id, at: r.at }));
   state = {
     items,
     inlays,
     categories,
     tabOrder,
+    recent,
     warn: skipped ? `${skipped} entry(ies) skipped: check ids, titles and absolute paths.` : null,
     locked: null,
   };
@@ -169,7 +181,7 @@ function saveState() {
   const tmp = LIBRARY_FILE + '.tmp';
   fs.writeFileSync(
     tmp,
-    JSON.stringify({ items: state.items, inlays: state.inlays, categories: state.categories, tabOrder: state.tabOrder }, null, 2)
+    JSON.stringify({ items: state.items, inlays: state.inlays, categories: state.categories, tabOrder: state.tabOrder, recent: state.recent }, null, 2)
   );
   fs.renameSync(tmp, LIBRARY_FILE); // atomic: a crash never leaves half a file
 }
@@ -248,7 +260,20 @@ function buildView() {
     apps: apps.length ? [{ id: '_all_apps', title: 'All apps', tiles: apps }] : [],
   };
   const mosaics = state.categories.filter((c) => c.top).map((c) => ({ id: c.id, title: c.title }));
-  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), keys: settings.keys, error: state.warn };
+  const recent = state.recent
+    .map((r) => itemById(r.id))
+    .filter(Boolean)
+    .slice(0, 12)
+    .map(tileOf);
+  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, error: state.warn };
+}
+
+// Remember what was launched, newest first. Only the id and a time are stored.
+function recordPlay(id) {
+  state.recent = [{ id, at: Date.now() }, ...state.recent.filter((r) => r.id !== id)].slice(0, RECENT_MAX);
+  if (!state.locked) {
+    try { saveState(); } catch { /* not worth interrupting a game over */ }
+  }
 }
 
 function cleanTitle(s, max = MAX_TITLE) {
@@ -647,9 +672,136 @@ function steamLauncher() {
   return null;
 }
 
+function isElf(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const b = Buffer.alloc(4);
+    return fs.readSync(fd, b, 0, 4, 0) === 4 && b[0] === 0x7f && b[1] === 0x45 && b[2] === 0x4c && b[3] === 0x46;
+  } catch { return false; } finally { if (fd !== undefined) try { fs.closeSync(fd); } catch { /* done */ } }
+}
+function isExecutable(file) {
+  try { fs.accessSync(file, fs.constants.X_OK); return true; } catch { return false; }
+}
+const readJson = (file, max = 8 * 1024 * 1024) => {
+  try {
+    if (fs.statSync(file).size > max) return null;
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch { return null; }
+};
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+// The program that starts a launcher: a native binary, else its Flatpak.
+function launcherFor(bin, flatpakId) {
+  const native = whichOnPath(bin);
+  if (native) return { file: native, pre: [] };
+  const fp = whichOnPath('flatpak');
+  if (fp && isDir(path.join(os.homedir(), '.var', 'app', flatpakId))) return { file: fp, pre: ['run', flatpakId] };
+  return null;
+}
+
+// Installed apps that call themselves games (freedesktop "Game" category). They
+// are offered unticked: system folders hold plenty you may not want here.
+function scanDesktopGames(offer) {
+  const skipExec = /(^|\/)(steam|lutris|heroic)$/;
+  const seen = new Set();
+  for (const dir of desktopDirs()) {
+    let names;
+    try { names = fs.readdirSync(dir).filter((n) => n.endsWith('.desktop')).slice(0, 3000); } catch { continue; }
+    for (const n of names) {
+      if (seen.has(n)) continue;
+      seen.add(n);
+      let text;
+      try { text = fs.readFileSync(path.join(dir, n), 'utf8'); } catch { continue; }
+      const kv = {};
+      let inEntry = false;
+      for (const line of text.split('\n')) {
+        if (line.startsWith('[')) inEntry = line.trim() === '[Desktop Entry]';
+        else if (inEntry) {
+          const m = /^([A-Za-z-]+)=(.*)$/.exec(line);
+          if (m && kv[m[1]] === undefined) kv[m[1]] = m[2].trim();
+        }
+      }
+      if (kv.Type !== 'Application' || !/(^|;)Game(;|$)/.test(kv.Categories || '')) continue;
+      if (kv.NoDisplay === 'true' || kv.Hidden === 'true' || kv.Terminal === 'true') continue;
+      const cmd = parseDesktopExec(kv.Exec || '');
+      const file = cmd && whichOnPath(cmd.file);
+      if (!file || skipExec.test(file) || cmd.args.some((a) => /^(steam:|lutris:|heroic:)/.test(a))) continue;
+      const title = cleanTitle(kv.Name || '', 60);
+      if (title) offer({ title, source: 'Installed app', kind: 'game', file, args: cmd.args, optional: true });
+    }
+  }
+}
+
+// Lutris lists its own installed games as JSON.
+function scanLutris(offer, notes) {
+  const l = launcherFor('lutris', 'net.lutris.Lutris');
+  if (!l) return;
+  let list;
+  try {
+    const out = execFileSync(l.file, [...l.pre, '-l', '-o', '-j'], {
+      timeout: 20000, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    list = JSON.parse(out.slice(out.indexOf('[')));
+  } catch {
+    notes.add("Couldn't read Lutris's game list.");
+    return;
+  }
+  const seen = new Set();
+  for (const g of Array.isArray(list) ? list : []) {
+    if (!g || typeof g.slug !== 'string' || typeof g.name !== 'string' || !SAFE_ID.test(g.slug) || seen.has(g.slug)) continue;
+    seen.add(g.slug);
+    const title = cleanTitle(g.name, 60);
+    if (title) offer({ title, source: 'Lutris', kind: 'game', file: l.file, args: [...l.pre, `lutris:rungame/${g.slug}`] });
+  }
+}
+
+// Heroic (Epic and GOG). Its files differ between native and Flatpak installs.
+function scanHeroic(offer) {
+  const l = launcherFor('heroic', 'com.heroicgameslauncher.hgl');
+  if (!l) return;
+  const home = os.homedir();
+  const bases = [
+    path.join(home, '.config'),
+    path.join(home, '.var', 'app', 'com.heroicgameslauncher.hgl', 'config'),
+  ];
+  const seen = new Set();
+  const add = (runner, label, appName, title, installPath) => {
+    if (typeof appName !== 'string' || !SAFE_ID.test(appName) || seen.has(runner + appName)) return;
+    seen.add(runner + appName);
+    const t = cleanTitle(typeof title === 'string' && title ? title : path.basename(String(installPath || appName)), 60);
+    if (t) offer({ title: t, source: label, kind: 'game', file: l.file, args: [...l.pre, `heroic://launch/${runner}/${appName}`] });
+  };
+  for (const base of bases) {
+    // Epic, through legendary: { <app>: { title, install_path, is_dlc } }
+    const epic = readJson(path.join(base, 'legendary', 'installed.json'));
+    if (epic && typeof epic === 'object' && !Array.isArray(epic)) {
+      for (const [name, g] of Object.entries(epic)) {
+        if (g && typeof g === 'object' && !g.is_dlc) add('legendary', 'Heroic (Epic)', g.app_name || name, g.title, g.install_path);
+      }
+    }
+    // GOG: installed.json lists what is installed, the library cache has titles.
+    const gog = readJson(path.join(base, 'heroic', 'gog_store', 'installed.json'));
+    if (gog && Array.isArray(gog.installed)) {
+      const titles = new Map();
+      for (const f of [
+        path.join(base, 'heroic', 'store_cache', 'gog_library.json'),
+        path.join(base, 'heroic', 'gog_store', 'library.json'),
+      ]) {
+        const lib = readJson(f);
+        for (const g of lib && Array.isArray(lib.games) ? lib.games : []) {
+          if (g && typeof g.app_name === 'string' && typeof g.title === 'string') titles.set(g.app_name, g.title);
+        }
+      }
+      for (const g of gog.installed) {
+        if (g && typeof g === 'object') add('gog', 'Heroic (GOG)', g.appName, titles.get(g.appName), g.install_path);
+      }
+    }
+  }
+}
+
 function runScan() {
   found = new Map();
-  const notes = [];
+  const notes = new Set();
   const known = new Set(state.items.map((i) => i.path + '\0' + JSON.stringify(i.args || [])));
   const steam = steamLauncher();
   let visits = 0;
@@ -689,18 +841,22 @@ function runScan() {
       return;
     }
 
-    // AnyPS5 output: an executable next to sce_module/ and app0/
+    // AnyPS5 output (its docs): the converted executable sits beside libs/ and
+    // app0/, and app0/ holds the converted modules. Older layouts put
+    // sce_module/ beside the executable, so both are accepted.
     const names = new Set(ents.filter((e) => e.isDirectory()).map((e) => e.name));
-    if (names.has('sce_module') && names.has('app0')) {
+    if (names.has('app0') && (names.has('libs') || names.has('sce_module'))) {
       const exes = ents
-        .filter((e) => e.isFile() && !/\.(so|sh|txt|json|md)$/i.test(e.name) && !e.name.includes('.so.'))
+        .filter((e) => e.isFile() && !/\.(so|prx|sh|txt|json|md|ini|exe)$/i.test(e.name) && !e.name.includes('.so.'))
         .map((e) => e.name)
-        .filter((n) => { try { fs.accessSync(path.join(dir, n), fs.constants.X_OK); return true; } catch { return false; } })
-        .sort((a, b) => Number(/^eboot/i.test(b)) - Number(/^eboot/i.test(a)));
+        .filter((n) => isElf(path.join(dir, n)))
+        .sort((a, b) => Number(/^eboot/i.test(b)) - Number(/^eboot/i.test(a)) || Number(/\.elf$/i.test(b)) - Number(/\.elf$/i.test(a)));
       if (exes.length) {
+        const file = path.join(dir, exes[0]);
+        if (!isExecutable(file)) notes.add('Some PS5 games are not marked executable. Run chmod +x on the .elf file.');
         offer({
           title: cleanTitle(path.basename(dir), 60) || exes[0],
-          source: 'PS5 (AnyPS5)', kind: 'game', file: path.join(dir, exes[0]), args: [],
+          source: 'PS5 (AnyPS5)', kind: 'game', file, args: [],
         });
       }
       return; // don't dig into the game's own folders
@@ -712,14 +868,18 @@ function runScan() {
   };
 
   const roots = settings.scanRoots.filter(isDir);
-  if (roots.length < settings.scanRoots.length) notes.push('Some library folders are missing (is a drive unplugged?).');
+  if (roots.length < settings.scanRoots.length) notes.add('Some library folders are missing (is a drive unplugged?).');
   roots.forEach((r) => walk(r, 0));
-  if (steamSeen && !steam) notes.push('Found Steam games but no Steam launcher is installed.');
-  if (visits > SCAN_MAX_VISITS) notes.push('Scan stopped early: that is a lot of files. Try a more specific folder.');
+  if (steamSeen && !steam) notes.add('Found Steam games but no Steam launcher is installed.');
+  if (visits > SCAN_MAX_VISITS) notes.add('Scan stopped early: that is a lot of files. Try a more specific folder.');
+  // Launchers that keep their own game lists are read from their usual places.
+  for (const source of [scanHeroic, scanLutris, scanDesktopGames]) {
+    try { source(offer, notes); } catch { /* one broken source never stops the rest */ }
+  }
 
   return {
-    found: [...found].map(([cid, c]) => ({ cid, title: c.title, source: c.source })),
-    notes: notes.join(' ') || null,
+    found: [...found].map(([cid, c]) => ({ cid, title: c.title, source: c.source, optional: Boolean(c.optional) })),
+    notes: [...notes].join(' ') || null,
   };
 }
 
@@ -1172,7 +1332,7 @@ function flatpakAppId(file, args) {
 // Run one program full-screen-style: hide the launcher, bring it back when it ends.
 // A browser can also be closed from the controller (LB / RB), which then moves
 // Tessera to the neighbouring tab.
-function runChild(file, args, cwd, label) {
+function runChild(file, args, cwd, label, logName) {
   running = true;
   let finished = false;
   let closing = 0;
@@ -1195,10 +1355,23 @@ function runChild(file, args, cwd, label) {
   // No shell, args passed separately. stdio is ignored so an unread pipe
   // can never fill up and freeze the program.
   const isBrowser = label === 'Browser';
-  const child = spawn(file, args, { cwd, shell: false, stdio: 'ignore', detached: isBrowser });
+  // A game's output goes to a small log file (never a pipe, which could fill
+  // and freeze it), so a crash can be explained afterwards.
+  let out = 'ignore';
+  let logFile = null;
+  if (logName) {
+    try {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+      logFile = path.join(LOG_DIR, logName + '.log');
+      const fd = fs.openSync(logFile, 'w');
+      out = fd;
+    } catch { logFile = null; }
+  }
+  const child = spawn(file, args, { cwd, shell: false, stdio: ['ignore', out, out], detached: isBrowser });
+  if (typeof out === 'number') try { fs.closeSync(out); } catch { /* the child has its own copy */ }
   child.once('error', (err) => finish(`Launch failed: ${err.message}`));
   child.once('close', (code, signal) =>
-    finish(isBrowser || code === 0 ? null : `${label} exited (${code !== null ? 'code ' + code : signal}).`)
+    finish(isBrowser || code === 0 ? null : `${label} exited (${code !== null ? 'code ' + code : signal}).` + (logFile ? ` Details: ${display(logFile)}` : ''))
   );
   if (isBrowser) {
     stopWatching = watchJoysticks((dir) => {
@@ -1224,13 +1397,17 @@ ipcMain.on('launch', (_event, id) => {
   try {
     fs.accessSync(game.path, fs.constants.X_OK);
   } catch {
+    const exists = fs.existsSync(game.path);
     return send(
       'launch-failed',
-      `Can't run ${path.basename(game.path)}. Check that it exists and is executable.`
+      exists
+        ? `${path.basename(game.path)} isn't marked executable. Run: chmod +x on it.`
+        : `Can't find ${path.basename(game.path)}. Is the drive plugged in?`
     );
   }
+  recordPlay(game.id);
   // The game runs from its own folder so AnyPS5 can find libs/ and app0/.
-  runChild(game.path, game.args || [], path.dirname(game.path), 'Game');
+  runChild(game.path, game.args || [], path.dirname(game.path), 'Game', game.id);
 });
 
 ipcMain.on('quit', () => app.quit());

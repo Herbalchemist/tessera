@@ -25,6 +25,33 @@ const Term = TERM[0].toUpperCase() + TERM.slice(1);
 // main.js. Widgets people download are drawn by main's add-ons loader instead,
 // in a sandboxed frame (see widgetFrame). Any page can hold either kind.
 const INLAYS = {
+  recent: {
+    render(card) {
+      const head = document.createElement('div');
+      head.className = 'recent-head';
+      head.textContent = 'Recently played';
+      const list = document.createElement('div');
+      list.className = 'recent-list';
+      const items = data.recent || [];
+      if (!items.length) {
+        const none = document.createElement('div');
+        none.className = 'recent-none';
+        none.textContent = 'Nothing played yet';
+        list.appendChild(none);
+      }
+      items.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'recent-row';
+        const name = document.createElement('span');
+        name.textContent = it.title;
+        const kind = document.createElement('small');
+        kind.textContent = it.kind === 'app' ? 'App' : 'Game';
+        row.append(name, kind);
+        list.appendChild(row); // rows past the bottom are clipped by the widget's size
+      });
+      card.append(head, list);
+    },
+  },
   clock: {
     render(card) {
       const time = document.createElement('div');
@@ -555,7 +582,7 @@ function back() {
 // Replace what's on screen with a fresh view from the main process.
 function applyView(view) {
   if (!view) return;
-  data = { tabs: view.tabs, folders: view.folders, mosaics: view.mosaics || [], tabOrder: view.tabOrder || data.tabOrder };
+  data = { tabs: view.tabs, folders: view.folders, mosaics: view.mosaics || [], tabOrder: view.tabOrder || data.tabOrder, recent: view.recent || [] };
   if (view.keys) keymap = view.keys;
   if (!tabList().includes(page)) {
     page = 'home';
@@ -581,8 +608,9 @@ function activate() {
     else if (t.id === '_roots') flowRoots();
     else if (t.id === '_scan') flowScan();
     else if (t.id === '_controls') flowControls();
+    else if (t.id === '_desktop') flowDesktop();
     else if (t.id === '_addons') flowAddons();
-    else setStatus('Desktop Mode is not available yet.');
+    else setStatus('Not available yet.');
   } else {
     suspended = true;
     setStatus('Starting…');
@@ -1136,26 +1164,29 @@ async function flowControls() {
   }
 }
 
+// Desktop Mode is the login screen: Tessera closes, and the person signs in
+// (password and all) to whichever session they pick. See tessera-session.
+async function flowDesktop() {
+  if (modal || busy) return;
+  const ok = await confirm('Switch to Desktop Mode?', 'Yes: close Tessera and show the login screen');
+  if (ok) api.quit();
+}
+
 async function flowScan(into) {
   if (modal || busy) return;
   setStatus('Scanning your library folders…');
   busy = true;
   let r;
   try {
-    const roots = await api.settings('get');
-    if (!roots.roots.length) {
-      busy = false;
-      setStatus('Add a library folder first: Settings → Library folders.', true);
-      return;
-    }
     r = await api.scan('run');
   } finally {
     busy = false;
   }
-  if (!r.found.length) return setStatus(r.notes || 'No new games found.', Boolean(r.notes));
+  if (!r.found.length)
+    return setStatus(r.notes || 'No new games found. Heroic, Lutris and installed games are checked automatically; add library folders for Steam and PS5 games.', Boolean(r.notes));
   setStatus(r.notes || '', Boolean(r.notes));
   const items = [{ label: 'Add selected games', op: 'confirm' }];
-  r.found.forEach((f) => items.push({ label: f.title, sub: f.source, checked: true, cid: f.cid }));
+  r.found.forEach((f) => items.push({ label: f.title, sub: f.source, checked: !f.optional, cid: f.cid }));
   openList({
     title: `Found ${r.found.length} new game${r.found.length === 1 ? '' : 's'}`,
     items,

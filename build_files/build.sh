@@ -27,3 +27,6 @@ test -x /usr/lib/tessera/launcher/node_modules/electron/dist/electron
 ### Don't start Steam automatically for new users
 # /etc/skel is copied into each new account's home at creation time.
 rm -f /etc/skel/.config/autostart/steam.desktop
+
+### Boot straight into Tessera
+systemctl enable tessera-autologin.service

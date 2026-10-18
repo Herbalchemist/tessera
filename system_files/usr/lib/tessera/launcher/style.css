@@ -313,3 +313,12 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
 
 /* Row titles are hidden for now (kept in the markup so they can come back). */
 .row h2 { display: none; }
+
+/* ---- Recently played widget ---- */
+.card.kind-inlay .recent-head { font-size: 1rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; flex: none; }
+.card.kind-inlay .recent-list { flex: 1; min-height: 0; overflow: hidden; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.recent-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: clamp(1rem, 1.3vw, 1.5rem); font-weight: 600; flex: none; white-space: nowrap; }
+.recent-row span { overflow: hidden; text-overflow: ellipsis; }
+.recent-row small { color: var(--muted); font-size: 0.7em; letter-spacing: 0.06em; text-transform: uppercase; }
+.recent-none { color: var(--muted); font-size: 1.1rem; }
+.canvas .card.kind-inlay:has(.recent-list) { justify-content: flex-start; align-items: stretch; }
