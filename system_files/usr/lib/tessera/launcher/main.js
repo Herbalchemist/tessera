@@ -482,6 +482,7 @@ let settings = {
   pad: { ...PAD_DEFAULTS },
   calib: {}, // per controller: resting offsets of each axis
   driveNames: {}, // drive key -> the name the person gave it
+  pageGrid: {}, // page key -> { cols, rows } for pages that differ from the theme's grid size
 };
 
 function loadSettings() {
@@ -528,9 +529,21 @@ function loadSettings() {
       for (const [k, v] of Object.entries(d.driveNames).slice(0, 64))
         if (k.length < 200 && typeof v === 'string' && v.trim() && v.length <= 40) settings.driveNames[k] = v.trim();
     }
+    if (d && d.pageGrid && typeof d.pageGrid === 'object') {
+      for (const [k, v] of Object.entries(d.pageGrid).slice(0, 200)) {
+        const g = cleanPageGrid(k, v && v.cols, v && v.rows);
+        if (g) settings.pageGrid[k] = g;
+      }
+    }
   } catch {
     /* none yet */
   }
+}
+// A page's own grid size: key is a page id (or f:<folder id>), cols 2-12, rows 1-8.
+function cleanPageGrid(key, cols, rows) {
+  if (typeof key !== 'string' || !/^(f:)?[A-Za-z0-9._-]{1,80}$/.test(key)) return null;
+  if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 2 || cols > 12 || rows < 1 || rows > 8) return null;
+  return { cols, rows };
 }
 function saveSettings() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -550,7 +563,7 @@ const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
-const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen'];
+const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear'];
 // Two themes ship with Tessera. They share one list of settings and differ
 // only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
 const BUILTIN_THEMES = [
@@ -560,7 +573,7 @@ const BUILTIN_THEMES = [
       bg: '#fff3dc', card: '#ffffff', panel: '#ffffff', text: '#24213d', muted: '#6b6786', accent: '#ff4d8d',
       border: '#24213d', borderW: '4px', radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
       backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
-      widgetStyle: 'frosted', widgetTint: 60, widgetBlur: 14, widgetColor: '#ffffff',
+      widgetStyle: 'frosted', widgetTint: 30, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
   },
   {
@@ -569,7 +582,7 @@ const BUILTIN_THEMES = [
       bg: '#0a0714', card: '#1a1230', panel: '#150e29', text: '#e9defc', muted: '#9a8bc0', accent: '#9d7bff',
       border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
       backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
-      widgetStyle: 'glass', widgetTint: 45, widgetBlur: 18, widgetColor: '#1a1230',
+      widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1a1230',
     },
   },
 ];
@@ -599,7 +612,7 @@ const STOCK_THEME = {
     { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
       options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
-    { id: 'gridPreset', group: 'Layout', label: 'Grid size', type: 'choice', default: 'c5r3',
+    { id: 'gridPreset', group: 'Layout', label: 'Grid size (default for every page)', type: 'choice', default: 'c5r3',
       options: [
         { label: '3 × 2', value: 'c3r2' }, { label: '4 × 2', value: 'c4r2' }, { label: '5 × 3', value: 'c5r3' },
         { label: '6 × 3', value: 'c6r3' }, { label: '6 × 4', value: 'c6r4' }, { label: '8 × 4', value: 'c8r4' },
@@ -608,11 +621,12 @@ const STOCK_THEME = {
     { id: 'gridCols', group: 'Layout', label: 'Custom grid: columns', type: 'range', min: 2, max: 12, step: 1, unit: '', default: 5 },
     { id: 'gridRows', group: 'Layout', label: 'Custom grid: rows on screen', type: 'range', min: 1, max: 8, step: 1, unit: '', default: 3 },
     { id: 'widgetStyle', group: 'Widgets', label: 'Widget style', type: 'choice', default: 'frosted',
-      options: [{ label: 'Frosted glass', value: 'frosted' }, { label: 'Clear glass (see-through, with shine)', value: 'glass' }, { label: 'Outline only (see-through)', value: 'outline' }, { label: 'Solid color', value: 'solid' }] },
-    { id: 'widgetTint', group: 'Widgets', label: 'Frosted glass: tint strength', type: 'range', min: 0, max: 100, step: 5, unit: '%', default: 55, var: '--wg-tint', scale: 0.01 },
-    { id: 'widgetBlur', group: 'Widgets', label: 'Frosted glass: blur', type: 'range', min: 0, max: 40, step: 2, unit: 'px', default: 16, var: '--wg-blur' },
+      options: [{ label: 'Frosted (even, like sandblasted glass)', value: 'frosted' }, { label: 'Glass (a see-through pane)', value: 'glass' }, { label: 'Outline only (see-through)', value: 'outline' }, { label: 'Solid color', value: 'solid' }] },
+    { id: 'widgetTint', group: 'Widgets', label: 'Frosted: how opaque', type: 'range', min: 0, max: 100, step: 5, unit: '%', default: 55, var: '--wg-tint', scale: 0.01 },
+    { id: 'widgetBlur', group: 'Widgets', label: 'Frosted: diffusion (blur)', type: 'range', min: 0, max: 40, step: 2, unit: 'px', default: 16, var: '--wg-blur' },
+    { id: 'widgetClear', group: 'Widgets', label: 'Glass: transparency', type: 'range', min: 0, max: 100, step: 5, unit: '%', default: 60, var: '--wg-clear', scale: 0.01 },
     { id: 'widgetColor', group: 'Widgets', label: 'Solid color: fill', type: 'color', default: '#ffffff', var: '--wg-color' },
-    { id: 'widgetSheen', group: 'Widgets', label: 'Glass shine', type: 'toggle', default: true, var: '--wg-sheen', on: '1', off: '0' },
+    { id: 'widgetSheen', group: 'Widgets', label: 'Glass: shine', type: 'toggle', default: true, var: '--wg-sheen', on: '1', off: '0' },
     { id: 'motion', group: 'Motion', label: 'Animations', type: 'toggle', default: true, var: '--motion', on: '1', off: '0', hint: 'Turn off if movement makes you dizzy' },
   ],
 };
@@ -759,7 +773,7 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, theme: themePayload() });
+const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, theme: themePayload() });
 
 const display = (p) => {
   const home = os.homedir();
@@ -1433,7 +1447,8 @@ A setting's value becomes a CSS variable named in "var". Variables must start
 with --theme- (or be one of the stock ones: --accent, --bg, --card, ...).
 Themes only set values; they cannot run code or load files from the network.
 Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
-or "solid", plus "widgetTint" (0-100), "widgetBlur" (0-40) and "widgetColor".
+or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
+"widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
@@ -1740,6 +1755,21 @@ ipcMain.handle('settings', safe((op, p) => {
     return { ok: true, theme: themePayload() };
   }
   if (op === 'themeImage') return themeImage(typeof p.id === 'string' ? p.id : '');
+  if (op === 'pageGridSet') {
+    // cols and rows for one page; leaving them out goes back to the theme's grid size
+    if (p.cols === undefined && p.rows === undefined) {
+      if (typeof p.key !== 'string') return { ok: false };
+      delete settings.pageGrid[p.key];
+    } else {
+      const g = cleanPageGrid(p.key, p.cols, p.rows);
+      if (!g) return { ok: false };
+      settings.pageGrid[p.key] = g;
+      const keys = Object.keys(settings.pageGrid);
+      if (keys.length > 200) delete settings.pageGrid[keys[0]];
+    }
+    saveSettings();
+    return { ok: true, prefs: prefsPayload() };
+  }
   if (op === 'padGet') return { pad: { ...settings.pad }, calib: settings.calib };
   if (op === 'padSet') {
     const k = p.key;

@@ -105,7 +105,7 @@ const GLYPH_SETS = {
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
 const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
-let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null };
+let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {} };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
   const v = /vendor:\s*([0-9a-f]{4})/i.exec(id || '');
@@ -203,6 +203,7 @@ function applyPrefs(p) {
   if (!p) return;
   prefs.pad = { ...PAD_DEFAULTS, ...(p.pad || {}) };
   prefs.calib = p.calib || {};
+  prefs.pageGrid = p.pageGrid || {};
   applyGlyphs();
   applyTheme(p.theme);
 }
@@ -342,6 +343,8 @@ function layoutCfg() {
   const pre = /^c(\d+)r(\d+)$/.exec(get('gridPreset') || '');
   if (pre) { cols = Number(pre[1]); rows = Number(pre[2]); }
   const mode = ['grid', 'flow'].includes(get('layout')) ? get('layout') : 'rails';
+  const own = (prefs.pageGrid || {})[curKey()]; // this page's own size, if it has one
+  if (own) { cols = own.cols; rows = own.rows; }
   return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)) };
 }
 function currentRows() {
@@ -1316,6 +1319,10 @@ function openMenu() {
     items.push({ label: inFolder ? 'Delete the open folder…' : `Delete this ${TERM}…`, op: 'deleteRow' });
   }
   if (catRow) items.push({ label: 'New folder here…', op: 'newFolder' });
+  if (layoutCfg().mode !== 'rails' && !homeMode()) {
+    const lc = layoutCfg();
+    items.push({ label: 'Grid size for this page…', sub: `${lc.cols} × ${lc.rows}${(prefs.pageGrid || {})[curKey()] ? ' (this page)' : ' (from Theme Settings)'}`, op: 'pageGrid' });
+  }
   items.push({ label: `New ${TERM}…`, op: 'newCat' });
   items.push({ label: 'Add a game from a file…', op: 'addGame' });
   items.push({ label: 'Add an app from a file…', op: 'addApp' });
@@ -1327,6 +1334,7 @@ async function runMenu(op, t, row) {
   const into = row && data.folders[row.id] ? row.id : undefined;
   switch (op) {
     case 'addWidget': return flowAddInlay('_home');
+    case 'pageGrid': return flowPageGrid();
     case 'addTo': return flowAddTo(t, row);
     case 'resize': return flowPlaceExisting(t);
     case 'removeFromRow': return lib('removeEntry', { catId: row.id, ref: t.id });
@@ -1353,6 +1361,41 @@ async function runMenu(op, t, row) {
     case 'addApp': return flowBrowse('addApp', undefined, into);
     case 'scan': return flowScan(into);
   }
+}
+
+// Rows and columns for this page only. Rails, grid and flow stay a Theme Settings choice for everything.
+async function flowPageGrid() {
+  const key = curKey();
+  const lc = layoutCfg();
+  const has = Boolean((prefs.pageGrid || {})[key]);
+  const save = async (payload) => {
+    busy = true;
+    try {
+      const r = await api.settings('pageGridSet', { key, ...payload });
+      if (r && r.prefs) applyPrefs(r.prefs);
+      else if (r && !r.ok) setStatus('That size isn\'t allowed.', true);
+    } finally { busy = false; }
+    sizeGrid();
+    render();
+  };
+  const presets = [[3, 2], [4, 2], [5, 3], [6, 3], [6, 4], [8, 4]];
+  const items = [
+    { label: 'Use the Theme Settings size', sub: has ? 'for this page' : 'current', reset: true, plain: true },
+    ...presets.map(([c, r]) => ({ label: `${c} × ${r}`, sub: has && lc.cols === c && lc.rows === r ? 'current' : '', c, r, plain: true })),
+    { label: 'Custom…', sub: 'pick columns and rows', custom: true, plain: true },
+  ];
+  const it = await pick('Grid size for this page (columns × rows)', items);
+  if (!it) return;
+  if (it.reset) return save({});
+  if (it.custom) {
+    const range = (lo, hi) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+    const cp = await pick('Columns', range(2, 12).map((v) => ({ label: String(v), sub: v === lc.cols ? 'current' : '', v, plain: true })), Math.max(0, lc.cols - 2));
+    if (!cp) return;
+    const rp = await pick('Rows on screen', range(1, 8).map((v) => ({ label: String(v), sub: v === lc.rows ? 'current' : '', v, plain: true })), Math.max(0, lc.rows - 1));
+    if (!rp) return;
+    return save({ cols: cp.v, rows: rp.v });
+  }
+  return save({ cols: it.c, rows: it.r });
 }
 
 async function flowRename(op, id, current) {
