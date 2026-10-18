@@ -10,8 +10,13 @@ const modalEl = document.getElementById('modal');
 const NAV_REPEAT_MS = 200;
 const QUIT_HOLD_MS = 1500;
 const MAX_TEXT = 40;
-const TAB_IDS = ['home', 'library', 'apps', 'settings'];
-const TAB_NAMES = { home: 'Home', library: 'Library', apps: 'Apps', settings: 'Settings' };
+
+// What Tessera calls a user-made group of tiles. One place to rename it.
+const TERM = 'mosaic';
+const Term = TERM[0].toUpperCase() + TERM.slice(1);
+
+const TAB_IDS = ['home', 'library', 'apps', 'new', 'settings'];
+const TAB_NAMES = { home: 'Home', library: 'Library', apps: 'Apps', new: '+ ' + Term, settings: 'Settings' };
 
 // Settings is built in. These are actions, not launchable items.
 const SETTINGS_ROWS = [
@@ -29,6 +34,7 @@ const SETTINGS_ROWS = [
 
 let data = { tabs: { home: [], library: [], apps: [] }, folders: {} };
 let tab = 0;
+let focus = 'content';      // 'tabs' (the tab bar) or 'content' (the tiles)
 const cursor = {};          // per tab/folder: { row, cols: { rowId: col } }
 let stack = [];             // open folders: [{ id, title }]
 let suspended = false;      // true while a game is running
@@ -37,6 +43,7 @@ let modal = null;
 let lastNav = 0;
 let quitSince = null;
 const prev = {};            // edge detection for one-shot buttons
+const wasBig = {};          // rows that showed the big empty tile last render
 
 function setStatus(msg, isError) {
   statusEl.textContent = msg || '';
@@ -45,15 +52,67 @@ function setStatus(msg, isError) {
 
 // ------------------------------------------------------------ home screen
 
+// An empty row is one big tile. A filled one ends in a small "+" tile.
+function withAdd(row, ctx, emptyTitle, emptySub) {
+  if (!row.tiles.length) {
+    return { ...row, tiles: [{ id: '_add', kind: 'add', big: true, title: emptyTitle, sub: emptySub, ctx }] };
+  }
+  return { ...row, tiles: [...row.tiles, { id: '_add', kind: 'add', title: 'Add', ctx }] };
+}
+
+function emptyTab(id) {
+  const text = {
+    home: ['Make this yours', `Add a game, an app, or a ${TERM}`],
+    library: ['Add your first game', 'Pick a file or scan your folders'],
+    apps: ['Add your first app', 'Steam, a browser, anything you launch'],
+  }[id];
+  return { id: '_empty_' + id, title: TAB_NAMES[id], tiles: [], text, ctx: { tab: id } };
+}
+
+function newTabRows() {
+  const mosaics = Object.entries(data.folders).map(([id, f]) => ({ id, title: f.title, kind: 'folder' }));
+  const row = { id: '_mosaics', title: `Your ${TERM}s`, tiles: mosaics };
+  return [
+    withAdd(
+      row,
+      { create: true },
+      `Create your first ${TERM}`,
+      'A named collection of games, apps and more'
+    ),
+  ].map((r) => {
+    // Keep "+ New" first so it's always under your thumb.
+    const add = r.tiles.find((t) => t.kind === 'add');
+    return add && !add.big ? { ...r, tiles: [{ ...add, title: `New ${TERM}` }, ...r.tiles.filter((t) => t !== add)] } : r;
+  });
+}
+
 function currentRows() {
   if (stack.length) {
     const top = stack[stack.length - 1];
     const f = data.folders[top.id];
-    return [{ id: top.id, title: f ? f.title : top.title, tiles: f ? f.tiles : [] }];
+    return [
+      withAdd({ id: top.id, title: f ? f.title : top.title, tiles: f ? f.tiles : [] }, { catId: top.id },
+        `This ${TERM} is empty`, 'Add a game, an app, or something from your library'),
+    ];
   }
   const id = TAB_IDS[tab];
-  return id === 'settings' ? SETTINGS_ROWS : data.tabs[id] || [];
+  if (id === 'settings') return SETTINGS_ROWS;
+  if (id === 'new') return newTabRows();
+  const rows = (data.tabs[id] || []).map((r) => {
+    if (data.folders[r.id]) {
+      return withAdd(r, { catId: r.id }, `This ${TERM} is empty`, 'Add a game, an app, or something from your library');
+    }
+    if (r.id === '_all_games') return withAdd(r, { tab: 'library', kind: 'game' });
+    if (r.id === '_all_apps') return withAdd(r, { tab: 'apps', kind: 'app' });
+    return r;
+  });
+  if (!rows.length) {
+    const e = emptyTab(id);
+    return [{ id: e.id, title: e.title, tiles: [{ id: '_add', kind: 'add', big: true, title: e.text[0], sub: e.text[1], ctx: e.ctx }] }];
+  }
+  return rows;
 }
+
 function curKey() {
   return stack.length ? 'f:' + stack[stack.length - 1].id : TAB_IDS[tab];
 }
@@ -64,16 +123,16 @@ function cur() {
 
 function drawTabs() {
   tabsEl.replaceChildren();
-  TAB_IDS.forEach((id, n) => {
+  TAB_IDS.forEach((id) => {
     const el = document.createElement('span');
-    el.className = 'tab' + (n === tab ? ' active' : '');
+    el.className = 'tab';
     el.textContent = TAB_NAMES[id];
     tabsEl.appendChild(el);
   });
 }
 
 function render() {
-  drawTabs();
+  if (!tabsEl.children.length) drawTabs();
   crumbEl.textContent = stack.length
     ? [TAB_NAMES[TAB_IDS[tab]], ...stack.map((s) => s.title)].join('  ›  ')
     : '';
@@ -90,27 +149,45 @@ function render() {
     rail.className = 'rail';
     row.tiles.forEach((t) => {
       const card = document.createElement('div');
-      card.className = 'card kind-' + t.kind;
-      const kind = document.createElement('small');
-      kind.textContent =
-        { folder: 'Folder', app: 'App', game: 'Game' }[t.kind] || '';
-      const name = document.createElement('span');
-      name.textContent = t.title;
-      card.append(kind, name);
+      card.className = 'card kind-' + t.kind + (t.big ? ' big' : '');
+      if (t.kind === 'add') {
+        const plus = document.createElement('div');
+        plus.className = 'plus';
+        plus.textContent = '+';
+        card.appendChild(plus);
+        const name = document.createElement('span');
+        name.textContent = t.title;
+        card.appendChild(name);
+        if (t.sub) {
+          const sub = document.createElement('small');
+          sub.textContent = t.sub;
+          card.appendChild(sub);
+        }
+      } else {
+        const kind = document.createElement('small');
+        kind.textContent = { folder: Term, app: 'App', game: 'Game' }[t.kind] || '';
+        const name = document.createElement('span');
+        name.textContent = t.title;
+        card.append(kind, name);
+      }
       rail.appendChild(card);
     });
     viewport.appendChild(rail);
     wrap.append(label, viewport);
     rowsEl.appendChild(wrap);
+
+    // The big empty tile "splits" into real tiles once something is added.
+    const big = row.tiles.length === 1 && row.tiles[0].big;
+    if (wasBig[row.id] && !big) {
+      const mid = rail.scrollWidth / 2;
+      [...rail.children].forEach((card, i) => {
+        card.style.setProperty('--from', `${mid - (card.offsetLeft + card.offsetWidth / 2)}px`);
+        card.style.setProperty('--i', i);
+      });
+      rail.classList.add('split');
+    }
+    wasBig[row.id] = big;
   });
-  if (!rows.length) {
-    const empty = document.createElement('p');
-    empty.className = 'empty';
-    empty.textContent = stack.length
-      ? 'This folder is empty. Press Y to add things.'
-      : 'Nothing here yet. Press Y to add a game or a category.';
-    rowsEl.appendChild(empty);
-  }
   clamp();
   update();
 }
@@ -127,12 +204,17 @@ function clamp() {
 function update() {
   const rows = currentRows();
   const c = cur();
+  const inTiles = focus === 'content';
+  [...tabsEl.children].forEach((el, n) => {
+    el.classList.toggle('active', n === tab);                 // the tab you're on
+    el.classList.toggle('focused', n === tab && !inTiles);    // the tab bar has focus
+  });
   [...rowsEl.querySelectorAll('.row')].forEach((wrap, r) => {
     const active = r === c.row;
-    wrap.classList.toggle('active', active);
+    wrap.classList.toggle('active', active && inTiles);
     const rail = wrap.querySelector('.rail');
     const col = (rows[r] && c.cols[rows[r].id]) || 0;
-    [...rail.children].forEach((card, n) => card.classList.toggle('active', active && n === col));
+    [...rail.children].forEach((card, n) => card.classList.toggle('active', inTiles && active && n === col));
     const card = rail.children[col];
     if (card) {
       const w = rail.parentElement.clientWidth;
@@ -145,7 +227,7 @@ function update() {
     rowsEl.style.transform = `translateY(${h / 2 - (activeRow.offsetTop + activeRow.offsetHeight / 2)}px)`;
   }
   const t = selectedTile();
-  titleEl.textContent = t ? t.title : '';
+  titleEl.textContent = !inTiles ? TAB_NAMES[TAB_IDS[tab]] : t && !t.big ? t.title : '';
 }
 
 function selectedRow() {
@@ -165,12 +247,18 @@ function moveCol(d) {
 }
 function moveRow(d) {
   const c = cur();
+  if (d < 0 && c.row === 0) {
+    focus = 'tabs'; // up from the top row lands on the tab bar
+    return update();
+  }
   c.row = Math.max(0, Math.min(currentRows().length - 1, c.row + d));
   update();
 }
+// Switching tabs puts focus on the tab bar and deselects the tiles.
 function switchTab(d) {
   tab = (tab + d + TAB_IDS.length) % TAB_IDS.length;
   stack = [];
+  focus = 'tabs';
   setStatus('');
   render();
 }
@@ -194,6 +282,8 @@ function activate() {
   if (t.kind === 'folder') {
     stack.push({ id: t.id, title: t.title });
     render();
+  } else if (t.kind === 'add') {
+    flowAdd(t.ctx || {});
   } else if (t.kind === 'action') {
     if (t.id === '_quit') api.quit();
     else if (t.id === '_roots') flowRoots();
@@ -284,8 +374,8 @@ function renderModal() {
     modal.items.forEach((it, n) => {
       const el = document.createElement('div');
       el.className = 'mitem' + (n === modal.index ? ' active' : '');
-      const box_ = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
-      el.textContent = box_ + it.label;
+      const mark = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
+      el.textContent = mark + it.label;
       if (it.sub) {
         const s = document.createElement('small');
         s.textContent = it.sub;
@@ -382,8 +472,98 @@ async function confirm(question, yesLabel) {
   return Boolean(r && r.yes);
 }
 
+// What "+" offers depends on where it is.
+async function flowAdd(ctx) {
+  const into = ctx.catId;
+  const tabId = ctx.tab;
+  const onlyGame = ctx.kind === 'game';
+  const onlyApp = ctx.kind === 'app';
+  const items = [];
+  if (into && libraryChoices(into).length) items.push({ label: 'Add something from your library…', op: 'existing' });
+  if (ctx.create) items.push({ label: `New ${TERM}…`, op: 'mosaic' });
+  if (!ctx.create) {
+    if (!onlyApp && tabId !== 'apps') items.push({ label: 'Add a game from a file…', op: 'game' });
+    if (!onlyGame && tabId !== 'library') items.push({ label: 'Add an app from a file…', op: 'app' });
+    if (!onlyApp && tabId !== 'apps') items.push({ label: 'Scan for games', op: 'scan' });
+    if (!onlyGame && !onlyApp) items.push({ label: into ? `New ${TERM} inside this one…` : `New ${TERM}…`, op: 'mosaic' });
+  }
+  const it = items.length === 1 ? items[0] : await pick('Add', items);
+  if (!it) return;
+  switch (it.op) {
+    case 'existing': return flowAddExisting(into);
+    case 'game': return flowBrowse('addGame', undefined, into);
+    case 'app': return flowBrowse('addApp', undefined, into);
+    case 'scan': return flowScan(into);
+    case 'mosaic': return flowNewMosaic({ parent: into, preferTab: tabId });
+  }
+}
+
+// Things in your library that aren't in this mosaic yet.
+function libraryChoices(into) {
+  const have = new Set(((data.folders[into] || {}).tiles || []).map((t) => t.id));
+  const rowTiles = (tabId, rowId) => ((data.tabs[tabId] || []).find((r) => r.id === rowId) || {}).tiles || [];
+  const things = [...rowTiles('library', '_all_games'), ...rowTiles('apps', '_all_apps')];
+  const mosaics = Object.entries(data.folders).map(([id, f]) => ({ id, title: f.title, kind: 'folder' }));
+  return [...things, ...mosaics].filter((t) => t.id !== into && !have.has(t.id));
+}
+
+async function flowAddExisting(into) {
+  const choices = libraryChoices(into);
+  const items = [{ label: 'Add selected', op: 'confirm' }];
+  choices.forEach((t) =>
+    items.push({ label: t.title, sub: { folder: Term, app: 'App', game: 'Game' }[t.kind], checked: false, id: t.id })
+  );
+  openList({
+    title: 'Add to this ' + TERM,
+    items,
+    multi: true,
+    onChoose: async (it) => {
+      if (it.op !== 'confirm') {
+        it.checked = !it.checked;
+        return;
+      }
+      const ids = items.filter((x) => x.checked).map((x) => x.id);
+      closeModal();
+      let n = 0;
+      let last = null;
+      for (const id of ids) {
+        last = await lib('addEntry', { catId: into, ref: id });
+        if (last.ok) n++;
+      }
+      if (ids.length) setStatus(n ? `Added ${n}.` : last.error, !n);
+    },
+    onBack: () => closeModal(),
+  });
+}
+
+async function flowNewMosaic({ parent, preferTab, row } = {}) {
+  const title = await ask(`Name your ${TERM}`);
+  if (title === null) return;
+  let target = parent ? { parent } : null;
+  if (!target) {
+    const where = [
+      { label: 'A row on Home', tab: 'home' },
+      { label: 'A row on Library', tab: 'library' },
+      { label: 'A row on Apps', tab: 'apps' },
+      { label: `Only in the + ${Term} tab`, tab: 'none' },
+    ];
+    if (row && data.folders[row.id]) where.push({ label: `Inside the current ${TERM}`, parent: row.id });
+    const want = preferTab || TAB_IDS[tab];
+    where.sort((a, b) => Number(b.tab === want) - Number(a.tab === want));
+    target = await pick('Where should it appear?', where);
+    if (!target) return;
+  }
+  const r = await lib('newCategory', target.parent ? { title, parentId: target.parent } : { title, tab: target.tab });
+  // Open a brand-new mosaic so you land on its big "add" tile.
+  if (r.ok && r.id && !target.parent) {
+    stack = [{ id: r.id, title }];
+    focus = 'content';
+    render();
+  }
+}
+
 function openMenu() {
-  if (suspended || busy || modal) return;
+  if (suspended || busy || modal || focus !== 'content') return;
   const t = selectedTile();
   const row = selectedRow();
   const editableRow = Boolean(row) && !row.id.startsWith('_') && Boolean(data.folders[row.id]);
@@ -391,21 +571,23 @@ function openMenu() {
   const items = [];
   const isThing = t && (t.kind === 'game' || t.kind === 'app' || t.kind === 'folder');
   if (isThing) {
-    items.push({ label: 'Add to a category…', op: 'addTo' });
+    items.push({ label: `Add to a ${TERM}…`, op: 'addTo' });
     if (editableRow) items.push({ label: 'Remove from this row', op: 'removeFromRow' });
     if (t.kind === 'folder') {
-      items.push({ label: 'Rename this folder…', op: 'renameTile' });
-      items.push({ label: 'Delete this folder…', op: 'deleteTile' });
+      items.push({ label: `Rename this ${TERM}…`, op: 'renameTile' });
+      items.push({ label: `Delete this ${TERM}…`, op: 'deleteTile' });
     } else {
+      items.push({ label: 'Rename…', op: 'renameItem' });
       items.push({ label: 'Remove from library…', op: 'deleteItem' });
     }
   }
   if (editableRow) {
-    items.push({ label: inFolder ? 'Rename the open folder…' : 'Rename this row…', op: 'renameRow' });
-    items.push({ label: inFolder ? 'Delete the open folder…' : 'Delete this row…', op: 'deleteRow' });
+    items.push({ label: inFolder ? `Rename the open ${TERM}…` : 'Rename this row…', op: 'renameRow' });
+    items.push({ label: inFolder ? `Delete the open ${TERM}…` : 'Delete this row…', op: 'deleteRow' });
   }
-  items.push({ label: 'New category…', op: 'newCat' });
+  items.push({ label: `New ${TERM}…`, op: 'newCat' });
   items.push({ label: 'Add a game from a file…', op: 'addGame' });
+  items.push({ label: 'Add an app from a file…', op: 'addApp' });
   items.push({ label: 'Scan for games', op: 'scan' });
   pick('Options', items).then((it) => it && runMenu(it.op, t, row));
 }
@@ -414,63 +596,47 @@ async function runMenu(op, t, row) {
   switch (op) {
     case 'addTo': return flowAddTo(t, row);
     case 'removeFromRow': return lib('removeEntry', { catId: row.id, ref: t.id });
-    case 'renameTile': return flowRename(t.id, t.title);
+    case 'renameTile': return flowRename('renameCategory', t.id, t.title);
+    case 'renameItem': return flowRename('renameItem', t.id, t.title);
     case 'deleteTile':
-      if (await confirm(`Delete folder “${t.title}”?`, 'Delete (games inside are kept)'))
+      if (await confirm(`Delete “${t.title}”?`, 'Delete (things inside are kept)'))
         return lib('deleteCategory', { id: t.id });
       return;
     case 'deleteItem':
       if (await confirm(`Remove “${t.title}” from your library?`, 'Remove (files are not touched)'))
         return lib('deleteItem', { id: t.id });
       return;
-    case 'renameRow': return flowRename(row.id, row.title);
+    case 'renameRow': return flowRename('renameCategory', row.id, row.title);
     case 'deleteRow':
-      if (await confirm(`Delete “${row.title}”?`, 'Delete (games inside are kept)'))
+      if (await confirm(`Delete “${row.title}”?`, 'Delete (things inside are kept)'))
         return lib('deleteCategory', { id: row.id });
       return;
-    case 'newCat': return flowNewCategory(row);
+    case 'newCat': return flowNewMosaic({ row });
     case 'addGame': return flowBrowse('addGame');
+    case 'addApp': return flowBrowse('addApp');
     case 'scan': return flowScan();
   }
 }
 
-async function flowRename(id, current) {
+async function flowRename(op, id, current) {
   const text = await ask('Rename', current);
-  if (text !== null) await lib('renameCategory', { id, title: text });
-}
-
-async function flowNewCategory(row) {
-  const title = await ask('Name your category');
-  if (title === null) return;
-  const where = [
-    { label: 'A row on Home', tab: 'home' },
-    { label: 'A row on Library', tab: 'library' },
-    { label: 'A row on Apps', tab: 'apps' },
-  ];
-  if (row && !row.id.startsWith('_') && data.folders[row.id])
-    where.push({ label: 'A folder inside the current row', parent: row.id });
-  // Put the choice that matches the tab you're on first.
-  const here = TAB_IDS[tab];
-  where.sort((a, b) => Number(b.tab === here) - Number(a.tab === here));
-  const w = await pick('Where should it appear?', where);
-  if (!w) return;
-  await lib('newCategory', w.parent ? { title, parentId: w.parent } : { title, tab: w.tab });
+  if (text !== null) await lib(op, { id, title: text });
 }
 
 async function flowAddTo(t, row) {
   const targets = Object.entries(data.folders)
     .filter(([id]) => id !== t.id && !(row && id === row.id))
     .map(([id, f]) => ({ label: f.title, id }));
-  if (!targets.length) return setStatus('Make a category first (Y → New category).', true);
+  if (!targets.length) return setStatus(`Make a ${TERM} first (the + ${Term} tab).`, true);
   const choice = await pick(`Add “${t.title}” to…`, targets);
   if (choice) await lib('addEntry', { catId: choice.id, ref: t.id });
 }
 
 // Browse the file system through main. We only ever say "enter entry N".
-async function flowBrowse(purpose, after) {
+async function flowBrowse(purpose, after, into) {
   busy = true;
   let r;
-  try { r = await api.browse('start', { purpose }); } finally { busy = false; }
+  try { r = await api.browse('start', { purpose, into }); } finally { busy = false; }
   showBrowse(r, purpose, after);
 }
 function showBrowse(r, purpose, after) {
@@ -530,7 +696,7 @@ async function flowRoots() {
   flowRoots();
 }
 
-async function flowScan() {
+async function flowScan(into) {
   if (modal || busy) return;
   setStatus('Scanning your library folders…');
   busy = true;
@@ -563,7 +729,7 @@ async function flowScan() {
       closeModal();
       busy = true;
       let res;
-      try { res = await api.scan('add', { cids }); } finally { busy = false; }
+      try { res = await api.scan('add', { cids, into }); } finally { busy = false; }
       applyView(res.view);
       setStatus(res.ok ? res.message : res.error, !res.ok);
     },
@@ -576,24 +742,32 @@ async function flowScan() {
 function press(act) {
   if (suspended || busy) return;
   if (modal) return modalPress(act);
+  if (act === 'lb') return switchTab(-1);
+  if (act === 'rb') return switchTab(1);
+  if (focus === 'tabs') {
+    // On the tab bar: left/right change tab, down or A goes back to the tiles.
+    if (act === 'left') return switchTab(-1);
+    if (act === 'right') return switchTab(1);
+    if (act === 'down' || act === 'a') {
+      focus = 'content';
+      return update();
+    }
+    return;
+  }
   switch (act) {
     case 'left': return moveCol(-1);
     case 'right': return moveCol(1);
     case 'up': return moveRow(-1);
     case 'down': return moveRow(1);
     case 'a': return activate();
-    case 'b': return back();
+    case 'b': return stack.length ? back() : undefined;
     case 'y': return openMenu();
-    case 'lb': return switchTab(-1);
-    case 'rb': return switchTab(1);
   }
 }
 
 api.onInit((payload) => {
   applyView(payload);
   if (payload.error) setStatus(payload.error, true);
-  else if (!TAB_IDS.slice(0, 3).some((id) => data.tabs[id].length))
-    setStatus('Welcome. Press Y to add a game, or scan your library folders.');
 });
 
 function resume(message) {

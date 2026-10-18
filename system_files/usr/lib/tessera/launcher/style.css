@@ -43,7 +43,10 @@ nav { display: flex; gap: 12px; }
   border-radius: 999px;
   transition: background 0.2s, color 0.2s;
 }
-.tab.active { color: var(--bg); background: var(--accent); }
+/* The tab you're on, while the tiles have focus: calm. */
+.tab.active { color: var(--accent); background: rgba(127, 178, 255, 0.14); }
+/* The tab bar has focus: bright, and the tiles below are deselected. */
+.tab.focused { color: var(--bg); background: var(--accent); box-shadow: 0 0 0 3px rgba(127, 178, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.45); }
 #crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
@@ -117,6 +120,7 @@ footer {
 footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .rows, .rail, .card, .tab, .row { transition: none; }
+  .rail.split .card { animation: none; }
 }
 
 /* ---- modal: menus, browser, on-screen keyboard ---- */
@@ -178,3 +182,33 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
 .key.on { outline: 2px solid var(--accent); }
 .key.active { background: var(--accent); color: var(--bg); }
 .khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; }
+
+/* ---- add tiles and the big empty tile ---- */
+.card.kind-add {
+  background: transparent;
+  border: 2px dashed #3b475a;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+}
+.card.kind-add .plus { font-size: 4rem; font-weight: 300; line-height: 1; color: var(--accent); }
+.card.kind-add small { text-transform: none; letter-spacing: 0; font-size: 1rem; margin-top: 6px; }
+.card.big {
+  flex: 0 0 min(960px, 72vw);
+  background: linear-gradient(160deg, #1b2533, #141b25);
+  border: 2px dashed #3b475a;
+  color: var(--text);
+  font-size: 2rem;
+}
+.card.big .plus { font-size: 7rem; }
+.card.big small { font-size: 1.2rem; color: var(--muted); }
+/* When something is added, the big tile "splits": tiles fan out from the middle. */
+@keyframes split {
+  from { transform: translateX(var(--from)) scale(1.35); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.rail.split .card {
+  animation: split 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}

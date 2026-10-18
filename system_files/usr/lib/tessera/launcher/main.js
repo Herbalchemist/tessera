@@ -188,11 +188,13 @@ function libraryOp(op, p) {
         parent.entries.push(cat.id);
       } else if (TABS.includes(p.tab)) {
         cat.tab = p.tab;
+      } else if (p.tab === 'none') {
+        // Lives only in the "+" tab until the user puts it somewhere.
       } else {
         return { ok: false, error: 'Pick where it should appear.' };
       }
       state.categories.push(cat);
-      return { ok: true, message: `Created ${title}.` };
+      return { ok: true, message: `Created ${title}.`, id: cat.id };
     }
     case 'renameCategory': {
       const c = catById(p.id);
@@ -201,16 +203,23 @@ function libraryOp(op, p) {
       c.title = title;
       return { ok: true, message: 'Renamed.' };
     }
+    case 'renameItem': {
+      const it = itemById(p.id);
+      const title = cleanTitle(p.title, 60);
+      if (!it || !title) return { ok: false, error: 'Could not rename that.' };
+      it.title = title;
+      return { ok: true, message: 'Renamed.' };
+    }
     case 'deleteCategory': {
       const c = catById(p.id);
       if (!c) return { ok: false, error: 'That no longer exists.' };
       state.categories = state.categories.filter((x) => x.id !== c.id);
       state.categories.forEach((x) => (x.entries = x.entries.filter((e) => e !== c.id)));
-      return { ok: true, message: `Deleted ${c.title}. Games inside were not deleted.` };
+      return { ok: true, message: `Deleted ${c.title}. Things inside were not deleted.` };
     }
     case 'addEntry': {
       const c = catById(p.catId);
-      if (!c) return { ok: false, error: 'That category no longer exists.' };
+      if (!c) return { ok: false, error: 'That no longer exists.' };
       const isItem = Boolean(itemById(p.ref));
       const isCat = Boolean(catById(p.ref));
       if (!isItem && !isCat) return { ok: false, error: 'That no longer exists.' };
@@ -222,7 +231,7 @@ function libraryOp(op, p) {
     }
     case 'removeEntry': {
       const c = catById(p.catId);
-      if (!c) return { ok: false, error: 'That category no longer exists.' };
+      if (!c) return { ok: false, error: 'That no longer exists.' };
       c.entries = c.entries.filter((e) => e !== p.ref);
       return { ok: true, message: 'Removed from this row.' };
     }
@@ -242,12 +251,12 @@ function addItem({ title, kind, file, args }) {
   const dup = state.items.some(
     (i) => i.path === file && JSON.stringify(i.args || []) === JSON.stringify(args || [])
   );
-  if (dup) return false;
+  if (dup) return null;
   const t = cleanTitle(title, 60) || path.basename(file);
   const item = { id: newId(t, 'game'), kind, title: t, path: file };
   if (args && args.length) item.args = args;
   state.items.push(item);
-  return true;
+  return item;
 }
 
 // -------------------------------------------------------------- settings
@@ -289,14 +298,48 @@ const browseRoots = () =>
   [os.homedir(), '/run/media', '/mnt', '/var/mnt'].map(real).filter((r) => r && isDir(r));
 const underRoot = (rp) => browseRoots().some((r) => rp === r || rp.startsWith(r + path.sep));
 
-let browse = null; // { purpose: 'addGame'|'addRoot', dir: string|null, entries: [{name,isDir,full}] }
+// Launchers worth a shortcut. Shown only if installed. Fixed list, so nothing
+// the page sends can add to it.
+const SUGGESTED = '@suggested';
+const KNOWN_APPS = [
+  { title: 'Steam', bin: '/usr/bin/steam', flatpak: 'com.valvesoftware.Steam' },
+  { title: 'Heroic Games Launcher', bin: '/usr/bin/heroic', flatpak: 'com.heroicgameslauncher.hgl' },
+  { title: 'Lutris', bin: '/usr/bin/lutris', flatpak: 'net.lutris.Lutris' },
+  { title: 'RetroArch', bin: '/usr/bin/retroarch', flatpak: 'org.libretro.RetroArch' },
+  { title: 'Firefox', bin: '/usr/bin/firefox', flatpak: 'org.mozilla.firefox' },
+  { title: 'Discord', bin: '/usr/bin/discord', flatpak: 'com.discordapp.Discord' },
+];
+function suggestedApps() {
+  const out = [];
+  for (const a of KNOWN_APPS) {
+    const flatpakInstalled =
+      fs.existsSync('/usr/bin/flatpak') &&
+      [
+        path.join('/var/lib/flatpak/app', a.flatpak),
+        path.join(os.homedir(), '.local', 'share', 'flatpak', 'app', a.flatpak),
+      ].some(isDir);
+    if (fs.existsSync(a.bin)) out.push({ title: a.title, file: a.bin, args: [] });
+    else if (flatpakInstalled) out.push({ title: a.title, file: '/usr/bin/flatpak', args: ['run', a.flatpak] });
+  }
+  return out;
+}
+
+let browse = null; // { purpose: 'addGame'|'addApp'|'addRoot', into?: id, dir: string|null|SUGGESTED, entries: [...] }
 
 function browseView() {
   const b = browse;
   const pub = () => b.entries.map((e) => ({ name: e.name, isDir: e.isDir }));
   if (!b.dir) {
     b.entries = browseRoots().map((r) => ({ name: display(r), isDir: true, full: r }));
+    if (b.purpose === 'addApp')
+      b.entries.unshift({ name: 'Suggested apps', isDir: true, virtual: true });
     return { crumb: 'Choose a location', canUp: false, canChooseHere: false, entries: pub() };
+  }
+  if (b.dir === SUGGESTED) {
+    b.entries = suggestedApps().map((a) => ({
+      name: a.title, isDir: false, virtual: true, title: a.title, full: a.file, args: a.args,
+    }));
+    return { crumb: 'Suggested apps (installed)', canUp: true, canChooseHere: false, entries: pub() };
   }
   let ents;
   try {
@@ -320,7 +363,7 @@ function browseView() {
       }
     }
     if (dir) rows.push({ name: e.name, isDir: true, full });
-    else if (file && b.purpose === 'addGame') {
+    else if (file && b.purpose !== 'addRoot') {
       try { fs.accessSync(full, fs.constants.X_OK); } catch { continue; }
       rows.push({ name: e.name, isDir: false, full });
     }
@@ -338,8 +381,13 @@ function browseView() {
 
 function browseOp(op, p) {
   if (op === 'start') {
-    if (p.purpose !== 'addGame' && p.purpose !== 'addRoot') return { error: 'Bad request.' };
-    browse = { purpose: p.purpose, dir: null, entries: [] };
+    if (!['addGame', 'addApp', 'addRoot'].includes(p.purpose)) return { error: 'Bad request.' };
+    browse = {
+      purpose: p.purpose,
+      into: typeof p.into === 'string' && catById(p.into) ? p.into : null,
+      dir: null,
+      entries: [],
+    };
     return browseView();
   }
   if (!browse) return { error: 'Nothing is open.' };
@@ -348,7 +396,8 @@ function browseOp(op, p) {
     return { ok: true };
   }
   if (op === 'up') {
-    if (browse.dir) {
+    if (browse.dir === SUGGESTED) browse.dir = null;
+    else if (browse.dir) {
       const here = real(browse.dir);
       browse.dir = browseRoots().includes(here) ? null : path.dirname(here);
     }
@@ -357,6 +406,10 @@ function browseOp(op, p) {
   const entry = Number.isInteger(p.index) ? browse.entries[p.index] : null;
   if (op === 'enter') {
     if (!entry || !entry.isDir) return { error: 'Not a folder.' };
+    if (entry.virtual) {
+      browse.dir = SUGGESTED;
+      return browseView();
+    }
     const rp = real(entry.full);
     if (!rp || !underRoot(rp)) return { error: "Tessera can't browse there." };
     browse.dir = rp;
@@ -374,15 +427,32 @@ function browseOp(op, p) {
     }
     if (state.locked) return { error: `Can't edit: ${state.locked}` };
     if (!entry || entry.isDir) return { error: 'Pick a file.' };
-    const rp = real(entry.full);
-    if (!rp || !underRoot(rp)) return { error: "Tessera can't use that file." };
-    const base = path.basename(rp, path.extname(rp));
+    // The listing was built by this file inside an allowed place (or from the
+    // fixed suggested list), so entry.full is trusted as-is.
+    const file = entry.full;
+    if (!entry.virtual && !underRoot(path.dirname(file))) return { error: "Tessera can't use that file." };
+    try { fs.accessSync(file, fs.constants.X_OK); } catch { return { error: "That isn't runnable." }; }
+    const kind = browse.purpose === 'addApp' ? 'app' : 'game';
+    const args = entry.args || [];
+    const base = path.basename(file, path.extname(file));
     const generic = ['eboot', 'game', 'run', 'start', 'launch'];
-    const title = generic.includes(base.toLowerCase()) ? path.basename(path.dirname(rp)) : base;
-    if (!addItem({ title, kind: 'game', file: rp })) return { error: 'That game is already in your library.' };
+    const title = entry.virtual
+      ? entry.title
+      : kind === 'game' && generic.includes(base.toLowerCase())
+        ? path.basename(path.dirname(file))
+        : kind === 'app' ? path.basename(file) : base;
+    const into = browse.into && catById(browse.into);
+    let item = addItem({ title, kind, file, args });
+    if (!item) {
+      // Already in the library: if we're filling a mosaic, just file it there.
+      item = state.items.find((i) => i.path === file && JSON.stringify(i.args || []) === JSON.stringify(args));
+      if (!(into && item && !into.entries.includes(item.id)))
+        return { error: `That ${kind} is already in your library.` };
+    }
+    if (into) into.entries.push(item.id);
     saveState();
     browse = null;
-    return { ok: true, message: `Added ${cleanTitle(title, 60)}.`, view: buildView() };
+    return { ok: true, message: `Added ${cleanTitle(item.title, 60)}.`, view: buildView() };
   }
   return { error: 'Unknown action.' };
 }
@@ -557,10 +627,15 @@ ipcMain.handle('scan', safe((op, p) => {
   if (op === 'add') {
     if (state.locked) return { ok: false, error: `Can't edit: ${state.locked}`, view: buildView() };
     const cids = Array.isArray(p.cids) ? p.cids.filter((c) => typeof c === 'string') : [];
+    const into = typeof p.into === 'string' ? catById(p.into) : null;
     let n = 0;
     for (const cid of cids) {
       const c = found.get(cid);
-      if (c && addItem({ title: c.title, kind: c.kind, file: c.file, args: c.args })) n++;
+      const it = c && addItem({ title: c.title, kind: c.kind, file: c.file, args: c.args });
+      if (it) {
+        n++;
+        if (into) into.entries.push(it.id);
+      }
       found.delete(cid);
     }
     if (n) saveState();
