@@ -1,11 +1,14 @@
 {
   "items": [
     { "id": "game-one", "kind": "game", "title": "Game One", "path": "/home/you/Games/GameOne/eboot" },
-    { "id": "game-two", "kind": "game", "title": "Game Two", "path": "/home/you/Games/GameTwo/eboot" },
     { "id": "steam", "kind": "app", "title": "Steam", "path": "/usr/bin/steam" }
   ],
+  "inlays": [
+    { "id": "clock-1", "type": "clock" }
+  ],
   "categories": [
-    { "id": "favorites", "title": "Favorites", "tab": "home", "entries": ["game-one", "steam", "co-op"] },
-    { "id": "co-op", "title": "Co-op night", "entries": ["game-one", "game-two"] }
+    { "id": "_home", "title": "Home", "builtin": true, "entries": ["clock-1", "game-one"] },
+    { "id": "favorites", "title": "Favorites", "top": true, "entries": ["game-one", "steam", "co-op"] },
+    { "id": "co-op", "title": "Co-op night", "entries": ["game-one"] }
   ]
 }

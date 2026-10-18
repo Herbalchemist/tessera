@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
+
+// Widgets are shown through their own scheme so the app can control exactly
+// what they may load. Must be registered before the app is ready.
+const WIDGET_SCHEME = 'tessera-widget';
+protocol.registerSchemesAsPrivileged([
+  { scheme: WIDGET_SCHEME, privileges: { standard: true, secure: true } },
+]);
 
 // Mutable data lives outside the read-only image, never under /usr.
 // Override the folder with TESSERA_DATA_DIR, or the files with
@@ -17,8 +24,24 @@ const LIBRARY_FILE = process.env.LAUNCHER_LIBRARY || path.join(DATA_DIR, 'librar
 const LEGACY_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
-const TABS = ['home', 'library', 'apps'];
+const LEGACY_TABS = ['home', 'library', 'apps']; // older files put rows on tabs
 const KINDS = ['game', 'app'];
+// Inlays are small live pieces (widgets) set into a page. A built-in preset is
+// drawn by the renderer; a downloaded widget is a folder in widgets/ and runs
+// in a locked-down frame (see "add-ons" below).
+// Presets that ship with Tessera. Nothing is added to a page by default: the
+// user picks one. Inlays sit on Home's grid (GRID cells across the whole
+// screen, so a layout scales to any display). size/min/max are in cells.
+const GRID = { cols: 12, rows: 6 };
+const BUILTIN_INLAYS = {
+  clock: {
+    name: 'Clock', description: 'Time and date',
+    size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 12, h: 6 }, resizable: true,
+  },
+};
+const WIDGET_TYPE_RE = /^widget:[a-z0-9][a-z0-9._-]{0,63}$/;
+const TAB_ID_RE = /^(home|library|apps|m:[A-Za-z0-9._-]{1,80})$/;
+const HOME_ID = '_home'; // Home is a built-in page that holds entries like any mosaic
 const MAX_TITLE = 40;
 const SCAN_DEPTH = 3;       // folders below a library folder
 const SCAN_MAX_VISITS = 20000;
@@ -30,10 +53,16 @@ let running = false;
 // ---------------------------------------------------------------- library
 
 // items:      [{ id, kind: "game"|"app", title, path, args? }]
-// categories: [{ id, title, tab?: "home"|"library"|"apps", entries: [id...] }]
-// An entry is an item id or another category id (shown as a folder tile).
-// A category with a tab is a row on that tab; without one it is only a folder.
-let state = { items: [], categories: [], warn: null, locked: null };
+// inlays:     [{ id, type }]
+// categories: [{ id, title, entries: [id...], top?: true, builtin?: true }]
+// An entry is an item, an inlay, or another category (shown as a folder tile).
+// A "top" category is a mosaic: it gets its own tab, in the order listed.
+// The built-in Home category holds Home's tiles and cannot be renamed or deleted.
+let state = { items: [], inlays: [], categories: [], tabOrder: [], warn: null, locked: null };
+
+function homeCat() {
+  return { id: HOME_ID, title: 'Home', entries: [], builtin: true };
+}
 
 function readLibraryFile() {
   for (const file of [LIBRARY_FILE, LEGACY_FILE]) {
@@ -59,7 +88,7 @@ function loadState() {
   const { data, error } = readLibraryFile();
   if (error) {
     // Never overwrite a file we couldn't read: the user may want to fix it.
-    state = { items: [], categories: [], warn: error, locked: error };
+    state = { items: [], inlays: [], categories: [homeCat()], warn: error, locked: error };
     return;
   }
   let skipped = 0;
@@ -82,6 +111,27 @@ function loadState() {
     if (g.args && g.args.length) it.args = g.args;
     items.push(it);
   }
+  const inlays = [];
+  const autoPlace = [];
+  for (const n of Array.isArray(data.inlays) ? data.inlays : []) {
+    const ok =
+      n &&
+      typeof n.id === 'string' &&
+      typeof n.type === 'string' &&
+      (BUILTIN_INLAYS[n.type] || WIDGET_TYPE_RE.test(n.type)) &&
+      !ids.has(n.id);
+    if (!ok) { skipped++; continue; }
+    ids.add(n.id);
+    const inlay = { id: n.id, type: n.type, ...fitRect(inlayDef(n.type), n) };
+    if (!Number.isInteger(n.x) || !Number.isInteger(n.y)) autoPlace.push(inlay);
+    inlays.push(inlay);
+  }
+  // Older files have no position: put those in the first free spot.
+  const placed = inlays.filter((o) => !autoPlace.includes(o));
+  for (const inlay of autoPlace) {
+    Object.assign(inlay, findFree(inlay.w, inlay.h, placed));
+    placed.push(inlay);
+  }
   const catIds = new Set();
   const categories = [];
   for (const c of Array.isArray(data.categories) ? data.categories : []) {
@@ -90,18 +140,25 @@ function loadState() {
       typeof c.id === 'string' &&
       typeof c.title === 'string' &&
       Array.isArray(c.entries) &&
-      (c.tab === undefined || TABS.includes(c.tab)) &&
       !ids.has(c.id) &&
       !catIds.has(c.id);
     if (!ok) { skipped++; continue; }
     catIds.add(c.id);
     const cat = { id: c.id, title: c.title, entries: c.entries.filter((e) => typeof e === 'string') };
-    if (c.tab) cat.tab = c.tab;
+    if (c.id === HOME_ID) cat.builtin = true;
+    // Older files placed categories as rows on tabs; they become mosaics.
+    else if (c.top === true || LEGACY_TABS.includes(c.tab)) cat.top = true;
     categories.push(cat);
   }
+  if (!catIds.has(HOME_ID)) categories.unshift(homeCat());
+  const tabOrder = (Array.isArray(data.tabOrder) ? data.tabOrder : [])
+    .filter((t) => typeof t === 'string' && TAB_ID_RE.test(t))
+    .slice(0, 200);
   state = {
     items,
+    inlays,
     categories,
+    tabOrder,
     warn: skipped ? `${skipped} entry(ies) skipped: check ids, titles and absolute paths.` : null,
     locked: null,
   };
@@ -110,45 +167,88 @@ function loadState() {
 function saveState() {
   fs.mkdirSync(path.dirname(LIBRARY_FILE), { recursive: true });
   const tmp = LIBRARY_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify({ items: state.items, categories: state.categories }, null, 2));
+  fs.writeFileSync(
+    tmp,
+    JSON.stringify({ items: state.items, inlays: state.inlays, categories: state.categories, tabOrder: state.tabOrder }, null, 2)
+  );
   fs.renameSync(tmp, LIBRARY_FILE); // atomic: a crash never leaves half a file
 }
 
+// The order of the tabs you switch between with LB / RB. Settings and
+// "+ Mosaic" and Browser are not part of it: they stay at the ends.
+function computeTabOrder() {
+  const base = ['home', 'library', 'apps', ...state.categories.filter((c) => c.top).map((c) => 'm:' + c.id)];
+  const order = (state.tabOrder || []).filter((t, i, a) => base.includes(t) && a.indexOf(t) === i);
+  for (const t of base) if (!order.includes(t)) order.push(t);
+  return order;
+}
+
 const itemById = (id) => state.items.find((i) => i.id === id);
+const inlayById = (id) => state.inlays.find((n) => n.id === id);
+
+// ---- grid placement (cells, not pixels: the layout scales to any screen)
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+// Make a rectangle legal for this inlay: within its min/max and inside the grid.
+function fitRect(def, r) {
+  const min = def ? def.min : { w: 1, h: 1 };
+  const max = def ? def.max : { w: GRID.cols, h: GRID.rows };
+  const dflt = def ? def.size : { w: 3, h: 2 };
+  const num = (v, d) => (Number.isInteger(v) ? v : d);
+  const w = Math.max(min.w, Math.min(max.w, num(r.w, dflt.w)));
+  const h = Math.max(min.h, Math.min(max.h, num(r.h, dflt.h)));
+  const x = Math.max(0, Math.min(GRID.cols - w, num(r.x, 0)));
+  const y = Math.max(0, Math.min(GRID.rows - h, num(r.y, 0)));
+  return { x, y, w, h };
+}
+function findFree(w, h, others) {
+  for (let y = 0; y + h <= GRID.rows; y++)
+    for (let x = 0; x + w <= GRID.cols; x++)
+      if (!others.some((o) => overlaps({ x, y, w, h }, o))) return { x, y };
+  return { x: 0, y: 0 };
+}
 const catById = (id) => state.categories.find((c) => c.id === id);
 
 // What the renderer is allowed to see: ids, titles, kinds. Never paths.
 function buildView() {
-  const tilesFor = (c) =>
-    c.entries
-      .map((ref) => {
-        if (ref === c.id) return null;
-        const it = itemById(ref);
-        if (it) return { id: it.id, title: it.title, kind: it.kind };
-        const sub = catById(ref);
-        return sub ? { id: sub.id, title: sub.title, kind: 'folder' } : null;
-      })
-      .filter(Boolean);
-
-  const tabs = { home: [], library: [], apps: [] };
+  const tileFor = (ref, selfId) => {
+    if (ref === selfId) return null;
+    const it = itemById(ref);
+    if (it) return { id: it.id, title: it.title, kind: it.kind };
+    const inl = inlayById(ref);
+    if (inl) {
+      // A widget that was removed from the folder stays on the page as a
+      // placeholder, so putting it back restores it.
+      const def = inlayDef(inl.type);
+      return {
+        id: inl.id,
+        title: def ? def.name : 'Missing widget',
+        kind: 'inlay',
+        type: inl.type,
+        widget: def ? def.widget : null,
+        missing: !def,
+        x: inl.x, y: inl.y, w: inl.w, h: inl.h,
+        resizable: Boolean(def && def.resizable),
+        min: def ? def.min : { w: inl.w, h: inl.h },
+        max: def ? def.max : { w: inl.w, h: inl.h },
+      };
+    }
+    const sub = catById(ref);
+    return sub ? { id: sub.id, title: sub.title, kind: 'folder' } : null;
+  };
   const folders = {};
   for (const c of state.categories) {
-    const tiles = tilesFor(c);
-    folders[c.id] = { title: c.title, tiles };
-    if (c.tab) tabs[c.tab].push({ id: c.id, title: c.title, tiles });
+    folders[c.id] = { title: c.title, tiles: c.entries.map((e) => tileFor(e, c.id)).filter(Boolean) };
   }
   const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind });
   const games = state.items.filter((i) => i.kind === 'game').map(tileOf);
   const apps = state.items.filter((i) => i.kind === 'app').map(tileOf);
-  // Library and Apps always end with an "All" row, so nothing can get lost
-  // just because it isn't filed in a category.
-  if (games.length) tabs.library.push({ id: '_all_games', title: 'All games', tiles: games });
-  if (apps.length) tabs.apps.push({ id: '_all_apps', title: 'All apps', tiles: apps });
-  if (!tabs.home.length) {
-    if (games.length) tabs.home.push({ id: '_home_games', title: 'Games', tiles: games });
-    if (apps.length) tabs.home.push({ id: '_home_apps', title: 'Apps', tiles: apps });
-  }
-  return { tabs, folders, error: state.warn };
+  // Library and Apps are automatic: everything you've added, filed or not.
+  const tabs = {
+    library: games.length ? [{ id: '_all_games', title: 'All games', tiles: games }] : [],
+    apps: apps.length ? [{ id: '_all_apps', title: 'All apps', tiles: apps }] : [],
+  };
+  const mosaics = state.categories.filter((c) => c.top).map((c) => ({ id: c.id, title: c.title }));
+  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), keys: settings.keys, error: state.warn };
 }
 
 function cleanTitle(s, max = MAX_TITLE) {
@@ -162,7 +262,7 @@ function newId(title, fallback) {
     title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || fallback;
   for (;;) {
     const id = `${slug}-${crypto.randomBytes(2).toString('hex')}`;
-    if (!itemById(id) && !catById(id)) return id;
+    if (!itemById(id) && !catById(id) && !inlayById(id)) return id;
   }
 }
 
@@ -175,23 +275,31 @@ function reaches(fromId, target, seen = new Set()) {
   return c.entries.some((e) => e === target || (catById(e) && reaches(e, target, seen)));
 }
 
+// Remove folders and inlays that nothing points to any more.
+function gc() {
+  for (;;) {
+    const refs = new Set();
+    state.categories.forEach((c) => c.entries.forEach((e) => refs.add(e)));
+    const before = state.categories.length + state.inlays.length;
+    state.categories = state.categories.filter((c) => c.top || c.builtin || refs.has(c.id));
+    state.inlays = state.inlays.filter((n) => refs.has(n.id));
+    if (state.categories.length + state.inlays.length === before) return;
+  }
+}
+
 function libraryOp(op, p) {
   if (state.locked) return { ok: false, error: `Can't edit: ${state.locked} Fix the file first.` };
   switch (op) {
     case 'newCategory': {
       const title = cleanTitle(p.title);
       if (!title) return { ok: false, error: 'Give it a name first.' };
-      const cat = { id: newId(title, 'category'), title, entries: [] };
+      const cat = { id: newId(title, 'mosaic'), title, entries: [] };
       if (p.parentId !== undefined) {
         const parent = catById(p.parentId);
-        if (!parent) return { ok: false, error: 'That folder no longer exists.' };
-        parent.entries.push(cat.id);
-      } else if (TABS.includes(p.tab)) {
-        cat.tab = p.tab;
-      } else if (p.tab === 'none') {
-        // Lives only in the "+" tab until the user puts it somewhere.
+        if (!parent) return { ok: false, error: 'That no longer exists.' };
+        parent.entries.push(cat.id); // a folder inside it
       } else {
-        return { ok: false, error: 'Pick where it should appear.' };
+        cat.top = true; // a mosaic with its own tab
       }
       state.categories.push(cat);
       return { ok: true, message: `Created ${title}.`, id: cat.id };
@@ -200,6 +308,7 @@ function libraryOp(op, p) {
       const c = catById(p.id);
       const title = cleanTitle(p.title);
       if (!c || !title) return { ok: false, error: 'Could not rename that.' };
+      if (c.builtin) return { ok: false, error: "Home can't be renamed." };
       c.title = title;
       return { ok: true, message: 'Renamed.' };
     }
@@ -213,18 +322,66 @@ function libraryOp(op, p) {
     case 'deleteCategory': {
       const c = catById(p.id);
       if (!c) return { ok: false, error: 'That no longer exists.' };
+      if (c.builtin) return { ok: false, error: "Home can't be deleted." };
       state.categories = state.categories.filter((x) => x.id !== c.id);
       state.categories.forEach((x) => (x.entries = x.entries.filter((e) => e !== c.id)));
-      return { ok: true, message: `Deleted ${c.title}. Things inside were not deleted.` };
+      gc();
+      return { ok: true, message: `Deleted ${c.title}. Your games and apps were not touched.` };
+    }
+    case 'moveTab': {
+      const order = computeTabOrder();
+      const i = order.indexOf(p.id);
+      if (i < 0 || (p.dir !== -1 && p.dir !== 1)) return { ok: false, error: 'That no longer exists.' };
+      const j = i + p.dir;
+      if (j >= 0 && j < order.length) [order[i], order[j]] = [order[j], order[i]];
+      state.tabOrder = order;
+      return { ok: true, message: '' };
+    }
+    case 'moveMosaic': {
+      const tops = state.categories.filter((c) => c.top);
+      const i = tops.findIndex((c) => c.id === p.id);
+      const j = i + (p.dir === -1 ? -1 : p.dir === 1 ? 1 : 0);
+      if (i < 0 || j === i) return { ok: false, error: 'That no longer exists.' };
+      if (j < 0 || j >= tops.length) return { ok: true, message: '' }; // already at the end
+      const a = state.categories.indexOf(tops[i]);
+      const b = state.categories.indexOf(tops[j]);
+      [state.categories[a], state.categories[b]] = [state.categories[b], state.categories[a]];
+      return { ok: true, message: '' };
+    }
+    case 'addInlay': {
+      const c = catById(p.catId);
+      if (!c) return { ok: false, error: 'That no longer exists.' };
+      const def = typeof p.type === 'string' ? inlayDef(p.type) : null;
+      if (!def) return { ok: false, error: 'That inlay is not installed.' };
+      const rect = fitRect(def, p);
+      const others = c.entries.map(inlayById).filter(Boolean);
+      if (others.some((o) => overlaps(rect, o))) return { ok: false, error: 'That spot is taken.' };
+      const inlay = { id: newId(def.name, 'inlay'), type: p.type, ...rect };
+      state.inlays.push(inlay);
+      c.entries.push(inlay.id);
+      return { ok: true, message: `Added ${def.name}.` };
+    }
+    case 'placeInlay': {
+      const inlay = inlayById(p.id);
+      if (!inlay) return { ok: false, error: 'That no longer exists.' };
+      const def = inlayDef(inlay.type);
+      if (!def) return { ok: false, error: 'That widget is not installed.' };
+      const home = state.categories.find((c) => c.entries.includes(inlay.id));
+      const rect = fitRect(def, p);
+      const others = (home ? home.entries : []).map(inlayById).filter((o) => o && o !== inlay);
+      if (others.some((o) => overlaps(rect, o))) return { ok: false, error: 'That spot is taken.' };
+      Object.assign(inlay, rect);
+      return { ok: true, message: '' };
     }
     case 'addEntry': {
       const c = catById(p.catId);
       if (!c) return { ok: false, error: 'That no longer exists.' };
       const isItem = Boolean(itemById(p.ref));
-      const isCat = Boolean(catById(p.ref));
-      if (!isItem && !isCat) return { ok: false, error: 'That no longer exists.' };
+      const target = catById(p.ref);
+      if (!isItem && !target) return { ok: false, error: 'That no longer exists.' };
+      if (target && target.builtin) return { ok: false, error: "Home can't go inside something else." };
       if (c.entries.includes(p.ref)) return { ok: false, error: 'It is already in there.' };
-      if (isCat && (p.ref === c.id || reaches(p.ref, c.id)))
+      if (target && (p.ref === c.id || reaches(p.ref, c.id)))
         return { ok: false, error: 'That would put a folder inside itself.' };
       c.entries.push(p.ref);
       return { ok: true, message: `Added to ${c.title}.` };
@@ -233,6 +390,7 @@ function libraryOp(op, p) {
       const c = catById(p.catId);
       if (!c) return { ok: false, error: 'That no longer exists.' };
       c.entries = c.entries.filter((e) => e !== p.ref);
+      gc();
       return { ok: true, message: 'Removed from this row.' };
     }
     case 'deleteItem': {
@@ -240,6 +398,7 @@ function libraryOp(op, p) {
       if (!it) return { ok: false, error: 'That no longer exists.' };
       state.items = state.items.filter((x) => x.id !== it.id);
       state.categories.forEach((x) => (x.entries = x.entries.filter((e) => e !== it.id)));
+      gc();
       return { ok: true, message: `Removed ${it.title} from your library. Files were not touched.` };
     }
     default:
@@ -261,13 +420,25 @@ function addItem({ title, kind, file, args }) {
 
 // -------------------------------------------------------------- settings
 
-let settings = { scanRoots: [] };
+// Which controller button does each on-screen keyboard action use?
+// Indices are the standard gamepad layout: 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB,
+// 8 View, 9 Menu. A always types, and the D-pad always moves.
+const DEFAULT_KEYS = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 };
+const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
+
+let settings = { scanRoots: [], keys: { ...DEFAULT_KEYS } };
 
 function loadSettings() {
   try {
     const d = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     if (d && Array.isArray(d.scanRoots))
       settings.scanRoots = d.scanRoots.filter((r) => typeof r === 'string' && path.isAbsolute(r));
+    if (d && d.keys && typeof d.keys === 'object') {
+      for (const k of Object.keys(DEFAULT_KEYS)) {
+        const v = d.keys[k];
+        if (Number.isInteger(v) && v >= 0 && v < 32 && !RESERVED_BUTTONS.includes(v)) settings.keys[k] = v;
+      }
+    }
   } catch {
     /* none yet */
   }
@@ -552,6 +723,219 @@ function runScan() {
   };
 }
 
+// ----------------------------------------------------------------- add-ons
+// Everything a user can download lives in one folder tree under the data
+// folder, so a marketplace only has to drop files in the right place:
+//
+//   widgets/<id>/manifest.json + files    inlays shown on any page
+//   themes/<id>/...                       look and feel (loader comes later)
+//   art/  fonts/  sounds/                 shared assets themes and pages can use
+//
+// Add-ons are DATA. Tessera never runs code from these folders in its own
+// process. A widget's page runs in a sandboxed frame with no network access.
+
+const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds'];
+const WIDGET_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const WIDGET_MAX_FILE = 5 * 1024 * 1024;
+const addonDir = (name) => path.join(DATA_DIR, name);
+
+const README = {
+  widgets: `Put one folder per widget here. The folder name is the widget's id
+(lowercase letters, numbers, . _ -).
+
+  my-widget/
+    manifest.json
+    index.html
+    app.js        (scripts must be separate files; inline scripts are blocked)
+
+manifest.json:
+  {
+    "name": "My Widget",
+    "description": "What it does",
+    "author": "You",
+    "version": "1.0",
+    "entry": "index.html",
+    "size": { "w": 3, "h": 2 },
+    "resizable": true,
+    "min": { "w": 2, "h": 1 },
+    "max": { "w": 6, "h": 4 }
+  }
+
+Home is a grid of 12 x 6 cells spread over the whole screen, so a widget is
+sized in cells, not pixels, and looks right on any display. "size" is the
+starting size (default 3 x 2). Set "resizable" to let people stretch it between
+"min" and "max". Make your page fill its frame (width and height 100%).
+Widgets cannot use the network or touch your files.
+Restart Tessera or use Settings > Add-ons > Reload to pick up changes.
+`,
+  themes: `Themes go here, one folder each. Theme support is coming; for now this
+folder just reserves the spot so downloads have somewhere to land.
+`,
+};
+
+function ensureTree() {
+  for (const d of ADDON_DIRS) {
+    try { fs.mkdirSync(addonDir(d), { recursive: true }); } catch { /* read-only: skip */ }
+  }
+  for (const [d, text] of Object.entries(README)) {
+    const f = path.join(addonDir(d), 'README.txt');
+    try { if (!fs.existsSync(f)) fs.writeFileSync(f, text); } catch { /* ignore */ }
+  }
+}
+
+let widgets = new Map(); // id -> { dir, manifest }
+let rejected = [];       // [{ id, reason }] so authors can see what's wrong
+
+function readManifest(dir) {
+  const file = path.join(dir, 'manifest.json');
+  let st;
+  try { st = fs.statSync(file); } catch { return { reason: 'no manifest.json' }; }
+  if (!st.isFile() || st.size > 64 * 1024) return { reason: 'manifest.json is not a small file' };
+  let m;
+  try { m = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return { reason: 'manifest.json is not valid JSON' }; }
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return { reason: 'manifest.json has the wrong shape' };
+  const name = cleanTitle(m.name);
+  if (!name) return { reason: 'needs a "name"' };
+  const entry = m.entry === undefined ? 'index.html' : m.entry;
+  if (
+    typeof entry !== 'string' ||
+    entry.startsWith('/') ||
+    entry.split(/[\\/]/).includes('..') ||
+    !/\.html$/i.test(entry)
+  )
+    return { reason: '"entry" must be a relative .html file' };
+  const dims = (v, dflt, label) => {
+    if (v === undefined) return dflt;
+    const ok = v && typeof v === 'object' && Number.isInteger(v.w) && Number.isInteger(v.h) &&
+      v.w >= 1 && v.w <= GRID.cols && v.h >= 1 && v.h <= GRID.rows;
+    if (!ok) throw new Error(`"${label}" must look like { "w": 3, "h": 2 } within ${GRID.cols} x ${GRID.rows}`);
+    return { w: v.w, h: v.h };
+  };
+  let size, min, max;
+  const resizable = m.resizable === true;
+  try {
+    size = dims(m.size, { w: 3, h: 2 }, 'size');
+    min = resizable ? dims(m.min, { w: 1, h: 1 }, 'min') : size;
+    max = resizable ? dims(m.max, { w: GRID.cols, h: GRID.rows }, 'max') : size;
+  } catch (e) { return { reason: e.message }; }
+  if (min.w > size.w || min.h > size.h || max.w < size.w || max.h < size.h)
+    return { reason: '"size" must be between "min" and "max"' };
+  const opt = (v, max) => (typeof v === 'string' ? cleanTitle(v, max) || '' : '');
+  return {
+    manifest: {
+      name,
+      description: opt(m.description, 120),
+      author: opt(m.author, 60),
+      version: opt(m.version, 20),
+      entry,
+      size, min, max, resizable,
+    },
+  };
+}
+
+function scanAddons() {
+  widgets = new Map();
+  rejected = [];
+  let names = [];
+  try {
+    names = fs.readdirSync(addonDir('widgets'), { withFileTypes: true });
+  } catch { /* none yet */ }
+  for (const e of names) {
+    if (!e.isDirectory() || e.isSymbolicLink()) continue; // files and links are ignored
+    if (!WIDGET_ID_RE.test(e.name)) {
+      rejected.push({ id: e.name, reason: 'folder name must be lowercase letters, numbers, . _ -' });
+      continue;
+    }
+    const dir = path.join(addonDir('widgets'), e.name);
+    const r = readManifest(dir);
+    if (r.reason) { rejected.push({ id: e.name, reason: r.reason }); continue; }
+    const entryFile = path.join(dir, r.manifest.entry);
+    const rp = real(entryFile);
+    const base = real(dir);
+    if (!rp || !base || !rp.startsWith(base + path.sep) || !fs.statSync(rp).isFile()) {
+      rejected.push({ id: e.name, reason: `"${r.manifest.entry}" was not found inside the folder` });
+      continue;
+    }
+    widgets.set(e.name, { dir, manifest: r.manifest });
+  }
+}
+
+function inlayDef(type) {
+  if (BUILTIN_INLAYS[type]) return { ...BUILTIN_INLAYS[type], widget: null };
+  const m = /^widget:(.+)$/.exec(type);
+  const w = m && widgets.get(m[1]);
+  return w ? { name: w.manifest.name, description: w.manifest.description, size: w.manifest.size, min: w.manifest.min, max: w.manifest.max, resizable: w.manifest.resizable, widget: m[1] } : null;
+}
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+  '.webp': 'image/webp', '.svg': 'image/svg+xml',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
+};
+// Enforced by Tessera on every widget response, whatever the widget says:
+// its own files only, scripts from files, and no network of any kind.
+const WIDGET_CSP =
+  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+  "img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'none'; " +
+  "form-action 'none'; base-uri 'none'";
+
+// Serve one file from one widget folder. Anything outside the folder, any
+// symlink that leaves it, and any unknown file type is a 404.
+function serveWidget(id, pathname) {
+  const notFound = { status: 404, headers: { 'Content-Type': 'text/plain' }, body: 'Not found' };
+  const w = widgets.get(id);
+  if (!w) return notFound;
+  let rel;
+  try { rel = decodeURIComponent(pathname || '/'); } catch { return notFound; }
+  if (rel === '/' || rel === '') rel = '/' + w.manifest.entry;
+  if (rel.includes('\0')) return notFound;
+  const full = path.resolve(w.dir, '.' + rel);
+  const rp = real(full);
+  const base = real(w.dir);
+  if (!rp || !base || !rp.startsWith(base + path.sep)) return notFound;
+  const type = MIME[path.extname(rp).toLowerCase()];
+  if (!type) return notFound;
+  let body;
+  try {
+    const st = fs.statSync(rp);
+    if (!st.isFile() || st.size > WIDGET_MAX_FILE) return notFound;
+    body = fs.readFileSync(rp);
+  } catch {
+    return notFound;
+  }
+  return {
+    status: 200,
+    headers: {
+      'Content-Type': type,
+      'Content-Security-Policy': WIDGET_CSP,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+    },
+    body,
+  };
+}
+
+function addonsInfo() {
+  const countDirs = (d) => {
+    try { return fs.readdirSync(addonDir(d), { withFileTypes: true }).filter((e) => e.isDirectory()).length; } catch { return 0; }
+  };
+  return {
+    presets: Object.entries(BUILTIN_INLAYS).map(([type, d]) => ({
+      type, name: d.name, description: d.description, size: d.size, min: d.min, max: d.max, resizable: d.resizable,
+    })),
+    widgets: [...widgets].map(([id, w]) => ({
+      type: 'widget:' + id, name: w.manifest.name, description: w.manifest.description,
+      author: w.manifest.author, size: w.manifest.size, min: w.manifest.min, max: w.manifest.max, resizable: w.manifest.resizable,
+    })),
+    rejected,
+    dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
+    themeCount: countDirs('themes'),
+  };
+}
+
 // ----------------------------------------------------------------- window
 
 function send(channel, payload) {
@@ -572,6 +956,8 @@ function createWindow() {
   });
   mainWindow.loadFile('index.html');
   mainWindow.webContents.on('did-finish-load', () => {
+    ensureTree();
+    scanAddons();
     loadState();
     loadSettings();
     send('init', buildView());
@@ -588,7 +974,18 @@ function createWindow() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.whenReady().then(createWindow);
+  app.whenReady().then(() => {
+    protocol.handle(WIDGET_SCHEME, (req) => {
+      try {
+        const u = new URL(req.url);
+        const r = serveWidget(u.hostname, u.pathname);
+        return new Response(r.body, { status: r.status, headers: r.headers });
+      } catch {
+        return new Response('Bad request', { status: 400 });
+      }
+    });
+    createWindow();
+  });
 }
 
 // Every handler takes plain data, validates it, and returns plain data.
@@ -610,6 +1007,12 @@ ipcMain.handle('library', safe((op, p) => {
 
 ipcMain.handle('browse', safe((op, p) => browseOp(op, p)));
 
+ipcMain.handle('addons', safe((op) => {
+  if (op === 'rescan') scanAddons();
+  if (op === 'list' || op === 'rescan') return addonsInfo();
+  return { error: 'Unknown action.' };
+}));
+
 ipcMain.handle('settings', safe((op, p) => {
   if (op === 'get') return { roots: settings.scanRoots.map(display) };
   if (op === 'removeRoot') {
@@ -618,6 +1021,25 @@ ipcMain.handle('settings', safe((op, p) => {
       saveSettings();
     }
     return { roots: settings.scanRoots.map(display) };
+  }
+  if (op === 'getKeys') return { keys: settings.keys };
+  if (op === 'setKey') {
+    const ok =
+      Object.keys(DEFAULT_KEYS).includes(p.action) &&
+      Number.isInteger(p.button) && p.button >= 0 && p.button < 32 &&
+      !RESERVED_BUTTONS.includes(p.button);
+    if (!ok) return { ok: false, error: "That button can't be used here.", keys: settings.keys };
+    // If another action already uses that button, give it this action's old one.
+    const other = Object.keys(settings.keys).find((k) => k !== p.action && settings.keys[k] === p.button);
+    if (other) settings.keys[other] = settings.keys[p.action];
+    settings.keys[p.action] = p.button;
+    saveSettings();
+    return { ok: true, keys: settings.keys };
+  }
+  if (op === 'resetKeys') {
+    settings.keys = { ...DEFAULT_KEYS };
+    saveSettings();
+    return { ok: true, keys: settings.keys };
   }
   return { error: 'Unknown action.' };
 }));
@@ -644,8 +1066,159 @@ ipcMain.handle('scan', safe((op, p) => {
   return { ok: false, error: 'Unknown action.' };
 }));
 
+// ---- the default web browser: one press from the Browser tab
+const BROWSER_FALLBACKS = [
+  'firefox.desktop', 'org.mozilla.firefox.desktop', 'org.chromium.Chromium.desktop',
+  'google-chrome.desktop', 'brave-browser.desktop', 'com.brave.Browser.desktop', 'chromium.desktop',
+];
+function desktopDirs() {
+  const home = os.homedir();
+  return [
+    path.join(home, '.local/share/applications'),
+    path.join(home, '.local/share/flatpak/exports/share/applications'),
+    '/var/lib/flatpak/exports/share/applications',
+    '/usr/local/share/applications',
+    '/usr/share/applications',
+  ];
+}
+// Split an Exec= line into words, honouring double quotes, and drop the
+// placeholders (%u, %F, flatpak's @@u ... @@) that stand for a file or URL.
+function parseDesktopExec(line) {
+  const words = [];
+  const re = /"((?:[^"\\]|\\.)*)"|(\S+)/g;
+  let m;
+  while ((m = re.exec(line))) words.push(m[1] !== undefined ? m[1].replace(/\\(.)/g, '$1') : m[2]);
+  const args = words.filter((w) => !/^%[a-zA-Z%]$/.test(w) && !/^@@[a-zA-Z]?$/.test(w));
+  return args.length ? { file: args[0], args: args.slice(1) } : null;
+}
+function readDesktopExec(name) {
+  if (!/^[A-Za-z0-9._-]+\.desktop$/.test(name)) return null;
+  for (const dir of desktopDirs()) {
+    let text;
+    try { text = fs.readFileSync(path.join(dir, name), 'utf8'); } catch { continue; }
+    let inEntry = false;
+    for (const line of text.split('\n')) {
+      if (line.startsWith('[')) inEntry = line.trim() === '[Desktop Entry]';
+      else if (inEntry && line.startsWith('Exec=')) return parseDesktopExec(line.slice(5).trim());
+    }
+  }
+  return null;
+}
+function whichOnPath(file) {
+  if (path.isAbsolute(file)) return file;
+  for (const d of (process.env.PATH || '').split(':')) {
+    const p = path.join(d, file);
+    try { fs.accessSync(p, fs.constants.X_OK); return p; } catch { /* next */ }
+  }
+  return null;
+}
+function resolveBrowser() {
+  const names = [];
+  try {
+    const out = execFileSync('xdg-settings', ['get', 'default-web-browser'], { timeout: 3000, encoding: 'utf8' }).trim();
+    if (out) names.push(out);
+  } catch { /* fall back to the usual suspects */ }
+  names.push(...BROWSER_FALLBACKS);
+  for (const n of names) {
+    const cmd = readDesktopExec(n);
+    const file = cmd && whichOnPath(cmd.file);
+    if (file) return { file, args: cmd.args };
+  }
+  return null;
+}
+
+// While the browser has the screen, Tessera is hidden and can't see the
+// controller through the page. So for that time only, read the kernel's joystick
+// devices directly (via `cat`, which can be stopped cleanly) and watch for
+// LB / RB. js-device button numbers: 4 = LB, 5 = RB on common pads.
+const JS_LB = 4;
+const JS_RB = 5;
+function parseJsEvents(buf, onShoulder) {
+  // Each event is 8 bytes: time u32, value s16, type u8, number u8.
+  for (let i = 0; i + 8 <= buf.length; i += 8) {
+    const type = buf[i + 6];
+    if (type & 0x80) continue; // synthetic "initial state" event
+    if ((type & 0x7f) !== 1 || buf.readInt16LE(i + 4) !== 1) continue; // button pressed
+    const n = buf[i + 7];
+    if (n === JS_LB) onShoulder(-1);
+    else if (n === JS_RB) onShoulder(1);
+  }
+}
+function watchJoysticks(onShoulder, dir = '/dev/input') {
+  const procs = [];
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
+  for (const n of names) {
+    const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
+    let pending = Buffer.alloc(0);
+    cat.stdout.on('data', (chunk) => {
+      pending = Buffer.concat([pending, chunk]);
+      const whole = pending.length - (pending.length % 8);
+      parseJsEvents(pending.subarray(0, whole), onShoulder);
+      pending = pending.subarray(whole);
+    });
+    cat.on('error', () => {});
+    procs.push(cat);
+  }
+  return () => procs.forEach((p) => { try { p.kill(); } catch { /* gone */ } });
+}
+// Which Flatpak app is this command running, if any (so it can be stopped properly)?
+function flatpakAppId(file, args) {
+  if (path.basename(file) !== 'flatpak' || args[0] !== 'run') return null;
+  const id = [...args].reverse().find((a) => /^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$/.test(a) && !a.startsWith('-'));
+  return id || null;
+}
+
+// Run one program full-screen-style: hide the launcher, bring it back when it ends.
+// A browser can also be closed from the controller (LB / RB), which then moves
+// Tessera to the neighbouring tab.
+function runChild(file, args, cwd, label) {
+  running = true;
+  let finished = false;
+  let closing = 0;
+  let stopWatching = null;
+  // 'error' and 'close' can both fire; only the first one counts.
+  const finish = (message) => {
+    if (finished) return;
+    finished = true;
+    running = false;
+    if (stopWatching) stopWatching();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    send('game-exited', message || null);
+    if (closing) send('shift-tab', closing);
+  };
+
+  mainWindow.hide();
+  // No shell, args passed separately. stdio is ignored so an unread pipe
+  // can never fill up and freeze the program.
+  const isBrowser = label === 'Browser';
+  const child = spawn(file, args, { cwd, shell: false, stdio: 'ignore', detached: isBrowser });
+  child.once('error', (err) => finish(`Launch failed: ${err.message}`));
+  child.once('close', (code, signal) =>
+    finish(isBrowser || code === 0 ? null : `${label} exited (${code !== null ? 'code ' + code : signal}).`)
+  );
+  if (isBrowser) {
+    stopWatching = watchJoysticks((dir) => {
+      if (closing) return;
+      closing = dir;
+      const app = flatpakAppId(file, args);
+      if (app) execFile('flatpak', ['kill', app], () => {});
+      try { process.kill(-child.pid, 'SIGTERM'); } catch { /* already gone */ }
+      setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } }, 4000);
+    });
+  }
+}
+
 ipcMain.on('launch', (_event, id) => {
   if (running || typeof id !== 'string') return;
+  if (id === '_browser') {
+    const b = resolveBrowser();
+    if (!b) return send('launch-failed', "Couldn't find a web browser to open.");
+    return runChild(b.file, b.args, os.homedir(), 'Browser');
+  }
   const game = itemById(id);
   if (!game) return send('launch-failed', 'Unknown game.');
   try {
@@ -656,34 +1229,8 @@ ipcMain.on('launch', (_event, id) => {
       `Can't run ${path.basename(game.path)}. Check that it exists and is executable.`
     );
   }
-
-  running = true;
-  let finished = false;
-  // 'error' and 'close' can both fire; only the first one counts.
-  const finish = (message) => {
-    if (finished) return;
-    finished = true;
-    running = false;
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-    send('game-exited', message || null);
-  };
-
-  mainWindow.hide();
-  // No shell, args passed separately, game runs from its own folder so
-  // AnyPS5 can find libs/ and app0/. stdio is ignored so an unread pipe
-  // can never fill up and freeze the game.
-  const child = spawn(game.path, game.args || [], {
-    cwd: path.dirname(game.path),
-    shell: false,
-    stdio: 'ignore',
-  });
-  child.once('error', (err) => finish(`Launch failed: ${err.message}`));
-  child.once('close', (code, signal) =>
-    finish(code === 0 ? null : `Game exited (${code !== null ? 'code ' + code : signal}).`)
-  );
+  // The game runs from its own folder so AnyPS5 can find libs/ and app0/.
+  runChild(game.path, game.args || [], path.dirname(game.path), 'Game');
 });
 
 ipcMain.on('quit', () => app.quit());

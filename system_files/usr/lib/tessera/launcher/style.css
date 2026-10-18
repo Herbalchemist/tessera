@@ -34,7 +34,22 @@ header {
   border-radius: 8px;
   padding: 2px 10px;
 }
-nav { display: flex; gap: 12px; }
+header { padding-left: 0; padding-right: 0; }
+.navport {
+  width: min(1100px, 76vw);
+  overflow: hidden;
+  padding: 14px 0; /* room for the focus glow */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+nav {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  position: relative; /* offsetLeft is measured from here */
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.tab { white-space: nowrap; }
 .tab {
   font-size: 1.35rem;
   font-weight: 600;
@@ -45,6 +60,9 @@ nav { display: flex; gap: 12px; }
 }
 /* The tab you're on, while the tiles have focus: calm. */
 .tab.active { color: var(--accent); background: rgba(127, 178, 255, 0.14); }
+/* Picked up with a long Y press, to be moved left or right. */
+.tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
+@keyframes wiggle { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
 /* The tab bar has focus: bright, and the tiles below are deselected. */
 .tab.focused { color: var(--bg); background: var(--accent); box-shadow: 0 0 0 3px rgba(127, 178, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.45); }
 #crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
@@ -123,7 +141,7 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   .rail.split .card { animation: none; }
 }
 
-/* ---- modal: menus, browser, on-screen keyboard ---- */
+/* ---- modal: menus and the file browser ---- */
 #modal[hidden] { display: none; }
 #modal {
   position: fixed;
@@ -156,32 +174,66 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
 .mitem.dim { color: var(--muted); }
 .mitem.active { background: var(--accent); color: var(--bg); }
 .mitem.active small { color: var(--bg); opacity: 0.7; }
-.field {
-  min-height: 3.2rem;
-  padding: 12px 18px;
-  margin-bottom: 18px;
-  background: #0d1218;
-  border-radius: 10px;
-  font-size: 1.6rem;
-  white-space: pre;
+.khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: pre; }
+
+/* ---- on-screen keyboard: docked to the bottom, sized to the screen ---- */
+#modal.keys {
+  display: block;
+  /* One size for everything: follows the screen, within sane limits. */
+  --key: clamp(36px, min(4.6vw, 7.4vh), 88px);
 }
-.caret { display: inline-block; width: 2px; height: 1.5rem; background: var(--accent); margin-left: 2px; vertical-align: text-bottom; }
-.krow { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; }
+.kbcenter {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  width: min(900px, 84vw);
+  text-align: center;
+}
+.kbcenter h3 { margin: 0 0 14px; font-size: calc(var(--key) * 0.4); font-weight: 600; color: var(--muted); }
+.field {
+  min-height: calc(var(--key) * 1.2);
+  padding: calc(var(--key) * 0.2) calc(var(--key) * 0.35);
+  background: #0d1218;
+  border-radius: calc(var(--key) * 0.2);
+  box-shadow: 0 0 0 2px #26303d, 0 20px 60px rgba(0, 0, 0, 0.55);
+  font-size: calc(var(--key) * 0.6);
+  white-space: pre;
+  text-align: left;
+  overflow: hidden;
+}
+.caret { display: inline-block; width: 3px; height: 0.9em; background: var(--accent); margin-left: 3px; vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.kbpanel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: calc(var(--key) * 0.3) 0 calc(var(--key) * 0.2);
+  background: #141b25;
+  border-radius: calc(var(--key) * 0.4) calc(var(--key) * 0.4) 0 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+  animation: kbup 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes kbup { from { transform: translateY(100%); } to { transform: none; } }
+.keys-grid { width: min(96vw, calc(var(--key) * 14.5)); margin: 0 auto; }
+.krow { display: flex; gap: calc(var(--key) * 0.12); margin-bottom: calc(var(--key) * 0.12); justify-content: center; }
 .key {
-  flex: 0 0 56px;
-  height: 56px;
+  flex: 0 0 var(--key);
+  height: var(--key);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--card);
-  border-radius: 10px;
-  font-size: 1.3rem;
+  border-radius: calc(var(--key) * 0.18);
+  font-size: calc(var(--key) * 0.42);
   font-weight: 600;
 }
 .key.wide { flex: 1 1 0; }
-.key.on { outline: 2px solid var(--accent); }
-.key.active { background: var(--accent); color: var(--bg); }
-.khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; }
+.key.on { outline: 3px solid var(--accent); outline-offset: -3px; }
+.key.active { background: var(--accent); color: var(--bg); transform: scale(1.06); }
+#modal.keys .khint { font-size: calc(var(--key) * 0.26); }
+@media (prefers-reduced-motion: reduce) { .kbpanel, .tab.lifted, .caret { animation: none; } }
 
 /* ---- add tiles and the big empty tile ---- */
 .card.kind-add {
@@ -212,3 +264,52 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   animation: split 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
+
+/* ---- inlays ---- */
+.card.kind-inlay {
+  background: linear-gradient(160deg, #1e2a3a, #151d29);
+  align-items: flex-start;
+  justify-content: center;
+}
+.clock-time { font-size: 2.7rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+.clock-date { margin-top: 10px; font-size: 1.05rem; color: var(--muted); font-weight: 500; }
+
+/* ---- Home: a grid over the whole screen ---- */
+.canvas[hidden], .rows[hidden] { display: none; }
+.canvas {
+  position: absolute;
+  inset: 0;
+  padding: 18px 56px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.canvas .card { flex: none; height: auto; min-width: 0; min-height: 0; overflow: hidden; }
+.canvas .card.big { background: linear-gradient(160deg, #1b2533, #141b25); }
+.canvas .card.active { transform: scale(1.02); z-index: 2; }
+.canvas .card.moving { opacity: 0.25; }
+.cell { border: 1px dashed rgba(127, 178, 255, 0.2); border-radius: 8px; pointer-events: none; }
+.ghost {
+  z-index: 3;
+  border-radius: 14px;
+  border: 3px solid var(--accent);
+  background: rgba(127, 178, 255, 0.16);
+  box-shadow: 0 0 0 4px rgba(127, 178, 255, 0.25), 0 18px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  padding: 14px 18px;
+  font-weight: 600;
+  min-width: 0;
+}
+.ghost.bad { border-color: #ff8a7a; background: rgba(255, 138, 122, 0.16); box-shadow: 0 0 0 4px rgba(255, 138, 122, 0.25); }
+.ghost span { background: rgba(8, 11, 15, 0.7); padding: 4px 10px; border-radius: 8px; font-size: 1rem; }
+
+/* ---- downloaded widgets ---- */
+.card.has-widget { padding: 0; overflow: hidden; background: #0d1218; }
+.widget-frame { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; color-scheme: dark; background: transparent; }
+.canvas .clock-time { font-size: clamp(1.6rem, 4.2vw, 6rem); }
+.canvas .clock-date { font-size: clamp(0.9rem, 1.4vw, 1.8rem); }
+
+/* Row titles are hidden for now (kept in the markup so they can come back). */
+.row h2 { display: none; }

@@ -6,6 +6,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('launcherAPI', {
   onInit: (cb) => ipcRenderer.on('init', (_e, data) => cb(data)),
   onGameExited: (cb) => ipcRenderer.on('game-exited', (_e, msg) => cb(msg)),
+  onShiftTab: (cb) => ipcRenderer.on('shift-tab', (_e, dir) => cb(dir)),
   onLaunchFailed: (cb) => ipcRenderer.on('launch-failed', (_e, msg) => cb(msg)),
   launch: (id) => ipcRenderer.send('launch', id),
   quit: () => ipcRenderer.send('quit'),
@@ -13,4 +14,5 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   browse: (op, payload) => ipcRenderer.invoke('browse', op, payload),
   settings: (op, payload) => ipcRenderer.invoke('settings', op, payload),
   scan: (op, payload) => ipcRenderer.invoke('scan', op, payload),
+  addons: (op) => ipcRenderer.invoke('addons', op),
 });
