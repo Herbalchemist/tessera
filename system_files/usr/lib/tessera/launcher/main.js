@@ -563,7 +563,7 @@ const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
-const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear'];
+const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear', '--shadow', '--ring', '--tab-shadow'];
 // Two themes ship with Tessera. They share one list of settings and differ
 // only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
 const BUILTIN_THEMES = [
@@ -571,7 +571,7 @@ const BUILTIN_THEMES = [
     id: 'stock', name: 'Tessera Bright', author: 'Tessera',
     defaults: {
       bg: '#fff3dc', card: '#ffffff', panel: '#ffffff', text: '#24213d', muted: '#6b6786', accent: '#ff4d8d',
-      border: '#24213d', borderW: '4px', radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
+      border: '#24213d', borderW: '0px', shadow: 70, radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
       backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 30, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
@@ -597,6 +597,10 @@ const STOCK_THEME = {
       options: [{ label: 'Sharp', value: '4px' }, { label: 'Slight', value: '10px' }, { label: 'Normal', value: '14px' }, { label: 'Soft', value: '20px' }, { label: 'Round', value: '28px' }, { label: 'Pill', value: '40px' }] },
     { id: 'borderW', group: 'Shape', label: 'Border thickness', type: 'choice', default: '0px', var: '--border-w',
       options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Medium', value: '4px' }, { label: 'Thick', value: '6px' }] },
+    { id: 'shadow', group: 'Shape', label: 'Tile shadow', type: 'range', min: 0, max: 100, step: 10, unit: '%', default: 100, var: '--shadow', scale: 0.01, hint: 'The soft shadow under tiles, strongest on the selected one' },
+    { id: 'tabShadow', group: 'Shape', label: 'Tab highlight shadow', type: 'range', min: 0, max: 100, step: 10, unit: '%', default: 100, var: '--tab-shadow', scale: 0.01, hint: 'The glow and shadow around the selected tab at the top' },
+    { id: 'selectRing', group: 'Shape', label: 'Selection outline', type: 'choice', default: '3px', var: '--ring',
+      options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Normal', value: '3px' }, { label: 'Thick', value: '5px' }] },
     { id: 'accent', group: 'Colors', label: 'Highlight color', type: 'color', default: '#7fb2ff', var: '--accent' },
     { id: 'border', group: 'Colors', label: 'Border color', type: 'color', default: '#3b475a', var: '--border' },
     { id: 'card', group: 'Colors', label: 'Tile fill', type: 'color', default: '#1a222c', var: '--card' },
@@ -618,6 +622,7 @@ const STOCK_THEME = {
         { label: '6 × 3', value: 'c6r3' }, { label: '6 × 4', value: 'c6r4' }, { label: '8 × 4', value: 'c8r4' },
         { label: 'Custom (use the two settings below)', value: 'custom' },
       ] },
+    { id: 'tileGap', group: 'Layout', label: 'Space between tiles (grid and flow)', type: 'range', min: 20, max: 240, step: 10, unit: '%', default: 100, hint: 'The same space across and down' },
     { id: 'gridCols', group: 'Layout', label: 'Custom grid: columns', type: 'range', min: 2, max: 12, step: 1, unit: '', default: 5 },
     { id: 'gridRows', group: 'Layout', label: 'Custom grid: rows on screen', type: 'range', min: 1, max: 8, step: 1, unit: '', default: 3 },
     { id: 'widgetStyle', group: 'Widgets', label: 'Widget style', type: 'choice', default: 'frosted',

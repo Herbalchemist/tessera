@@ -345,7 +345,8 @@ function layoutCfg() {
   const mode = ['grid', 'flow'].includes(get('layout')) ? get('layout') : 'rails';
   const own = (prefs.pageGrid || {})[curKey()]; // this page's own size, if it has one
   if (own) { cols = own.cols; rows = own.rows; }
-  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)) };
+  const gapPct = Math.max(20, Math.min(240, Number(get('tileGap')) || 100));
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct };
 }
 function currentRows() {
   const base = baseRows();
@@ -629,12 +630,13 @@ function sizeGrid() {
     return;
   }
   const vp = rowsEl.parentElement;
-  const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.2;
-  const w = Math.max(200, vp.clientWidth - gap * 4);
+  const { gapPct } = layoutCfg();
+  const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.2 * gapPct / 100; // the same space between columns and between rows
+  const w = Math.max(200, vp.clientWidth - gap * 2 - 24);
   const h = Math.max(160, vp.clientHeight);
   const cw = (w - (cols - 1) * gap) / cols;
-  const padv = gap * 0.9; // room above and below each row for the selected tile's grow and outline
-  const ch = Math.max(90, Math.min(cw * 1.5, (h - rows * (gap + 2 * padv)) / rows));
+  const padv = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.1; // a little room above the first row for the selected tile's grow and outline
+  const ch = Math.max(90, Math.min(cw * 1.5, (h - padv - rows * gap) / rows));
   rowsEl.style.setProperty('--padv', padv.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-w', cw.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-h', ch.toFixed(1) + 'px');

@@ -9,6 +9,9 @@
   --panel: #161d27;
   --border: #3b475a;
   --border-w: 0px;
+  --shadow: 1;
+  --tab-shadow: 1;
+  --ring: 3px;
   --radius: 14px;
   --danger: #ff6b6b;
   --ok: #3ddc97;
@@ -64,7 +67,8 @@ header { padding-left: 0; padding-right: 0; }
 .navport {
   width: min(1100px, 76vw);
   overflow: hidden;
-  padding: 14px 0; /* room for the focus glow */
+  padding: 36px 0; /* room for the focus glow, so it fades out instead of being cut off */
+  margin: -22px 0;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
@@ -87,10 +91,10 @@ nav {
 /* The tab you're on, while the tiles have focus: calm. */
 .tab.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 /* Picked up with a long Y press, to be moved left or right. */
-.tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
+.tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 10px 24px rgb(0 0 0 / calc(var(--tab-shadow) * 0.4)), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
 @keyframes wiggle { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
 /* The tab bar has focus: bright, and the tiles below are deselected. */
-.tab.focused { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent), 0 8px 24px rgba(0, 0, 0, 0.45); }
+.tab.focused { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
 #crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
@@ -129,13 +133,14 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   font-weight: 600;
   line-height: 1.25;
   transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 6px 18px rgb(0 0 0 / calc(var(--shadow) * 0.14)); /* a soft lift even when not selected */
 }
 .card small { color: var(--muted); font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
 .card.kind-folder { background: color-mix(in srgb, var(--card), white 6%); border: 2px dashed var(--border); }
 .card.kind-action { background: color-mix(in srgb, var(--card), #3ddc97 8%); }
 .card.active {
   transform: scale(1.08);
-  box-shadow: 0 0 0 3px var(--accent), 0 18px 48px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 var(--ring) var(--accent), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
 }
 .empty { text-align: center; color: var(--muted); font-size: 1.2rem; margin-top: 80px; }
 h1 {
@@ -428,7 +433,8 @@ body[data-fx="mystic"]::after {
 }
 
 /* ---- tile layouts: grid and flow ---- */
-.rows.grid .rowport, .rows.flow .rowport { padding: var(--padv, 18px) 0; }
+.rows.grid .rowport, .rows.flow .rowport { padding: 0; overflow: visible; }
+.rows.grid, .rows.flow { padding-top: var(--padv, 18px); } /* the screen edge clips, so shadows fade out instead of ending in a hard line */
 .rows.grid .row, .rows.flow .row { padding: 0 0 var(--gap); }
 .rows.grid .rail { margin: 0 auto; }
 .rows.flow .rail { margin: 0; } /* left-aligned, so every row's columns line up while the grid slides under the selector */
