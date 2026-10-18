@@ -9,7 +9,6 @@ const modalEl = document.getElementById('modal');
 const canvasEl = document.getElementById('canvas');
 
 const NAV_REPEAT_MS = 200;
-const QUIT_HOLD_MS = 1500;
 const REORDER_HOLD_MS = 3000;
 const MAX_TEXT = 40;
 const GRID_COLS = 12; // Home is a grid spread over the whole screen (keep in step with main.js)
@@ -105,9 +104,22 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'xbox' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
 let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null };
-const glyph = (n) => (GLYPH_SETS[prefs.pad.glyphs] || BUTTON_NAMES)[n];
+// "Automatic" looks at who made the connected controller (USB vendor id, then the name).
+function detectFamily(id) {
+  const v = /vendor:\s*([0-9a-f]{4})/i.exec(id || '');
+  const ven = v ? v[1].toLowerCase() : '';
+  if (ven === '054c' || /dualsense|dualshock|playstation|sony/i.test(id)) return 'playstation';
+  if (ven === '057e' || /nintendo|joy-?con|switch|pro controller/i.test(id)) return 'nintendo';
+  return 'xbox';
+}
+const glyphSet = () => {
+  let g = prefs.pad.glyphs;
+  if (g === 'auto') { const p = activePad(); g = detectFamily(p ? p.id : ''); }
+  return GLYPH_SETS[g] || BUTTON_NAMES;
+};
+const glyph = (n) => glyphSet()[n];
 const buttonName = (n) => glyph(n) || `Button ${n}`;
 function applyGlyphs() {
   for (const el of document.querySelectorAll('[data-g]')) {
@@ -128,21 +140,30 @@ fitScreen();
 
 let appliedVars = new Set();
 let imageRev = null;
+// Dark or white text, whichever reads better on this color (WCAG contrast).
+function onColor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const lum = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return (lum + 0.05) / 0.057 >= 1.05 / (lum + 0.05) ? '#10151c' : '#ffffff';
+}
+let layoutReady = false;
+let layoutSig = '';
 function applyTheme(t) {
   if (!t || !Array.isArray(t.settings)) return;
   prefs.theme = t;
+  const fx = t.settings.find((s) => s.id === 'backdrop');
+  document.body.dataset.fx = fx ? fx.value : 'none';
   const root = document.documentElement;
   const now = new Set();
   let dim = 0;
   let hasPicture = false;
   for (const s of t.settings) {
     if (s.id === 'accent' && /^#[0-9a-f]{6}$/i.test(s.value)) {
-      const n = parseInt(s.value.slice(1), 16);
-      // Dark or white text, whichever reads better on this accent (WCAG contrast).
-      const lin = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
-      const lum = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-      root.style.setProperty('--on-accent', (lum + 0.05) / 0.057 >= 1.05 / (lum + 0.05) ? '#10151c' : '#ffffff');
+      root.style.setProperty('--on-accent', onColor(s.value));
     }
+    if (s.id === 'confirm' && /^#[0-9a-f]{6}$/i.test(s.value)) root.style.setProperty('--on-ok', onColor(s.value));
+    if (s.id === 'cancel' && /^#[0-9a-f]{6}$/i.test(s.value)) root.style.setProperty('--on-danger', onColor(s.value));
     if (s.id === 'bgDim') dim = s.value * (s.scale || 1);
     if (!s.var) continue;
     let v;
@@ -155,6 +176,11 @@ function applyTheme(t) {
   }
   for (const v of appliedVars) if (!now.has(v) && v !== '--bg-image') root.style.removeProperty(v);
   appliedVars = now;
+  const sig = JSON.stringify(layoutCfg());
+  if (sig !== layoutSig) {
+    layoutSig = sig;
+    if (layoutReady) { sizeGrid(); render(); }
+  }
   root.style.setProperty('--bg-dim-on', hasPicture ? String(dim) : '0');
   const img = t.settings.find((s) => s.type === 'image' && s.var);
   if (!img || !hasPicture) {
@@ -193,7 +219,7 @@ const triggerValue = (pad, n) => {
 };
 const BUTTON_NAMES_BY_ROLE = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb' };
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
-let keymap = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 };
+let keymap = { back: 2, space: 3, shift: 10, done: 9, cancel: 1 }; // delete X, space Y, shift L3, done Menu, cancel B
 
 // Settings is built in. These are actions, not launchable items.
 const SETTINGS_ROWS = [
@@ -222,9 +248,9 @@ const cursor = {};          // per page/folder: { row, cols: { rowId: col } }
 let stack = [];             // open folders: [{ id, title }]
 let suspended = false;      // true while a game is running
 let busy = false;           // true while waiting on the main process
+let artRev = 0;             // bumps when a game picture changes, so tiles reload it
 let modal = null;
 let lastNav = 0;
-let quitSince = null;
 let holdTimer = null;
 let reorderId = null;       // mosaic being moved with the tab bar
 let place = null;           // an inlay being placed or resized on Home's grid
@@ -258,7 +284,7 @@ function withAdd(row, ctx, emptyTitle, emptySub) {
   return { ...row, tiles: [...row.tiles, { id: '_add', kind: 'add', title: 'Add', ctx }] };
 }
 
-function currentRows() {
+function baseRows() {
   if (stack.length) {
     const top = stack[stack.length - 1];
     const f = data.folders[top.id];
@@ -304,6 +330,31 @@ function currentRows() {
 function curKey() {
   return stack.length ? 'f:' + stack[stack.length - 1].id : page;
 }
+// Tile layout from Theme Settings: rails (sideways, one row per list), grid
+// (several rows, scrolls when you reach the edge) or flow (the selected row
+// stays in focus and the rest slide under the tab bar).
+function layoutCfg() {
+  const get = (id) => { const s = prefs.theme && prefs.theme.settings.find((x) => x.id === id); return s ? s.value : undefined; };
+  let cols = Number(get('gridCols')) || 5;
+  let rows = Number(get('gridRows')) || 3;
+  const pre = /^c(\d+)r(\d+)$/.exec(get('gridPreset') || '');
+  if (pre) { cols = Number(pre[1]); rows = Number(pre[2]); }
+  const mode = ['grid', 'flow'].includes(get('layout')) ? get('layout') : 'rails';
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)) };
+}
+function currentRows() {
+  const base = baseRows();
+  const { mode, cols } = layoutCfg();
+  if (mode === 'rails' || homeMode()) return base;
+  if (base.length === 1 && base[0].tiles.length === 1 && base[0].tiles[0].big) return base; // the big empty tile stays big
+  // Grid: all the tiles on the page, cut into rows of `cols`. Everything that moves between rows
+  // and tiles (D-pad, selection, menus) works on these rows like on any other.
+  const tiles = base.flatMap((r) => r.tiles);
+  const out = [];
+  for (let i = 0; i < tiles.length; i += cols) out.push({ id: 'grid:' + i / cols, title: '', tiles: tiles.slice(i, i + cols) });
+  return out.length ? out : base;
+}
+
 function cur() {
   const k = curKey();
   return (cursor[k] = cursor[k] || { row: 0, cols: {} });
@@ -494,6 +545,11 @@ function render() {
     return;
   }
   rowsEl.replaceChildren();
+  const lc = layoutCfg();
+  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode);
+  rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
+  const pageKey = page + '/' + stack.map((s) => s.id).join('/');
+  if (pageKey !== rowsEl._key) { rowsEl._key = pageKey; rowsEl._ty = 0; }
   const rows = currentRows();
   rows.forEach((row) => {
     const wrap = document.createElement('section');
@@ -528,6 +584,10 @@ function render() {
         const name = document.createElement('span');
         name.textContent = t.title;
         card.append(kind, name);
+        if (t.art) {
+          card.classList.add('has-art');
+          card.style.backgroundImage = `url("tessera-art://item/${encodeURIComponent(t.id)}?v=${artRev}")`;
+        }
       }
       rail.appendChild(card);
     });
@@ -537,7 +597,7 @@ function render() {
 
     // The big empty tile "splits" into real tiles once something is added.
     const big = row.tiles.length === 1 && row.tiles[0].big;
-    if (wasBig[row.id] && !big) {
+    if (wasBig[row.id] && !big && lc.mode === 'rails') {
       const mid = rail.scrollWidth / 2;
       [...rail.children].forEach((card, i) => {
         card.style.setProperty('--from', `${mid - (card.offsetLeft + card.offsetWidth / 2)}px`);
@@ -547,10 +607,31 @@ function render() {
     }
     wasBig[row.id] = big;
   });
+  sizeGrid();
   clamp();
   update();
   tickInlays();
 }
+
+// Grid tiles are sized so `cols` fit across and `rows` fit down.
+function sizeGrid() {
+  const { mode, cols, rows } = layoutCfg();
+  if (mode === 'rails' || homeMode()) {
+    rowsEl.style.removeProperty('--card-w');
+    rowsEl.style.removeProperty('--card-h');
+    return;
+  }
+  const vp = rowsEl.parentElement;
+  const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.2;
+  const w = Math.max(200, vp.clientWidth - gap * 4);
+  const h = Math.max(160, vp.clientHeight);
+  const cw = (w - (cols - 1) * gap) / cols;
+  const ch = Math.max(90, Math.min(cw * 1.5, (h - rows * gap) / rows));
+  rowsEl.style.setProperty('--card-w', cw.toFixed(1) + 'px');
+  rowsEl.style.setProperty('--card-h', ch.toFixed(1) + 'px');
+  rowsEl.style.setProperty('--gap', gap.toFixed(1) + 'px');
+}
+window.addEventListener('resize', () => { sizeGrid(); update(); });
 
 function clamp() {
   const rows = currentRows();
@@ -598,7 +679,8 @@ function update() {
     const col = (rows[r] && c.cols[rows[r].id]) || 0;
     [...rail.children].forEach((card, n) => card.classList.toggle('active', inTiles && active && n === col));
     const card = rail.children[col];
-    if (card) {
+    if (layoutCfg().mode !== 'rails') rail.style.transform = 'none';
+    else if (card) {
       const w = rail.parentElement.clientWidth;
       rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
     }
@@ -606,7 +688,23 @@ function update() {
   const activeRow = rowsEl.querySelectorAll('.row')[c.row];
   if (activeRow) {
     const h = rowsEl.parentElement.clientHeight;
-    rowsEl.style.transform = `translateY(${h / 2 - (activeRow.offsetTop + activeRow.offsetHeight / 2)}px)`;
+    const mode = layoutCfg().mode;
+    if (mode === 'rails') {
+      rowsEl.style.transform = `translateY(${h / 2 - (activeRow.offsetTop + activeRow.offsetHeight / 2)}px)`;
+    } else {
+      // Nothing moves until the tiles outgrow the screen. Then: grid scrolls just enough to keep the
+      // selection in view; flow keeps the selected row in the middle.
+      const minTy = Math.min(0, h - rowsEl.scrollHeight);
+      const top = activeRow.offsetTop;
+      const bot = top + activeRow.offsetHeight;
+      let ty = rowsEl._ty || 0;
+      if (mode === 'flow') ty = h / 2 - (top + activeRow.offsetHeight / 2);
+      else if (top + ty < 0) ty = -top;
+      else if (bot + ty > h) ty = h - bot;
+      ty = Math.max(minTy, Math.min(0, ty));
+      rowsEl._ty = ty;
+      rowsEl.style.transform = `translateY(${ty}px)`;
+    }
   }
   const t = selectedTile();
   titleEl.textContent = !inTiles
@@ -638,7 +736,13 @@ function moveRow(d) {
     hoverId = page;
     return update();
   }
-  c.row = Math.max(0, Math.min(currentRows().length - 1, c.row + d));
+  const rows = currentRows();
+  const was = rows[c.row];
+  c.row = Math.max(0, Math.min(rows.length - 1, c.row + d));
+  if (layoutCfg().mode !== 'rails' && was && rows[c.row] && rows[c.row] !== was) {
+    // stay in the same column, like any grid
+    c.cols[rows[c.row].id] = Math.min(c.cols[was.id] || 0, rows[c.row].tiles.length - 1);
+  }
   update();
 }
 // "Browser" and "+ Mosaic" are buttons that live on the bar, not pages: the
@@ -677,12 +781,15 @@ function applyView(view) {
   data = { tabs: view.tabs, folders: view.folders, mosaics: view.mosaics || [], tabOrder: view.tabOrder || data.tabOrder, recent: view.recent || [] };
   if (view.keys) keymap = view.keys;
   if (view.prefs) applyPrefs(view.prefs);
+  artRev = view.artRev || 0;
   if (!tabList().includes(page)) {
     page = 'home';
     stack = [];
   }
   if (!tabList().includes(hoverId)) hoverId = page;
   while (stack.length && !data.folders[stack[stack.length - 1].id]) stack.pop();
+  layoutReady = true;
+  sizeGrid();
   render();
 }
 
@@ -724,9 +831,23 @@ function closeModal() {
 }
 
 // A list the controller can scroll. Used for menus, pickers and the browser.
+// Collapsible trees: an item with header + fold is a heading that A (or
+// left / right) opens and closes; the items under it, up to the next
+// heading, hide with it. A heading without fold is just a label.
+const foldOpen = new Map(); // fold key -> expanded?
+const isOpen = (it) => (foldOpen.has(it.fold) ? foldOpen.get(it.fold) : Boolean(it.open));
+function visibleFlags(items) {
+  let hidden = false;
+  return items.map((it) => {
+    if (it.header) { hidden = Boolean(it.fold) && !isOpen(it); return true; }
+    return !hidden;
+  });
+}
+const pickable = (items, flags, i) => Boolean(items[i]) && flags[i] && !(items[i].header && !items[i].fold);
 function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY }) {
-  // Never start on a section heading.
-  while (items[index] && items[index].header && index < items.length - 1) index++;
+  // Never start on a label or on something folded away.
+  const flags = visibleFlags(items);
+  for (let i = index; i < items.length; i++) if (pickable(items, flags, i)) { index = i; break; }
   modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY };
   renderModal();
 }
@@ -828,7 +949,7 @@ function buildKeys() {
     line.className = 'krow';
     const els = row.map((k) => {
       const el = document.createElement('div');
-      el.className = 'key' + (SPECIAL[k] ? ' wide' : '') + (k === 'cancel' ? ' cancel' : '');
+      el.className = 'key' + (SPECIAL[k] ? ' wide' : '') + (k === 'cancel' ? ' cancel' : '') + (k === 'done' ? ' done' : '');
       line.appendChild(el);
       return el;
     });
@@ -864,7 +985,7 @@ function renderModal() {
   if (!modal) return;
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
-  if (modal.kind === 'pad') return;
+  if (modal.kind === 'pad' || modal.kind === 'color') return;
   modalEl.className = '';
   modalEl.replaceChildren();
   const box = document.createElement('div');
@@ -885,12 +1006,16 @@ function renderModal() {
   h.textContent = modal.title;
   const list = document.createElement('div');
   list.className = 'mlist';
+  const flags = visibleFlags(modal.items);
   modal.items.forEach((it, n) => {
+    if (!flags[n]) return;
     const el = document.createElement('div');
-    const danger = it.danger || /^(cancel|close)\b/i.test(it.label);
-    el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (danger ? ' danger' : '');
+    // Cancel / Close glow red, Done / Yes glow green, except in menus that are just lists of settings.
+    const danger = !it.plain && (it.danger || /^(cancel|close)\b/i.test(it.label));
+    const ok = !it.plain && (it.ok || /^(done|yes|ok|confirm)$/i.test(it.label));
+    el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (it.fold ? ' fold' : '') + (danger ? ' danger' : '') + (ok ? ' ok' : '');
     const mark = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
-    el.textContent = mark + it.label;
+    el.textContent = (it.fold ? (isOpen(it) ? '▾  ' : '▸  ') : '') + mark + it.label;
     if (it.sub) {
       const s = document.createElement('small');
       s.textContent = it.sub;
@@ -906,22 +1031,33 @@ function renderModal() {
   }
   box.appendChild(list);
   modalEl.appendChild(box);
-  const active = list.children[modal.index];
+  const active = list.querySelector('.mitem.active');
   if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
 }
 
 function modalPress(act) {
   if (modal.kind === 'capture' || modal.kind === 'pad') return;
+  if (modal.kind === 'color') return colorPress(act);
   if (modal.kind === 'list') {
     const n = modal.items.length;
+    const flags = visibleFlags(modal.items);
     const step = (d) => {
       let i = modal.index + d;
-      while (modal.items[i] && modal.items[i].header) i += d; // skip section headings
+      while (modal.items[i] && !pickable(modal.items, flags, i)) i += d; // skip labels and folded items
       if (modal.items[i]) modal.index = i;
     };
+    const cur = modal.items[modal.index];
     if (act === 'up') step(-1);
     else if (act === 'down') step(1);
-    else if (act === 'a' && n && !modal.items[modal.index].header) modal.onChoose(modal.items[modal.index]);
+    else if (act === 'a' && n && cur && cur.header) { if (cur.fold) foldOpen.set(cur.fold, !isOpen(cur)); }
+    else if (act === 'a' && n) modal.onChoose(cur);
+    else if ((act === 'left' || act === 'right') && cur && cur.header && cur.fold) foldOpen.set(cur.fold, act === 'right');
+    else if (act === 'left' && cur && !cur.header) {
+      // left on a row inside a branch: fold the branch and land on its heading
+      for (let i = modal.index - 1; i >= 0; i--) {
+        if (modal.items[i].header) { if (modal.items[i].fold) { foldOpen.set(modal.items[i].fold, false); modal.index = i; } break; }
+      }
+    }
     else if (act === 'b') modal.onBack();
     renderModal();
     return;
@@ -1153,6 +1289,8 @@ function openMenu() {
       items.push({ label: 'Delete this folder…', op: 'deleteTile' });
     } else {
       items.push({ label: 'Rename…', op: 'renameItem' });
+      items.push({ label: 'Change picture…', op: 'pickArt' });
+      if (t.custom) items.push({ label: 'Use the automatic picture', op: 'clearArt' });
       items.push({ label: 'Remove from library…', op: 'deleteItem' });
     }
   } else if (t && t.kind === 'inlay') {
@@ -1181,6 +1319,8 @@ async function runMenu(op, t, row) {
     case 'removeFromRow': return lib('removeEntry', { catId: row.id, ref: t.id });
     case 'renameTile': return flowRename('renameCategory', t.id, t.title);
     case 'renameItem': return flowRename('renameItem', t.id, t.title);
+    case 'pickArt': return flowBrowse('pickArt', undefined, undefined, t.id);
+    case 'clearArt': return lib('clearArt', { id: t.id });
     case 'deleteTile':
       if (await confirm(`Delete “${t.title}”?`, 'Delete (things inside are kept)'))
         return lib('deleteCategory', { id: t.id });
@@ -1217,10 +1357,10 @@ async function flowAddTo(t, row) {
 }
 
 // Browse the file system through main. We only ever say "enter entry N".
-async function flowBrowse(purpose, after, into) {
+async function flowBrowse(purpose, after, into, item) {
   busy = true;
   let r;
-  try { r = await api.browse('start', { purpose, into }); } finally { busy = false; }
+  try { r = await api.browse('start', { purpose, into, item }); } finally { busy = false; }
   showBrowse(r, purpose, after);
 }
 function showBrowse(r, purpose, after) {
@@ -1319,15 +1459,22 @@ async function flowRoots() {
 // uses. Any button the system reports works here, including paddles and
 // other extra buttons (numbered 17 and up in the Controller test).
 async function flowControls() {
-  let index = 0;
+  let index = 1;
   for (;;) {
     busy = true;
     try { keymap = (await api.settings('getKeys')).keys; } finally { busy = false; }
-    const items = KEY_ACTIONS.map((a) => ({ label: a.label, sub: buttonName(keymap[a.id]), id: a.id }));
-    items.push({ label: 'Reset to defaults', op: 'reset' });
-    const it = await pick('Button mapping · On-screen keyboard buttons', items, index);
+    // These are settings rows, so Done and Cancel stay plain here (plain: true).
+    const items = [{ label: 'Keyboard', header: true, fold: 'map.keyboard', open: true }];
+    KEY_ACTIONS.forEach((a) => items.push({ label: a.label, sub: buttonName(keymap[a.id]), id: a.id, plain: true }));
+    items.push({ label: 'Reset keyboard buttons', op: 'reset', plain: true });
+    items.push({ label: 'Fixed buttons', header: true, fold: 'map.fixed' });
+    [
+      [buttonName(0), 'select'], [buttonName(1), 'back'], [buttonName(3), 'options'], [`${buttonName(4)} / ${buttonName(5)}`, 'switch tab'], ['D-pad', 'move'],
+    ].forEach(([k, v]) => items.push({ label: k, sub: v, plain: true, info: true }));
+    const it = await pick('Button mapping', items, index);
     if (!it) return;
     index = items.indexOf(it);
+    if (it.info) continue;
     busy = true;
     try {
       if (it.op === 'reset') {
@@ -1554,7 +1701,7 @@ function flowPad() {
 const PAD_LABELS = {
   rumble: { off: 'Off', low: 'Low', normal: 'Normal', high: 'High' },
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
-  glyphs: { xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
+  glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function padSet(key, value) {
@@ -1615,17 +1762,17 @@ async function flowPadMenu() {
   for (;;) {
     const calibrated = prefs.calib[(activePad() || { id: '' }).id.slice(0, 80)];
     const items = [
-      { label: 'Test', header: true },
+      { label: 'Test', header: true, fold: 'pad.test', open: true },
       { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
-      { label: 'Sticks and triggers', header: true },
+      { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
       { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
       { label: 'Calibrate sticks', sub: calibrated ? 'calibrated' : 'not calibrated', op: 'calib' },
       { label: 'Trigger sensitivity', sub: prefs.pad.trigger + '% to register', op: 'trigger' },
-      { label: 'Vibration', header: true },
+      { label: 'Vibration', header: true, fold: 'pad.rumble', open: true },
       { label: 'Vibration strength', sub: PAD_LABELS.rumble[prefs.pad.rumble], op: 'rumble' },
       { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
-      { label: 'Labels', header: true },
-      { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs], op: 'glyphs' },
+      { label: 'Labels', header: true, fold: 'pad.labels', open: true },
+      { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
     ];
     const it = await pick('Controller', items, index);
     if (!it) return;
@@ -1638,6 +1785,150 @@ async function flowPadMenu() {
     else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
     else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
   }
+}
+
+
+// ------------------------------------------------------------ color wheel
+// Hue is the angle, saturation the distance from the centre, and brightness
+// is its own slider. Left stick moves on the wheel, right stick or LB / RB
+// change brightness, Y types a hex code, A applies, B cancels.
+function hsvToHex(h, s, v) {
+  const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return '#' + [f(5), f(3), f(1)].map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+function hexToHsv(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => x / 255);
+  const mx = Math.max(r, g, b);
+  const d = mx - Math.min(r, g, b);
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: h * 60, s: mx ? d / mx : 0, v: mx };
+}
+const WHEEL_PX = 280;
+function drawWheel(canvas, v) {
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(WHEEL_PX, WHEEL_PX);
+  const rad = WHEEL_PX / 2;
+  for (let y = 0; y < WHEEL_PX; y++) {
+    for (let x = 0; x < WHEEL_PX; x++) {
+      const dx = (x + 0.5 - rad) / rad;
+      const dy = (y + 0.5 - rad) / rad;
+      const d = Math.hypot(dx, dy);
+      if (d > 1) continue;
+      const hex = hsvToHex(((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360, d, v);
+      const i = (y * WHEEL_PX + x) * 4;
+      const n = parseInt(hex.slice(1), 16);
+      img.data[i] = n >> 16; img.data[i + 1] = (n >> 8) & 255; img.data[i + 2] = n & 255; img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+// Resolves { color } when applied, { hex: true, color } when the person wants to type a code, or null.
+function pickColor(title, start) {
+  return new Promise((resolve) => {
+    const hsv = hexToHsv(/^#[0-9a-f]{6}$/i.test(start) ? start : '#ffffff');
+    modal = { kind: 'color', title, orig: start, ...hsv, resolve, t: 0, dom: null, drawnV: -1 };
+    buildColor();
+    updateColor(null, performance.now());
+  });
+}
+function buildColor() {
+  modalEl.hidden = false;
+  modalEl.className = 'color';
+  modalEl.replaceChildren();
+  const box = document.createElement('div');
+  box.className = 'box colorbox';
+  const h = document.createElement('h3');
+  h.textContent = modal.title;
+  const body = document.createElement('div');
+  body.className = 'colorbody';
+  const wrap = document.createElement('div');
+  wrap.className = 'wheelwrap';
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = WHEEL_PX;
+  canvas.className = 'wheel';
+  const mark = document.createElement('div');
+  mark.className = 'wheelmark';
+  wrap.append(canvas, mark);
+  const side = document.createElement('div');
+  side.className = 'colorside';
+  const sw = document.createElement('div');
+  sw.className = 'swatches';
+  const was = document.createElement('div');
+  was.className = 'sw';
+  const now = document.createElement('div');
+  now.className = 'sw';
+  sw.append(was, now);
+  const hexEl = document.createElement('div');
+  hexEl.className = 'hexval';
+  const bright = document.createElement('div');
+  bright.className = 'brightbar';
+  const fill = document.createElement('div');
+  bright.appendChild(fill);
+  const hint = document.createElement('div');
+  hint.className = 'khint colorhint';
+  hint.textContent = `Left stick: move on the wheel\nRight stick or ${buttonName(4)} / ${buttonName(5)}: brightness\n${buttonName(3)}: type a hex code   ${buttonName(2)}: undo\n${buttonName(0)}: apply   ${buttonName(1)}: cancel`;
+  side.append(sw, hexEl, bright, hint);
+  body.append(wrap, side);
+  box.append(h, body);
+  modalEl.appendChild(box);
+  was.style.background = /^#[0-9a-f]{6}$/i.test(modal.orig) ? modal.orig : '#ffffff';
+  modal.dom = { canvas, mark, now, hexEl, fill };
+}
+function updateColor(pad, now) {
+  const d = modal.dom;
+  if (!d) return;
+  const dt = modal.t ? Math.min(0.05, (now - modal.t) / 1000) : 0;
+  modal.t = now;
+  if (pad && dt) {
+    // left stick: move the cursor on the disc. right stick up/down: brightness.
+    const dx = axisValue(pad, 0);
+    const dy = axisValue(pad, 1);
+    if (dx || dy) {
+      let x = modal.s * Math.cos((modal.h * Math.PI) / 180) + dx * dt * 1.1;
+      let y = modal.s * Math.sin((modal.h * Math.PI) / 180) + dy * dt * 1.1;
+      const len = Math.hypot(x, y);
+      if (len > 1) { x /= len; y /= len; }
+      modal.s = Math.min(1, len);
+      if (len > 0.0001) modal.h = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    }
+    const by = axisValue(pad, 3);
+    if (by) modal.v = Math.max(0, Math.min(1, modal.v - by * dt * 0.7));
+  }
+  if (Math.abs(modal.drawnV - modal.v) > 0.01) { drawWheel(d.canvas, modal.v); modal.drawnV = modal.v; }
+  const hex = hsvToHex(modal.h, modal.s, modal.v);
+  modal.hex = hex;
+  const a = (modal.h * Math.PI) / 180;
+  d.mark.style.left = (50 + 50 * modal.s * Math.cos(a)) + '%';
+  d.mark.style.top = (50 + 50 * modal.s * Math.sin(a)) + '%';
+  d.now.style.background = hex;
+  d.hexEl.textContent = hex.toUpperCase();
+  d.fill.style.width = Math.round(modal.v * 100) + '%';
+}
+function colorPress(act) {
+  const step = 0.04;
+  const a = (modal.h * Math.PI) / 180;
+  let x = modal.s * Math.cos(a);
+  let y = modal.s * Math.sin(a);
+  if (act === 'left') x -= step;
+  else if (act === 'right') x += step;
+  else if (act === 'up') y -= step;
+  else if (act === 'down') y += step;
+  else return;
+  const len = Math.hypot(x, y);
+  if (len > 1) { x /= len; y /= len; }
+  modal.s = Math.min(1, len);
+  if (len > 0.0001) modal.h = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  updateColor(null, performance.now());
+}
+function colorButton(n) {
+  const m = modal;
+  if (n === 0) { const color = m.hex; closeModal(); m.resolve({ color }); }
+  else if (n === 1) { closeModal(); m.resolve(null); }
+  else if (n === 3) { const color = m.hex; closeModal(); m.resolve({ hex: true, color }); }
+  else if (n === 2) { Object.assign(m, hexToHsv(/^#[0-9a-f]{6}$/i.test(m.orig) ? m.orig : '#ffffff')); updateColor(null, performance.now()); }
+  else if (n === 4 || n === 5) { m.v = Math.max(0, Math.min(1, m.v + (n === 5 ? 0.05 : -0.05))); updateColor(null, performance.now()); }
 }
 
 // Settings → Theme Settings. What's here comes from the active theme, so a
@@ -1672,14 +1963,14 @@ async function flowTheme() {
     try { t = await api.settings('themeGet'); } finally { busy = false; }
     applyTheme(t);
     const active = t.themes.find((x) => x.id === t.active);
-    const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera (stock)', sub: t.themes.length > 1 ? 'A to switch' : 'more themes: Add-ons', op: 'switch' }];
+    const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera Bright', sub: t.themes.length > 1 ? 'A to switch' : 'more themes: Add-ons', op: 'switch', plain: true }];
     let group = null;
     for (const s of t.settings) {
-      if (s.group !== group) { group = s.group; items.push({ label: group, header: true }); }
-      items.push({ label: s.label, sub: themeValueText(s), op: 'set', s });
+      if (s.group !== group) { group = s.group; items.push({ label: group, header: true, fold: 'theme.' + group }); }
+      items.push({ label: s.label, sub: themeValueText(s), op: 'set', s, plain: true });
     }
     items.push({ label: 'Reset', header: true });
-    items.push({ label: 'Reset this theme to defaults', op: 'reset' });
+    items.push({ label: 'Reset this theme to defaults', op: 'reset', plain: true });
     const it = await pick('Theme Settings', items, index);
     if (!it) return;
     index = items.indexOf(it);
@@ -1709,17 +2000,33 @@ async function editThemeSetting(s) {
     if (it) await themeSet(s.id, it.v);
   } else if (s.type === 'color') {
     const items = [
-      ...COLOR_PRESETS.map(([name, hex]) => ({ label: name, sub: hex + (hex === s.value ? '  ·  current' : ''), v: hex })),
-      { label: 'Custom color…', sub: 'type a hex code', op: 'custom' },
-      { label: 'Default', sub: s.default, v: s.default },
+      { label: 'Color wheel…', sub: 'pick by eye', op: 'wheel', plain: true },
+      { label: 'Hex code…', sub: s.value.toUpperCase(), op: 'hex', plain: true },
+      { label: 'Presets', header: true, fold: 'color.presets' },
+      ...COLOR_PRESETS.map(([name, hex]) => ({ label: name, sub: hex + (hex === s.value ? '  ·  current' : ''), v: hex, plain: true })),
+      { label: 'Default', sub: s.default, v: s.default, plain: true },
     ];
-    const it = await pick(s.label, items, Math.max(0, COLOR_PRESETS.findIndex(([, h]) => h === s.value)));
+    const it = await pick(s.label, items);
     if (!it) return;
-    if (it.op === 'custom') {
-      const txt = await ask('Hex color, like #ff8800', s.value);
-      const m = txt && /^#?([0-9a-f]{6})$/i.exec(txt.trim());
-      if (txt !== null && !m) return setStatus('That is not a 6-digit hex color.', true);
-      if (m) await themeSet(s.id, '#' + m[1].toLowerCase());
+    if (it.op === 'wheel' || it.op === 'hex') {
+      let hex = s.value;
+      let typing = it.op === 'hex';
+      for (;;) {
+        if (typing) {
+          const txt = await ask('Hex code, like #ff8800', hex);
+          if (txt === null) return;
+          const m = /^#?([0-9a-f]{6})$/i.exec(txt.trim());
+          if (!m) { setStatus('That is not a 6-digit hex code.', true); continue; }
+          hex = '#' + m[1].toLowerCase();
+          typing = false;
+        }
+        const res = await pickColor(s.label, hex);
+        if (!res) return;
+        hex = res.color;
+        if (res.hex) { typing = true; continue; }
+        await themeSet(s.id, hex);
+        return;
+      }
     } else await themeSet(s.id, it.v);
   } else if (s.type === 'image') {
     const it = await pick(s.label, [
@@ -1862,6 +2169,7 @@ function onButton(n) {
   }
   if (suspended || busy) return;
   if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
+  if (modal && modal.kind === 'color') return colorButton(n);
   if (modal && modal.kind === 'keys') return keysButton(n);
   if (modal && modal.kind === 'list') {
     if (n === 3 && modal.onY) modal.onY(modal.items[modal.index]);
@@ -1909,11 +2217,13 @@ function loop(now) {
   if (pad) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
+      applyGlyphs(); // "automatic" labels follow whichever controller is in use
       setStatus(`Controller: ${pad.id} [${pad.mapping || 'non-standard'}]`);
     }
     const b = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
-    const sx = axisValue(pad, 0);
-    const sy = axisValue(pad, 1);
+    const wheel = modal && modal.kind === 'color'; // on the color wheel the stick moves the cursor smoothly instead
+    const sx = wheel ? 0 : axisValue(pad, 0);
+    const sy = wheel ? 0 : axisValue(pad, 1);
     const left = b(14) || sx < -0.5;
     const right = b(15) || sx > 0.5;
     const up = b(12) || sy < -0.5;
@@ -1933,15 +2243,9 @@ function loop(now) {
       prevBtn[n] = isDown;
     }
 
-    // Hold View (8) + Menu (9) to quit, no keyboard needed.
-    if (b(8) && b(9) && !modal) {
-      if (quitSince === null) quitSince = now;
-      else if (now - quitSince > QUIT_HOLD_MS) api.quit();
-    } else {
-      quitSince = null;
-    }
   }
   if (modal && modal.kind === 'pad') updatePad(pad, now);
+  if (modal && modal.kind === 'color') updateColor(pad, now);
   requestAnimationFrame(loop);
 }
 
@@ -1954,6 +2258,16 @@ window.addEventListener('keydown', (e) => {
   }
   if (modal && modal.kind === 'pad') {
     if (e.key === 'Escape') closeModal();
+    return;
+  }
+  if (modal && modal.kind === 'color') {
+    const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+    if (k) colorPress(k);
+    else if (e.key === 'Enter') colorButton(0);
+    else if (e.key === 'Escape') colorButton(1);
+    else if (e.key === 'h') colorButton(3);
+    else if (e.key === 'PageUp' || e.key === ']') colorButton(5);
+    else if (e.key === 'PageDown' || e.key === '[') colorButton(4);
     return;
   }
   if (suspended || busy) return;

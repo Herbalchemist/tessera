@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -9,8 +9,10 @@ const { spawn, execFile, execFileSync } = require('child_process');
 // Widgets are shown through their own scheme so the app can control exactly
 // what they may load. Must be registered before the app is ready.
 const WIDGET_SCHEME = 'tessera-widget';
+const ART_SCHEME = 'tessera-art'; // game pictures, by library id (never by path)
 protocol.registerSchemesAsPrivileged([
   { scheme: WIDGET_SCHEME, privileges: { standard: true, secure: true } },
+  { scheme: ART_SCHEME, privileges: { standard: true, secure: true } },
 ]);
 
 // Mutable data lives outside the read-only image, never under /usr.
@@ -23,6 +25,7 @@ const DATA_DIR =
 const LIBRARY_FILE = process.env.LAUNCHER_LIBRARY || path.join(DATA_DIR, 'library.json');
 const LEGACY_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const DEV = process.env.TESSERA_DEV === '1';
 
 const LEGACY_TABS = ['home', 'library', 'apps']; // older files put rows on tabs
 const KINDS = ['game', 'app'];
@@ -115,6 +118,7 @@ function loadState() {
     ids.add(g.id);
     const it = { id: g.id, kind: g.kind || 'game', title: g.title, path: g.path };
     if (g.args && g.args.length) it.args = g.args;
+    if (typeof g.art === 'string' && path.isAbsolute(g.art)) it.art = g.art; // a picture the person chose
     items.push(it);
   }
   const inlays = [];
@@ -225,7 +229,7 @@ function buildView() {
   const tileFor = (ref, selfId) => {
     if (ref === selfId) return null;
     const it = itemById(ref);
-    if (it) return { id: it.id, title: it.title, kind: it.kind };
+    if (it) return { id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art) };
     const inl = inlayById(ref);
     if (inl) {
       // A widget that was removed from the folder stays on the page as a
@@ -251,7 +255,7 @@ function buildView() {
   for (const c of state.categories) {
     folders[c.id] = { title: c.title, tiles: c.entries.map((e) => tileFor(e, c.id)).filter(Boolean) };
   }
-  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind });
+  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art) });
   const games = state.items.filter((i) => i.kind === 'game').map(tileOf);
   const apps = state.items.filter((i) => i.kind === 'app').map(tileOf);
   // Library and Apps are automatic: everything you've added, filed or not.
@@ -265,7 +269,7 @@ function buildView() {
     .filter(Boolean)
     .slice(0, 12)
     .map(tileOf);
-  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, prefs: prefsPayload(), error: state.warn };
+  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, prefs: prefsPayload(), artRev, error: state.warn };
 }
 
 // Remember what was launched, newest first. Only the id and a time are stored.
@@ -343,6 +347,14 @@ function libraryOp(op, p) {
       if (!it || !title) return { ok: false, error: 'Could not rename that.' };
       it.title = title;
       return { ok: true, message: 'Renamed.' };
+    }
+    case 'clearArt': {
+      const it = itemById(p.id);
+      if (!it) return { ok: false, error: 'That no longer exists.' };
+      delete it.art;
+      artCache.delete(it.id);
+      artRev++;
+      return { ok: true, message: 'Using the automatic picture.' };
     }
     case 'deleteCategory': {
       const c = catById(p.id);
@@ -447,16 +459,19 @@ function addItem({ title, kind, file, args }) {
 
 // Which controller button does each on-screen keyboard action use?
 // Indices are the standard gamepad layout: 0 A, 1 B, 2 X, 3 Y, 4 LB, 5 RB,
-// 8 View, 9 Menu. A always types, and the D-pad always moves.
-const DEFAULT_KEYS = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 };
+// 8 View, 9 Menu, 10 left stick click. A always types, and the D-pad always moves.
+// Defaults: click the left stick for Shift, Y space, X delete, Menu done, B cancel.
+const DEFAULT_KEYS = { back: 2, space: 3, shift: 10, done: 9, cancel: 1 };
+const OLD_DEFAULT_KEYS = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 }; // before 0.13: someone who never changed them gets the new ones
+const SETTINGS_VERSION = 2;
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 
 // Controller preferences. Deadzone and trigger threshold are percentages.
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'xbox' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
 const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
   style: ['split', 'both', 'pulse'],
-  glyphs: ['xbox', 'playstation', 'nintendo'],
+  glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
 };
 const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50] };
 
@@ -474,7 +489,8 @@ function loadSettings() {
     const d = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     if (d && Array.isArray(d.scanRoots))
       settings.scanRoots = d.scanRoots.filter((r) => typeof r === 'string' && path.isAbsolute(r));
-    if (d && d.keys && typeof d.keys === 'object') {
+    const untouched = d && d.keys && Object.keys(OLD_DEFAULT_KEYS).every((k) => d.keys[k] === OLD_DEFAULT_KEYS[k]);
+    if (d && d.keys && typeof d.keys === 'object' && !untouched) {
       for (const k of Object.keys(DEFAULT_KEYS)) {
         const v = d.keys[k];
         if (Number.isInteger(v) && v >= 0 && v < 32 && !RESERVED_BUTTONS.includes(v)) settings.keys[k] = v;
@@ -496,6 +512,7 @@ function loadSettings() {
     }
     if (d && d.pad && typeof d.pad === 'object') {
       for (const k of Object.keys(PAD_DEFAULTS)) {
+        if (k === 'glyphs' && !(d.v >= 2)) continue; // 0.12 saved "xbox" without the person choosing it
         const v = d.pad[k];
         if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(v)) settings.pad[k] = v;
         else if (PAD_RANGES[k] && Number.isFinite(v) && v >= PAD_RANGES[k][0] && v <= PAD_RANGES[k][1]) settings.pad[k] = Math.round(v);
@@ -518,7 +535,7 @@ function loadSettings() {
 function saveSettings() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const tmp = SETTINGS_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2));
+  fs.writeFileSync(tmp, JSON.stringify({ v: SETTINGS_VERSION, ...settings }, null, 2));
   fs.renameSync(tmp, SETTINGS_FILE);
 }
 // ------------------------------------------------------------ theme settings
@@ -533,16 +550,36 @@ const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
-const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim'];
+const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion'];
+// Two themes ship with Tessera. They share one list of settings and differ
+// only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
+const BUILTIN_THEMES = [
+  {
+    id: 'stock', name: 'Tessera Bright', author: 'Tessera',
+    defaults: {
+      bg: '#fff3dc', card: '#ffffff', panel: '#ffffff', text: '#24213d', muted: '#6b6786', accent: '#ff4d8d',
+      border: '#24213d', borderW: '4px', radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
+      backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
+    },
+  },
+  {
+    id: 'dark', name: 'Tessera Dark', author: 'Tessera',
+    defaults: {
+      bg: '#0a0714', card: '#1a1230', panel: '#150e29', text: '#e9defc', muted: '#9a8bc0', accent: '#9d7bff',
+      border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
+      backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
+    },
+  },
+];
 const STOCK_THEME = {
   id: 'stock',
-  name: 'Tessera (stock)',
+  name: 'Tessera Bright',
   author: 'Tessera',
   settings: [
     { id: 'screenUse', group: 'Screen', label: 'Screen area used', type: 'range', min: 70, max: 100, step: 5, unit: '%', default: 100, var: '--use', scale: 0.01, hint: 'Lower this if your TV cuts off the edges' },
     { id: 'fontScale', group: 'Screen', label: 'Text size', type: 'range', min: 80, max: 160, step: 10, unit: '%', default: 100, var: '--font-scale', scale: 0.01 },
     { id: 'radius', group: 'Shape', label: 'Corner roundness', type: 'choice', default: '14px', var: '--radius',
-      options: [{ label: 'Sharp', value: '4px' }, { label: 'Normal', value: '14px' }, { label: 'Round', value: '28px' }] },
+      options: [{ label: 'Sharp', value: '4px' }, { label: 'Slight', value: '10px' }, { label: 'Normal', value: '14px' }, { label: 'Soft', value: '20px' }, { label: 'Round', value: '28px' }, { label: 'Pill', value: '40px' }] },
     { id: 'borderW', group: 'Shape', label: 'Border thickness', type: 'choice', default: '0px', var: '--border-w',
       options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Medium', value: '4px' }, { label: 'Thick', value: '6px' }] },
     { id: 'accent', group: 'Colors', label: 'Highlight color', type: 'color', default: '#7fb2ff', var: '--accent' },
@@ -554,17 +591,32 @@ const STOCK_THEME = {
     { id: 'muted', group: 'Colors', label: 'Small text color', type: 'color', default: '#8b95a3', var: '--muted' },
     { id: 'background', group: 'Background', label: 'Background picture', type: 'image', default: '', var: '--bg-image' },
     { id: 'bgDim', group: 'Background', label: 'Picture dimming', type: 'range', min: 0, max: 90, step: 10, unit: '%', default: 50, var: '--bg-dim', scale: 0.01 },
+    { id: 'backdrop', group: 'Background', label: 'Backdrop effect', type: 'choice', default: 'none',
+      options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }] },
+    { id: 'confirm', group: 'Buttons', label: 'Done / Yes button color', type: 'color', default: '#3ddc97', var: '--ok' },
+    { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
+    { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
+      options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
+    { id: 'gridPreset', group: 'Layout', label: 'Grid size', type: 'choice', default: 'c5r3',
+      options: [
+        { label: '3 × 2', value: 'c3r2' }, { label: '4 × 2', value: 'c4r2' }, { label: '5 × 3', value: 'c5r3' },
+        { label: '6 × 3', value: 'c6r3' }, { label: '6 × 4', value: 'c6r4' }, { label: '8 × 4', value: 'c8r4' },
+        { label: 'Custom (use the two settings below)', value: 'custom' },
+      ] },
+    { id: 'gridCols', group: 'Layout', label: 'Custom grid: columns', type: 'range', min: 2, max: 12, step: 1, unit: '', default: 5 },
+    { id: 'gridRows', group: 'Layout', label: 'Custom grid: rows on screen', type: 'range', min: 1, max: 8, step: 1, unit: '', default: 3 },
+    { id: 'motion', group: 'Motion', label: 'Animations', type: 'toggle', default: true, var: '--motion', on: '1', off: '0', hint: 'Turn off if movement makes you dizzy' },
   ],
 };
 const clip = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : '');
 
 let themes = new Map(); // id -> { id, name, author, defaults, extra }
 function scanThemes() {
-  themes = new Map([['stock', { id: 'stock', name: STOCK_THEME.name, author: STOCK_THEME.author, defaults: {}, extra: [] }]]);
+  themes = new Map(BUILTIN_THEMES.map((t) => [t.id, { id: t.id, name: t.name, author: t.author, defaults: t.defaults, extra: [], builtin: true }]));
   let names = [];
   try { names = fs.readdirSync(addonDir('themes'), { withFileTypes: true }); } catch { return; }
   for (const e of names.slice(0, 64)) {
-    if (!e.isDirectory() || e.isSymbolicLink() || !THEME_ID_RE.test(e.name) || e.name === 'stock') continue;
+    if (!e.isDirectory() || e.isSymbolicLink() || !THEME_ID_RE.test(e.name) || themes.has(e.name)) continue;
     let m;
     try {
       const f = path.join(addonDir('themes'), e.name, 'theme.json');
@@ -792,6 +844,92 @@ function friendly(p) {
   return { name: display(rp), tech: '' };
 }
 
+
+// ------------------------------------------------------------- game pictures
+// A tile's picture is, in order: one the person picked, or one Tessera finds
+// (Steam's library cache, Lutris cover art, a PS5 game's own icon, or a
+// cover.png next to the game). The page only ever asks for a library id, so
+// it never learns a path, and every file is checked before it is served.
+const IMG_MAX_ART = 8 * 1024 * 1024;
+const imageMime = (file) => {
+  const mime = IMG_EXT[path.extname(file).toLowerCase()];
+  if (!mime) return null;
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const st = fs.fstatSync(fd);
+    if (!st.isFile() || st.size > IMG_MAX_ART || st.size < 16) return null;
+    const head = Buffer.alloc(12);
+    fs.readSync(fd, head, 0, 12, 0);
+    const ok = mime === 'image/png' ? head.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+      : mime === 'image/jpeg' ? head.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))
+      : head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP';
+    return ok ? mime : null;
+  } catch { return null; } finally { if (fd !== undefined) fs.closeSync(fd); }
+};
+const firstImage = (files) => {
+  for (const f of files) {
+    const rp = real(f);
+    if (rp && underRoot(rp) && imageMime(rp)) return rp;
+  }
+  return null;
+};
+const EXTS = ['.jpg', '.png', '.jpeg', '.webp'];
+function steamArt(id) {
+  const home = os.homedir();
+  for (const root of ['.local/share/Steam', '.steam/steam', '.steam/root', '.var/app/com.valvesoftware.Steam/.local/share/Steam']) {
+    const base = path.join(home, root, 'appcache', 'librarycache');
+    const dirs = [path.join(base, id)];
+    try {
+      for (const e of fs.readdirSync(dirs[0], { withFileTypes: true })) if (e.isDirectory()) dirs.push(path.join(dirs[0], e.name)); // newer layout: one folder per picture
+    } catch { /* older layout, or Steam hasn't cached this one */ }
+    const hit = firstImage([
+      ...dirs.flatMap((d) => EXTS.map((x) => path.join(d, 'library_600x900' + x))),
+      ...EXTS.map((x) => path.join(base, `${id}_library_600x900${x}`)),
+      ...dirs.flatMap((d) => EXTS.map((x) => path.join(d, 'header' + x))),
+      ...EXTS.map((x) => path.join(base, `${id}_header${x}`)),
+    ]);
+    if (hit) return hit;
+  }
+  return null;
+}
+function lutrisArt(slug) {
+  const home = os.homedir();
+  const dirs = ['.local/share/lutris/coverart', '.cache/lutris/coverart', '.local/share/lutris/banners', '.var/app/net.lutris.Lutris/data/lutris/coverart', '.var/app/net.lutris.Lutris/data/lutris/banners'];
+  return firstImage(dirs.flatMap((d) => EXTS.map((x) => path.join(home, d, slug + x))));
+}
+function localArt(file) {
+  const dir = path.dirname(file);
+  const sce = ['sce_sys/icon0.png', 'sce_sys/pic0.png', 'app0/sce_sys/icon0.png', 'app0/sce_sys/pic0.png'];
+  const loose = ['cover', 'folder', 'poster', 'boxart', 'thumbnail', 'icon', 'logo'].flatMap((n) => EXTS.map((x) => n + x));
+  return firstImage([...sce.map((s) => path.join(dir, s)), ...sce.map((s) => path.join(dir, '..', s)), ...loose.map((l) => path.join(dir, l))]);
+}
+const artCache = new Map(); // item id -> { at, file }
+let artRev = 0;
+function resolveArt(item) {
+  const hit = artCache.get(item.id);
+  if (hit && Date.now() - hit.at < 60000 && hit.custom === (item.art || '')) return hit.file;
+  let file = null;
+  if (item.art) file = firstImage([item.art]);
+  if (!file) {
+    const args = (item.args || []).join(' ');
+    let m;
+    if ((m = /steam:\/\/rungameid\/(\d+)/.exec(args))) file = steamArt(m[1]);
+    else if ((m = /lutris:rungame\/([A-Za-z0-9._-]+)/.exec(args))) file = lutrisArt(m[1]);
+    else if (!/^(steam|heroic|lutris):/.test(args)) file = localArt(item.path);
+  }
+  artCache.set(item.id, { at: Date.now(), file, custom: item.art || '' });
+  return file;
+}
+function serveArt(id) {
+  const notFound = { status: 404, headers: { 'Content-Type': 'text/plain' }, body: 'Not found' };
+  const item = itemById(id);
+  const file = item && resolveArt(item);
+  const mime = file && imageMime(file);
+  if (!mime) return notFound;
+  return { status: 200, headers: { 'Content-Type': mime, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' }, body: fs.readFileSync(file) };
+}
+
 // Launchers worth a shortcut. Shown only if installed. Fixed list, so nothing
 // the page sends can add to it.
 const SUGGESTED = '@suggested';
@@ -861,7 +999,7 @@ function browseView() {
       }
     }
     if (dir) rows.push({ name: e.name, isDir: true, full });
-    else if (file && b.purpose === 'pickImage') {
+    else if (file && (b.purpose === 'pickImage' || b.purpose === 'pickArt')) {
       if (IMG_EXT[path.extname(e.name).toLowerCase()]) rows.push({ name: e.name, isDir: false, full });
     } else if (file && b.purpose !== 'addRoot') {
       try { fs.accessSync(full, fs.constants.X_OK); } catch { continue; }
@@ -881,9 +1019,11 @@ function browseView() {
 
 function browseOp(op, p) {
   if (op === 'start') {
-    if (!['addGame', 'addApp', 'addRoot', 'pickImage'].includes(p.purpose)) return { error: 'Bad request.' };
+    if (!['addGame', 'addApp', 'addRoot', 'pickImage', 'pickArt'].includes(p.purpose)) return { error: 'Bad request.' };
+    if (p.purpose === 'pickArt' && !itemById(p.item)) return { error: 'That no longer exists.' };
     browse = {
       purpose: p.purpose,
+      item: p.purpose === 'pickArt' ? p.item : null,
       into: typeof p.into === 'string' && catById(p.into) ? p.into : null,
       dir: null,
       entries: [],
@@ -917,6 +1057,19 @@ function browseOp(op, p) {
     return browseView();
   }
   if (op === 'choose') {
+    if (browse.purpose === 'pickArt') {
+      if (!entry || entry.isDir) return { error: 'Pick a picture.' };
+      const rp = real(entry.full);
+      const item = itemById(browse.item);
+      if (!item || !rp || !underRoot(path.dirname(rp))) return { error: "Tessera can't use that file." };
+      if (!imageMime(rp)) return { error: "That isn't a usable picture (PNG, JPEG or WebP, up to 8 MB)." };
+      item.art = rp;
+      artCache.delete(item.id);
+      artRev++;
+      saveState();
+      browse = null;
+      return { ok: true, message: 'Picture set.', view: buildView() };
+    }
     if (browse.purpose === 'pickImage') {
       if (!entry || entry.isDir) return { error: 'Pick a picture.' };
       const rp = real(entry.full);
@@ -1431,7 +1584,7 @@ function addonsInfo() {
     rejected,
     dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
     themeCount: countDirs('themes'),
-    themes: [...themes.values()].filter((t) => t.id !== 'stock').map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
+    themes: [...themes.values()].filter((t) => !t.builtin).map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
   };
 }
 
@@ -1445,14 +1598,18 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: true,
     frame: false,
+    autoHideMenuBar: true,
     backgroundColor: '#10151c',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      devTools: DEV, // no inspector for anyone sitting at the TV
     },
   });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
   mainWindow.loadFile('index.html');
   mainWindow.webContents.on('did-finish-load', () => {
     ensureTree();
@@ -1462,11 +1619,16 @@ function createWindow() {
     loadSettings();
     send('init', buildView());
   });
-  // Keyboard fallback exit. Local to this window, so it never steals keys from a game.
+  // Tessera is the front door of the machine, so there is no quit shortcut for
+  // whoever is holding the controller. Leaving goes through Settings > Desktop
+  // Mode, which lands on the login screen. Developers get Ctrl+Q with TESSERA_DEV=1.
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.type === 'keyDown' && input.control && input.key.toLowerCase() === 'q') {
+    if (input.type !== 'keyDown') return;
+    if (DEV && input.control && input.key.toLowerCase() === 'q') {
       event.preventDefault();
       app.quit();
+    } else if (!DEV && (input.key === 'F12' || (input.control && input.shift && /^[ijc]$/i.test(input.key)) || (input.control && /^[rw]$/i.test(input.key)) || input.key === 'F5' || (input.alt && input.key === 'F4'))) {
+      event.preventDefault(); // no inspector, reload or close
     }
   });
 }
@@ -1475,6 +1637,16 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.whenReady().then(() => {
+    Menu.setApplicationMenu(null); // the default menu carries Reload and Toggle DevTools
+    protocol.handle(ART_SCHEME, (req) => {
+      try {
+        const m = /^\/([^/]+)$/.exec(new URL(req.url).pathname);
+        const r = serveArt(m ? decodeURIComponent(m[1]) : '');
+        return new Response(r.body, { status: r.status, headers: r.headers });
+      } catch {
+        return new Response('Bad request', { status: 400 });
+      }
+    });
     protocol.handle(WIDGET_SCHEME, (req) => {
       try {
         const u = new URL(req.url);
