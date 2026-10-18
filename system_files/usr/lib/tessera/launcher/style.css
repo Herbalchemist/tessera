@@ -192,6 +192,15 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
 .box h3 { margin: 0 0 16px; font-size: 1.3rem; font-weight: 600; color: var(--muted); overflow-wrap: anywhere; }
+.box .mbody { margin: -6px 0 18px; font-size: 1.05rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
+/* First-run welcome: a popup over an empty screen. The launcher stays hidden
+   (body.hold) until the popup is answered, then fades in. */
+#modal.welcome { background: transparent; }
+#modal.welcome .box { text-align: center; width: min(40rem, 90vw); }
+#modal.welcome .box h3 { font-size: 1.8rem; color: var(--text); margin-bottom: 14px; }
+#modal.welcome .mitem { text-align: left; }
+body > :not(#modal):not(script) { transition: opacity 0.8s ease; }
+body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transition: none; }
 .mlist { max-height: 56vh; overflow-y: auto; scrollbar-width: none; }
 .mitem {
   padding: 14px 18px;
@@ -242,13 +251,14 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   width: min(900px, 84vw);
   text-align: center;
 }
-.kbcenter h3 { margin: 0 0 14px; font-size: calc(var(--key) * 0.4); font-weight: 600; color: var(--muted); }
+.kbcenter h3 { margin: 0 0 14px; font-size: calc(var(--key) * 0.4); font-weight: 600; color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7); }
 .field {
   min-height: calc(var(--key) * 1.2);
   padding: calc(var(--key) * 0.2) calc(var(--key) * 0.35);
-  background: #0d1218;
+  background: var(--panel);
+  color: var(--text);
   border-radius: calc(var(--key) * 0.2);
-  box-shadow: 0 0 0 2px #26303d, 0 20px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 2px var(--border-soft, color-mix(in srgb, var(--text) 25%, transparent)), 0 20px 60px rgba(0, 0, 0, 0.55);
   font-size: calc(var(--key) * 0.6);
   white-space: pre;
   text-align: left;
@@ -282,7 +292,17 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   font-weight: 600;
 }
 .key.wide { flex: 1 1 0; }
+/* the PIN keypad: big even keys */
+.keys.numeric .keys-grid { width: auto; }
+.keys.numeric .key, .keys.numeric .key.wide { flex: 0 0 calc(var(--key) * 1.5); }
+.keys.numeric .krow:last-child .key { flex: 0 0 calc(var(--key) * 4.8); }
+.keys.numeric .field { text-align: center; letter-spacing: 0.4em; }
 .key.on { outline: 3px solid var(--accent); outline-offset: -3px; }
+/* PIN button pattern: each number shows the controller button that types it */
+.key { position: relative; }
+.key .kg { position: absolute; right: 8%; bottom: 6%; font-size: calc(var(--key) * 0.22); font-weight: 700; opacity: 0.75; letter-spacing: 0; }
+.key.pat.hit { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
+.keys.numeric .krow:last-child .key .kg { right: 4%; }
 .key.active { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
 #modal.keys .khint { font-size: calc(var(--key) * 0.26); }
 @media (prefers-reduced-motion: reduce) { .kbpanel, .tab.lifted, .caret { animation: none; } }
@@ -511,3 +531,63 @@ body[data-wg="solid"] .card.kind-inlay, body[data-wg="solid"] .card.has-widget {
 /* on see-through panes the small text borrows the main text color so it stays readable over any picture */
 body[data-wg="glass"] .card.kind-inlay .recent-head, body[data-wg="glass"] .card.kind-inlay .clock-date, body[data-wg="glass"] .card.kind-inlay .recent-none,
 body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .card.kind-inlay .clock-date, body[data-wg="outline"] .card.kind-inlay .recent-none { color: color-mix(in srgb, var(--text) 80%, transparent); }
+
+/* ---- Storage: drive bars and charts. Colours come from the theme. ---- */
+.mitem.rich { display: block; }
+.mitem.rich .rtop { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+.ugfx { margin-top: 10px; }
+.ugfx.thin { margin-top: 8px; }
+.ubar { display: flex; gap: 3px; height: 0.95rem; border-radius: 99px; overflow: hidden; }
+.ugfx.thin .ubar { height: 0.55rem; }
+.useg { flex: 0 0 auto; min-width: 3px; }
+.ubar .useg { border-radius: 3px; }
+.useg.g { background: var(--accent); }
+.useg.t { background: var(--ok); }
+.useg.o { background: color-mix(in srgb, var(--text) 38%, transparent); }
+.useg.f { background: color-mix(in srgb, var(--text) 13%, transparent); flex-grow: 1; }
+.useg.v0 { background: var(--accent); }
+.useg.v1 { background: var(--ok); }
+.useg.v2 { background: color-mix(in srgb, var(--accent) 50%, var(--ok)); }
+.useg.v3 { background: color-mix(in srgb, var(--danger) 70%, var(--text)); }
+.useg.v4 { background: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+.useg.v5 { background: color-mix(in srgb, var(--ok) 55%, var(--text)); }
+.useg.v6 { background: color-mix(in srgb, var(--accent) 30%, var(--danger)); }
+.useg.v7 { background: color-mix(in srgb, var(--text) 45%, transparent); }
+.ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 60%, transparent); }
+.ubar.measuring .useg.o { animation: umeasure 1.1s ease-in-out infinite; }
+@keyframes umeasure { 50% { opacity: 0.4; } }
+.ulegend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font-size: 0.85rem; opacity: 0.85; }
+.ulegend span { display: inline-flex; align-items: center; gap: 6px; }
+.ulegend i.useg { display: inline-block; width: 0.7rem; height: 0.7rem; min-width: 0; border-radius: 50%; flex: none; }
+.utags { display: flex; gap: 10px; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.utags .warn { color: var(--danger); font-weight: 800; opacity: 1; }
+/* on the highlighted row the accent colour is the background, so the bars use the text-on-accent colour */
+.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-accent); }
+.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-accent) 78%, transparent); }
+.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-accent) 50%, transparent); }
+.mitem.active .useg.f { background: color-mix(in srgb, var(--on-accent) 20%, transparent); }
+.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-accent) 68%, transparent); }
+.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-accent) 58%, transparent); }
+.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-accent) 44%, transparent); }
+.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-accent) 36%, transparent); }
+.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-accent) 28%, transparent); }
+.mitem.active .utags .warn { color: inherit; }
+.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-accent)); }
+/* games and apps whose drive is unplugged or whose files are gone */
+.card.offline { opacity: 0.5; filter: grayscale(0.85); }
+.card.offline small { color: var(--danger); }
+.card.warn small { color: var(--danger); font-weight: 700; }
+
+/* display calibration */
+.calsvg { position: absolute; width: 0; height: 0; overflow: hidden; }
+#modal.cal { position: fixed; inset: 0; padding: 0; border: 0; border-radius: 0; background: #000; z-index: 60; display: block; }
+#modal.cal .cal-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#modal.cal .cal-top, #modal.cal .cal-bottom { position: absolute; left: 0; right: 0; padding: 1.2vh 4vw; color: inherit; font-family: sans-serif; text-shadow: none; }
+#modal.cal .cal-top { top: 0; }
+#modal.cal .cal-bottom { bottom: 0; }
+#modal.cal .cal-step { font-size: 2.2vh; opacity: .8; }
+#modal.cal .cal-help { font-size: 2.6vh; margin-top: .6vh; max-width: 80vw; }
+#modal.cal .cal-val { font-size: 3.4vh; text-align: center; }
+#modal.cal .cal-bar { height: .8vh; width: 40vw; margin: 1vh auto; background: rgba(128,128,128,.35); border-radius: 1vh; overflow: hidden; }
+#modal.cal .cal-bar i { display: block; height: 100%; background: currentColor; }
+#modal.cal .cal-hint { font-size: 2vh; text-align: center; opacity: .8; }

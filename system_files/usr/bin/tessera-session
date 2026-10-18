@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera console session. Started by the login manager via tessera.desktop.
 # Runs the launcher inside Gamescope and restarts it if it crashes.
-# A clean exit (hold Start+Select, or Ctrl+Q) ends the session and returns
+# A clean exit (Settings > Desktop Mode, or Ctrl+Q in a test build) ends the session and returns
 # to the login screen, which is the way back to the desktop.
 
 APP=/usr/lib/tessera/launcher
@@ -21,15 +21,36 @@ if gamescope --help 2>&1 | grep -q -- '--force-windows-fullscreen'; then
   FORCE_FULL="--force-windows-fullscreen"
 fi
 
+# Display calibration for games too (Settings > Display calibration). Tessera
+# writes a shader there only if the person turned that on. If Gamescope can't
+# start with it, it is dropped for this session and a note is left so Tessera
+# can say so, and nobody is ever locked out by it.
+CAL_FX="${XDG_DATA_HOME:-$HOME/.local/share}/tessera/calibration/tessera-calibration.fx"
+CAL_FAILED="$STATE/calibration-failed"
+FX_ARGS=()
+if [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q -- '--reshade-effect'; then
+  FX_ARGS=(--reshade-effect "$CAL_FX")
+  export TESSERA_CAL_SYSTEM=1
+fi
+
 mkdir -p "$STATE"
 echo "session start $(date -Is)" >"$LOG"
 
 fails=0
 while true; do
   started=$(date +%s)
-  gamescope -f $FORCE_FULL -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  gamescope -f $FORCE_FULL "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
+
+  # Failed quickly with the calibration shader on: turn it off and try again.
+  if [ "$code" -ne 0 ] && [ "${#FX_ARGS[@]}" -gt 0 ] && [ $(( $(date +%s) - started )) -lt "$QUICK_SECS" ]; then
+    echo "calibration shader failed, starting without it" >>"$LOG"
+    touch "$CAL_FAILED"
+    FX_ARGS=()
+    unset TESSERA_CAL_SYSTEM
+    continue
+  fi
 
   # Clean exit: end the session and return to the login screen.
   [ "$code" -eq 0 ] && exit 0

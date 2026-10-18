@@ -105,7 +105,7 @@ const GLYPH_SETS = {
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
 const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
-let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {} };
+let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
   const v = /vendor:\s*([0-9a-f]{4})/i.exec(id || '');
@@ -204,6 +204,10 @@ function applyPrefs(p) {
   prefs.pad = { ...PAD_DEFAULTS, ...(p.pad || {}) };
   prefs.calib = p.calib || {};
   prefs.pageGrid = p.pageGrid || {};
+  if (p.pin) prefs.pin = p.pin;
+  if (p.vault) prefs.vault = p.vault;
+  if (p.storage) prefs.storage = p.storage;
+  if (p.calibration) { prefs.calibration = p.calibration; if (!(modal && modal.kind === 'cal')) applySavedCalibration(); }
   applyGlyphs();
   applyTheme(p.theme);
 }
@@ -230,16 +234,22 @@ const SETTINGS_ROWS = [
     id: '_settings',
     title: 'System',
     tiles: [
-      { id: '_roots', title: 'Library folders', kind: 'action' },
-      { id: '_scan', title: 'Scan for games', kind: 'action' },
+      { id: '_storage', title: 'Storage', kind: 'action' },
       { id: '_pad', title: 'Controller', kind: 'action' },
       { id: '_controls', title: 'Button mapping', kind: 'action' },
       { id: '_theme', title: 'Theme Settings', kind: 'action' },
+      { id: '_display', title: 'Display calibration', kind: 'action' },
       { id: '_addons', title: 'Add-ons', kind: 'action' },
+      { id: '_pin', title: 'PIN', kind: 'action' },
       { id: '_desktop', title: 'Desktop Mode', kind: 'action' },
     ],
   },
 ];
+
+function settingsRows() {
+  const low = (prefs.storage && prefs.storage.low) || [];
+  return SETTINGS_ROWS.map((r) => ({ ...r, tiles: r.tiles.map((t) => (t.id === '_storage' && low.length ? { ...t, sub: `Low space: ${low[0].name}`, warn: true } : t)) }));
+}
 
 // ------------------------------------------------------------------ state
 
@@ -296,7 +306,7 @@ function baseRows() {
         'This folder is empty', 'Add a game, an app, or something from your library'),
     ];
   }
-  if (page === 'settings') return SETTINGS_ROWS;
+  if (page === 'settings') return settingsRows();
   if (page === 'home') {
     const f = data.folders._home;
     const tiles = (f ? f.tiles : []).filter((t) => t.kind === 'inlay');
@@ -588,7 +598,9 @@ function render() {
         fillInlay(card, t);
       } else {
         const kind = document.createElement('small');
-        kind.textContent = { folder: 'Folder', app: 'App', game: 'Game' }[t.kind] || '';
+        kind.textContent = t.offline ? (t.offline === 'drive' ? 'Drive not connected' : 'Files missing') : (t.kind === 'action' && t.sub) || { folder: 'Folder', app: 'App', game: 'Game' }[t.kind] || '';
+        if (t.offline) card.classList.add('offline');
+        if (t.warn) card.classList.add('warn');
         const name = document.createElement('span');
         name.textContent = t.title;
         card.append(kind, name);
@@ -766,7 +778,8 @@ function moveRow(d) {
 // "Browser" and "+ Mosaic" are buttons that live on the bar, not pages: the
 // pointer lights them up but the screen keeps showing the page you were on.
 const isButtonTab = (id) => id === 'new' || id === 'browser';
-function launchBrowser() {
+async function launchBrowser() {
+  if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
   suspended = true;
   setStatus('Opening your browser…');
   api.launch('_browser');
@@ -822,19 +835,26 @@ function activate() {
   } else if (t.kind === 'inlay') {
     openMenu(); // widgets are display-only; A offers move / resize / remove
   } else if (t.kind === 'action') {
-    if (t.id === '_roots') flowRoots();
-    else if (t.id === '_scan') flowScan();
-    else if (t.id === '_pad') flowPadMenu();
-    else if (t.id === '_theme') flowTheme();
-    else if (t.id === '_controls') flowControls();
-    else if (t.id === '_desktop') flowDesktop();
-    else if (t.id === '_addons') flowAddons();
-    else setStatus('Not available yet.');
+    requirePin().then((ok) => { if (ok) runAction(t.id); });
+  } else if (t.offline) {
+    setStatus(t.offline === 'drive' ? `${t.title} is on a drive that isn't plugged in.` : `${t.title}'s files can't be found. Settings > Storage > Clean up can remove broken entries.`, true);
   } else {
     suspended = true;
     setStatus('Starting…');
     api.launch(t.id);
   }
+}
+
+function runAction(id) {
+  if (id === '_storage') flowStorage();
+  else if (id === '_pad') flowPadMenu();
+  else if (id === '_theme') flowTheme();
+  else if (id === '_display') flowCalMenu();
+  else if (id === '_controls') flowControls();
+  else if (id === '_desktop') flowDesktop();
+  else if (id === '_addons') flowAddons();
+  else if (id === '_pin') flowPin();
+  else setStatus('Not available yet.');
 }
 
 // ------------------------------------------------------------------ modal
@@ -862,17 +882,18 @@ function visibleFlags(items) {
   });
 }
 const pickable = (items, flags, i) => Boolean(items[i]) && flags[i] && !(items[i].header && !items[i].fold);
-function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY }) {
+function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, body = '', welcome = false }) {
   // Never start on a label or on something folded away.
   const flags = visibleFlags(items);
   for (let i = index; i < items.length; i++) if (pickable(items, flags, i)) { index = i; break; }
-  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY };
+  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, body, welcome };
   renderModal();
 }
 // Resolves with the chosen item, or null if the user backs out.
-function pick(title, items, index = 0) {
+function pick(title, items, index = 0, extra = {}) {
   return new Promise((resolve) => {
     openList({
+      ...extra,
       title,
       items,
       index,
@@ -907,9 +928,13 @@ const KEY_ROWS = [
 const SPECIAL = { shift: 'Shift', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
 
 // Resolves with the text, or null on cancel.
-function ask(title, initial = '') {
+const rowsOf = () => modal.rows || KEY_ROWS;
+function ask(title, initial = '', opts = {}) {
   return new Promise((resolve) => {
-    modal = { kind: 'keys', title, text: initial.slice(0, MAX_TEXT), shift: false, r: 1, c: 0, last: null, resolve, dom: null };
+    modal = {
+      kind: 'keys', title, text: initial.slice(0, MAX_TEXT), shift: false, r: opts.rows ? 0 : 1, c: 0, last: null, resolve, dom: null,
+      rows: opts.rows || null, mask: Boolean(opts.mask), max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern),
+    };
     renderModal();
   });
 }
@@ -919,7 +944,8 @@ function finishKeys(accept) {
   resolve(accept ? text : null);
 }
 function typeChar(ch) {
-  if (modal.text.length >= MAX_TEXT) return;
+  if (modal.text.length >= modal.max) return;
+  if (modal.digits && !/^\d$/.test(ch)) return;
   modal.text += modal.shift ? ch.toUpperCase() : ch;
   modal.shift = false;
   renderModal();
@@ -933,11 +959,53 @@ function keyAction(k) {
   else return typeChar(k);
   renderModal();
 }
+
+// ---- PIN button patterns
+// Each controller family has its own fixed set: ten buttons stand for the
+// digits 1 2 3 4 5 6 7 8 9 0, in that order. These are NOT the remappable
+// controls and no setting changes them. They only apply to the PIN keypad, on
+// pads that report the standard layout (anything else keeps the plain keypad).
+const PAD_ARROWS = { 12: '↑', 13: '↓', 14: '←', 15: '→' };
+const PIN_PATTERNS = {
+  // standard-layout button numbers, in digit order 1..9, 0
+  xbox:        { order: [0, 1, 2, 3, 4, 5, 12, 13, 14, 15] },        // A B X Y LB RB ↑ ↓ ← →
+  playstation: { order: [0, 1, 2, 3, 4, 5, 12, 13, 14, 15] },        // ✕ ○ □ △ L1 R1 ↑ ↓ ← →
+  nintendo:    { order: [1, 0, 3, 2, 4, 5, 12, 13, 14, 15] },        // A B X Y L R ↑ ↓ ← →
+};
+const PIN_CONTROLS = { 6: 'back', 8: 'cancel', 9: 'done' };           // LT/ZL, View/Create/−, Menu/Options/+
+function patternActive() {
+  if (!modal || modal.kind !== 'keys' || !modal.patternWanted) return false;
+  const p = activePad();
+  return Boolean(p && p.mapping === 'standard');
+}
+const patternFamily = () => { const p = activePad(); return detectFamily(p ? p.id : ''); };
+const patternLabel = (fam, n) => PAD_ARROWS[n] || (GLYPH_SETS[fam] || BUTTON_NAMES)[n] || `#${n}`;
+function patternDigitFor(n) {
+  const order = (PIN_PATTERNS[patternFamily()] || PIN_PATTERNS.xbox).order;
+  const i = order.indexOf(n);
+  return i < 0 ? null : String((i + 1) % 10);
+}
+function patternButton(n) {
+  const d = patternDigitFor(n);
+  if (d !== null) { flashKey(d); return typeChar(d); }
+  const act = PIN_CONTROLS[n];
+  if (act) { flashKey(act); return keyAction(act); }
+}
+function flashKey(k) {
+  if (!modal || !modal.dom) return;
+  rowsOf().forEach((row, r) => row.forEach((key, c) => {
+    if (key !== k) return;
+    const el = modal.dom.cells[r][c];
+    el.classList.add('hit');
+    setTimeout(() => el.classList.remove('hit'), 160);
+  }));
+}
 // A controller button pressed while the keyboard is open. A always types
 // the highlighted key; the rest follow the bindings from Settings → Controls.
 function keysButton(n) {
   modal.last = n;
-  if (n === 0) return keyAction(KEY_ROWS[modal.r][modal.c]);
+  if (patternActive()) return patternButton(n);
+  if (n === 0) return keyAction(rowsOf()[modal.r][modal.c]);
   const action = Object.keys(keymap).find((k) => keymap[k] === n);
   if (action) return keyAction(action);
   renderModal();
@@ -946,7 +1014,7 @@ function keysButton(n) {
 // Built once and then updated in place, so the slide-up only plays on open.
 function buildKeys() {
   modalEl.replaceChildren();
-  modalEl.className = 'keys';
+  modalEl.className = 'keys' + (modal.digits ? ' numeric' : '');
   const centre = document.createElement('div');
   centre.className = 'kbcenter';
   const h = document.createElement('h3');
@@ -962,7 +1030,7 @@ function buildKeys() {
   panel.className = 'kbpanel';
   const grid = document.createElement('div');
   grid.className = 'keys-grid';
-  const cells = KEY_ROWS.map((row) => {
+  const cells = rowsOf().map((row) => {
     const line = document.createElement('div');
     line.className = 'krow';
     const els = row.map((k) => {
@@ -984,15 +1052,40 @@ function updateKeys() {
   if (!modal.dom) buildKeys();
   const { h, text, cells, hint } = modal.dom;
   h.textContent = modal.title;
-  text.textContent = modal.text;
-  KEY_ROWS.forEach((row, r) =>
+  text.textContent = modal.mask ? '•'.repeat(modal.text.length) : modal.text;
+  rowsOf().forEach((row, r) =>
     row.forEach((k, c) => {
       const el = cells[r][c];
-      el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
+      const pat = patternActive();
       el.classList.toggle('on', k === 'shift' && modal.shift);
-      el.classList.toggle('active', r === modal.r && c === modal.c);
+      el.classList.toggle('active', !pat && r === modal.r && c === modal.c);
+      el.classList.toggle('pat', pat);
+      if (pat) {
+        const fam = patternFamily();
+        const order = (PIN_PATTERNS[fam] || PIN_PATTERNS.xbox).order;
+        let n = null;
+        if (/^\d$/.test(k)) n = order[(Number(k) + 9) % 10];
+        else n = Number(Object.keys(PIN_CONTROLS).find((b) => PIN_CONTROLS[b] === k));
+        el.textContent = SPECIAL[k] || k;
+        if (n !== null && !Number.isNaN(n)) {
+          const b = document.createElement('small');
+          b.className = 'kg';
+          b.textContent = patternLabel(fam, n);
+          el.appendChild(b);
+        }
+        return;
+      }
+      el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
     })
   );
+  if (modal.digits && patternActive()) {
+    hint.textContent = 'Press the button shown on each number to type it.';
+    return;
+  }
+  if (modal.digits) {
+    hint.textContent = `A press   ${buttonName(keymap.back)} delete   ${buttonName(keymap.done)} done   ${buttonName(keymap.cancel)} cancel`;
+    return;
+  }
   hint.textContent =
     `A type   ${buttonName(keymap.back)} delete   ${buttonName(keymap.space)} space   ` +
     `${buttonName(keymap.shift)} shift   ${buttonName(keymap.done)} done` +
@@ -1003,13 +1096,19 @@ function renderModal() {
   if (!modal) return;
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
-  if (modal.kind === 'pad' || modal.kind === 'color') return;
-  modalEl.className = '';
+  if (modal.kind === 'pad' || modal.kind === 'color' || modal.kind === 'cal') return;
+  modalEl.className = modal.welcome ? 'welcome' : '';
   modalEl.replaceChildren();
   const box = document.createElement('div');
   box.className = 'box';
   const h = document.createElement('h3');
   box.appendChild(h);
+  if (modal.body) {
+    const p = document.createElement('p');
+    p.className = 'mbody';
+    p.textContent = modal.body;
+    box.appendChild(p);
+  }
 
   if (modal.kind === 'capture') {
     h.textContent = `Press a button for “${modal.label}”`;
@@ -1031,13 +1130,28 @@ function renderModal() {
     // Cancel / Close glow red, Done / Yes glow green, except in menus that are just lists of settings.
     const danger = !it.plain && (it.danger || /^(cancel|close)\b/i.test(it.label));
     const ok = !it.plain && (it.ok || /^(done|yes|ok|confirm)$/i.test(it.label));
-    el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (it.fold ? ' fold' : '') + (danger ? ' danger' : '') + (ok ? ' ok' : '');
+    el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (it.fold ? ' fold' : '') + (danger ? ' danger' : '') + (ok ? ' ok' : '') + (it.graphic ? ' rich' : '');
     const mark = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
-    el.textContent = (it.fold ? (isOpen(it) ? '▾  ' : '▸  ') : '') + mark + it.label;
-    if (it.sub) {
+    const text = (it.fold ? (isOpen(it) ? '▾  ' : '▸  ') : '') + mark + it.label;
+    const addSub = (parent) => {
+      if (!it.sub) return;
       const s = document.createElement('small');
       s.textContent = it.sub;
-      el.appendChild(s);
+      parent.appendChild(s);
+    };
+    if (it.graphic) {
+      // a row with a picture under it: the name and size on top, the graphic below
+      const top = document.createElement('div');
+      top.className = 'rtop';
+      const nm = document.createElement('span');
+      nm.textContent = text;
+      top.appendChild(nm);
+      addSub(top);
+      el.appendChild(top);
+      it.graphic(el);
+    } else {
+      el.textContent = text;
+      addSub(el);
     }
     list.appendChild(el);
   });
@@ -1055,6 +1169,7 @@ function renderModal() {
 
 function modalPress(act) {
   if (modal.kind === 'capture' || modal.kind === 'pad') return;
+  if (modal.kind === 'cal') return calPress(act);
   if (modal.kind === 'color') return colorPress(act);
   if (modal.kind === 'list') {
     const n = modal.items.length;
@@ -1081,11 +1196,12 @@ function modalPress(act) {
     return;
   }
   // keyboard: directions only. Buttons go through keysButton().
+  const kr = rowsOf();
   if (act === 'left') modal.c = Math.max(0, modal.c - 1);
-  else if (act === 'right') modal.c = Math.min(KEY_ROWS[modal.r].length - 1, modal.c + 1);
+  else if (act === 'right') modal.c = Math.min(kr[modal.r].length - 1, modal.c + 1);
   else if (act === 'up') modal.r = Math.max(0, modal.r - 1);
-  else if (act === 'down') modal.r = Math.min(KEY_ROWS.length - 1, modal.r + 1);
-  modal.c = Math.min(modal.c, KEY_ROWS[modal.r].length - 1);
+  else if (act === 'down') modal.r = Math.min(kr.length - 1, modal.r + 1);
+  modal.c = Math.min(modal.c, kr[modal.r].length - 1);
   renderModal();
 }
 
@@ -1112,6 +1228,7 @@ async function confirm(question, yesLabel = 'Yes') {
 
 // What "+" offers depends on where it is.
 async function flowAdd(ctx) {
+  if (!(await requirePin())) return;
   const into = ctx.catId;
   const onlyGame = ctx.kind === 'game';
   const onlyApp = ctx.kind === 'app';
@@ -1194,15 +1311,20 @@ async function flowAddons() {
         { label: '↻  Reload add-ons', op: 'reload' },
       ];
     } else if (view === 'widgets') {
-      title = 'Add-ons · Widgets';
-      items = info.widgets.map((w) => inert(w.name, [w.author, `${w.size.w} × ${w.size.h}${w.resizable ? ' · resizable' : ''}`].filter(Boolean).join(' · ')));
+      title = 'Add-ons · Widgets (A removes one)';
+      items = info.widgets.map((w) => ({ label: w.name, sub: [w.author, `${w.size.w} × ${w.size.h}${w.resizable ? ' · resizable' : ''}`].filter(Boolean).join(' · '), rm: { dir: 'widgets', id: w.id }, plain: true }));
       info.rejected.forEach((x) => items.push(inert('⚠  ' + x.id, x.reason)));
       if (!items.length) items.push(inert('No widgets installed yet', info.dirs.widgets));
     } else if (view === 'themes') {
       title = 'Add-ons · Themes (A to switch)';
       items = [{ label: 'Tessera (stock)', sub: 'built in', theme: 'stock' }];
       info.themes.forEach((t) => items.push({ label: t.name, sub: [t.author, t.settings ? `${t.settings} extra setting${t.settings === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), theme: t.id }));
+      if (info.themes.length) items.push({ label: 'Remove a theme…', view: 'rmthemes', plain: true });
       items.push(inert('Theme packs go in', info.dirs.themes));
+    } else if (view === 'rmthemes') {
+      title = 'Add-ons · Remove a theme (A removes it)';
+      items = info.themes.map((t) => ({ label: t.name, sub: t.author || '', rm: { dir: 'themes', id: t.id }, plain: true }));
+      if (!items.length) items.push(inert('No downloaded themes', ''));
     } else if (view === 'builtin') {
       title = 'Add-ons · Built in';
       items = info.presets.map((p) => inert(p.name, p.description || ''));
@@ -1223,6 +1345,18 @@ async function flowAddons() {
       continue;
     }
     if (view === 'top') index = items.indexOf(it);
+    if (it.rm) {
+      if (await confirm(`Remove “${it.label}”? Its folder is deleted from your Tessera folder.`, 'Remove')) {
+        if (await requirePin()) {
+          busy = true;
+          let r;
+          try { r = await api.addons('remove', it.rm); } finally { busy = false; }
+          setStatus(r.ok ? `Removed ${it.label}.` : r.error, !r.ok);
+          if (r.ok && it.rm.dir === 'widgets') lib('none', {}, { quiet: true });
+        }
+      }
+      continue;
+    }
     if (it.view) view = it.view;
     else if (it.op === 'reload') op = 'rescan';
     else if (it.theme) {
@@ -1310,6 +1444,7 @@ function openMenu() {
       items.push({ label: 'Change picture…', op: 'pickArt' });
       if (t.custom) items.push({ label: 'Use the automatic picture', op: 'clearArt' });
       items.push({ label: 'Remove from library…', op: 'deleteItem' });
+      if (t.deletable) items.push({ label: 'Delete the files…', op: 'deleteFiles' });
     }
   } else if (t && t.kind === 'inlay') {
     if (!t.missing) items.push({ label: t.resizable ? 'Move / resize…' : 'Move…', op: 'resize' });
@@ -1332,7 +1467,9 @@ function openMenu() {
   pick('Options', items).then((it) => it && runMenu(it.op, t, row));
 }
 
+const PIN_OPS = new Set(['addGame', 'addApp', 'scan', 'addWidget', 'deleteItem', 'deleteTile', 'deleteRow', 'deleteFiles', 'removeFromRow']);
 async function runMenu(op, t, row) {
+  if (PIN_OPS.has(op) && !(await requirePin())) return;
   const into = row && data.folders[row.id] ? row.id : undefined;
   switch (op) {
     case 'addWidget': return flowAddInlay('_home');
@@ -1351,6 +1488,10 @@ async function runMenu(op, t, row) {
     case 'deleteItem':
       if (await confirm(`Remove “${t.title}” from your library?`, 'Remove (files are not touched)'))
         return lib('deleteItem', { id: t.id });
+      return;
+    case 'deleteFiles':
+      if (await confirm(`Delete “${t.title}” and its files from your Tessera folder? This can't be undone.`, 'Delete files'))
+        return lib('deleteFiles', { id: t.id });
       return;
     case 'renameRow': return flowRename('renameCategory', row.id, row.title);
     case 'deleteRow':
@@ -1429,7 +1570,7 @@ function showBrowse(r, purpose, after) {
   }
   const items = [];
   if (r.canUp) items.push({ label: '⬆  Up one level', op: 'up' });
-  if (r.canChooseHere) items.push({ label: '✔  Use this folder', op: 'here' });
+  if (r.canChooseHere) items.push({ label: purpose === 'backupTo' ? '✔  Save the backup in this folder' : purpose === 'restoreFrom' ? '✔  Restore from this folder' : '✔  Use this folder', op: 'here' });
   r.entries.forEach((e, i) =>
     items.push({ label: e.isDir && !r.renamable ? e.name + '/' : e.name, sub: e.sub, key: e.key, op: e.isDir ? 'enter' : 'choose', i })
   );
@@ -1496,21 +1637,343 @@ async function flowDrives() {
   }
 }
 
-async function flowRoots() {
+async function flowRoots(backTo) {
   busy = true;
   let r;
   try { r = await api.settings('get'); } finally { busy = false; }
   const items = [{ label: '+  Add a folder…', op: 'add' }, { label: '✎  Name your drives…', op: 'drives' }];
   r.roots.forEach((p, i) => items.push({ label: p.name, sub: p.tech || 'A to remove', op: 'rm', i }));
   const it = await pick('Library folders (scanned for games)', items);
-  if (!it) return;
-  if (it.op === 'add') return flowBrowse('addRoot', flowRoots);
-  if (it.op === 'drives') { await flowDrives(); return flowRoots(); }
+  if (!it) return backTo ? backTo() : undefined;
+  if (it.op === 'add') return flowBrowse('addRoot', () => flowRoots(backTo));
+  if (it.op === 'drives') { await flowDrives(); return flowRoots(backTo); }
   if (await confirm(`Stop scanning ${it.label}?`, 'Remove from list (files are not touched)')) {
     busy = true;
     try { await api.settings('removeRoot', { index: it.i }); } finally { busy = false; }
   }
-  flowRoots();
+  flowRoots(backTo);
+}
+
+// ------------------------------------------------------------ Storage
+// Settings → Storage: how full each drive is and what's using it, plus the
+// housekeeping that goes with it. The graphics are plain bars built from
+// theme colours, so they follow whichever theme is on.
+function fmtBytes(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return '–';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return (i >= 3 ? v.toFixed(v >= 100 ? 0 : 1) : Math.round(v)) + ' ' + u[i];
+}
+function usageBar(segs, total, shimmer) {
+  const bar = document.createElement('div');
+  bar.className = 'ubar' + (shimmer ? ' measuring' : '');
+  for (const s of segs) {
+    if (!(s.bytes > 0) || !(total > 0)) continue;
+    const el = document.createElement('span');
+    el.className = 'useg ' + s.cls;
+    el.style.flexBasis = Math.max(0.6, (s.bytes / total) * 100) + '%';
+    el.title = `${s.label}: ${fmtBytes(s.bytes)}`;
+    bar.appendChild(el);
+  }
+  return bar;
+}
+function legend(items) {
+  const row = document.createElement('div');
+  row.className = 'ulegend';
+  for (const it of items) {
+    const chip = document.createElement('span');
+    const dot = document.createElement('i');
+    dot.className = 'useg ' + it.cls;
+    chip.append(dot, `${it.label} ${it.text}`);
+    row.appendChild(chip);
+  }
+  return row;
+}
+function driveGraphic(el, d, measured) {
+  const other = Math.max(0, d.used - d.games - d.tessera);
+  const low = !d.muted && (d.free < 10 * 1024 ** 3 || d.free / d.total < 0.1);
+  const segs = measured
+    ? [{ cls: 'g', bytes: d.games, label: 'Games & apps' }, { cls: 't', bytes: d.tessera, label: 'Tessera' }, { cls: 'o', bytes: other, label: 'Other' }]
+    : [{ cls: 'o', bytes: d.used, label: 'Used' }];
+  const wrap = document.createElement('div');
+  wrap.className = 'ugfx' + (low ? ' low' : '');
+  wrap.appendChild(usageBar([...segs, { cls: 'f', bytes: d.free, label: 'Free' }], d.total, !measured));
+  const lg = (measured
+    ? [{ cls: 'g', label: 'Games & apps', n: d.games }, { cls: 't', label: 'Tessera', n: d.tessera }, { cls: 'o', label: 'Other', n: other }, { cls: 'f', label: 'Free', n: d.free }]
+    : [{ cls: 'o', label: 'Used', n: d.used }, { cls: 'f', label: 'Free', n: d.free }]
+  ).filter((x) => x.n > 0 || x.cls === 'f').map((x) => ({ cls: x.cls, label: x.label, text: fmtBytes(x.n) }));
+  wrap.appendChild(legend(lg));
+  const tags = [d.system ? 'Main storage' : d.external ? 'Plugged in' : '', d.library ? 'Game library' : '', low && !d.muted ? 'Low space' : '', d.muted ? 'Warnings off' : '', measured ? '' : 'Measuring…'].filter(Boolean);
+  if (tags.length) {
+    const t = document.createElement('div');
+    t.className = 'utags';
+    tags.forEach((x) => { const s = document.createElement('span'); s.textContent = x; if (x === 'Low space') s.className = 'warn'; t.appendChild(s); });
+    wrap.appendChild(t);
+  }
+  el.appendChild(wrap);
+}
+function vaultGraphic(el, v, measured) {
+  const parts = v.parts.filter((p) => p.bytes > 0).sort((a, b) => b.bytes - a.bytes);
+  const wrap = document.createElement('div');
+  wrap.className = 'ugfx';
+  if (!parts.length) {
+    const e = document.createElement('div');
+    e.className = 'utags';
+    e.textContent = measured ? 'Empty so far' : 'Measuring…';
+    wrap.appendChild(e);
+  } else {
+    wrap.appendChild(usageBar(parts.map((p, i) => ({ cls: 'v' + (i % 8), bytes: p.bytes, label: p.name })), v.bytes, !measured));
+    wrap.appendChild(legend(parts.map((p, i) => ({ cls: 'v' + (i % 8), label: p.name, text: fmtBytes(p.bytes) }))));
+  }
+  el.appendChild(wrap);
+}
+function storageItems(ov, measured, cleanHint) {
+  const P = { plain: true };
+  const items = [{ label: 'Drives', header: true }];
+  ov.drives.forEach((d) => items.push({ ...P, label: d.name, sub: `${fmtBytes(d.free)} free of ${fmtBytes(d.total)}`, op: 'drive', drive: d, graphic: (el) => driveGraphic(el, d, measured) }));
+  items.push({ label: 'Games & apps', header: true });
+  items.push({ ...P, label: 'Manage games by size', sub: 'Biggest first', op: 'manage' });
+  items.push({ ...P, label: 'Scan for games', sub: 'Look for new games now', op: 'scan' });
+  items.push({ ...P, label: 'Add a game library', sub: 'Point Tessera at a folder of games', op: 'add' });
+  items.push({ ...P, label: 'Library folders', sub: 'See or stop scanning', op: 'roots' });
+  items.push({ ...P, label: 'New games install to', sub: ov.install || 'Tessera folder', op: 'install' });
+  items.push({ label: 'Tessera folder', header: true });
+  items.push({ ...P, label: ov.vault.path, sub: measured ? fmtBytes(ov.vault.bytes) : '', op: 'vault', graphic: (el) => vaultGraphic(el, ov.vault, measured) });
+  items.push({ ...P, label: 'Downloads', sub: 'See or clear what you downloaded', op: 'downloads' });
+  items.push({ label: 'Housekeeping', header: true });
+  items.push({ ...P, label: 'Clean up', sub: cleanHint || 'Broken and duplicate entries, old logs', op: 'clean' });
+  items.push({ ...P, label: 'Back up my setup', sub: 'Layout, library and settings', op: 'backup' });
+  items.push({ ...P, label: 'Restore a backup', sub: 'Put a saved setup back', op: 'restore' });
+  items.push({ ...P, label: 'Name your drives', sub: 'Friendly names for disks', op: 'drives' });
+  items.push({ ...P, label: 'Hidden drives', sub: ov.hiddenCount ? `${ov.hiddenCount} hidden` : 'None', op: 'hidden' });
+  return items;
+}
+async function flowStorage(index = 1) {
+  if (modal || busy) return;
+  busy = true;
+  let ov;
+  try { ov = await api.storage('overview', {}); } finally { busy = false; }
+  if (!ov || !ov.ok) return setStatus((ov && ov.error) || "Couldn't read your drives.", true);
+  let at = index;
+  const it = await new Promise((resolve) => {
+    openList({
+      title: 'Storage',
+      items: storageItems(ov, ov.measured),
+      index,
+      onChoose: (x) => { at = modal.index; closeModal(); resolve(x); },
+      onBack: () => { closeModal(); resolve(null); },
+    });
+    const m = modal;
+    // Measuring folders takes a moment on a big library: show the drives now, fill in the rest after.
+    api.storage('overview', { measure: true }).then(async (r) => {
+      if (modal !== m || !r || !r.ok) return;
+      const sc = await api.storage('cleanScan', {});
+      const n = sc && sc.ok ? sc.broken + sc.dupes + sc.orphans : 0;
+      if (modal !== m) return;
+      m.items = storageItems(r, true, n ? `${n} thing${n === 1 ? '' : 's'} to tidy` : 'Nothing to tidy right now');
+      renderModal();
+    });
+  });
+  if (!it) return;
+  const back = () => flowStorage(Math.max(1, at));
+  switch (it.op) {
+    case 'drive': return flowDriveMenu(it.drive, back);
+    case 'manage': return flowManage(back);
+    case 'scan': return flowScan();
+    case 'add': return flowBrowse('addRoot', back);
+    case 'roots': return flowRoots(back);
+    case 'install': return flowInstall(back);
+    case 'vault': setStatus(`Your games, apps, themes and downloads live in ${prefs.vault || '~/Tessera'}.`); return back();
+    case 'downloads': return flowDownloads(back);
+    case 'clean': return flowClean(back);
+    case 'backup': if (!(await requirePin())) return back(); return flowBrowse('backupTo', back);
+    case 'restore': return flowRestore(back);
+    case 'drives': await flowDrives(); return back();
+    case 'hidden': return flowHidden(back);
+    default: return back();
+  }
+}
+async function flowDriveMenu(d, back) {
+  const items = [];
+  if (!d.library && !d.system) items.push({ label: 'Use for games', sub: 'Make a Games folder and scan it', op: 'use', plain: true });
+  if (d.ejectable) items.push({ label: 'Eject safely', sub: 'Then it can be unplugged', op: 'eject', plain: true });
+  items.push({ label: 'Name this drive…', op: 'name', plain: true });
+  items.push({ label: 'Low space warning', sub: d.muted ? 'Off · A to turn on' : 'On · A to turn off', op: 'mute', plain: true });
+  items.push({ label: 'Hide this drive', sub: 'Brings back from Hidden drives', op: 'hide', plain: true });
+  items.push({ label: 'Back', op: 'back', plain: true });
+  const it = await pick(`${d.name} · ${fmtBytes(d.free)} free of ${fmtBytes(d.total)}`, items);
+  if (!it || it.op === 'back') return back();
+  if (!(await requirePin())) return back();
+  busy = true;
+  let r;
+  try {
+    if (it.op === 'name') { busy = false; if (await renameDrive(d.key, '')) setStatus('Renamed.'); return back(); }
+    if (it.op === 'mute') r = await api.storage('muteDrive', { key: d.key, muted: !d.muted });
+    else if (it.op === 'hide') r = await api.storage('hideDrive', { key: d.key, hidden: true });
+    else r = await api.storage(it.op === 'use' ? 'useDrive' : 'eject', { key: d.key });
+  } finally { busy = false; }
+  if (r.prefs) { applyPrefs(r.prefs); render(); r.message = it.op === 'hide' ? `${d.name} is hidden.` : d.muted ? `Low space warning is on for ${d.name}.` : `Low space warning is off for ${d.name}.`; }
+  setStatus(r.message || r.error, !r.ok);
+  if (r.ok && it.op === 'use') return flowScan();
+  return back();
+}
+async function flowHidden(back) {
+  busy = true;
+  let r;
+  try { r = await api.storage('hiddenDrives', {}); } finally { busy = false; }
+  const items = r.drives.length
+    ? r.drives.map((d) => ({ label: d.name, sub: `${fmtBytes(d.total)} · A to show again`, key: d.key, plain: true }))
+    : [{ label: 'No hidden drives', sub: 'Hide one from its menu in Storage', header: true }];
+  items.push({ label: 'Back', op: 'back', plain: true });
+  const it = await pick('Hidden drives', items, 0);
+  if (!it || it.op === 'back') return back();
+  if (it.key && (await requirePin())) {
+    const u = await api.storage('hideDrive', { key: it.key, hidden: false });
+    if (u.prefs) { applyPrefs(u.prefs); render(); }
+    setStatus(`${it.label} is showing again.`);
+  }
+  return flowHidden(back);
+}
+async function flowManage(back) {
+  busy = true;
+  let r;
+  try { r = await api.storage('games', {}); } finally { busy = false; }
+  if (!r || !r.ok) return back();
+  const build = (res, measured) => {
+    const total = res.games.reduce((s, g) => s + (g.bytes || 0), 0);
+    const max = Math.max(1, ...res.games.map((g) => g.bytes || 0));
+    const items = [{ label: measured ? `Biggest first · ${fmtBytes(total)} in all` : 'Biggest first · measuring…', header: true }];
+    if (!res.games.length) items.push({ label: 'No games or apps yet', header: true });
+    res.games.forEach((g) => items.push({
+      plain: true, id: g.id, game: g,
+      label: g.title,
+      sub: g.offline ? (g.offline === 'drive' ? 'Drive not connected' : 'Files missing') : g.bytes === null ? 'Measuring…' : fmtBytes(g.bytes),
+      graphic: g.offline || g.bytes === null ? null : (el) => {
+        const w = document.createElement('div');
+        w.className = 'ugfx thin';
+        w.appendChild(usageBar([{ cls: g.deletable ? 'g' : 'o', bytes: g.bytes, label: g.title }], max));
+        if (g.drive) { const t = document.createElement('div'); t.className = 'utags'; t.textContent = g.drive; w.appendChild(t); }
+        el.appendChild(w);
+      },
+    }));
+    if (res.games.some((g) => g.bytes)) items.push({ label: 'Coloured bars: files you can delete here  ·  Grey: outside your Tessera folder', header: true });
+    return items;
+  };
+  const it = await new Promise((resolve) => {
+    openList({ title: 'Manage games by size', items: build(r, false), index: 1, onChoose: (x) => { closeModal(); resolve(x); }, onBack: () => { closeModal(); resolve(null); } });
+    const m = modal;
+    api.storage('games', { measure: true }).then((res) => {
+      if (modal !== m || !res || !res.ok) return;
+      const cur = m.items[m.index];
+      m.items = build(res, true);
+      const same = cur && cur.id ? m.items.findIndex((x) => x.id === cur.id) : -1;
+      m.index = same >= 0 ? same : Math.min(m.index, m.items.length - 1);
+      renderModal();
+    });
+  });
+  if (!it) return back();
+  if (!it.game) return flowManage(back);
+  const g = it.game;
+  const menu = [];
+  if (g.deletable) menu.push({ label: 'Delete the files…', sub: g.bytes ? `Frees ${fmtBytes(g.bytes)}` : '', op: 'files', plain: true });
+  menu.push({ label: 'Remove from library…', sub: 'Keeps the files', op: 'remove', plain: true });
+  menu.push({ label: 'Back', op: 'back', plain: true });
+  const pk = await pick(g.title, menu);
+  if (pk && pk.op !== 'back' && (await requirePin())) {
+    if (pk.op === 'files' && (await confirm(`Delete “${g.title}” and its files from your Tessera folder? This can't be undone.`, 'Delete files'))) await lib('deleteFiles', { id: g.id });
+    if (pk.op === 'remove' && (await confirm(`Remove “${g.title}” from your library?`, 'Remove (files are kept)'))) await lib('deleteItem', { id: g.id });
+  }
+  return flowManage(back);
+}
+async function flowInstall(back) {
+  busy = true;
+  let r;
+  try { r = await api.storage('installRoots', {}); } finally { busy = false; }
+  const items = r.roots.map((x, i) => ({ label: x.name, sub: [x.current ? '✓ in use' : '', x.free !== null ? `${fmtBytes(x.free)} free` : ''].filter(Boolean).join('  ·  '), i, plain: true }));
+  const it = await pick('New games install to', items, Math.max(0, r.roots.findIndex((x) => x.current)));
+  if (!it) return back();
+  if (!(await requirePin())) return back();
+  const res = await api.storage('setInstallRoot', { index: it.i });
+  setStatus(res.message || res.error, !res.ok);
+  return back();
+}
+async function flowDownloads(back) {
+  busy = true;
+  let d;
+  try { d = await api.storage('downloads', {}); } finally { busy = false; }
+  const items = [
+    { label: d.count ? `${d.count} item${d.count === 1 ? '' : 's'} · ${fmtBytes(d.bytes)}` : 'Nothing downloaded', sub: d.path, header: true },
+    ...(d.count ? [{ label: 'Clear Downloads…', sub: 'Deletes what is inside, keeps the folder', op: 'clear', plain: true }] : []),
+    { label: 'Back', op: 'back', plain: true },
+  ];
+  const it = await pick('Downloads', items, d.count ? 1 : 1);
+  if (it && it.op === 'clear' && (await requirePin()) && (await confirm(`Delete everything in Downloads (${fmtBytes(d.bytes)})? This can't be undone.`, 'Clear Downloads'))) {
+    const r = await api.storage('clearDownloads', {});
+    setStatus(r.message || r.error, !r.ok);
+  }
+  return back();
+}
+async function flowClean(back) {
+  busy = true;
+  let s;
+  try { s = await api.storage('cleanScan', {}); } finally { busy = false; }
+  const rows = [
+    { what: 'broken', label: 'Broken entries', sub: s.broken ? `${s.broken} whose files are gone` : 'None' , n: s.broken },
+    { what: 'dupes', label: 'Duplicate entries', sub: s.dupes ? `${s.dupes} pointing at the same game` : 'None', n: s.dupes },
+    { what: 'orphans', label: 'Stray tiles', sub: s.orphans ? `${s.orphans} left over in mosaics` : 'None', n: s.orphans },
+    { what: 'logs', label: 'Old logs', sub: s.logFiles > 1 ? `${s.logFiles} files · ${fmtBytes(s.logBytes)}` : 'None', n: s.logFiles > 1 ? s.logFiles : 0 },
+  ];
+  const items = [
+    { label: 'Games on an unplugged drive are not touched', header: true },
+    ...rows.map((r) => ({ label: r.label, sub: r.sub, checked: r.n > 0, what: r.what, n: r.n, plain: true })),
+    { label: 'Clean up selected', op: 'go', plain: true },
+    { label: 'Back', op: 'back', plain: true },
+  ];
+  await new Promise((resolve) => {
+    openList({
+      title: 'Clean up', items, multi: true, index: 1,
+      onChoose: async (it) => {
+        if (it.op === 'back') { closeModal(); return resolve(); }
+        if (it.op !== 'go') { if (it.n) it.checked = !it.checked; return renderModal(); }
+        const what = items.filter((x) => x.what && x.checked).map((x) => x.what);
+        if (!what.length) { setStatus('Nothing selected.'); return; }
+        if (!(await requirePin())) return;
+        closeModal();
+        const r = await api.storage('cleanRun', { what });
+        if (r.ok) { const v = await api.library('refresh', {}); if (v && v.view) applyView(v.view); }
+        setStatus(r.message || r.error, !r.ok);
+        resolve();
+      },
+      onBack: () => { closeModal(); resolve(); },
+    });
+  });
+  return back();
+}
+async function flowRestore(back) {
+  if (!(await requirePin())) return back();
+  if (!(await confirm('Restore a backup? It replaces your layout, library and settings. A copy of what you have now is kept.', 'Choose a backup folder'))) return back();
+  return flowBrowse('restoreFrom', back);
+}
+// A drive was plugged in while Tessera was open: offer to use it for games.
+let driveOffers = [];
+async function offerDrive(d, tries = 0) {
+  if (modal || busy || suspended) {
+    if (tries < 40) setTimeout(() => offerDrive(d, tries + 1), 3000);
+    return;
+  }
+  const it = await pick(`“${d.name}” was plugged in · ${fmtBytes(d.free)} free of ${fmtBytes(d.total)}`, [
+    { label: 'Use it for games', sub: 'Makes a Games folder and scans it', op: 'use', plain: true },
+    { label: 'Not now', op: 'no', plain: true },
+    { label: 'Don’t ask about this drive again', op: 'never', plain: true },
+  ], 0, { body: 'Want to keep games on it?' });
+  if (!it || it.op === 'no') return;
+  if (!(await requirePin())) return;
+  if (it.op === 'never') { await api.storage('ignoreDrive', { key: d.key }); return setStatus('OK. You can still use it from Settings > Storage.'); }
+  const r = await api.storage('useDrive', { key: d.key });
+  setStatus(r.message || r.error, !r.ok);
+  if (r.ok) flowScan();
 }
 
 // Settings → Button mapping. For now: which buttons the on-screen keyboard
@@ -1553,6 +2016,466 @@ async function flowControls() {
       busy = false;
     }
   }
+}
+
+// ------------------------------------------------------------ PIN
+const PIN_ROWS = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['back', '0', 'done'], ['cancel']];
+const askPin = (title) => ask(title, '', { rows: PIN_ROWS, mask: true, max: 8, digits: true, pattern: true });
+// True when no PIN is set, it was entered recently, or it is entered now.
+async function requirePin() {
+  let st;
+  try { st = await api.settings('pinStatus'); } catch { return true; }
+  if (!st.set || st.unlocked) return true;
+  for (let i = 0; i < 5; i++) {
+    const pin = await askPin('Enter the PIN');
+    if (pin === null) return false;
+    const r = await api.settings('pinCheck', { pin });
+    if (r.ok) return true;
+    setStatus(r.error || "That isn't the PIN.", true);
+    if (r.wait) return false;
+  }
+  return false;
+}
+async function flowSetPin(old) {
+  const a = await askPin('Choose a PIN (4 to 8 digits)');
+  if (a === null) return false;
+  if (!/^\d{4,8}$/.test(a)) { setStatus('Use 4 to 8 digits.', true); return false; }
+  const b = await askPin('Enter it again');
+  if (b === null) return false;
+  if (a !== b) { setStatus("Those didn't match.", true); return false; }
+  const r = await api.settings('pinSet', { pin: a, old });
+  if (r.prefs) applyPrefs(r.prefs);
+  setStatus(r.ok ? 'PIN set.' : r.error, !r.ok);
+  return Boolean(r.ok);
+}
+async function flowPin() {
+  let index = 1;
+  for (;;) {
+    const st = prefs.pin;
+    const items = [{ label: st.set ? 'A PIN is set' : 'No PIN yet', header: true }];
+    if (!st.set) {
+      items.push({ label: 'Set a PIN', sub: 'keeps Settings, adding and deleting behind a code', op: 'set', plain: true });
+    } else {
+      items.push({ label: 'Change PIN', op: 'change', plain: true });
+      items.push({ label: 'Remove PIN', op: 'remove', plain: true });
+      items.push({ label: 'Lock now', sub: 'ask for the PIN again right away', op: 'lock', plain: true });
+      items.push({ label: 'Also protect the browser', sub: st.browser ? 'On' : 'Off', op: 'browser', plain: true });
+    }
+    items.push({ label: 'Good to know', header: true });
+    items.push({ label: 'Forgot it?', sub: 'Desktop Mode, then run tessera-reset-pin (needs your login)', info: true, plain: true });
+    const it = await pick('PIN', items, index);
+    if (!it) return;
+    index = items.indexOf(it);
+    if (it.info) continue;
+    if (it.op === 'set') await flowSetPin();
+    else if (it.op === 'change') {
+      const old = await askPin('Enter the current PIN');
+      if (old !== null) await flowSetPin(old);
+    } else if (it.op === 'remove') {
+      const pin = await askPin('Enter the PIN to remove it');
+      if (pin !== null) {
+        const r = await api.settings('pinRemove', { pin });
+        if (r.prefs) applyPrefs(r.prefs);
+        setStatus(r.ok ? 'PIN removed.' : r.error, !r.ok);
+      }
+    } else if (it.op === 'lock') {
+      await api.settings('pinLock');
+      setStatus('Locked.');
+    } else if (it.op === 'browser') {
+      const r = await api.settings('pinBrowser', { value: !st.browser });
+      if (r.prefs) applyPrefs(r.prefs);
+      else if (r.error) setStatus(r.error, true);
+    }
+  }
+}
+// Shown once, the first time Tessera starts.
+let welcomed = false;
+async function flowWelcome() {
+  if (welcomed) return;
+  welcomed = true;
+  const it = await pick('Welcome to Tessera', [
+    { label: 'Set a PIN', sub: 'Choose 4 to 8 digits', op: 'set', plain: true },
+    { label: 'Skip for now', sub: 'You can set one later in Settings', op: 'skip', plain: true },
+  ], 0, {
+    welcome: true,
+    body: 'Want an extra layer of security? With a PIN set, changing settings, adding or deleting games and apps, and opening the browser all ask for it first. Handy if you like a little peace of mind day to day.',
+  });
+  if (it && it.op === 'set') {
+    if (!(await flowSetPin())) setStatus('No PIN was set. You can set one in Settings > PIN.');
+  }
+  const r = await api.settings('firstRunDone');
+  if (r && r.prefs) applyPrefs(r.prefs);
+}
+
+// ------------------------------------------------------ display calibration
+// Settings → Display calibration. Done by eye with test patterns, so it is a
+// good correction rather than a lab one. The result is a few numbers (see
+// "display calibration" in main.js) drawn over the whole launcher with an SVG
+// filter; for games it can also be handed to Gamescope as a shader.
+const CAL_RANGES = { black: [-0.1, 0.1], white: [0.8, 1], gamma: [0.6, 1.6], gain: [0.85, 1], sat: [0.5, 1.5] };
+const CAL_TARGET_GAMMA = 2.2;
+const calClamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v));
+const calDefault = () => ({ black: 0, white: 1, gamma: [1, 1, 1], gain: [1, 1, 1], sat: 1 });
+const calIsId = (c) => !c || (c.black === 0 && c.white === 1 && c.sat === 1 && c.gamma.every((g) => g === 1) && c.gain.every((g) => g === 1));
+function calCurve(c, ch, x) {
+  const t = Math.min(1, Math.max(0, (x - c.black) / (1 - c.black)));
+  return Math.min(1, Math.pow(t, c.gamma[ch]) * c.white * c.gain[ch]);
+}
+let calSvg = null;
+// Draw (or clear) the correction over the whole page.
+function setScreenFilter(c) {
+  const root = document.documentElement;
+  if (!c || calIsId(c)) { root.style.removeProperty('filter'); return; }
+  if (!calSvg) {
+    const ns = 'http://www.w3.org/2000/svg';
+    calSvg = document.createElementNS(ns, 'svg');
+    calSvg.setAttribute('class', 'calsvg');
+    calSvg.setAttribute('aria-hidden', 'true');
+    const f = document.createElementNS(ns, 'filter');
+    f.setAttribute('id', 'tcal');
+    f.setAttribute('color-interpolation-filters', 'sRGB');
+    f.setAttribute('x', '0'); f.setAttribute('y', '0'); f.setAttribute('width', '100%'); f.setAttribute('height', '100%');
+    const ct = document.createElementNS(ns, 'feComponentTransfer');
+    for (const n of ['R', 'G', 'B']) {
+      const fn = document.createElementNS(ns, 'feFunc' + n);
+      fn.setAttribute('type', 'table');
+      ct.appendChild(fn);
+    }
+    const cm = document.createElementNS(ns, 'feColorMatrix');
+    cm.setAttribute('type', 'saturate');
+    f.append(ct, cm);
+    calSvg.appendChild(f);
+    document.body.appendChild(calSvg);
+  }
+  const funcs = calSvg.querySelectorAll('feComponentTransfer > *');
+  funcs.forEach((fn, ch) => {
+    const vals = [];
+    for (let i = 0; i < 256; i++) vals.push(calCurve(c, ch, i / 255).toFixed(4));
+    fn.setAttribute('tableValues', vals.join(' '));
+  });
+  calSvg.querySelector('feColorMatrix').setAttribute('values', String(c.sat));
+  root.style.filter = 'url(#tcal)';
+}
+// The saved calibration, unless Gamescope is already applying it to everything.
+function applySavedCalibration() {
+  const p = prefs.calibration;
+  setScreenFilter(p && p.cal && p.cal.enabled && !p.systemActive ? p.cal : null);
+}
+
+// What the person is adjusting, in plain units.
+const calWork = () => ({ brightness: 0, whiteLevel: 100, g25: 2.2, g50: 2.2, g75: 2.2, gr: 2.2, gg: 2.2, gb: 2.2, warm: 0, tint: 0, sat: 100 });
+// Turn those into the saved numbers. mode 'quick' uses one gamma and no per-colour offsets.
+function calFromWork(w, mode, layers) {
+  const all = !layers;
+  const on = (l) => all || layers.includes(l);
+  const c = calDefault();
+  if (on('black')) c.black = calClamp(-w.brightness / 100, CAL_RANGES.black);
+  if (on('white')) c.white = calClamp(w.whiteLevel / 100, CAL_RANGES.white);
+  if (on('gamma')) {
+    const lum = mode === 'quick' ? w.g50 : (w.g25 + w.g50 + w.g75) / 3;
+    const mean = (w.gr + w.gg + w.gb) / 3;
+    const per = mode === 'quick' ? [0, 0, 0] : [w.gr - mean, w.gg - mean, w.gb - mean];
+    c.gamma = per.map((d) => calClamp(CAL_TARGET_GAMMA / (lum + d), CAL_RANGES.gamma));
+  }
+  if (on('gain')) {
+    const t = w.warm / 10;
+    const u = w.tint / 10;
+    const g = [1, 1, 1];
+    if (t > 0) g[2] *= 1 - 0.12 * t; else g[0] *= 1 + 0.12 * t;
+    if (u > 0) g[1] *= 1 - 0.1 * u; else { g[0] *= 1 + 0.06 * u; g[2] *= 1 + 0.06 * u; }
+    c.gain = g.map((x) => calClamp(x, CAL_RANGES.gain));
+  }
+  if (on('sat')) c.sat = calClamp(w.sat / 100, CAL_RANGES.sat);
+  return c;
+}
+
+// ---- the test patterns (drawn at the screen's own pixels so lines stay one pixel wide)
+const grey = (v) => { const n = Math.round(Math.min(1, Math.max(0, v)) * 255); return `rgb(${n},${n},${n})`; };
+const lumaOf = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const CHIPS = [[0.85, 0.25, 0.25], [0.9, 0.85, 0.25], [0.25, 0.75, 0.35], [0.25, 0.8, 0.85], [0.3, 0.4, 0.9], [0.85, 0.3, 0.8]];
+const rgbOf = (c) => `rgb(${c.map((v) => Math.round(v * 255)).join(',')})`;
+function patRegion(W, H, fw = 0.7, fh = 0.46) {
+  const w = Math.round(W * fw); const h = Math.round(H * fh);
+  return { x: Math.round((W - w) / 2), y: Math.round((H - h) / 2) + Math.round(H * 0.02), w, h };
+}
+function drawBars(ctx, W, H, levels, bg, textColor) {
+  const r = patRegion(W, H, 0.7, 0.4);
+  const bw = Math.round(r.w / (levels.length * 1.6));
+  const gap = Math.round(bw * 0.6);
+  const total = levels.length * bw + (levels.length - 1) * gap;
+  levels.forEach((v, i) => {
+    const x = Math.round((W - total) / 2) + i * (bw + gap);
+    ctx.fillStyle = grey(v);
+    ctx.fillRect(x, r.y, bw, r.h);
+    ctx.fillStyle = textColor;
+    ctx.font = `${Math.round(H * 0.035)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(String(i + 1), x + bw / 2, r.y + r.h + Math.round(H * 0.06));
+  });
+}
+// light = how much light the lines give (0.25, 0.5 or 0.75). tint = which colours take part (white or one colour).
+function drawGamma(ctx, W, H, gamma, light, tint) {
+  const r = patRegion(W, H, 0.62, 0.5);
+  const img = ctx.createImageData(r.w, r.h);
+  const hi = [tint[0] * 255, tint[1] * 255, tint[2] * 255];
+  for (let y = 0; y < r.h; y++) {
+    for (let x = 0; x < r.w; x++) {
+      let lit;
+      if (light === 0.5) lit = y % 2 === 0;
+      else if (light === 0.25) lit = x % 2 === 0 && y % 2 === 0;
+      else lit = !(x % 2 === 0 && y % 2 === 0);
+      const i = (y * r.w + x) * 4;
+      img.data[i] = lit ? hi[0] : 0; img.data[i + 1] = lit ? hi[1] : 0; img.data[i + 2] = lit ? hi[2] : 0; img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, r.x, r.y);
+  const v = Math.pow(light, 1 / gamma);
+  const s = Math.round(Math.min(r.w, r.h) * 0.5);
+  ctx.fillStyle = `rgb(${Math.round(v * tint[0] * 255)},${Math.round(v * tint[1] * 255)},${Math.round(v * tint[2] * 255)})`;
+  ctx.fillRect(r.x + Math.round((r.w - s) / 2), r.y + Math.round((r.h - s) / 2), s, s);
+}
+function drawGreys(ctx, W, H, levels) {
+  const r = patRegion(W, H, 0.78, 0.46);
+  const bw = Math.round(r.w / levels.length);
+  levels.forEach((v, i) => { ctx.fillStyle = grey(v); ctx.fillRect(r.x + i * bw, r.y, bw, r.h); });
+}
+function drawChips(ctx, W, H) {
+  const r = patRegion(W, H, 0.78, 0.5);
+  const bw = Math.round(r.w / CHIPS.length);
+  CHIPS.forEach((c, i) => {
+    ctx.fillStyle = rgbOf(c); ctx.fillRect(r.x + i * bw, r.y, bw, Math.round(r.h * 0.62));
+    const l = lumaOf(...c); ctx.fillStyle = grey(l); ctx.fillRect(r.x + i * bw, r.y + Math.round(r.h * 0.62), bw, Math.round(r.h * 0.38));
+  });
+}
+function drawReview(ctx, W, H) {
+  const r = patRegion(W, H, 0.78, 0.5);
+  const ramp = 48; const rw = Math.round(r.w / ramp);
+  for (let i = 0; i < ramp; i++) { ctx.fillStyle = grey(i / (ramp - 1)); ctx.fillRect(r.x + i * rw, r.y, rw, Math.round(r.h * 0.2)); }
+  const cy = r.y + Math.round(r.h * 0.24); const bw = Math.round(r.w / (CHIPS.length + 1)); const ch = Math.round(r.h * 0.34);
+  CHIPS.forEach((c, i) => { ctx.fillStyle = rgbOf(c); ctx.fillRect(r.x + i * bw, cy, bw, ch); });
+  ctx.fillStyle = 'rgb(224,172,140)'; ctx.fillRect(r.x + CHIPS.length * bw, cy, bw, ch); // a skin tone
+  const levels = [0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1];
+  const gw = Math.round(r.w / levels.length);
+  levels.forEach((v, i) => { ctx.fillStyle = grey(v); ctx.fillRect(r.x + i * gw, cy + ch + Math.round(r.h * 0.04), gw, Math.round(r.h * 0.18)); });
+}
+const calRound = (v, n = 0) => Number(v.toFixed(n));
+const calSigned = (v) => (v > 0 ? '+' : '') + v;
+
+// ---- the steps. Each says what to show, what to adjust and which parts of the correction are visible while it does.
+const gammaStep = (id, title, key, light, tint, extra) => ({
+  id, title, bg: '#000', layers: [], kind: 'gamma',
+  help: 'Sit back from the screen and squint a little. Adjust until the middle square looks the same brightness as the lines around it.' + (extra || ''),
+  min: 1.6, max: 3.2, step: 0.02, coarse: 0.1, dflt: 2.2, get: (w) => w[key], set: (w, v) => { w[key] = calRound(v, 2); },
+  label: (v) => `Gamma ${v.toFixed(2)}`, draw: (ctx, W, H, w) => drawGamma(ctx, W, H, w[key], light, tint),
+});
+const CAL_STEP_DEFS = {
+  black: {
+    id: 'black', title: 'Brightness', bg: '#000', layers: ['black'], min: -10, max: 10, step: 1, coarse: 3, dflt: 0,
+    help: 'Adjust until bar 1 just disappears into the black, and bar 2 is faintly visible.',
+    get: (w) => w.brightness, set: (w, v) => { w.brightness = Math.round(v); },
+    label: (v) => `Brightness ${calSigned(v)}`, draw: (ctx, W, H) => drawBars(ctx, W, H, [0.02, 0.04, 0.06, 0.08, 0.12], '#000', grey(0.4)),
+  },
+  white: {
+    id: 'white', title: 'White level', bg: '#fff', layers: ['black', 'white'], min: 85, max: 100, step: 1, coarse: 3, dflt: 100,
+    help: 'Lower it until you can just tell bar 1 apart from the white background. Leave it at 100% if you already can.',
+    get: (w) => w.whiteLevel, set: (w, v) => { w.whiteLevel = Math.round(v); },
+    label: (v) => `White level ${v}%`, draw: (ctx, W, H) => drawBars(ctx, W, H, [0.98, 0.96, 0.94, 0.92, 0.88], '#fff', grey(0.3)),
+  },
+  gamma25: gammaStep('gamma25', 'Gamma · dark tones', 'g25', 0.25, [1, 1, 1], ' (This one is the dark tones.)'),
+  gamma50: gammaStep('gamma50', 'Gamma · middle tones', 'g50', 0.5, [1, 1, 1]),
+  gamma75: gammaStep('gamma75', 'Gamma · bright tones', 'g75', 0.75, [1, 1, 1], ' (This one is the bright tones.)'),
+  gammaR: gammaStep('gammaR', 'Red balance', 'gr', 0.5, [1, 0, 0], ' Only red is lit here.'),
+  gammaG: gammaStep('gammaG', 'Green balance', 'gg', 0.5, [0, 1, 0], ' Only green is lit here.'),
+  gammaB: gammaStep('gammaB', 'Blue balance', 'gb', 0.5, [0, 0, 1], ' Only blue is lit here.'),
+  warm: {
+    id: 'warm', title: 'White balance', bg: '#808080', layers: ['black', 'white', 'gamma', 'gain'], min: -10, max: 10, step: 1, coarse: 3, dflt: 0,
+    help: 'These greys should look neutral. If they look blue, move toward Warmer. If they look yellow or orange, move toward Cooler.',
+    get: (w) => w.warm, set: (w, v) => { w.warm = Math.round(v); },
+    label: (v) => (v === 0 ? 'Neutral' : v > 0 ? `Warmer ${v}` : `Cooler ${-v}`), draw: (ctx, W, H) => drawGreys(ctx, W, H, [0.15, 0.3, 0.5, 0.7, 0.85]),
+  },
+  tint: {
+    id: 'tint', title: 'Tint', bg: '#808080', layers: ['black', 'white', 'gamma', 'gain'], min: -10, max: 10, step: 1, coarse: 3, dflt: 0,
+    help: 'Still neutral grey? If they look green, move toward Pinker. If they look pink or purple, move toward Greener.',
+    get: (w) => w.tint, set: (w, v) => { w.tint = Math.round(v); },
+    label: (v) => (v === 0 ? 'Neutral' : v > 0 ? `Pinker ${v}` : `Greener ${-v}`), draw: (ctx, W, H) => drawGreys(ctx, W, H, [0.15, 0.3, 0.5, 0.7, 0.85]),
+  },
+  sat: {
+    id: 'sat', title: 'Colour', bg: '#808080', layers: ['black', 'white', 'gamma', 'gain', 'sat'], min: 60, max: 140, step: 2, coarse: 10, dflt: 100,
+    help: 'Pick the colour strength that looks natural: rich, but not glowing. The grey swatches show what no colour looks like.',
+    get: (w) => w.sat, set: (w, v) => { w.sat = Math.round(v); },
+    label: (v) => `Colour ${v}%`, draw: (ctx, W, H) => drawChips(ctx, W, H),
+  },
+  review: { id: 'review', title: 'Check the result', bg: '#808080', layers: null, review: true, draw: (ctx, W, H) => drawReview(ctx, W, H) },
+};
+const CAL_FLOWS = {
+  quick: ['black', 'gamma50', 'warm', 'review'],
+  thorough: ['black', 'white', 'gamma25', 'gamma50', 'gamma75', 'gammaR', 'gammaG', 'gammaB', 'warm', 'tint', 'sat', 'review'],
+};
+const CAL_INTRO = 'Set your screen to its normal picture mode first and turn off any dynamic contrast, energy saving or motion smoothing. Let it warm up for a few minutes, dim the room, and turn HDR off.';
+
+function buildCal() {
+  modalEl.hidden = false;
+  modalEl.className = 'cal';
+  modalEl.replaceChildren();
+  const top = document.createElement('div');
+  top.className = 'cal-top';
+  const stepEl = document.createElement('div'); stepEl.className = 'cal-step';
+  const helpEl = document.createElement('div'); helpEl.className = 'cal-help';
+  top.append(stepEl, helpEl);
+  const canvas = document.createElement('canvas');
+  canvas.className = 'cal-canvas';
+  const bottom = document.createElement('div');
+  bottom.className = 'cal-bottom';
+  const valEl = document.createElement('div'); valEl.className = 'cal-val';
+  const barEl = document.createElement('div'); barEl.className = 'cal-bar';
+  const fill = document.createElement('i'); barEl.appendChild(fill);
+  const hintEl = document.createElement('div'); hintEl.className = 'cal-hint';
+  bottom.append(valEl, barEl, hintEl);
+  modalEl.append(canvas, top, bottom);
+  modal.dom = { stepEl, helpEl, canvas, valEl, barEl, fill, hintEl, bottom };
+}
+function calSummary(w, mode) {
+  const c = calFromWork(w, mode);
+  const lum = mode === 'quick' ? w.g50 : (w.g25 + w.g50 + w.g75) / 3;
+  const lines = [`Brightness ${calSigned(w.brightness)}`, `Gamma ${lum.toFixed(2)} (target ${CAL_TARGET_GAMMA})`];
+  if (mode !== 'quick') lines.splice(1, 0, `White level ${w.whiteLevel}%`);
+  lines.push(w.warm || w.tint ? `Balance ${w.warm ? (w.warm > 0 ? 'warmer' : 'cooler') : ''}${w.warm && w.tint ? ', ' : ''}${w.tint ? (w.tint > 0 ? 'pinker' : 'greener') : ''}` : 'Balance neutral');
+  if (mode !== 'quick') lines.push(`Colour ${w.sat}%`);
+  return { c, text: lines.join('   ·   ') };
+}
+function renderCal() {
+  if (!modal || modal.kind !== 'cal') return;
+  if (!modal.dom) buildCal();
+  const { stepEl, helpEl, canvas, valEl, barEl, fill, hintEl } = modal.dom;
+  const def = modal.defs[modal.i];
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.round(window.innerWidth * dpr); const H = Math.round(window.innerHeight * dpr);
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  canvas.style.width = '100%'; canvas.style.height = '100%';
+  modalEl.style.background = def.bg;
+  modalEl.style.color = def.bg === '#000' ? '#9a9a9a' : '#111';
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = def.bg; ctx.fillRect(0, 0, W, H);
+  def.draw(ctx, W, H, modal.w);
+  stepEl.textContent = `${modal.mode === 'quick' ? 'Quick' : 'Thorough'} calibration · step ${modal.i + 1} of ${modal.defs.length} · ${def.title}`;
+  const nextLabel = def.review ? 'Save' : 'Next';
+  const g = (n) => buttonName(n);
+  if (def.review) {
+    const s = calSummary(modal.w, modal.mode);
+    helpEl.textContent = (modal.compare ? 'Showing your screen as it was.' : 'Showing the corrected screen.') + ' Hold ' + g(3) + ' to compare with how it was.';
+    valEl.textContent = s.text;
+    barEl.hidden = true;
+  } else {
+    helpEl.textContent = def.help;
+    const v = def.get(modal.w);
+    valEl.textContent = def.label(v);
+    barEl.hidden = false;
+    fill.style.width = `${((v - def.min) / (def.max - def.min)) * 100}%`;
+  }
+  hintEl.textContent = `◀ ▶ adjust   ${g(4)} / ${g(5)} bigger steps   ${g(0)} ${nextLabel}   ${g(1)} ${modal.i === 0 ? 'Cancel' : 'Back'}   ${g(2)} reset` + (def.review ? '' : `   ${g(3)} hold to see it as it was`);
+  // What shows through the screen filter right now
+  if (modal.compare) setScreenFilter(null);
+  else if (def.layers && def.layers.length === 0) setScreenFilter(null); // gamma steps measure the screen as it is
+  else setScreenFilter(calFromWork(modal.w, modal.mode, def.layers));
+}
+function calAdjust(dir, big) {
+  const def = modal.defs[modal.i];
+  if (def.review) return;
+  const d = (big ? def.coarse : def.step) * dir;
+  def.set(modal.w, calClamp(def.get(modal.w) + d, [def.min, def.max]));
+  renderCal();
+}
+async function calFinish(save) {
+  const { mode, w, resolve } = modal;
+  const cal = save ? { ...calFromWork(w, mode), mode } : null;
+  closeModal();
+  modalEl.style.removeProperty('background');
+  modalEl.style.removeProperty('color');
+  setScreenFilter(null);
+  let msg = '';
+  if (cal) {
+    busy = true;
+    let r;
+    try { r = await api.settings('calSet', { cal }); } finally { busy = false; }
+    if (r && r.prefs) { applyPrefs(r.prefs); msg = 'Calibration saved.'; } else msg = (r && r.error) || "Couldn't save the calibration.";
+  }
+  applySavedCalibration();
+  if (msg) setStatus(msg, !cal ? false : msg !== 'Calibration saved.');
+  resolve(Boolean(cal));
+}
+function calPress(act) {
+  if (act === 'left') return calAdjust(-1, false);
+  if (act === 'right') return calAdjust(1, false);
+  if (act === 'down' || act === 'lb') return calAdjust(-1, true);
+  if (act === 'up' || act === 'rb') return calAdjust(1, true);
+  const def = modal.defs[modal.i];
+  if (act === 'x') { if (!def.review) { def.set(modal.w, def.dflt); renderCal(); } return; }
+  if (act === 'a') {
+    if (def.review) return calFinish(true);
+    modal.i++; modal.compare = false; return renderCal();
+  }
+  if (act === 'b') {
+    if (modal.i === 0) return calFinish(false);
+    modal.i--; modal.compare = false; return renderCal();
+  }
+}
+function calCompare(on) {
+  if (!modal || modal.kind !== 'cal') return;
+  modal.compare = on;
+  renderCal();
+}
+function runCalibration(mode) {
+  return new Promise((resolve) => {
+    modal = { kind: 'cal', mode, defs: CAL_FLOWS[mode].map((k) => CAL_STEP_DEFS[k]), i: 0, w: calWork(), compare: false, dom: null, resolve };
+    setScreenFilter(null);
+    renderCal();
+  });
+}
+async function flowCalibrate(mode) {
+  const quick = mode === 'quick';
+  const it = await pick(quick ? 'Quick calibration' : 'Thorough calibration', [
+    { label: 'Start', sub: quick ? '4 short steps · about a minute' : '12 steps · about 5 minutes', op: 'go', plain: true },
+    { label: 'Cancel', op: 'no', plain: true },
+  ], 0, { body: CAL_INTRO + (quick ? ' This one sets brightness, gamma and white balance.' : ' This one also sets white level, gamma at three levels, each colour on its own, tint and colour strength.') });
+  if (!it || it.op !== 'go') return;
+  await runCalibration(mode);
+}
+const calDate = (iso) => { try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch { return ''; } };
+async function flowCalMenu(index = 0) {
+  if (modal || busy) return;
+  const p = prefs.calibration || { cal: null };
+  const c = p.cal;
+  const items = [];
+  items.push({
+    label: c ? `Calibrated ${calDate(c.at)} · ${c.mode === 'thorough' ? 'Thorough' : 'Quick'}${c.enabled ? '' : ' · off'}` : 'Not calibrated yet',
+    sub: c ? `Gamma ≈ ${(CAL_TARGET_GAMMA / ((c.gamma[0] + c.gamma[1] + c.gamma[2]) / 3)).toFixed(2)}` : '', header: true,
+  });
+  items.push({ label: 'Quick calibration', sub: 'About a minute', op: 'quick', plain: true });
+  items.push({ label: 'Thorough calibration', sub: 'About 5 minutes', op: 'thorough', plain: true });
+  if (c) {
+    items.push({ label: 'Calibration', sub: c.enabled ? 'On · A to turn off' : 'Off · A to turn on', op: 'toggle', plain: true });
+    items.push({ label: 'Apply to games too', sub: p.system ? 'On · experimental' : 'Off · experimental', op: 'system', plain: true });
+    items.push({ label: 'Reset to default', op: 'reset', plain: true });
+  }
+  items.push({ label: 'Back', op: 'back', plain: true });
+  const body = p.systemFailed ? 'Applying it to games failed, so it was switched off. Tessera itself is still calibrated.' : p.system && !p.systemActive ? 'Applying it to games takes effect the next time Tessera starts.' : '';
+  const it = await pick('Display calibration', items, Math.max(1, index), body ? { body } : {});
+  if (!it || it.op === 'back') return;
+  const again = () => flowCalMenu(items.indexOf(it));
+  if (it.op === 'quick' || it.op === 'thorough') { await flowCalibrate(it.op); return again(); }
+  if (!(await requirePin())) return again();
+  let r;
+  if (it.op === 'toggle') r = await api.settings('calToggle', { enabled: !c.enabled });
+  else if (it.op === 'system') {
+    if (!p.system && !(await confirm('Also apply the calibration to games? Tessera gives it to Gamescope when it starts, so it takes effect after a restart. If anything goes wrong it switches itself off.', 'Turn it on'))) return again();
+    r = await api.settings('calSystem', { on: !p.system });
+  } else if (it.op === 'reset') {
+    if (!(await confirm('Go back to the screen as it is, with no calibration?', 'Reset'))) return again();
+    r = await api.settings('calReset', {});
+  }
+  if (r && r.prefs) { applyPrefs(r.prefs); setStatus(it.op === 'reset' ? 'Calibration reset.' : it.op === 'toggle' ? (c.enabled ? 'Calibration is off.' : 'Calibration is on.') : p.system ? 'Games will no longer be calibrated.' : 'Games will be calibrated from the next start.'); }
+  else if (r) setStatus(r.error, true);
+  return again();
 }
 
 // Desktop Mode is the login screen: Tessera closes, and the person signs in
@@ -2229,6 +3152,12 @@ function onButton(n) {
   }
   if (suspended || busy) return;
   if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
+  if (modal && modal.kind === 'cal') {
+    if (n === 3) return calCompare(true);
+    const nm = BUTTON_NAMES_BY_ROLE[n];
+    if (nm) calPress(nm);
+    return;
+  }
   if (modal && modal.kind === 'color') return colorButton(n);
   if (modal && modal.kind === 'keys') return keysButton(n);
   if (modal && modal.kind === 'list') {
@@ -2242,12 +3171,27 @@ function onButton(n) {
   if (name) press(name);
 }
 function onRelease(n) {
+  if (n === 3 && modal && modal.kind === 'cal') return calCompare(false);
   if (n === 3 && !modal) yUp();
 }
 
+// The launcher stays hidden (body.hold) until its first data arrives, and on a
+// brand-new install until the welcome popup has been answered.
+const reveal = () => document.body.classList.remove('hold');
+setTimeout(() => { if (!modal) reveal(); }, 8000); // never leave the screen blank
+let lowWarned = false;
+api.onDriveAdded((d) => offerDrive(d));
 api.onInit((payload) => {
   applyView(payload);
   if (payload.error) setStatus(payload.error, true);
+  else if (!lowWarned && payload.prefs && payload.prefs.storage && payload.prefs.storage.low.length) {
+    lowWarned = true;
+    const l = payload.prefs.storage.low[0];
+    setStatus(`Low storage: ${l.name} has ${fmtBytes(l.free)} left. Settings > Storage can help free some up.`, true);
+  }
+  if (payload.prefs && payload.prefs.pin && payload.prefs.pin.firstRun && !welcomed) {
+    if (!modal && !busy) flowWelcome().then(reveal);
+  } else reveal();
 });
 
 function resume(message) {
@@ -2278,6 +3222,7 @@ function loop(now) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
       applyGlyphs(); // "automatic" labels follow whichever controller is in use
+      if (modal && modal.kind === 'keys') renderModal();
       setStatus(`Controller: ${pad.id} [${pad.mapping || 'non-standard'}]`);
     }
     const b = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
@@ -2289,7 +3234,14 @@ function loop(now) {
     const up = b(12) || sy < -0.5;
     const down = b(13) || sy > 0.5;
 
-    if ((left || right || up || down) && now - lastNav > NAV_REPEAT_MS) {
+    if (patternActive()) {
+      // PIN pattern: the D-pad types digits like any other button, and nothing navigates.
+      for (let n = 12; n <= 15; n++) {
+        const d = b(n);
+        if (d && !prevBtn[n]) onButton(n);
+        prevBtn[n] = d;
+      }
+    } else if ((left || right || up || down) && now - lastNav > NAV_REPEAT_MS) {
       if (!(modal && modal.kind === 'capture')) press(left ? 'left' : right ? 'right' : up ? 'up' : 'down');
       lastNav = now;
     }

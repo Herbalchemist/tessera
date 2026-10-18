@@ -229,7 +229,7 @@ function buildView() {
   const tileFor = (ref, selfId) => {
     if (ref === selfId) return null;
     const it = itemById(ref);
-    if (it) return { id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art) };
+    if (it) return { id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(itemDeleteTarget(it)), offline: offlineKind(it) };
     const inl = inlayById(ref);
     if (inl) {
       // A widget that was removed from the folder stays on the page as a
@@ -255,7 +255,7 @@ function buildView() {
   for (const c of state.categories) {
     folders[c.id] = { title: c.title, tiles: c.entries.map((e) => tileFor(e, c.id)).filter(Boolean) };
   }
-  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art) });
+  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(itemDeleteTarget(it)), offline: offlineKind(it) });
   const games = state.items.filter((i) => i.kind === 'game').map(tileOf);
   const apps = state.items.filter((i) => i.kind === 'app').map(tileOf);
   // Library and Apps are automatic: everything you've added, filed or not.
@@ -430,6 +430,20 @@ function libraryOp(op, p) {
       gc();
       return { ok: true, message: 'Removed from this row.' };
     }
+    case 'deleteFiles': {
+      const it = itemById(p.id);
+      if (!it) return { ok: false, error: 'That no longer exists.' };
+      const target = itemDeleteTarget(it);
+      if (!target) return { ok: false, error: "Tessera only deletes files it keeps in your Tessera folder. Remove it from the library instead, or uninstall it where you installed it." };
+      const r = vaultDelete(target);
+      if (!r.ok) return r;
+      const gone = (x) => { const rp = real(x.path); return !rp || rp === target || rp.startsWith(target + path.sep); };
+      const ids = new Set(state.items.filter((x) => gone(x)).map((x) => x.id));
+      state.items = state.items.filter((x) => !ids.has(x.id));
+      state.categories.forEach((x) => (x.entries = x.entries.filter((e) => !ids.has(e))));
+      gc();
+      return { ok: true, message: `Deleted ${it.title} and its files.` };
+    }
     case 'deleteItem': {
       const it = itemById(p.id);
       if (!it) return { ok: false, error: 'That no longer exists.' };
@@ -482,7 +496,16 @@ let settings = {
   pad: { ...PAD_DEFAULTS },
   calib: {}, // per controller: resting offsets of each axis
   driveNames: {}, // drive key -> the name the person gave it
+  pin: null, // { salt, hash } for the PIN (never the PIN itself)
+  pinBrowser: true, // the PIN also guards the browser
+  firstRunDone: false, // the welcome page is shown once
   pageGrid: {}, // page key -> { cols, rows } for pages that differ from the theme's grid size
+  calibration: null, // display calibration made by eye (see "display calibration" below), or null
+  calibrationSystem: false, // also hand it to Gamescope so games get it too (experimental)
+  installRoot: '', // where new games go by default (one of the library folders)
+  ignoredDrives: [], // drives the person said "don't ask again" for
+  mutedDrives: [], // drives that never trigger that warning
+  hiddenDrives: [], // drives left out of Storage altogether
 };
 
 function loadSettings() {
@@ -529,6 +552,15 @@ function loadSettings() {
       for (const [k, v] of Object.entries(d.driveNames).slice(0, 64))
         if (k.length < 200 && typeof v === 'string' && v.trim() && v.length <= 40) settings.driveNames[k] = v.trim();
     }
+    // A settings file from before the welcome page existed counts as "already welcomed".
+    settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
+    if (d && d.pin && /^[0-9a-f]{32}$/.test(d.pin.salt || '') && /^[0-9a-f]{64}$/.test(d.pin.hash || '')) settings.pin = { salt: d.pin.salt, hash: d.pin.hash };
+    settings.pinBrowser = !d || d.pinBrowser !== false;
+    settings.calibration = d && d.calibration ? cleanCal(d.calibration) : null;
+    settings.calibrationSystem = Boolean(d && d.calibrationSystem === true && settings.calibration);
+    if (d && typeof d.installRoot === 'string' && path.isAbsolute(d.installRoot)) settings.installRoot = d.installRoot;
+    for (const k of ['mutedDrives', 'hiddenDrives']) if (d && Array.isArray(d[k])) settings[k] = d[k].filter((x) => typeof x === 'string' && x.length < 200).slice(-64);
+    if (d && Array.isArray(d.ignoredDrives)) settings.ignoredDrives = d.ignoredDrives.filter((k) => typeof k === 'string' && k.length < 200).slice(-64);
     if (d && d.pageGrid && typeof d.pageGrid === 'object') {
       for (const [k, v] of Object.entries(d.pageGrid).slice(0, 200)) {
         const g = cleanPageGrid(k, v && v.cols, v && v.rows);
@@ -537,6 +569,11 @@ function loadSettings() {
     }
   } catch {
     /* none yet */
+  }
+  // A brand-new install looks in ~/Tessera/Games from the start.
+  if (!settings.firstRunDone && !settings.scanRoots.length) {
+    const g = real(vaultFolder('games'));
+    if (g) settings.scanRoots.push(g);
   }
 }
 // A page's own grid size: key is a page id (or f:<folder id>), cols 2-12, rows 1-8.
@@ -778,7 +815,93 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, theme: themePayload() });
+const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload() });
+
+
+// ------------------------------------------------------- display calibration
+// A calibration made by eye with test patterns (no measuring device), so it is
+// a good correction, not a lab one. It is a few numbers, not code:
+//   black    -0.10..0.10  brightness: positive darkens shadows, negative lifts them
+//   white    0.80..1      highest level, below 1 gives bright detail room
+//   gamma    3 x 0.6..1.6 a correction exponent per colour (1 = leave alone)
+//   gain     3 x 0.85..1  white balance (only ever turns a colour down)
+//   sat      0.5..1.5     saturation
+// For each colour:  out = (clamp((in - black) / (1 - black)) ^ gamma) * white * gain
+// The page draws it with an SVG filter. For games it can also be written as a
+// ReShade shader that Gamescope loads (--reshade-effect), see tessera-session.
+const CAL_RANGES = { black: [-0.1, 0.1], white: [0.8, 1], gamma: [0.6, 1.6], gain: [0.85, 1], sat: [0.5, 1.5] };
+function cleanCal(c) {
+  if (!c || typeof c !== 'object') return null;
+  const num = (v, [lo, hi], dflt) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 10000) / 10000)) : dflt);
+  const tri = (v, r, dflt) => (Array.isArray(v) && v.length === 3 ? v.map((x) => num(x, r, dflt)) : [dflt, dflt, dflt]);
+  return {
+    black: num(c.black, CAL_RANGES.black, 0),
+    white: num(c.white, CAL_RANGES.white, 1),
+    gamma: tri(c.gamma, CAL_RANGES.gamma, 1),
+    gain: tri(c.gain, CAL_RANGES.gain, 1),
+    sat: num(c.sat, CAL_RANGES.sat, 1),
+    enabled: c.enabled !== false,
+    mode: c.mode === 'thorough' ? 'thorough' : 'quick',
+    at: typeof c.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(c.at) ? c.at : '',
+  };
+}
+const calIsIdentity = (c) => !c || (c.black === 0 && c.white === 1 && c.sat === 1 && c.gamma.every((g) => g === 1) && c.gain.every((g) => g === 1));
+function calCurve(c, ch, x) {
+  const t = Math.min(1, Math.max(0, (x - c.black) / (1 - c.black)));
+  return Math.min(1, Math.pow(t, c.gamma[ch]) * c.white * c.gain[ch]);
+}
+const CAL_DIR = path.join(DATA_DIR, 'calibration');
+const CAL_FX = path.join(CAL_DIR, 'tessera-calibration.fx');
+const CAL_FAILED = path.join(path.dirname(LOG_DIR), 'calibration-failed'); // written by tessera-session if Gamescope wouldn't start with the shader
+const f5 = (n) => Number(n).toFixed(5);
+function calFx(c) {
+  return `// Tessera display calibration. Written by Tessera (Settings > Display calibration). Don't edit.
+texture2D texColor : COLOR;
+sampler2D samplerColor { Texture = texColor; AddressU = Clamp; AddressV = Clamp; MinFilter = Point; MagFilter = Point; };
+void PostProcessVS(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD)
+{
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+float4 PS_TesseraCalibration(float4 position : SV_Position, float2 texcoord : TEXCOORD) : SV_Target
+{
+	float3 c = tex2D(samplerColor, texcoord).rgb;
+	c = saturate((c - ${f5(c.black)}) / ${f5(1 - c.black)});
+	c = pow(c, float3(${c.gamma.map(f5).join(', ')}));
+	c = saturate(c * ${f5(c.white)} * float3(${c.gain.map(f5).join(', ')}));
+	float l = dot(c, float3(0.2126, 0.7152, 0.0722));
+	c = saturate(lerp(float3(l, l, l), c, ${f5(c.sat)}));
+	return float4(c, 1.0);
+}
+technique TesseraCalibration
+{
+	pass
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PS_TesseraCalibration;
+	}
+}
+`;
+}
+// Keep the shader file in step with what is saved: present only when the person turned it on.
+function syncCalFx() {
+  const want = settings.calibrationSystem && settings.calibration && settings.calibration.enabled && !calIsIdentity(settings.calibration);
+  try {
+    if (want) { fs.mkdirSync(CAL_DIR, { recursive: true }); fs.writeFileSync(CAL_FX, calFx(settings.calibration)); }
+    else fs.rmSync(CAL_FX, { force: true });
+  } catch { /* can't write: the page filter still works */ }
+}
+function calPayload() {
+  const c = settings.calibration;
+  const systemActive = process.env.TESSERA_CAL_SYSTEM === '1' && settings.calibrationSystem && Boolean(c && c.enabled);
+  return {
+    cal: c, // null = never calibrated
+    system: settings.calibrationSystem,
+    systemActive, // Gamescope is already applying it, so the page must not apply it a second time
+    systemFailed: fs.existsSync(CAL_FAILED),
+  };
+}
 
 const display = (p) => {
   const home = os.homedir();
@@ -861,7 +984,8 @@ function driveList() {
 // Home first, then every drive. Going "up" from any of these lands on this list.
 const topLevels = () => {
   const home = real(os.homedir());
-  return [...(home ? [home] : []), ...driveList().map((d) => d.mount)];
+  const v = real(VAULT_DIR);
+  return [...(v ? [v] : []), ...(home ? [home] : []), ...driveList().map((d) => d.mount)];
 };
 // A path shown the way a person would say it: "Games SSD / SteamLibrary".
 function friendly(p) {
@@ -991,6 +1115,7 @@ function browseView() {
   if (!b.dir) {
     const home = real(os.homedir());
     b.entries = [
+      ...(real(VAULT_DIR) ? [{ name: 'Tessera folder', sub: display(VAULT_DIR), isDir: true, full: real(VAULT_DIR) }] : []),
       ...(home ? [{ name: 'Home folder', sub: display(home), isDir: true, full: home }] : []),
       ...driveList().map((d) => ({ name: d.name, sub: d.tech, key: d.key, isDir: true, full: d.mount })),
     ];
@@ -1028,7 +1153,7 @@ function browseView() {
     if (dir) rows.push({ name: e.name, isDir: true, full });
     else if (file && (b.purpose === 'pickImage' || b.purpose === 'pickArt')) {
       if (IMG_EXT[path.extname(e.name).toLowerCase()]) rows.push({ name: e.name, isDir: false, full });
-    } else if (file && b.purpose !== 'addRoot') {
+    } else if (file && !['addRoot', 'backupTo', 'restoreFrom'].includes(b.purpose)) {
       try { fs.accessSync(full, fs.constants.X_OK); } catch { continue; }
       rows.push({ name: e.name, isDir: false, full });
     }
@@ -1038,7 +1163,7 @@ function browseView() {
   return {
     crumb: friendly(b.dir).name,
     canUp: true,
-    canChooseHere: b.purpose === 'addRoot',
+    canChooseHere: ['addRoot', 'backupTo', 'restoreFrom'].includes(b.purpose),
     entries: pub(),
     truncated: rows.length > BROWSE_MAX,
   };
@@ -1046,7 +1171,7 @@ function browseView() {
 
 function browseOp(op, p) {
   if (op === 'start') {
-    if (!['addGame', 'addApp', 'addRoot', 'pickImage', 'pickArt'].includes(p.purpose)) return { error: 'Bad request.' };
+    if (!['addGame', 'addApp', 'addRoot', 'pickImage', 'pickArt', 'backupTo', 'restoreFrom'].includes(p.purpose)) return { error: 'Bad request.' };
     if (p.purpose === 'pickArt' && !itemById(p.item)) return { error: 'That no longer exists.' };
     browse = {
       purpose: p.purpose,
@@ -1115,6 +1240,13 @@ function browseOp(op, p) {
       saveSettings();
       browse = null;
       return { ok: true, message: `Added ${friendly(rp).name} to your library folders.` };
+    }
+    if (browse.purpose === 'backupTo' || browse.purpose === 'restoreFrom') {
+      const rp = browse.dir && real(browse.dir);
+      if (!rp || !underRoot(rp)) return { error: 'Pick a folder first.' };
+      const which = browse.purpose;
+      browse = null;
+      return which === 'backupTo' ? makeBackup(rp) : restoreBackup(rp);
     }
     if (state.locked) return { error: `Can't edit: ${state.locked}` };
     if (!entry || entry.isDir) return { error: 'Pick a file.' };
@@ -1392,7 +1524,73 @@ function runScan() {
 const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds'];
 const WIDGET_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const WIDGET_MAX_FILE = 5 * 1024 * 1024;
-const addonDir = (name) => path.join(DATA_DIR, name);
+// ------------------------------------------------------- the Tessera folder
+// One folder (~/Tessera) holds what Tessera keeps: games, apps, themes, widgets,
+// pictures and downloads. People can add their own folders inside it. Tessera
+// itself only ever deletes things *inside* these folders, never the folders
+// themselves, so nothing the system expects to find can be removed from here.
+const VAULT_DIR = process.env.TESSERA_VAULT_DIR || path.join(process.env.TESSERA_DATA_DIR ? DATA_DIR : os.homedir(), 'Tessera');
+const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads' };
+const addonDir = (name) => path.join(VAULT_DIR, VAULT_FOLDERS[name] || name);
+const vaultFolder = (key) => path.join(VAULT_DIR, VAULT_FOLDERS[key]);
+// Is this real path inside the Tessera folder? With strict, the folder itself and
+// its fixed top-level folders don't count (those can never be deleted or renamed).
+function inVault(rp, strict = false) {
+  const v = real(VAULT_DIR);
+  if (!v || !rp) return false;
+  if (!(rp === v || rp.startsWith(v + path.sep))) return false;
+  if (!strict) return true;
+  return rp !== v && !Object.values(VAULT_FOLDERS).some((f) => rp === path.join(v, f));
+}
+// Delete something inside the Tessera folder (and only there).
+function vaultDelete(target) {
+  try {
+    const st = fs.lstatSync(target);
+    if (st.isSymbolicLink()) { // a shortcut: remove the shortcut, never what it points to
+      const dir = real(path.dirname(target));
+      if (!dir || !inVault(path.join(dir, path.basename(target)), true)) return { ok: false, error: "That isn't inside your Tessera folder." };
+      fs.unlinkSync(target);
+      return { ok: true };
+    }
+    const rp = real(target);
+    if (!rp || !inVault(rp, true)) return { ok: false, error: "That isn't inside your Tessera folder." };
+    if (fs.statSync(rp).dev !== fs.statSync(real(VAULT_DIR)).dev) return { ok: false, error: "That is on another drive." };
+    fs.rmSync(rp, { recursive: true, force: true });
+    sizeCache.clear();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Couldn't delete that." };
+  }
+}
+// What "delete the files" means for a game or app: its own folder under Games or
+// Apps (or the file itself if it sits straight in there). Null if it lives anywhere else.
+function itemDeleteTarget(item) {
+  const rp = real(item.path);
+  if (!rp) return null;
+  for (const key of ['games', 'apps']) {
+    const root = real(vaultFolder(key));
+    if (root && rp.startsWith(root + path.sep)) return path.join(root, path.relative(root, rp).split(path.sep)[0]);
+  }
+  return null;
+}
+function migrateAddonDirs() {
+  for (const d of ADDON_DIRS) {
+    const old = path.join(DATA_DIR, d);
+    const dest = addonDir(d);
+    if (old === dest || !isDir(old)) continue;
+    try {
+      fs.mkdirSync(dest, { recursive: true });
+      for (const name of fs.readdirSync(old)) {
+        if (name === 'README.txt') { try { fs.unlinkSync(path.join(old, name)); } catch { /* ignore */ } continue; }
+        const to = path.join(dest, name);
+        if (fs.existsSync(to)) continue;
+        try { fs.renameSync(path.join(old, name), to); }
+        catch { fs.cpSync(path.join(old, name), to, { recursive: true }); fs.rmSync(path.join(old, name), { recursive: true, force: true }); }
+      }
+      try { fs.rmdirSync(old); } catch { /* something is left there: fine */ }
+    } catch { /* leave it where it is */ }
+  }
+}
 
 const README = {
   widgets: `Put one folder per widget here. The folder name is the widget's id
@@ -1460,9 +1658,24 @@ Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme S
 };
 
 function ensureTree() {
-  for (const d of ADDON_DIRS) {
-    try { fs.mkdirSync(addonDir(d), { recursive: true }); } catch { /* read-only: skip */ }
+  for (const f of Object.values(VAULT_FOLDERS)) {
+    try { fs.mkdirSync(path.join(VAULT_DIR, f), { recursive: true }); } catch { /* read-only: skip */ }
   }
+  migrateAddonDirs();
+  try {
+    const f = path.join(VAULT_DIR, 'README.txt');
+    if (!fs.existsSync(f)) fs.writeFileSync(f, `This is the Tessera folder. Tessera keeps what it manages in here:
+
+  Games, Apps       games and apps you install or download for Tessera
+  Themes, Widgets   add-ons (see the README inside each)
+  Pictures          game pictures and backgrounds
+  Fonts, Sounds     for themes that use them
+  Downloads         what the built-in browser saves, until you file it
+
+Make your own folders inside any of these. The folders listed above can't be
+renamed or deleted from Tessera, because Tessera expects to find them.
+`);
+  } catch { /* ignore */ }
   for (const [d, text] of Object.entries(README)) {
     const f = path.join(addonDir(d), 'README.txt');
     try { if (!fs.existsSync(f)) fs.writeFileSync(f, text); } catch { /* ignore */ }
@@ -1613,7 +1826,7 @@ function addonsInfo() {
       type, name: d.name, description: d.description, size: d.size, min: d.min, max: d.max, resizable: d.resizable,
     })),
     widgets: [...widgets].map(([id, w]) => ({
-      type: 'widget:' + id, name: w.manifest.name, description: w.manifest.description,
+      id, type: 'widget:' + id, name: w.manifest.name, description: w.manifest.description,
       author: w.manifest.author, size: w.manifest.size, min: w.manifest.min, max: w.manifest.max, resizable: w.manifest.resizable,
     })),
     rejected,
@@ -1692,7 +1905,495 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
     createWindow();
+    watchDrives();
   });
+}
+
+// ------------------------------------------------------------------ storage
+// Drives, how full they are, what's using the space, and housekeeping. Sizes
+// come from walking folders (never following shortcuts) and are cached for a
+// while, so opening Storage twice is quick. Nothing here takes a path from the
+// page: it names drives, games and choices, and this file resolves them.
+const GB = 1024 ** 3;
+const LOW_SPACE = { pct: 10, bytes: 10 * GB };
+const EXTERNAL_PREFIXES = ['/run/media/', '/media/', '/mnt/', '/var/mnt/'];
+const isMountedDir = (d) => {
+  try { return fs.statSync(d).dev !== fs.statSync(path.dirname(d)).dev; } catch { return false; }
+};
+// Why can't this game's file be found? 'drive' = its drive isn't plugged in, 'missing' = the file is gone.
+function offlineKind(it) {
+  try { fs.accessSync(it.path); return null; } catch { /* not there */ }
+  for (const pre of EXTERNAL_PREFIXES) {
+    if (!it.path.startsWith(pre)) continue;
+    const segs = it.path.slice(pre.length).split('/');
+    const depth = pre === '/run/media/' || pre === '/media/' ? 2 : 1; // /run/media/<user>/<label>
+    if (segs.length > depth) {
+      const root = pre + segs.slice(0, depth).join('/');
+      if (!isDir(root) || !isMountedDir(root)) return 'drive';
+    }
+  }
+  return 'missing';
+}
+function allMounts() {
+  const out = [];
+  try {
+    for (const line of fs.readFileSync('/proc/self/mountinfo', 'utf8').split('\n')) {
+      const [left, right] = line.split(' - ');
+      if (!right) continue;
+      const mp = unescapeMount(left.split(' ')[4] || '');
+      const [fstype, source] = right.split(' ');
+      if (mp) out.push({ mount: mp, fstype, source: source || '' });
+    }
+  } catch { /* no mountinfo */ }
+  return out;
+}
+// The drive a path lives on: the longest mount folder that contains it.
+function mountOf(rp) {
+  let best = null;
+  for (const m of allMounts()) {
+    if (rp === m.mount || m.mount === '/' || rp.startsWith(m.mount + path.sep)) {
+      if (!best || m.mount.length > best.mount.length) best = m;
+    }
+  }
+  return best;
+}
+const driveHasLibrary = (mount) => settings.scanRoots.some((r) => { const rp = real(r) || r; return rp === mount || rp.startsWith(mount + path.sep); });
+const isRemovable = (source) => {
+  try {
+    const base = path.basename(source);
+    const sys = fs.realpathSync('/sys/class/block/' + base);
+    const parent = sys.includes('/block/') ? path.basename(path.dirname(sys)) : base;
+    const dev = /^(sd[a-z]+|nvme\d+n\d+|mmcblk\d+|vd[a-z]+)/.exec(parent);
+    const disk = dev ? dev[1] : parent;
+    return fs.readFileSync(`/sys/block/${disk}/removable`, 'utf8').trim() === '1' || fs.realpathSync(`/sys/block/${disk}`).includes('/usb');
+  } catch { return false; }
+};
+// Every drive worth showing: the one holding Tessera's folder, plugged-in drives, and any drive holding a library folder.
+function storageDrives(includeHidden = false) {
+  const out = new Map(); // mount -> info
+  const labels = lsblkLabels();
+  const named = driveList();
+  const put = (mount, source, extra = {}) => {
+    if (!mount || out.has(mount)) return;
+    let st;
+    try { st = fs.statfsSync(mount); } catch { return; }
+    const total = st.blocks * st.bsize;
+    if (!total) return;
+    const info = labels.get(source) || {};
+    const nd = named.find((d) => d.mount === mount);
+    const key = nd ? nd.key : (info.uuid || 'dir:' + mount);
+    const name = settings.driveNames[key] || (nd && nd.name) || info.label || extra.fallbackName || path.basename(mount) || 'Drive';
+    out.set(mount, {
+      key, mount, name, source, total,
+      free: st.bavail * st.bsize,
+      used: Math.max(0, (st.blocks - st.bfree) * st.bsize),
+      external: Boolean(nd), system: Boolean(extra.system),
+      removable: isRemovable(source),
+      ejectable: Boolean(nd) && ['/run/media/', '/media/'].some((p) => mount.startsWith(p)),
+      library: driveHasLibrary(mount),
+      hidden: settings.hiddenDrives.includes(key),
+      muted: settings.mutedDrives.includes(key),
+    });
+  };
+  const v = real(VAULT_DIR);
+  const vm = v && mountOf(v);
+  if (vm) put(vm.mount, vm.source, { system: true, fallbackName: 'Main storage' });
+  for (const d of named) { if (!isMountedDir(d.mount)) continue; const s = mountSources().get(d.mount); put(d.mount, s ? s.source : '', {}); }
+  for (const r of settings.scanRoots) { const rp = real(r); const m = rp && mountOf(rp); if (m) put(m.mount, m.source, { fallbackName: 'Drive' }); }
+  return [...out.values()].filter((d) => includeHidden || !d.hidden);
+}
+let lowCache = { at: 0, list: [] };
+function lowSpace() {
+  if (Date.now() - lowCache.at < 30000) return lowCache.list;
+  let list = [];
+  try {
+    list = storageDrives()
+      .filter((d) => !d.muted && d.free < LOW_SPACE.bytes || d.free / d.total < LOW_SPACE.pct / 100)
+      .map((d) => ({ name: d.name, free: d.free }));
+  } catch { /* skip */ }
+  lowCache = { at: Date.now(), list };
+  return list;
+}
+
+// ---- sizes
+const sizeCache = new Map(); // folder -> { bytes, at }
+const SIZE_TTL = 10 * 60 * 1000;
+async function dirSize(dir, deadline) {
+  const hit = sizeCache.get(dir);
+  if (hit && Date.now() - hit.at < SIZE_TTL) return hit.bytes;
+  let bytes = 0;
+  try {
+    const top = await fs.promises.lstat(dir);
+    if (!top.isDirectory()) { // a single file
+      bytes = top.isFile() ? top.blocks * 512 : 0;
+      sizeCache.set(dir, { bytes, at: Date.now() });
+      return bytes;
+    }
+  } catch { return 0; }
+  const stack = [dir];
+  while (stack.length) {
+    if (Date.now() > deadline) return null;
+    const d = stack.pop();
+    let ents;
+    try { ents = await fs.promises.readdir(d, { withFileTypes: true }); } catch { continue; }
+    await Promise.all(ents.map(async (e) => {
+      const f = path.join(d, e.name);
+      try {
+        if (e.isDirectory()) stack.push(f);
+        else if (e.isFile()) { const st = await fs.promises.lstat(f); bytes += st.blocks * 512; }
+      } catch { /* vanished */ }
+    }));
+  }
+  sizeCache.set(dir, { bytes, at: Date.now() });
+  return bytes;
+}
+const cachedSize = (dir) => { const h = sizeCache.get(dir); return h && Date.now() - h.at < SIZE_TTL ? h.bytes : null; };
+// The folder that holds all of a game: its own folder in Games/Apps, a Steam game's folder, or the first folder under a library folder.
+function gameDir(it) {
+  const rp = real(it.path);
+  if (!rp) return null;
+  const t = itemDeleteTarget(it);
+  if (t) return t;
+  for (const root of settings.scanRoots) {
+    const r = real(root);
+    if (!r || !rp.startsWith(r + path.sep)) continue;
+    const segs = path.relative(r, rp).split(path.sep);
+    if (segs[0] === 'steamapps' && segs[1] === 'common' && segs.length > 3) return path.join(r, 'steamapps', 'common', segs[2]);
+    return segs.length > 1 ? path.join(r, segs[0]) : rp; // a file straight in the library folder is just itself
+  }
+  // A game added as a single file: its folder, unless that folder is a broad one (Home, Downloads, /usr…).
+  const dir = path.dirname(rp);
+  const home = real(os.homedir());
+  const broad = dir === home || dir === '/' || dir.split(path.sep).filter(Boolean).length <= 2 ||
+    /^\/(usr|bin|sbin|etc|lib|lib64|opt|var\/lib|app)(\/|$)/.test(dir) ||
+    (home && path.dirname(dir) === home && ['Downloads', 'Documents', 'Desktop', 'Pictures', 'Music', 'Videos'].includes(path.basename(dir)));
+  return broad ? rp : dir;
+}
+async function gameSizes(deadline) {
+  const rows = [];
+  const dirs = new Map();
+  for (const it of state.items) {
+    const off = offlineKind(it);
+    const dir = off ? null : gameDir(it);
+    rows.push({ it, off, dir });
+    if (dir) dirs.set(dir, null);
+  }
+  let partial = false;
+  for (const dir of dirs.keys()) {
+    const b = await dirSize(dir, deadline);
+    if (b === null) partial = true; else dirs.set(dir, b);
+  }
+  return { rows, dirs, partial };
+}
+const VAULT_LABELS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads' };
+
+async function storageOverview(measure) {
+  const deadline = Date.now() + (measure ? 25000 : -1);
+  const drives = storageDrives();
+  const byMount = new Map(drives.map((d) => [d.mount, { ...d, games: 0, tessera: 0 }]));
+  let partial = false;
+  // games and apps, counted once per folder
+  const gs = measure ? await gameSizes(deadline) : null;
+  const counted = new Set();
+  const vaultReal = real(VAULT_DIR);
+  let gamesInVault = 0;
+  if (gs) {
+    partial = partial || gs.partial;
+    for (const [dir, b] of gs.dirs) {
+      if (b === null) continue;
+      const m = mountOf(dir);
+      const d = m && byMount.get(m.mount);
+      if (!d || counted.has(dir)) continue;
+      counted.add(dir);
+      d.games += b;
+      if (vaultReal && (dir === vaultReal || dir.startsWith(vaultReal + path.sep))) gamesInVault += b;
+    }
+  }
+  // the Tessera folder, by sub-folder
+  const vault = [];
+  let vaultBytes = 0;
+  if (vaultReal) {
+    for (const [key, label] of Object.entries(VAULT_LABELS)) {
+      const dir = path.join(vaultReal, VAULT_FOLDERS[key]);
+      const b = measure ? await dirSize(dir, deadline) : cachedSize(dir);
+      if (b === null) { partial = true; continue; }
+      vault.push({ key, name: label, bytes: b });
+      vaultBytes += b;
+    }
+    const vm = mountOf(vaultReal);
+    const d = vm && byMount.get(vm.mount);
+    if (d) d.tessera = Math.max(0, vaultBytes - gamesInVault);
+  }
+  return {
+    ok: true, partial, measured: Boolean(measure),
+    drives: [...byMount.values()].map((d) => ({
+      key: d.key, name: d.name, total: d.total, free: d.free, used: d.used, games: d.games, tessera: d.tessera,
+      external: d.external, system: d.system, ejectable: d.ejectable, library: d.library, muted: d.muted,
+    })),
+    vault: { path: display(VAULT_DIR), bytes: vaultBytes, parts: vault },
+    hiddenCount: storageDrives(true).filter((d) => d.hidden).length,
+    install: (() => { const t = installTarget(); return t ? friendly(t).name : ''; })(),
+    low: lowSpace(),
+  };
+}
+async function storageGames(measure) {
+  const gs = await gameSizes(Date.now() + (measure ? 25000 : -1));
+  const games = gs.rows.map(({ it, off, dir }) => {
+    const m = dir && mountOf(dir);
+    const dr = m && storageDrives().find((d) => d.mount === m.mount);
+    return {
+      id: it.id, title: it.title, kind: it.kind,
+      bytes: dir ? gs.dirs.get(dir) : null,
+      offline: off, drive: dr ? dr.name : '', deletable: Boolean(itemDeleteTarget(it)),
+    };
+  }).sort((a, b) => (b.bytes || 0) - (a.bytes || 0) || a.title.localeCompare(b.title));
+  return { ok: true, games, partial: gs.partial };
+}
+
+// ---- install location, downloads
+function installChoices() {
+  const g = real(vaultFolder('games'));
+  const roots = [...(g ? [g] : []), ...settings.scanRoots.map((r) => real(r)).filter((r) => r && r !== g && isDir(r))];
+  return roots;
+}
+function installTarget() {
+  const r = settings.installRoot && real(settings.installRoot);
+  if (r && isDir(r) && installChoices().includes(r)) return r;
+  return real(vaultFolder('games'));
+}
+function installView() {
+  const cur = installTarget();
+  const drives = storageDrives();
+  return installChoices().map((r) => {
+    const m = mountOf(r);
+    const d = m && drives.find((x) => x.mount === m.mount);
+    return { name: friendly(r).name, free: d ? d.free : null, current: r === cur };
+  });
+}
+async function downloadsInfo() {
+  const dir = real(vaultFolder('downloads'));
+  if (!dir) return { ok: true, path: '', bytes: 0, count: 0 };
+  let count = 0;
+  try { count = fs.readdirSync(dir).filter((n) => n !== 'README.txt').length; } catch { /* ignore */ }
+  sizeCache.delete(dir);
+  const b = await dirSize(dir, Date.now() + 15000);
+  return { ok: true, path: display(dir), bytes: b || 0, count };
+}
+function clearDownloads() {
+  const dir = real(vaultFolder('downloads'));
+  if (!dir) return { ok: false, error: 'No Downloads folder.' };
+  let n = 0;
+  for (const name of fs.readdirSync(dir)) {
+    if (name === 'README.txt') continue;
+    if (vaultDelete(path.join(dir, name)).ok) n++;
+  }
+  sizeCache.clear();
+  return { ok: true, message: n ? `Cleared ${n} item${n === 1 ? '' : 's'} from Downloads.` : 'Downloads was already empty.' };
+}
+
+// ---- drives: use for games, ignore, eject, and the new-drive watcher
+const LIB_FOLDER_NAMES = ['Games', 'games', 'SteamLibrary'];
+function useDriveForGames(key) {
+  const d = driveList().find((x) => x.key === key);
+  if (!d) return { ok: false, error: "That drive isn't connected." };
+  let added = [];
+  const existing = LIB_FOLDER_NAMES.map((n) => path.join(d.mount, n)).filter(isDir);
+  const targets = existing.length ? existing : [path.join(d.mount, 'Games')];
+  for (const t of targets) {
+    try { fs.mkdirSync(t, { recursive: true }); } catch { return { ok: false, error: "Couldn't use this drive. Is it read-only?" }; }
+    const rp = real(t);
+    if (rp && !settings.scanRoots.includes(rp)) { settings.scanRoots.push(rp); added.push(rp); }
+  }
+  saveSettings();
+  lowCache.at = 0;
+  return { ok: true, message: added.length ? `${d.name} is now a game library.` : `${d.name} is already a game library.` };
+}
+function sysfsParent(source) {
+  const base = path.basename(source);
+  try {
+    const sys = fs.realpathSync('/sys/class/block/' + base);
+    return sys.includes('/block/') && path.basename(path.dirname(sys)) !== 'block' ? path.basename(path.dirname(sys)) : base;
+  } catch { return base; }
+}
+const runTool = (file, args) => new Promise((resolve) => {
+  execFile(file, args, { timeout: 20000, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ ok: !err, out: `${stdout || ''}${stderr || ''}`.trim() }));
+});
+async function ejectDrive(key) {
+  if (running) return { ok: false, error: 'Close the game first.' };
+  const d = storageDrives().find((x) => x.key === key);
+  if (!d || !d.ejectable) return { ok: false, error: d ? 'Only plugged-in drives can be ejected.' : "That drive isn't connected." };
+  const home = real(os.homedir()); const v = real(VAULT_DIR);
+  if ((home && (home === d.mount || home.startsWith(d.mount + path.sep))) || (v && v.startsWith(d.mount + path.sep))) return { ok: false, error: 'Tessera is using that drive.' };
+  if (!/^\/dev\/[A-Za-z0-9]+$/.test(d.source)) return { ok: false, error: "Can't eject that." };
+  const u = await runTool('udisksctl', ['unmount', '-b', d.source]);
+  if (!u.ok) return { ok: false, error: /busy/i.test(u.out) ? 'Something is still using it. Close what is open from that drive and try again.' : "Couldn't eject it." };
+  if (d.removable) await runTool('udisksctl', ['power-off', '-b', '/dev/' + sysfsParent(d.source)]);
+  lowCache.at = 0; sizeCache.clear();
+  return { ok: true, message: `${d.name} can be unplugged now.` };
+}
+let knownDrives = null;
+let driveTimer = null;
+function watchDrives() {
+  const tick = () => {
+    if (running) return;
+    let list;
+    try { list = driveList(); } catch { return; }
+    const keys = new Set(list.map((d) => d.key));
+    if (knownDrives) {
+      let changed = knownDrives.size !== keys.size || [...keys].some((k) => !knownDrives.has(k));
+      for (const d of list) {
+        if (knownDrives.has(d.key) || settings.ignoredDrives.includes(d.key) || settings.hiddenDrives.includes(d.key) || driveHasLibrary(d.mount)) continue;
+        let st; try { st = fs.statfsSync(d.mount); } catch { continue; }
+        send('drive-added', { key: d.key, name: d.name, free: st.bavail * st.bsize, total: st.blocks * st.bsize });
+      }
+      if (changed) { lowCache.at = 0; send('init', buildView()); }
+    }
+    knownDrives = keys;
+  };
+  tick();
+  driveTimer = setInterval(tick, 5000);
+  if (driveTimer.unref) driveTimer.unref();
+}
+
+// ---- cleanup
+function cleanScan() {
+  const broken = []; const dupes = []; const seen = new Map();
+  for (const it of state.items) {
+    if (offlineKind(it) === 'missing') broken.push(it.id);
+    const key = (real(it.path) || it.path) + '\0' + JSON.stringify(it.args || []);
+    if (seen.has(key)) dupes.push({ id: it.id, keep: seen.get(key) }); else seen.set(key, it.id);
+  }
+  const known = new Set([...state.items.map((i) => i.id), ...state.categories.map((c) => c.id), ...state.inlays.map((i) => i.id)]);
+  let orphans = 0;
+  for (const c of state.categories) for (const e of c.entries) if (!known.has(e)) orphans++;
+  let logBytes = 0; let logFiles = 0;
+  try { for (const n of fs.readdirSync(LOG_DIR)) { const st = fs.statSync(path.join(LOG_DIR, n)); if (st.isFile()) { logBytes += st.size; logFiles++; } } } catch { /* none */ }
+  return { ok: true, broken: broken.length, dupes: dupes.length, orphans, logBytes, logFiles, _broken: broken, _dupes: dupes };
+}
+function cleanRun(what) {
+  if (state.locked) return { ok: false, error: `Can't edit: ${state.locked}` };
+  const sc = cleanScan();
+  const done = [];
+  const drop = (id) => { state.items = state.items.filter((x) => x.id !== id); state.categories.forEach((c) => (c.entries = c.entries.filter((e) => e !== id))); };
+  if (what.includes('broken') && sc._broken.length) { sc._broken.forEach(drop); done.push(`${sc._broken.length} broken`); }
+  if (what.includes('dupes') && sc._dupes.length) {
+    for (const d of sc._dupes) {
+      state.categories.forEach((c) => { if (c.entries.includes(d.id)) c.entries = c.entries.includes(d.keep) ? c.entries.filter((e) => e !== d.id) : c.entries.map((e) => (e === d.id ? d.keep : e)); });
+      state.items = state.items.filter((x) => x.id !== d.id);
+    }
+    done.push(`${sc._dupes.length} duplicate`);
+  }
+  if (what.includes('orphans') && sc.orphans) {
+    const known = new Set([...state.items.map((i) => i.id), ...state.categories.map((c) => c.id), ...state.inlays.map((i) => i.id)]);
+    state.categories.forEach((c) => (c.entries = c.entries.filter((e) => known.has(e))));
+    done.push(`${sc.orphans} stray`);
+  }
+  if (what.includes('logs') && sc.logFiles) {
+    try {
+      const files = fs.readdirSync(LOG_DIR).map((n) => ({ n, t: fs.statSync(path.join(LOG_DIR, n)).mtimeMs })).sort((a, b) => b.t - a.t).slice(1);
+      for (const f of files) { try { fs.unlinkSync(path.join(LOG_DIR, f.n)); } catch { /* skip */ } }
+      done.push('old log');
+    } catch { /* ignore */ }
+  }
+  if (!done.length) return { ok: true, message: 'Nothing to clean up.' };
+  gc();
+  saveState();
+  return { ok: true, message: `Cleaned up: ${done.join(', ')}.` };
+}
+
+// ---- back up and restore: layout, library and settings (not the PIN) go to a folder the person picks
+const BACKUP_FILES = ['library.json', 'settings.json'];
+function makeBackup(dest) {
+  const day = new Date().toISOString().slice(0, 10);
+  let dir = path.join(dest, `Tessera-backup-${day}`);
+  for (let n = 2; fs.existsSync(dir); n++) dir = path.join(dest, `Tessera-backup-${day}-${n}`);
+  try {
+    fs.mkdirSync(dir);
+    saveState(); saveSettings();
+    fs.copyFileSync(LIBRARY_FILE, path.join(dir, 'library.json'));
+    const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    delete s.pin; // a backup never carries the PIN
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(s, null, 2));
+    fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ tessera: 1, created: new Date().toISOString() }, null, 2));
+  } catch { return { ok: false, error: "Couldn't save the backup there. Is the drive full or read-only?" }; }
+  return { ok: true, message: `Backup saved in ${friendly(dir).name}.` };
+}
+function readSmallJson(file) {
+  const st = fs.statSync(file);
+  if (!st.isFile() || st.size > 8 * 1024 * 1024) throw new Error('size');
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+function restoreBackup(src) {
+  let lib; let set;
+  try {
+    const man = readSmallJson(path.join(src, 'manifest.json'));
+    if (!man || man.tessera !== 1) throw new Error('not a backup');
+    lib = readSmallJson(path.join(src, 'library.json'));
+    set = readSmallJson(path.join(src, 'settings.json'));
+    if (!lib || typeof lib !== 'object' || !Array.isArray(lib.items) || !set || typeof set !== 'object') throw new Error('shape');
+  } catch { return { ok: false, error: "That folder isn't a Tessera backup." }; }
+  try {
+    const keep = path.join(DATA_DIR, 'backups', `before-restore-${Date.now()}`);
+    fs.mkdirSync(keep, { recursive: true });
+    for (const f of [LIBRARY_FILE, SETTINGS_FILE]) { try { fs.copyFileSync(f, path.join(keep, path.basename(f))); } catch { /* none yet */ } }
+    set.pin = settings.pin || undefined; // keep this install's PIN
+    if (!set.pin) delete set.pin;
+    set.firstRunDone = true;
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(LIBRARY_FILE, JSON.stringify(lib, null, 2));
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ v: SETTINGS_VERSION, ...set }, null, 2));
+    settings.scanRoots = [];
+    loadSettings();
+    loadState();
+    artCache.clear(); artRev++; sizeCache.clear();
+  } catch { return { ok: false, error: "Couldn't restore that backup. Your setup was left as it was." }; }
+  return { ok: true, message: 'Backup restored.', view: buildView() };
+}
+
+async function storageOp(op, p) {
+  try {
+    const needsPin = ['useDrive', 'ignoreDrive', 'eject', 'setInstallRoot', 'clearDownloads', 'cleanRun', 'hideDrive', 'muteDrive'];
+    if (needsPin.includes(op) && !pinOk()) return NEED_PIN;
+    switch (op) {
+      case 'overview': return await storageOverview(p.measure === true);
+      case 'games': return await storageGames(p.measure === true);
+      case 'installRoots': return { ok: true, roots: installView() };
+      case 'setInstallRoot': {
+        const list = installChoices();
+        if (!Number.isInteger(p.index) || p.index < 0 || p.index >= list.length) return { ok: false, error: 'Pick one from the list.' };
+        settings.installRoot = list[p.index]; saveSettings();
+        return { ok: true, message: `New games will go to ${friendly(list[p.index]).name}.`, roots: installView() };
+      }
+      case 'downloads': return await downloadsInfo();
+      case 'clearDownloads': return clearDownloads();
+      case 'useDrive': return useDriveForGames(p.key);
+      case 'ignoreDrive': {
+        if (typeof p.key === 'string' && p.key.length < 200 && !settings.ignoredDrives.includes(p.key)) {
+          settings.ignoredDrives.push(p.key);
+          settings.ignoredDrives = settings.ignoredDrives.slice(-64);
+          saveSettings();
+        }
+        return { ok: true };
+      }
+      case 'eject': return await ejectDrive(p.key);
+      case 'cleanScan': { const { _broken, _dupes, ...r } = cleanScan(); return r; }
+      case 'cleanRun': return cleanRun(Array.isArray(p.what) ? p.what.filter((x) => ['broken', 'dupes', 'orphans', 'logs'].includes(x)) : []);
+      case 'hideDrive': case 'muteDrive': {
+        const field = op === 'hideDrive' ? 'hiddenDrives' : 'mutedDrives';
+        const on = op === 'hideDrive' ? p.hidden === true : p.muted === true;
+        if (typeof p.key !== 'string' || p.key.length > 199) return { ok: false, error: 'Pick a drive first.' };
+        settings[field] = settings[field].filter((k) => k !== p.key);
+        if (on) settings[field] = [...settings[field], p.key].slice(-64);
+        saveSettings(); lowCache.at = 0;
+        return { ok: true, prefs: prefsPayload() };
+      }
+      case 'hiddenDrives': return { ok: true, drives: storageDrives(true).filter((d) => d.hidden).map((d) => ({ key: d.key, name: d.name, total: d.total })) };
+      case 'forget': sizeCache.clear(); lowCache.at = 0; return { ok: true };
+      default: return { ok: false, error: 'Unknown action.' };
+    }
+  } catch {
+    return { ok: false, error: 'Something went wrong.' };
+  }
 }
 
 // Every handler takes plain data, validates it, and returns plain data.
@@ -1705,6 +2406,7 @@ const safe = (fn) => (_e, op, p) => {
 };
 
 ipcMain.handle('library', safe((op, p) => {
+  if (['deleteItem', 'deleteCategory', 'removeEntry', 'deleteFiles'].includes(op) && !pinOk()) return { ...NEED_PIN, view: buildView() };
   const r = libraryOp(op, p);
   if (r.ok) {
     try { saveState(); } catch { return { ok: false, error: "Couldn't save your library." }; }
@@ -1712,15 +2414,96 @@ ipcMain.handle('library', safe((op, p) => {
   return { ...r, view: buildView() };
 }));
 
-ipcMain.handle('browse', safe((op, p) => browseOp(op, p)));
+ipcMain.handle('browse', safe((op, p) => {
+  if (op === 'choose' && ['addGame', 'addApp', 'addRoot', 'backupTo', 'restoreFrom'].includes(browse && browse.purpose) && !pinOk()) return NEED_PIN;
+  return browseOp(op, p);
+}));
 
-ipcMain.handle('addons', safe((op) => {
+ipcMain.handle('storage', (_e, op, p) => storageOp(typeof op === 'string' ? op : '', p && typeof p === 'object' ? p : {}));
+
+ipcMain.handle('addons', safe((op, p) => {
+  if (op === 'remove') {
+    // Deletes one widget or theme folder from the Tessera folder, never the folder itself.
+    if (!pinOk()) return NEED_PIN;
+    const dir = p.dir === 'widgets' || p.dir === 'themes' ? p.dir : null;
+    if (!dir || typeof p.id !== "string" || !(dir === "widgets" ? WIDGET_ID_RE : THEME_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
+    if (dir === 'themes' && p.id === activeTheme()) return { ok: false, error: 'Switch to another theme first.' };
+    const r = vaultDelete(path.join(addonDir(dir), p.id));
+    if (!r.ok) return r;
+    if (dir === 'themes') delete settings.theme.values[p.id];
+    scanAddons(); scanThemes(); saveSettings();
+    return { ok: true, info: addonsInfo() };
+  }
   if (op === 'rescan') { scanAddons(); scanThemes(); }
   if (op === 'list' || op === 'rescan') return addonsInfo();
   return { error: 'Unknown action.' };
 }));
 
+// ------------------------------------------------------------ PIN
+// Only a salted hash is kept. A PIN keeps whoever is holding the controller out
+// of Settings, deleting and adding things; the login password is the real lock.
+let pinUnlockedUntil = 0;
+let pinFails = 0;
+let pinLockedUntil = 0;
+const PIN_RE = /^\d{4,8}$/;
+const pinIsSet = () => Boolean(settings.pin);
+const pinOk = () => !pinIsSet() || Date.now() < pinUnlockedUntil;
+const pinHash = (pin, salt) => crypto.scryptSync(pin, Buffer.from(salt, 'hex'), 32).toString('hex');
+function pinMatches(pin) {
+  if (!pinIsSet() || typeof pin !== 'string' || !PIN_RE.test(pin)) return false;
+  const a = Buffer.from(pinHash(pin, settings.pin.salt), 'hex');
+  const b = Buffer.from(settings.pin.hash, 'hex');
+  return crypto.timingSafeEqual(a, b);
+}
+function pinInfo() {
+  return { set: pinIsSet(), browser: settings.pinBrowser !== false, firstRun: !settings.firstRunDone, unlocked: pinOk() };
+}
+// Checks a PIN with a short lockout after repeated misses.
+function pinTry(pin) {
+  const now = Date.now();
+  if (now < pinLockedUntil) return { ok: false, wait: Math.ceil((pinLockedUntil - now) / 1000), error: `Too many tries. Wait ${Math.ceil((pinLockedUntil - now) / 1000)} seconds.` };
+  if (pinMatches(pin)) {
+    pinFails = 0;
+    pinUnlockedUntil = now + 5 * 60 * 1000;
+    return { ok: true };
+  }
+  pinFails++;
+  if (pinFails >= 5) { pinLockedUntil = now + Math.min(300, 30 * 2 ** Math.floor((pinFails - 5) / 5)) * 1000; return { ok: false, wait: 30, error: 'Too many tries. Wait a little and try again.' }; }
+  return { ok: false, error: `That isn't the PIN. ${5 - pinFails} ${5 - pinFails === 1 ? 'try' : 'tries'} left.` };
+}
+const NEED_PIN = { ok: false, needPin: true, error: 'Enter the PIN first.' };
+
 ipcMain.handle('settings', safe((op, p) => {
+  if (op === 'pinStatus') return pinInfo();
+  if (op === 'pinCheck') return pinTry(p.pin);
+  if (op === 'pinLock') { pinUnlockedUntil = 0; return { ok: true }; }
+  if (op === 'firstRunDone') { settings.firstRunDone = true; saveSettings(); return { ok: true, prefs: prefsPayload() }; }
+  if (op === 'pinSet') {
+    if (typeof p.pin !== 'string' || !PIN_RE.test(p.pin)) return { ok: false, error: 'Use 4 to 8 digits.' };
+    if (pinIsSet()) { const t = pinTry(p.old); if (!t.ok) return t; }
+    const salt = crypto.randomBytes(16).toString('hex');
+    settings.pin = { salt, hash: pinHash(p.pin, salt) };
+    settings.firstRunDone = true;
+    pinUnlockedUntil = Date.now() + 5 * 60 * 1000;
+    saveSettings();
+    return { ok: true, prefs: prefsPayload() };
+  }
+  if (op === 'pinRemove') {
+    if (!pinIsSet()) return { ok: true, prefs: prefsPayload() };
+    const t = pinTry(p.pin);
+    if (!t.ok) return t;
+    settings.pin = null;
+    saveSettings();
+    return { ok: true, prefs: prefsPayload() };
+  }
+  if (op === 'pinBrowser') {
+    if (!pinOk()) return NEED_PIN;
+    settings.pinBrowser = p.value === true;
+    saveSettings();
+    return { ok: true, prefs: prefsPayload() };
+  }
+  // Changing what the library can reach, or what's installed, needs the PIN when one is set.
+  if (['removeRoot', 'themeUse', 'driveName'].includes(op) && !pinOk()) return NEED_PIN;
   const rootsView = () => settings.scanRoots.map(friendly);
   if (op === 'get') return { roots: rootsView() };
   if (op === 'removeRoot') {
@@ -1740,6 +2523,34 @@ ipcMain.handle('settings', safe((op, p) => {
     saveSettings();
     lsblkCache.at = 0;
     return { ok: true };
+  }
+  if (['calSet', 'calReset', 'calToggle', 'calSystem'].includes(op) && !pinOk()) return NEED_PIN;
+  if (op === 'calGet') return { ok: true, calibration: calPayload() };
+  if (op === 'calSet') {
+    const c = cleanCal({ ...p.cal, enabled: true, at: new Date().toISOString() });
+    if (!c || !p.cal) return { ok: false, error: "That calibration isn't valid." };
+    settings.calibration = c;
+    saveSettings(); syncCalFx();
+    return { ok: true, prefs: prefsPayload() };
+  }
+  if (op === 'calReset') {
+    settings.calibration = null; settings.calibrationSystem = false;
+    saveSettings(); syncCalFx();
+    try { fs.rmSync(CAL_FAILED, { force: true }); } catch { /* ignore */ }
+    return { ok: true, prefs: prefsPayload() };
+  }
+  if (op === 'calToggle') {
+    if (!settings.calibration) return { ok: false, error: 'Calibrate first.' };
+    settings.calibration.enabled = p.enabled === true;
+    saveSettings(); syncCalFx();
+    return { ok: true, prefs: prefsPayload() };
+  }
+  if (op === 'calSystem') {
+    if (!settings.calibration) return { ok: false, error: 'Calibrate first.' };
+    settings.calibrationSystem = p.on === true;
+    if (p.on === true) { try { fs.rmSync(CAL_FAILED, { force: true }); } catch { /* ignore */ } }
+    saveSettings(); syncCalFx();
+    return { ok: true, prefs: prefsPayload() };
   }
   if (op === 'themeGet') return themePayload();
   if (op === 'themeSet') {
@@ -2006,6 +2817,7 @@ function runChild(file, args, cwd, label, logName) {
 ipcMain.on('launch', (_event, id) => {
   if (running || typeof id !== 'string') return;
   if (id === '_browser') {
+    if (settings.pinBrowser !== false && !pinOk()) return send('launch-failed', 'Enter the PIN first.');
     const b = resolveBrowser();
     if (!b) return send('launch-failed', "Couldn't find a web browser to open.");
     return runChild(b.file, b.args, os.homedir(), 'Browser');
@@ -2028,5 +2840,5 @@ ipcMain.on('launch', (_event, id) => {
   runChild(game.path, game.args || [], path.dirname(game.path), 'Game', game.id);
 });
 
-ipcMain.on('quit', () => app.quit());
+ipcMain.on('quit', () => { if (pinOk()) app.quit(); });
 app.on('window-all-closed', () => app.quit());
