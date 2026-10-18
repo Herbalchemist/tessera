@@ -112,6 +112,7 @@ const SETTINGS_ROWS = [
     tiles: [
       { id: '_roots', title: 'Library folders', kind: 'action' },
       { id: '_scan', title: 'Scan for games', kind: 'action' },
+      { id: '_pad', title: 'Controller', kind: 'action' },
       { id: '_controls', title: 'Controls', kind: 'action' },
       { id: '_addons', title: 'Add-ons', kind: 'action' },
       { id: '_desktop', title: 'Desktop Mode', kind: 'action' },
@@ -607,6 +608,7 @@ function activate() {
     if (t.id === '_quit') api.quit();
     else if (t.id === '_roots') flowRoots();
     else if (t.id === '_scan') flowScan();
+    else if (t.id === '_pad') flowPad();
     else if (t.id === '_controls') flowControls();
     else if (t.id === '_desktop') flowDesktop();
     else if (t.id === '_addons') flowAddons();
@@ -766,6 +768,7 @@ function renderModal() {
   if (!modal) return;
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
+  if (modal.kind === 'pad') return;
   modalEl.className = '';
   modalEl.replaceChildren();
   const box = document.createElement('div');
@@ -811,7 +814,7 @@ function renderModal() {
 }
 
 function modalPress(act) {
-  if (modal.kind === 'capture') return;
+  if (modal.kind === 'capture' || modal.kind === 'pad') return;
   if (modal.kind === 'list') {
     const n = modal.items.length;
     if (act === 'up') modal.index = Math.max(0, modal.index - 1);
@@ -1172,6 +1175,185 @@ async function flowDesktop() {
   if (ok) api.quit();
 }
 
+
+// ------------------------------------------------------------ controller test
+// Like the Game Controller page in desktop settings: what the system sees,
+// live. Every button and stick is drawn, and raw numbers sit underneath, which
+// also answers "which number is my A button?" for odd controllers.
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+function buildPad() {
+  modalEl.className = 'pad';
+  modalEl.replaceChildren();
+  const box = document.createElement('div');
+  box.className = 'box padbox';
+  const title = document.createElement('h3');
+  const sub = document.createElement('div');
+  sub.className = 'padsub';
+  const svg = svgEl('svg', { viewBox: '0 0 600 340', class: 'padsvg' });
+  const parts = {};
+  const btn = (index, tag, attrs, label, lx, ly) => {
+    const g = svgEl('g', { class: 'pb' }, svg);
+    svgEl(tag, attrs, g);
+    if (label) {
+      const t = svgEl('text', { x: lx, y: ly, class: 'pl', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
+      t.textContent = label;
+    }
+    parts[index] = g;
+    return g;
+  };
+  // body
+  svgEl('path', { class: 'pbody', d: 'M120 70 H480 Q560 70 575 170 L590 290 Q595 330 560 322 Q520 316 495 262 H105 Q80 316 40 322 Q5 330 10 290 L25 170 Q40 70 120 70 Z' }, svg);
+  // shoulders and triggers
+  btn(4, 'rect', { x: 95, y: 36, width: 120, height: 26, rx: 10 }, 'LB', 155, 49);
+  btn(5, 'rect', { x: 385, y: 36, width: 120, height: 26, rx: 10 }, 'RB', 445, 49);
+  parts.lt = svgEl('rect', { x: 105, y: 4, width: 100, height: 22, rx: 6, class: 'ptrig' }, svg);
+  parts.ltf = svgEl('rect', { x: 105, y: 4, width: 0, height: 22, rx: 6, class: 'ptrigfill' }, svg);
+  parts.rt = svgEl('rect', { x: 395, y: 4, width: 100, height: 22, rx: 6, class: 'ptrig' }, svg);
+  parts.rtf = svgEl('rect', { x: 395, y: 4, width: 0, height: 22, rx: 6, class: 'ptrigfill' }, svg);
+  for (const [x, t] of [[155, 'LT'], [445, 'RT']]) { const l = svgEl('text', { x, y: 15, class: 'pl', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, svg); l.textContent = t; }
+  // sticks: ring lights up on press (L3 / R3), the dot follows the stick
+  const stick = (cx, cy, press, key) => {
+    const g = svgEl('g', { class: 'pb' }, svg);
+    svgEl('circle', { cx, cy, r: 46 }, g);
+    parts[press] = g;
+    parts[key] = svgEl('circle', { cx, cy, r: 20, class: 'pdot' }, svg);
+  };
+  stick(170, 150, 10, 'ls');
+  stick(385, 245, 11, 'rs');
+  // d-pad
+  const dp = (i, x, y, w, h) => btn(i, 'rect', { x, y, width: w, height: h, rx: 6 });
+  dp(12, 218, 200, 28, 34); dp(13, 218, 250, 28, 34); dp(14, 186, 232, 34, 28); dp(15, 246, 232, 34, 28);
+  // face buttons
+  btn(0, 'circle', { cx: 480, cy: 185, r: 22 }, 'A', 480, 185);
+  btn(1, 'circle', { cx: 520, cy: 148, r: 22 }, 'B', 520, 148);
+  btn(2, 'circle', { cx: 440, cy: 148, r: 22 }, 'X', 440, 148);
+  btn(3, 'circle', { cx: 480, cy: 111, r: 22 }, 'Y', 480, 111);
+  // centre
+  btn(8, 'circle', { cx: 262, cy: 130, r: 13 });
+  btn(9, 'circle', { cx: 338, cy: 130, r: 13 });
+  btn(16, 'circle', { cx: 300, cy: 100, r: 16 });
+  const note = document.createElement('div');
+  note.className = 'padnote';
+  const raw = document.createElement('div');
+  raw.className = 'padraw';
+  const hint = document.createElement('div');
+  hint.className = 'khint padhint';
+  hint.textContent = 'Press anything to see it light up. Triggers also rumble.   Hold B to close.';
+  const bar = document.createElement('div');
+  bar.className = 'padbar';
+  const barFill = document.createElement('div');
+  bar.appendChild(barFill);
+  box.append(title, sub, svg, note, raw, hint, bar);
+  modalEl.appendChild(box);
+  modal.dom = { title, sub, parts, note, raw, barFill, rawBtns: [], rawAxes: [], rawCount: -1 };
+}
+
+function updatePad(pad, now) {
+  const d = modal.dom;
+  if (!d) return;
+  if (!pad) {
+    d.title.textContent = 'No controller detected';
+    d.sub.textContent = 'Plug one in or turn it on, then press a button.';
+    d.note.textContent = '';
+    for (const k of Object.keys(d.parts)) if (d.parts[k].classList) d.parts[k].classList.remove('on');
+    return;
+  }
+  const pads = [...navigator.getGamepads()].filter((p) => p && p.connected);
+  const standard = pad.mapping === 'standard';
+  d.title.textContent = pad.id.slice(0, 70);
+  d.sub.textContent =
+    `${standard ? 'Standard layout' : 'Non-standard layout (raw numbers only)'}  ·  ${pad.buttons.length} buttons  ·  ${pad.axes.length} axes` +
+    (pads.length > 1 ? `  ·  ${pads.length} controllers connected` : '') +
+    (modal.last === null ? '' : `  ·  last button: ${modal.last}`);
+  const val = (n) => (pad.buttons[n] ? pad.buttons[n].value : 0);
+  const on = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
+  for (const n of [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
+    if (d.parts[n]) d.parts[n].classList.toggle('on', standard && on(n));
+  }
+  d.parts.ltf.setAttribute('width', String(Math.round(100 * val(6))));
+  d.parts.rtf.setAttribute('width', String(Math.round(100 * val(7))));
+  const ax = (i) => pad.axes[i] || 0;
+  d.parts.ls.setAttribute('transform', `translate(${(ax(0) * 26).toFixed(1)} ${(ax(1) * 26).toFixed(1)})`);
+  d.parts.rs.setAttribute('transform', `translate(${(ax(2) * 26).toFixed(1)} ${(ax(3) * 26).toFixed(1)})`);
+  d.note.textContent = standard
+    ? `Left stick ${ax(0).toFixed(2)}, ${ax(1).toFixed(2)}   ·   Right stick ${ax(2).toFixed(2)}, ${ax(3).toFixed(2)}   ·   LT ${val(6).toFixed(2)}   RT ${val(7).toFixed(2)}`
+    : 'This controller does not report the standard layout, so the picture above may not match. The numbers below are always right.';
+  // raw numbers: built once per controller, then only toggled
+  if (d.rawCount !== pad.buttons.length + ':' + pad.axes.length) {
+    d.rawCount = pad.buttons.length + ':' + pad.axes.length;
+    d.raw.replaceChildren();
+    d.rawBtns = [];
+    d.rawAxes = [];
+    const bw = document.createElement('div');
+    bw.className = 'rawbtns';
+    for (let n = 0; n < pad.buttons.length; n++) {
+      const c = document.createElement('span');
+      c.className = 'rawb';
+      c.textContent = n;
+      bw.appendChild(c);
+      d.rawBtns.push(c);
+    }
+    const aw = document.createElement('div');
+    aw.className = 'rawaxes';
+    for (let n = 0; n < pad.axes.length; n++) {
+      const row = document.createElement('div');
+      row.className = 'rawax';
+      const lab = document.createElement('span');
+      lab.textContent = 'axis ' + n;
+      const track = document.createElement('div');
+      track.className = 'axtrack';
+      const dot = document.createElement('div');
+      dot.className = 'axdot';
+      track.appendChild(dot);
+      const num = document.createElement('span');
+      num.className = 'axnum';
+      row.append(lab, track, num);
+      aw.appendChild(row);
+      d.rawAxes.push({ dot, num });
+    }
+    d.raw.append(bw, aw);
+  }
+  d.rawBtns.forEach((c, n) => c.classList.toggle('on', on(n)));
+  d.rawAxes.forEach((a, n) => {
+    a.dot.style.left = ((ax(n) + 1) * 50).toFixed(1) + '%';
+    a.num.textContent = ax(n).toFixed(2);
+  });
+  // Rumble follows the triggers (left motor: LT, right motor: RT), like desktop testers.
+  const lt = val(6);
+  const rt = val(7);
+  if ((lt > 0.05 || rt > 0.05) && pad.vibrationActuator && now - (modal.rumbleAt || 0) > 180) {
+    modal.rumbleAt = now;
+    try {
+      pad.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 220, strongMagnitude: lt, weakMagnitude: rt });
+    } catch { /* not every controller can rumble */ }
+  }
+  // Hold B for a second to close (a quick B press is just a test of B).
+  if (on(1)) {
+    modal.bSince = modal.bSince || now;
+    const f = Math.min(1, (now - modal.bSince) / 1000);
+    d.barFill.style.width = f * 100 + '%';
+    if (f >= 1) { closeModal(); return; }
+  } else {
+    modal.bSince = 0;
+    d.barFill.style.width = '0%';
+  }
+}
+
+function flowPad() {
+  if (modal || busy) return;
+  modal = { kind: 'pad', dom: null, last: null, bSince: 0 };
+  modalEl.hidden = false;
+  buildPad();
+  updatePad(activePad(), performance.now());
+}
+
 async function flowScan(into) {
   if (modal || busy) return;
   setStatus('Scanning your library folders…');
@@ -1300,6 +1482,7 @@ function onButton(n) {
     return modal.finish(n);
   }
   if (suspended || busy) return;
+  if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
   if (modal && modal.kind === 'keys') return keysButton(n);
   if (n === 3) return yDown();
   const name = BUTTON_NAMES_BY_ROLE[n];
@@ -1371,6 +1554,7 @@ function loop(now) {
       quitSince = null;
     }
   }
+  if (modal && modal.kind === 'pad') updatePad(pad, now);
   requestAnimationFrame(loop);
 }
 
@@ -1379,6 +1563,10 @@ window.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (modal && modal.kind === 'capture') {
     if (e.key === 'Escape') modal.finish(null);
+    return;
+  }
+  if (modal && modal.kind === 'pad') {
+    if (e.key === 'Escape') closeModal();
     return;
   }
   if (suspended || busy) return;
