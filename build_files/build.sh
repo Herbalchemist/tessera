@@ -29,7 +29,20 @@ ELECTRON_VERSION=latest
 if [ -f /usr/lib/tessera/launcher/electron-version ]; then
   ELECTRON_VERSION="$(tr -d '[:space:]v' < /usr/lib/tessera/launcher/electron-version)"
 fi
-npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact "electron@${ELECTRON_VERSION}"
+# npm keeps its cache and its logs in a home directory, and Electron's installer keeps its
+# download there too. In a bootc image /root is a link to /var/roothome, which does not exist
+# while the image is being built, so npm stopped with "ENOTDIR ... mkdir '/root'". Give it a
+# scratch home on the tmpfs the Containerfile mounts at /tmp, and remove it again afterwards so
+# that no cache or download ends up in the image.
+NPM_HOME=/tmp/tessera-npm
+mkdir -p "$NPM_HOME"
+HOME="$NPM_HOME" \
+npm_config_cache="$NPM_HOME/cache" \
+npm_config_update_notifier=false \
+npm_config_fund=false \
+npm_config_audit=false \
+  npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact "electron@${ELECTRON_VERSION}"
+rm -rf "$NPM_HOME"
 # Tessera is English only. Electron ships dozens of other translations (about 40 MB) that are never used.
 if [ -d /usr/lib/tessera/launcher/node_modules/electron/dist/locales ]; then
   find /usr/lib/tessera/launcher/node_modules/electron/dist/locales -type f ! -name 'en-US.pak' -delete

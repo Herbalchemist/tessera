@@ -152,49 +152,68 @@ function onColor(hex) {
   return (lum + 0.05) / 0.057 >= 1.05 / (lum + 0.05) ? '#10151c' : '#ffffff';
 }
 
-// ---- selection color. A theme can ask for a new random pastel every time the
-// selector lands somewhere new (a tile, a tab, a menu row). The color is set on
-// the selected element only, so nothing else on screen changes.
+// ---- selector glow. A theme can ask for a new random pastel glow every time the
+// selector lands somewhere new (a tile, a tab, a menu row, a key). Only the glow
+// around the selection takes the color: fills stay the theme's own. The color is
+// set on the selected element only, so nothing else on screen changes.
 let selOn = false;       // the theme asked for it
-let selTone = 'light';   // 'dark' themes get deeper pastels
+let selTone = 'light';   // 'dark' themes get a slightly deeper pastel
 let selSig = '';         // what was selected last time
-let selNow = null;       // { hex, on, edge }: the color the selection has now (edge = the outline and glow, a deeper shade on light themes so it shows)
-let selBack = null;      // the color a tile had before a menu opened over it
-const selHues = [];      // the last two hues, so the next color never looks like them
+let selNow = null;       // { glow, ring }: the glow the selection has now (glow = the soft light, ring = the outline)
+let selBack = null;      // the glow a tile had before a menu opened over it
+let selHue = null;       // the hue of the last pick
+// OKLCH to linear RGB (a channel outside 0..1 means the screen can't show that color).
+function oklchRgb(L, C, hDeg) {
+  const h = (hDeg * Math.PI) / 180;
+  const a = C * Math.cos(h);
+  const b = C * Math.sin(h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+}
+const inGamut = (rgb) => rgb.every((v) => v >= -0.0005 && v <= 1.0005);
 // OKLCH to a hex color. If the color doesn't exist on screen, take some chroma off until it does.
 function oklchHex(L, C, hDeg) {
-  const h = (hDeg * Math.PI) / 180;
   const enc = (v) => { const x = Math.min(1, Math.max(0, v)); return Math.round(255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055)); };
   for (let k = 0; k < 14; k++) {
-    const a = C * Math.cos(h);
-    const b = C * Math.sin(h);
-    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-    const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-    const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-    const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
-    if ([r, g, bl].every((v) => v >= -0.0005 && v <= 1.0005)) return '#' + [r, g, bl].map((v) => enc(v).toString(16).padStart(2, '0')).join('');
+    const rgb = oklchRgb(L, C, hDeg);
+    if (inGamut(rgb)) return '#' + rgb.map((v) => enc(v).toString(16).padStart(2, '0')).join('');
     C *= 0.92;
   }
   return '#' + enc(L).toString(16).padStart(2, '0').repeat(3);
 }
+// The most color a screen can show at this lightness and hue.
+function maxChroma(L, hDeg) {
+  let lo = 0;
+  let hi = 0.4;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    if (inGamut(oklchRgb(L, mid, hDeg))) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+// A fresh random pastel: any hue at random, no palette and no cycle. The one rule is that it is never
+// nearly the same hue as the pick just before it, so a move always shows.
 function nextPastel(tone) {
   let hue = Math.random() * 360;
-  for (let i = 0; i < 60; i++) {
-    const far = selHues.every((p) => { const d = Math.abs(hue - p) % 360; return Math.min(d, 360 - d) > 45; });
-    if (far) break;
+  for (let i = 0; selHue !== null && i < 20; i++) {
+    const d = Math.abs(hue - selHue) % 360;
+    if (Math.min(d, 360 - d) >= 25) break;
     hue = Math.random() * 360;
   }
-  selHues.push(hue);
-  if (selHues.length > 2) selHues.shift();
+  selHue = hue;
   const dark = tone === 'dark';
-  const L = (dark ? 0.78 : 0.86) + Math.random() * 0.05;
-  const C = (dark ? 0.085 : 0.07) + Math.random() * 0.035;
-  const hex = oklchHex(L, C, hue);
-  // A pale ring disappears on a light page, so the outline and glow use a deeper shade of the same color there.
-  const edge = dark ? hex : oklchHex(0.72, 0.12, hue);
-  return { hex, on: onColor(hex) === '#ffffff' ? '#ffffff' : '#1d1a2f', edge };
+  // Every hue comes out equally soft, so none turns neon: yellows are made lighter (they go mustard when dark),
+  // cyan is softened, and the color never goes past what the screen can show.
+  const yellow = Math.max(0, Math.cos(((hue - 100) * Math.PI) / 180));
+  const cyan = Math.max(0, Math.cos(((hue - 195) * Math.PI) / 180)) ** 2;
+  const L = (dark ? 0.81 : 0.82) + (dark ? 0.06 : 0.075) * yellow ** 2 + (Math.random() - 0.5) * 0.04;
+  const C = Math.min((dark ? 0.10 : 0.125) * (1 - 0.3 * cyan) * (0.92 + Math.random() * 0.16), 0.92 * maxChroma(L, hue));
+  const glow = oklchHex(L, C, hue);
+  if (dark) return { glow, ring: glow };
+  // On a light page the outline is a touch deeper than the glow so it stays visible (less so for yellows).
+  return { glow, ring: oklchHex(L - 0.045 * (1 - 0.85 * yellow), C + 0.02, hue) };
 }
 const modalIds = new WeakMap();
 let modalSeq = 0;
@@ -210,7 +229,7 @@ function selectionTarget() {
   const row = selectedRow();
   return { el: (homeMode() ? canvasEl : rowsEl).querySelector('.card.active'), sig: `c|${curKey()}|${c.row}|${row ? c.cols[row.id] || 0 : 0}` };
 }
-// Called whenever the selection may have moved. A new place gets a new pastel; the same place keeps its own.
+// Called whenever the selection may have moved. A new place gets a new random glow; the same place keeps its own.
 function paintSelection() {
   if (!selOn) return;
   const t = selectionTarget();
@@ -219,15 +238,14 @@ function paintSelection() {
     const wasMenu = /^[mk]\|/.test(selSig);
     const isMenu = /^[mk]\|/.test(t.sig);
     if (!isMenu) selBack = null;
-    if (isMenu && !wasMenu && selNow) selBack = { sig: selSig, color: selNow }; // a menu opened over a tile: remember its color
+    if (isMenu && !wasMenu && selNow) selBack = { sig: selSig, color: selNow }; // a menu opened over a tile: remember its glow
     selNow = !isMenu && selBack && selBack.sig === t.sig ? selBack.color : nextPastel(selTone);
     selSig = t.sig;
   }
-  if (t.el.dataset.selc !== selNow.hex) {
-    t.el.style.setProperty('--sel', selNow.hex);
-    t.el.style.setProperty('--on-sel', selNow.on);
-    t.el.style.setProperty('--sel-edge', selNow.edge);
-    t.el.dataset.selc = selNow.hex;
+  if (t.el.dataset.glow !== selNow.glow) {
+    t.el.style.setProperty('--glow', selNow.glow);
+    t.el.style.setProperty('--glow-ring', selNow.ring);
+    t.el.dataset.glow = selNow.glow;
   }
 }
 let layoutReady = false;
@@ -243,12 +261,13 @@ function applyTheme(t) {
   selOn = Boolean(sc && sc.value === 'pastel');
   document.body.dataset.sel = selOn ? 'pastel' : 'accent';
   if (!selOn) {
-    selSig = ''; selNow = null; selBack = null;
-    // leaving a pastel theme: give every element its normal selection color back
-    for (const el of document.querySelectorAll('[data-selc]')) {
-      for (const v of ['--sel', '--on-sel', '--sel-edge']) el.style.removeProperty(v);
-      delete el.dataset.selc;
+    selSig = ''; selNow = null; selBack = null; selHue = null;
+    // leaving a pastel theme: give every element its normal glow back
+    for (const el of document.querySelectorAll('[data-glow]')) {
+      for (const v of ['--glow', '--glow-ring']) el.style.removeProperty(v);
+      delete el.dataset.glow;
     }
+    for (const w of document.querySelectorAll('.row.off')) w.classList.remove('off');
   }
   const wgs = t.settings.find((s) => s.id === 'widgetStyle');
   document.body.dataset.wg = wgs && ['glass', 'frosted', 'outline', 'solid'].includes(wgs.value) ? wgs.value : 'frosted';
@@ -824,13 +843,20 @@ function update() {
       const minTy = Math.min(0, h - rowsEl.scrollHeight);
       const top = activeRow.offsetTop;
       const bot = top + activeRow.offsetHeight;
+      const head = parseFloat(rowsEl.style.getPropertyValue('--padv')) || 0; // the room the first row has above it
       let ty = rowsEl._ty || 0;
       if (mode === 'flow') ty = h / 2 - (top + activeRow.offsetHeight / 2);
-      else if (top + ty < 0) ty = -top;
+      else if (top + ty < head - 0.5) ty = head - top; // scrolling back up keeps that room, as scrolling down already does: the selected tile's grow and glow aren't cut, and the next row doesn't peek in below
       else if (bot + ty > h) ty = h - bot;
       ty = Math.max(minTy, Math.min(0, ty));
       rowsEl._ty = ty;
       rowsEl.style.transform = `translateY(${ty}px)`;
+      // With the pastel glow the tile grid lets light spill past its edge, so rows whose tiles have scrolled wholly out of view are hidden instead of peeking in.
+      for (const w of rowsEl.querySelectorAll('.row')) {
+        const tiles = w.querySelector('.rail') || w; // the tiles, without the gap that follows them
+        const t0 = tiles.offsetTop + ty;
+        w.classList.toggle('off', selOn && mode === 'grid' && (t0 >= h - 2 || t0 + tiles.offsetHeight <= 2));
+      }
     }
   }
   paintSelection();

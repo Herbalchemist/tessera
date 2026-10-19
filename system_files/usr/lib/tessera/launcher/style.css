@@ -6,10 +6,10 @@
   --muted: #8b95a3;
   --accent: #7fb2ff;
   --on-accent: #10151c; /* text on top of the accent color; set from the accent's brightness */
-  /* The selected tile, tab or menu row. Normally the accent; a theme can give each one its own pastel (JS sets these on the selected element). */
-  --sel: var(--accent);
-  --on-sel: var(--on-accent);
-  --sel-edge: var(--accent); /* outline and glow around the selection */
+  /* The glow around the selected tile, tab, menu row or key. Normally the highlight color; a theme can give every
+     selection its own random pastel (JS sets these two on the selected element). Fills never change. */
+  --glow: var(--accent);
+  --glow-ring: var(--accent);
   --panel: #161d27;
   --border: #3b475a;
   --border-w: 0px;
@@ -98,7 +98,7 @@ nav {
 .tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 10px 24px rgb(0 0 0 / calc(var(--tab-shadow) * 0.4)), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
 @keyframes wiggle { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
 /* The tab bar has focus: bright, and the tiles below are deselected. */
-.tab.focused { color: var(--on-sel); background: var(--sel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
+.tab.focused { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
 #crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
@@ -144,7 +144,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .card.kind-action { background: color-mix(in srgb, var(--card), var(--ok) 8%); }
 .card.active {
   transform: scale(1.08);
-  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
 }
 .empty { text-align: center; color: var(--muted); font-size: 1.2rem; margin-top: 80px; }
 h1 {
@@ -217,8 +217,8 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 }
 .mitem small { color: var(--muted); font-size: 0.85rem; }
 .mitem.dim { color: var(--muted); }
-.mitem.active { background: var(--sel); color: var(--on-sel); }
-.mitem.active small { color: var(--on-sel); opacity: 0.7; }
+.mitem.active { background: var(--accent); color: var(--on-accent); }
+.mitem.active small { color: var(--on-accent); opacity: 0.7; }
 .mitem.header { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 18px 4px; }
 .mitem small { text-align: right; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Cancel / Close glow red and Done / Yes glow green. Both colors are theme settings, and the
@@ -238,7 +238,7 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 }
 .mitem.danger.active small, .mitem.ok.active small { color: var(--on); }
 .mitem.header.fold { color: var(--text); font-size: 1.1rem; text-transform: none; letter-spacing: 0; font-weight: 700; padding: 14px 18px 8px; background: none; }
-.mitem.header.fold.active { background: var(--sel); color: var(--on-sel); }
+.mitem.header.fold.active { background: var(--accent); color: var(--on-accent); }
 .khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: pre; }
 
 /* ---- on-screen keyboard: docked to the bottom, sized to the screen ---- */
@@ -307,7 +307,7 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 .key .kg { position: absolute; right: 8%; bottom: 6%; font-size: calc(var(--key) * 0.22); font-weight: 700; opacity: 0.75; letter-spacing: 0; }
 .key.pat.hit { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
 .keys.numeric .krow:last-child .key .kg { right: 4%; }
-.key.active { background: var(--sel); color: var(--on-sel); transform: scale(1.06); }
+.key.active { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
 #modal.keys .khint { font-size: calc(var(--key) * 0.26); }
 @media (prefers-reduced-motion: reduce) { .kbpanel, .tab.lifted, .caret { animation: none; } }
 
@@ -479,18 +479,40 @@ body[data-tone="light"][data-fx="glow"]::after {
     radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in srgb, var(--ok) 20%, transparent), transparent 70%);
 }
 
-/* ---- random pastel selection (Mosaic themes): the selected tile lights up and glows in its own colour ---- */
+/* ---- random pastel glow (Mosaic themes, or Theme Settings > Selector glow) ----
+   Only the glow around the selection takes the random color. Tiles, tabs, menu rows and keys keep their own fills.
+   JS sets --glow (the soft light) and --glow-ring (the outline) on whatever is selected. */
+body[data-sel="pastel"] :is(.card.active, .tab.focused, .mitem.active, .key.active) {
+  --halo: 0 0 1rem 0.1rem color-mix(in srgb, var(--glow) 95%, transparent), 0 0 2.6rem 0.4rem color-mix(in srgb, var(--glow) 70%, transparent);
+  --halo-s: 0 0 0.7rem 0.05rem color-mix(in srgb, var(--glow) 90%, transparent), 0 0 1.2rem 0.1rem color-mix(in srgb, var(--glow) 50%, transparent);
+}
+/* A pale page needs a stronger light for the same glow to read. */
+body[data-tone="light"][data-sel="pastel"] :is(.card.active, .tab.focused, .mitem.active, .key.active) {
+  --halo: 0 0 1.1rem 0.2rem color-mix(in srgb, var(--glow) 100%, transparent), 0 0 2.7rem 0.5rem color-mix(in srgb, var(--glow) 75%, transparent);
+  --halo-s: 0 0 0.8rem 0.1rem color-mix(in srgb, var(--glow) 95%, transparent), 0 0 1.3rem 0.15rem color-mix(in srgb, var(--glow) 60%, transparent);
+}
 body[data-sel="pastel"] .card.active {
-  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 0 34px color-mix(in srgb, var(--sel-edge) 60%, transparent), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.35));
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), var(--halo), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.3));
 }
 /* On a light page a pastel outline needs a thin darker line around it to stay crisp. */
 body[data-tone="light"][data-sel="pastel"] .card.active {
-  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 0 0 calc(var(--ring) + 1.5px) color-mix(in srgb, var(--text) 22%, transparent), 0 0 34px color-mix(in srgb, var(--sel-edge) 60%, transparent), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.35));
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 0 0 calc(var(--ring) + 1.5px) color-mix(in srgb, var(--text) 22%, transparent), var(--halo), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.3));
 }
-body[data-sel="pastel"] .card.active:not(.has-art):not(.kind-inlay):not(.has-widget) {
-  background-color: color-mix(in srgb, var(--sel) 34%, var(--card));
+body[data-sel="pastel"] .tab.focused {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) calc(var(--tab-shadow) * 100%), transparent), 0 0 1rem 0.1rem color-mix(in srgb, var(--glow) calc(var(--tab-shadow) * 90%), transparent), 0 0 2.2rem 0.3rem color-mix(in srgb, var(--glow) calc(var(--tab-shadow) * 60%), transparent);
 }
-body[data-sel="pastel"] .tab.focused { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 55%), transparent), 0 0 22px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 60%), transparent); }
+/* Cancel / Done rows and keys keep their red and green glow. */
+body[data-sel="pastel"] .mitem.active:not(.danger):not(.ok), body[data-sel="pastel"] .key.active:not(.cancel):not(.done) {
+  box-shadow: 0 0 0 2px var(--glow-ring), var(--halo-s);
+}
+/* Menu lists and tile rows clip whatever spills past them: give the glow room, with the layout staying where it was. */
+body[data-sel="pastel"] .mlist { max-height: calc(56vh + 1.8rem); padding: 0.9rem 1.5rem; margin: -0.9rem -1.5rem; scroll-padding: 0.9rem 0; }
+/* The list's edge would cut the glow in a line: the last stretch fades out instead (the rows sit clear of it, so only glow and scrolled-out rows fade). */
+body[data-sel="pastel"] .mlist { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 0.9rem, #000 calc(100% - 0.9rem), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 0.9rem, #000 calc(100% - 0.9rem), transparent 100%); }
+body[data-sel="pastel"] .rows:not(.grid):not(.flow) .rowport { padding: 48px 0; margin: -20px 0; }
+/* The tile grid lets the light spill past its edge. Rows that have scrolled wholly out of view are hidden (JS adds .off) so they don't peek in. */
+body[data-sel="pastel"] .viewport:has(> .rows.grid), body[data-sel="pastel"] .viewport:has(> .canvas:not([hidden])) { overflow: clip; overflow-clip-margin: 3rem; }
+.row.off { visibility: hidden; transition: visibility 0s linear 0.3s; }
 
 /* ---- tile layouts: grid and flow ---- */
 .rows.grid .rowport, .rows.flow .rowport { padding: 0; overflow: visible; }
@@ -602,17 +624,17 @@ body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .
 .utags { display: flex; gap: 10px; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
 .utags .warn { color: var(--danger); font-weight: 800; opacity: 1; }
 /* on the highlighted row the accent colour is the background, so the bars use the text-on-accent colour */
-.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-sel); }
-.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-sel) 78%, transparent); }
-.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-sel) 50%, transparent); }
-.mitem.active .useg.f { background: color-mix(in srgb, var(--on-sel) 20%, transparent); }
-.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-sel) 68%, transparent); }
-.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-sel) 58%, transparent); }
-.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-sel) 44%, transparent); }
-.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-sel) 36%, transparent); }
-.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-sel) 28%, transparent); }
+.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-accent); }
+.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-accent) 78%, transparent); }
+.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-accent) 50%, transparent); }
+.mitem.active .useg.f { background: color-mix(in srgb, var(--on-accent) 20%, transparent); }
+.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-accent) 68%, transparent); }
+.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-accent) 58%, transparent); }
+.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-accent) 44%, transparent); }
+.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-accent) 36%, transparent); }
+.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-accent) 28%, transparent); }
 .mitem.active .utags .warn { color: inherit; }
-.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-sel)); }
+.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-accent)); }
 /* games and apps whose drive is unplugged or whose files are gone */
 .card.offline { opacity: 0.5; filter: grayscale(0.85); }
 .card.offline small { color: var(--danger); }

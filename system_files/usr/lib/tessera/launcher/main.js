@@ -605,8 +605,9 @@ const MAX_IMAGE = 12 * 1024 * 1024;
 const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear', '--shadow', '--ring', '--tab-shadow'];
 // Four themes ship with Tessera. They share one list of settings and differ
 // only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
-// The two Mosaic themes turn on "selectionColor: pastel": every tile, tab or menu
-// row the selector lands on lights up in a new random pastel.
+// The two Mosaic themes turn on "selColor: pastel" (Theme Settings > Selector glow):
+// the glow around whatever the selector lands on takes a new random pastel every
+// move. The tile, tab, menu row or key itself keeps its own colour.
 const BUILTIN_THEMES = [
   {
     id: 'stock', name: 'Tessera Bright', author: 'Tessera',
@@ -629,7 +630,7 @@ const BUILTIN_THEMES = [
   {
     id: 'mosaic', name: 'Tessera Mosaic', author: 'Tessera',
     defaults: {
-      bg: '#f8f5ef', card: '#ffffff', panel: '#ffffff', text: '#2a2638', muted: '#6d6882', accent: '#6c6ee0',
+      bg: '#f8f5ef', card: '#ffffff', panel: '#ffffff', text: '#2a2638', muted: '#6d6882', accent: '#6063d8',
       border: '#2a2638', borderW: '0px', shadow: 55, radius: '20px', cancel: '#e5546b', confirm: '#1fa67a',
       backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
@@ -661,7 +662,7 @@ const STOCK_THEME = {
     { id: 'selectRing', group: 'Shape', label: 'Selection outline', type: 'choice', default: '3px', var: '--ring',
       options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Normal', value: '3px' }, { label: 'Thick', value: '5px' }] },
     { id: 'accent', group: 'Colors', label: 'Highlight color', type: 'color', default: '#7fb2ff', var: '--accent' },
-    { id: 'selColor', group: 'Colors', label: 'Selection color', type: 'choice', default: 'accent', hint: 'Random pastel gives every tile, tab and menu row you land on its own new color',
+    { id: 'selColor', group: 'Colors', label: 'Selector glow', type: 'choice', default: 'accent', hint: 'Random pastel gives the glow around whatever you select a new random color every time you move. Tiles and buttons keep their own colors.',
       options: [{ label: 'Highlight color', value: 'accent' }, { label: 'Random pastel', value: 'pastel' }] },
     { id: 'border', group: 'Colors', label: 'Border color', type: 'color', default: '#3b475a', var: '--border' },
     { id: 'card', group: 'Colors', label: 'Tile fill', type: 'color', default: '#1a222c', var: '--card' },
@@ -1784,8 +1785,9 @@ or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
 Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
-Selection: "selColor": "pastel" gives every tile, tab or menu row the selector lands
-on its own new random pastel (the default, "accent", keeps one highlight color).
+Selector glow: "selColor": "pastel" gives the glow around the selected tile, tab, menu row
+or key a new random pastel every time the selector moves (fills keep their own colors;
+the default, "accent", keeps one glow color: the highlight color).
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
 };
