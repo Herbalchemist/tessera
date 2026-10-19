@@ -140,12 +140,95 @@ fitScreen();
 
 let appliedVars = new Set();
 let imageRev = null;
-// Dark or white text, whichever reads better on this color (WCAG contrast).
-function onColor(hex) {
+// How bright a color is, 0 (black) to 1 (white).
+function lumOf(hex) {
   const n = parseInt(hex.slice(1), 16);
   const lin = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
-  const lum = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+}
+// Dark or white text, whichever reads better on this color (WCAG contrast).
+function onColor(hex) {
+  const lum = lumOf(hex);
   return (lum + 0.05) / 0.057 >= 1.05 / (lum + 0.05) ? '#10151c' : '#ffffff';
+}
+
+// ---- selection color. A theme can ask for a new random pastel every time the
+// selector lands somewhere new (a tile, a tab, a menu row). The color is set on
+// the selected element only, so nothing else on screen changes.
+let selOn = false;       // the theme asked for it
+let selTone = 'light';   // 'dark' themes get deeper pastels
+let selSig = '';         // what was selected last time
+let selNow = null;       // { hex, on, edge }: the color the selection has now (edge = the outline and glow, a deeper shade on light themes so it shows)
+let selBack = null;      // the color a tile had before a menu opened over it
+const selHues = [];      // the last two hues, so the next color never looks like them
+// OKLCH to a hex color. If the color doesn't exist on screen, take some chroma off until it does.
+function oklchHex(L, C, hDeg) {
+  const h = (hDeg * Math.PI) / 180;
+  const enc = (v) => { const x = Math.min(1, Math.max(0, v)); return Math.round(255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055)); };
+  for (let k = 0; k < 14; k++) {
+    const a = C * Math.cos(h);
+    const b = C * Math.sin(h);
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+    const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+    const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+    if ([r, g, bl].every((v) => v >= -0.0005 && v <= 1.0005)) return '#' + [r, g, bl].map((v) => enc(v).toString(16).padStart(2, '0')).join('');
+    C *= 0.92;
+  }
+  return '#' + enc(L).toString(16).padStart(2, '0').repeat(3);
+}
+function nextPastel(tone) {
+  let hue = Math.random() * 360;
+  for (let i = 0; i < 60; i++) {
+    const far = selHues.every((p) => { const d = Math.abs(hue - p) % 360; return Math.min(d, 360 - d) > 45; });
+    if (far) break;
+    hue = Math.random() * 360;
+  }
+  selHues.push(hue);
+  if (selHues.length > 2) selHues.shift();
+  const dark = tone === 'dark';
+  const L = (dark ? 0.78 : 0.86) + Math.random() * 0.05;
+  const C = (dark ? 0.085 : 0.07) + Math.random() * 0.035;
+  const hex = oklchHex(L, C, hue);
+  // A pale ring disappears on a light page, so the outline and glow use a deeper shade of the same color there.
+  const edge = dark ? hex : oklchHex(0.72, 0.12, hue);
+  return { hex, on: onColor(hex) === '#ffffff' ? '#ffffff' : '#1d1a2f', edge };
+}
+const modalIds = new WeakMap();
+let modalSeq = 0;
+const modalId = () => { if (!modalIds.has(modal)) modalIds.set(modal, ++modalSeq); return modalIds.get(modal); };
+function selectionTarget() {
+  if (modal) {
+    if (modal.kind === 'list') return { el: modalEl.querySelector('.mitem.active'), sig: `m|${modalId()}|${modal.index}` };
+    if (modal.kind === 'keys') return { el: modalEl.querySelector('.key.active'), sig: `k|${modalId()}|${modal.r}|${modal.c}` };
+    return null;
+  }
+  if (focus === 'tabs') return { el: tabsEl.querySelector('.tab.focused'), sig: `t|${hoverId}` };
+  const c = cur();
+  const row = selectedRow();
+  return { el: (homeMode() ? canvasEl : rowsEl).querySelector('.card.active'), sig: `c|${curKey()}|${c.row}|${row ? c.cols[row.id] || 0 : 0}` };
+}
+// Called whenever the selection may have moved. A new place gets a new pastel; the same place keeps its own.
+function paintSelection() {
+  if (!selOn) return;
+  const t = selectionTarget();
+  if (!t || !t.el) return;
+  if (t.sig !== selSig || !selNow) {
+    const wasMenu = /^[mk]\|/.test(selSig);
+    const isMenu = /^[mk]\|/.test(t.sig);
+    if (!isMenu) selBack = null;
+    if (isMenu && !wasMenu && selNow) selBack = { sig: selSig, color: selNow }; // a menu opened over a tile: remember its color
+    selNow = !isMenu && selBack && selBack.sig === t.sig ? selBack.color : nextPastel(selTone);
+    selSig = t.sig;
+  }
+  if (t.el.dataset.selc !== selNow.hex) {
+    t.el.style.setProperty('--sel', selNow.hex);
+    t.el.style.setProperty('--on-sel', selNow.on);
+    t.el.style.setProperty('--sel-edge', selNow.edge);
+    t.el.dataset.selc = selNow.hex;
+  }
 }
 let layoutReady = false;
 let layoutSig = '';
@@ -154,6 +237,19 @@ function applyTheme(t) {
   prefs.theme = t;
   const fx = t.settings.find((s) => s.id === 'backdrop');
   document.body.dataset.fx = fx ? fx.value : 'none';
+  const bgs = t.settings.find((s) => s.id === 'bg');
+  document.body.dataset.tone = selTone = bgs && /^#[0-9a-f]{6}$/i.test(bgs.value) && lumOf(bgs.value) < 0.3 ? 'dark' : 'light';
+  const sc = t.settings.find((s) => s.id === 'selColor');
+  selOn = Boolean(sc && sc.value === 'pastel');
+  document.body.dataset.sel = selOn ? 'pastel' : 'accent';
+  if (!selOn) {
+    selSig = ''; selNow = null; selBack = null;
+    // leaving a pastel theme: give every element its normal selection color back
+    for (const el of document.querySelectorAll('[data-selc]')) {
+      for (const v of ['--sel', '--on-sel', '--sel-edge']) el.style.removeProperty(v);
+      delete el.dataset.selc;
+    }
+  }
   const wgs = t.settings.find((s) => s.id === 'widgetStyle');
   document.body.dataset.wg = wgs && ['glass', 'frosted', 'outline', 'solid'].includes(wgs.value) ? wgs.value : 'frosted';
   const root = document.documentElement;
@@ -606,7 +702,7 @@ function render() {
         card.append(kind, name);
         if (t.art) {
           card.classList.add('has-art');
-          card.style.backgroundImage = `url("tessera-art://item/${encodeURIComponent(t.id)}?v=${artRev}")`;
+          card._art = `tessera-art://item/${encodeURIComponent(t.id)}?v=${artRev}`; // loaded by artWindow() once the tile is near the selection
         }
       }
       rail.appendChild(card);
@@ -701,6 +797,7 @@ function update() {
     const rail = wrap.querySelector('.rail');
     const col = (rows[r] && c.cols[rows[r].id]) || 0;
     [...rail.children].forEach((card, n) => card.classList.toggle('active', inTiles && active && n === col));
+    artWindowFor(rail, r, c.row, col);
     const card = rail.children[col];
     const lmode = layoutCfg().mode;
     if (lmode === 'grid') rail.style.transform = 'none';
@@ -736,10 +833,41 @@ function update() {
       rowsEl.style.transform = `translateY(${ty}px)`;
     }
   }
+  paintSelection();
   const t = selectedTile();
   titleEl.textContent = !inTiles
     ? hoverId === 'new' ? `Press A to create a ${TERM}` : hoverId === 'browser' ? 'Press A to open your browser' : tabName(hoverId)
     : t && !t.big ? t.title : '';
+}
+
+// Game pictures are only loaded for tiles near the selection, and let go again when
+// the selection moves away. A library of hundreds of tiles then keeps a couple of
+// dozen pictures in memory instead of all of them.
+const ART_COLS = 10; // tiles either side of the selected one (a rail shows about 7 at a time)
+function loadArt(card) {
+  if (card && card._art && !card.style.backgroundImage) card.style.backgroundImage = `url("${card._art}")`;
+}
+function dropArt(card) {
+  if (card && card.style.backgroundImage) card.style.removeProperty('background-image');
+}
+function artWindow(rail, lo, hi) {
+  const cards = rail.children;
+  const from = Math.max(0, lo);
+  const to = Math.min(cards.length - 1, hi);
+  const was = rail._artWin || { lo: 0, hi: -1 };
+  for (let i = was.lo; i <= was.hi; i++) if (i < from || i > to) dropArt(cards[i]);
+  for (let i = from; i <= to; i++) if (i < was.lo || i > was.hi) loadArt(cards[i]);
+  rail._artWin = to >= from ? { lo: from, hi: to } : { lo: 0, hi: -1 };
+}
+function dropAllArt() {
+  for (const rail of rowsEl.querySelectorAll('.rail')) artWindow(rail, 0, -1);
+}
+function artWindowFor(rail, rowIdx, selRow, col) {
+  const lc = layoutCfg();
+  const rowsNear = lc.mode === 'rails' ? 2 : lc.rows + 1;
+  if (Math.abs(rowIdx - selRow) > rowsNear) return artWindow(rail, 0, -1);
+  if (lc.mode === 'rails') return artWindow(rail, col - ART_COLS, col + ART_COLS);
+  artWindow(rail, 0, rail.children.length - 1); // a grid row is only a few tiles wide
 }
 
 function selectedRow() {
@@ -781,6 +909,7 @@ const isButtonTab = (id) => id === 'new' || id === 'browser';
 async function launchBrowser() {
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
   suspended = true;
+  dropAllArt();
   setStatus('Opening your browser…');
   api.launch('_browser');
 }
@@ -840,6 +969,7 @@ function activate() {
     setStatus(t.offline === 'drive' ? `${t.title} is on a drive that isn't plugged in.` : `${t.title}'s files can't be found. Settings > Storage > Clean up can remove broken entries.`, true);
   } else {
     suspended = true;
+    dropAllArt(); // the launcher sits hidden while a game runs: don't hold the pictures in memory meanwhile
     setStatus('Starting…');
     api.launch(t.id);
   }
@@ -1078,6 +1208,7 @@ function updateKeys() {
       el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
     })
   );
+  paintSelection();
   if (modal.digits && patternActive()) {
     hint.textContent = 'Press the button shown on each number to type it.';
     return;
@@ -1165,6 +1296,7 @@ function renderModal() {
   modalEl.appendChild(box);
   const active = list.querySelector('.mitem.active');
   if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+  paintSelection();
 }
 
 function modalPress(act) {
@@ -3196,6 +3328,7 @@ api.onInit((payload) => {
 
 function resume(message) {
   suspended = false;
+  update(); // loads the pictures near the selection again
   prevBtn[0] = true; // if A is still held, don't relaunch until it's released
   setStatus(message, Boolean(message));
 }

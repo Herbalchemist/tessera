@@ -6,6 +6,10 @@
   --muted: #8b95a3;
   --accent: #7fb2ff;
   --on-accent: #10151c; /* text on top of the accent color; set from the accent's brightness */
+  /* The selected tile, tab or menu row. Normally the accent; a theme can give each one its own pastel (JS sets these on the selected element). */
+  --sel: var(--accent);
+  --on-sel: var(--on-accent);
+  --sel-edge: var(--accent); /* outline and glow around the selection */
   --panel: #161d27;
   --border: #3b475a;
   --border-w: 0px;
@@ -94,7 +98,7 @@ nav {
 .tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 10px 24px rgb(0 0 0 / calc(var(--tab-shadow) * 0.4)), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
 @keyframes wiggle { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
 /* The tab bar has focus: bright, and the tiles below are deselected. */
-.tab.focused { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
+.tab.focused { color: var(--on-sel); background: var(--sel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
 #crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
@@ -137,10 +141,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 }
 .card small { color: var(--muted); font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
 .card.kind-folder { background: color-mix(in srgb, var(--card), white 6%); border: 2px dashed var(--border); }
-.card.kind-action { background: color-mix(in srgb, var(--card), #3ddc97 8%); }
+.card.kind-action { background: color-mix(in srgb, var(--card), var(--ok) 8%); }
 .card.active {
   transform: scale(1.08);
-  box-shadow: 0 0 0 var(--ring) var(--accent), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
+  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
 }
 .empty { text-align: center; color: var(--muted); font-size: 1.2rem; margin-top: 80px; }
 h1 {
@@ -213,8 +217,8 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 }
 .mitem small { color: var(--muted); font-size: 0.85rem; }
 .mitem.dim { color: var(--muted); }
-.mitem.active { background: var(--accent); color: var(--on-accent); }
-.mitem.active small { color: var(--on-accent); opacity: 0.7; }
+.mitem.active { background: var(--sel); color: var(--on-sel); }
+.mitem.active small { color: var(--on-sel); opacity: 0.7; }
 .mitem.header { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 18px 4px; }
 .mitem small { text-align: right; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Cancel / Close glow red and Done / Yes glow green. Both colors are theme settings, and the
@@ -234,7 +238,7 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 }
 .mitem.danger.active small, .mitem.ok.active small { color: var(--on); }
 .mitem.header.fold { color: var(--text); font-size: 1.1rem; text-transform: none; letter-spacing: 0; font-weight: 700; padding: 14px 18px 8px; background: none; }
-.mitem.header.fold.active { background: var(--accent); color: var(--on-accent); }
+.mitem.header.fold.active { background: var(--sel); color: var(--on-sel); }
 .khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: pre; }
 
 /* ---- on-screen keyboard: docked to the bottom, sized to the screen ---- */
@@ -303,7 +307,7 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 .key .kg { position: absolute; right: 8%; bottom: 6%; font-size: calc(var(--key) * 0.22); font-weight: 700; opacity: 0.75; letter-spacing: 0; }
 .key.pat.hit { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
 .keys.numeric .krow:last-child .key .kg { right: 4%; }
-.key.active { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
+.key.active { background: var(--sel); color: var(--on-sel); transform: scale(1.06); }
 #modal.keys .khint { font-size: calc(var(--key) * 0.26); }
 @media (prefers-reduced-motion: reduce) { .kbpanel, .tab.lifted, .caret { animation: none; } }
 
@@ -452,6 +456,42 @@ body[data-fx="mystic"]::after {
     radial-gradient(circle at 60% 40%, rgba(255,255,255,0.3) 0 1px, transparent 2px);
 }
 
+body[data-fx="tiles"]::after {
+  /* Mosaic: a field of small rounded tiles in pastel, fading out toward the middle where the content is. */
+  background: linear-gradient(115deg, #ffc4d6 0%, #ffd9b0 16%, #fff0b3 32%, #d2f2c4 48%, #bdeee5 64%, #c4dcff 80%, #dccbff 100%);
+  opacity: var(--mosaic-op, 0.62);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='3' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='163' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='123' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='3' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='3' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='123' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='3' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3C/svg%3E"), radial-gradient(ellipse 60% 55% at 50% 50%, transparent 0%, transparent 38%, #000 100%);
+  mask-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='3' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='163' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='123' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='3' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='3' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='123' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='3' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3C/svg%3E"), radial-gradient(ellipse 60% 55% at 50% 50%, transparent 0%, transparent 38%, #000 100%);
+  -webkit-mask-size: calc(240px * var(--auto)) calc(240px * var(--auto)), 100% 100%;
+  mask-size: calc(240px * var(--auto)) calc(240px * var(--auto)), 100% 100%;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* On a dark page the tiles are deeper, jewel-like tones: pale pastels would just turn muddy. */
+body[data-fx="tiles"][data-tone="dark"]::after {
+  background: linear-gradient(115deg, #ff6b9a 0%, #ff9f5a 16%, #ffd75e 32%, #5fe0a8 48%, #4cc9f0 64%, #6f8bff 80%, #b07cff 100%);
+  --mosaic-op: 0.24;
+}
+/* Soft light-theme glow: the same idea as the dark one, a little quieter. */
+body[data-tone="light"][data-fx="glow"]::after {
+  background:
+    radial-gradient(ellipse 60% 50% at 8% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in srgb, var(--ok) 20%, transparent), transparent 70%);
+}
+
+/* ---- random pastel selection (Mosaic themes): the selected tile lights up and glows in its own colour ---- */
+body[data-sel="pastel"] .card.active {
+  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 0 34px color-mix(in srgb, var(--sel-edge) 60%, transparent), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.35));
+}
+/* On a light page a pastel outline needs a thin darker line around it to stay crisp. */
+body[data-tone="light"][data-sel="pastel"] .card.active {
+  box-shadow: 0 0 0 var(--ring) var(--sel-edge), 0 0 0 calc(var(--ring) + 1.5px) color-mix(in srgb, var(--text) 22%, transparent), 0 0 34px color-mix(in srgb, var(--sel-edge) 60%, transparent), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.35));
+}
+body[data-sel="pastel"] .card.active:not(.has-art):not(.kind-inlay):not(.has-widget) {
+  background-color: color-mix(in srgb, var(--sel) 34%, var(--card));
+}
+body[data-sel="pastel"] .tab.focused { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 55%), transparent), 0 0 22px color-mix(in srgb, var(--sel-edge) calc(var(--tab-shadow) * 60%), transparent); }
+
 /* ---- tile layouts: grid and flow ---- */
 .rows.grid .rowport, .rows.flow .rowport { padding: 0; overflow: visible; }
 .rows.grid, .rows.flow { padding-top: var(--padv, 18px); } /* the screen edge clips, so shadows fade out instead of ending in a hard line */
@@ -562,17 +602,17 @@ body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .
 .utags { display: flex; gap: 10px; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
 .utags .warn { color: var(--danger); font-weight: 800; opacity: 1; }
 /* on the highlighted row the accent colour is the background, so the bars use the text-on-accent colour */
-.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-accent); }
-.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-accent) 78%, transparent); }
-.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-accent) 50%, transparent); }
-.mitem.active .useg.f { background: color-mix(in srgb, var(--on-accent) 20%, transparent); }
-.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-accent) 68%, transparent); }
-.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-accent) 58%, transparent); }
-.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-accent) 44%, transparent); }
-.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-accent) 36%, transparent); }
-.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-accent) 28%, transparent); }
+.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-sel); }
+.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-sel) 78%, transparent); }
+.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-sel) 50%, transparent); }
+.mitem.active .useg.f { background: color-mix(in srgb, var(--on-sel) 20%, transparent); }
+.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-sel) 68%, transparent); }
+.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-sel) 58%, transparent); }
+.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-sel) 44%, transparent); }
+.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-sel) 36%, transparent); }
+.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-sel) 28%, transparent); }
 .mitem.active .utags .warn { color: inherit; }
-.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-accent)); }
+.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-sel)); }
 /* games and apps whose drive is unplugged or whose files are gone */
 .card.offline { opacity: 0.5; filter: grayscale(0.85); }
 .card.offline small { color: var(--danger); }

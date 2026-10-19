@@ -226,10 +226,13 @@ const catById = (id) => state.categories.find((c) => c.id === id);
 
 // What the renderer is allowed to see: ids, titles, kinds. Never paths.
 function buildView() {
+  const roots = vaultRoots(); // looked up once for the whole list, not for every tile
+  const byId = new Map(state.items.map((i) => [i.id, i]));
+  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(itemDeleteTarget(it, roots)), offline: offlineKind(it) });
   const tileFor = (ref, selfId) => {
     if (ref === selfId) return null;
-    const it = itemById(ref);
-    if (it) return { id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(itemDeleteTarget(it)), offline: offlineKind(it) };
+    const it = byId.get(ref);
+    if (it) return tileOf(it);
     const inl = inlayById(ref);
     if (inl) {
       // A widget that was removed from the folder stays on the page as a
@@ -255,7 +258,6 @@ function buildView() {
   for (const c of state.categories) {
     folders[c.id] = { title: c.title, tiles: c.entries.map((e) => tileFor(e, c.id)).filter(Boolean) };
   }
-  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(itemDeleteTarget(it)), offline: offlineKind(it) });
   const games = state.items.filter((i) => i.kind === 'game').map(tileOf);
   const apps = state.items.filter((i) => i.kind === 'app').map(tileOf);
   // Library and Apps are automatic: everything you've added, filed or not.
@@ -601,14 +603,16 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
 const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear', '--shadow', '--ring', '--tab-shadow'];
-// Two themes ship with Tessera. They share one list of settings and differ
+// Four themes ship with Tessera. They share one list of settings and differ
 // only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
+// The two Mosaic themes turn on "selectionColor: pastel": every tile, tab or menu
+// row the selector lands on lights up in a new random pastel.
 const BUILTIN_THEMES = [
   {
     id: 'stock', name: 'Tessera Bright', author: 'Tessera',
     defaults: {
-      bg: '#fff3dc', card: '#ffffff', panel: '#ffffff', text: '#24213d', muted: '#6b6786', accent: '#ff4d8d',
-      border: '#24213d', borderW: '0px', shadow: 70, radius: '20px', cancel: '#ff3b5c', confirm: '#12b886',
+      bg: '#f4f1fa', card: '#ffffff', panel: '#ffffff', text: '#2b2640', muted: '#6a6586', accent: '#6a58d8',
+      border: '#2b2640', borderW: '0px', shadow: 60, radius: '20px', cancel: '#e5484d', confirm: '#12a37f',
       backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 30, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
@@ -620,6 +624,24 @@ const BUILTIN_THEMES = [
       border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
       backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1a1230',
+    },
+  },
+  {
+    id: 'mosaic', name: 'Tessera Mosaic', author: 'Tessera',
+    defaults: {
+      bg: '#f8f5ef', card: '#ffffff', panel: '#ffffff', text: '#2a2638', muted: '#6d6882', accent: '#6c6ee0',
+      border: '#2a2638', borderW: '0px', shadow: 55, radius: '20px', cancel: '#e5546b', confirm: '#1fa67a',
+      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
+    },
+  },
+  {
+    id: 'mosaic-dark', name: 'Tessera Mosaic Dark', author: 'Tessera',
+    defaults: {
+      bg: '#121018', card: '#1f1c2b', panel: '#1a1724', text: '#ece8f5', muted: '#9a94b0', accent: '#b4a7ff',
+      border: '#3a3450', borderW: '0px', shadow: 70, radius: '20px', cancel: '#ff6b8b', confirm: '#4fe0b0',
+      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1f1c2b',
     },
   },
 ];
@@ -639,6 +661,8 @@ const STOCK_THEME = {
     { id: 'selectRing', group: 'Shape', label: 'Selection outline', type: 'choice', default: '3px', var: '--ring',
       options: [{ label: 'None', value: '0px' }, { label: 'Thin', value: '2px' }, { label: 'Normal', value: '3px' }, { label: 'Thick', value: '5px' }] },
     { id: 'accent', group: 'Colors', label: 'Highlight color', type: 'color', default: '#7fb2ff', var: '--accent' },
+    { id: 'selColor', group: 'Colors', label: 'Selection color', type: 'choice', default: 'accent', hint: 'Random pastel gives every tile, tab and menu row you land on its own new color',
+      options: [{ label: 'Highlight color', value: 'accent' }, { label: 'Random pastel', value: 'pastel' }] },
     { id: 'border', group: 'Colors', label: 'Border color', type: 'color', default: '#3b475a', var: '--border' },
     { id: 'card', group: 'Colors', label: 'Tile fill', type: 'color', default: '#1a222c', var: '--card' },
     { id: 'panel', group: 'Colors', label: 'Menu fill', type: 'color', default: '#161d27', var: '--panel' },
@@ -648,7 +672,7 @@ const STOCK_THEME = {
     { id: 'background', group: 'Background', label: 'Background picture', type: 'image', default: '', var: '--bg-image' },
     { id: 'bgDim', group: 'Background', label: 'Picture dimming', type: 'range', min: 0, max: 90, step: 10, unit: '%', default: 50, var: '--bg-dim', scale: 0.01 },
     { id: 'backdrop', group: 'Background', label: 'Backdrop effect', type: 'choice', default: 'none',
-      options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }] },
+      options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }, { label: 'Mosaic tiles', value: 'tiles' }] },
     { id: 'confirm', group: 'Buttons', label: 'Done / Yes button color', type: 'color', default: '#3ddc97', var: '--ok' },
     { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
@@ -919,8 +943,18 @@ const isDir = (p) => {
 const real = (p) => {
   try { return fs.realpathSync(p); } catch { return null; }
 };
-const browseRoots = () =>
-  [os.homedir(), '/run/media', '/mnt', '/var/mnt'].map(real).filter((r) => r && isDir(r));
+// The places Tessera may browse. Looked up at most every few seconds: this is asked
+// for every file it checks, and the answer almost never changes.
+let browseRootsAt = 0;
+let browseRootsList = [];
+const browseRoots = () => {
+  const now = Date.now();
+  if (now - browseRootsAt > 5000) {
+    browseRootsList = [os.homedir(), '/run/media', '/mnt', '/var/mnt'].map(real).filter((r) => r && isDir(r));
+    browseRootsAt = now;
+  }
+  return browseRootsList;
+};
 const underRoot = (rp) => browseRoots().some((r) => rp === r || rp.startsWith(r + path.sep));
 
 // ------------------------------------------------------------------ drives
@@ -1001,7 +1035,7 @@ function friendly(p) {
 // (Steam's library cache, Lutris cover art, a PS5 game's own icon, or a
 // cover.png next to the game). The page only ever asks for a library id, so
 // it never learns a path, and every file is checked before it is served.
-const IMG_MAX_ART = 8 * 1024 * 1024;
+const IMG_MAX_ART = 16 * 1024 * 1024; // bigger than this isn't a game picture. Big ones are shrunk before they reach the screen (see ART_SMALL)
 const imageMime = (file) => {
   const mime = IMG_EXT[path.extname(file).toLowerCase()];
   if (!mime) return null;
@@ -1018,18 +1052,44 @@ const imageMime = (file) => {
     return ok ? mime : null;
   } catch { return null; } finally { if (fd !== undefined) fs.closeSync(fd); }
 };
+const exists = (f) => { try { return Boolean(fs.statSync(f, { throwIfNoEntry: false })); } catch { return false; } };
 const firstImage = (files) => {
   for (const f of files) {
+    if (!exists(f)) continue; // nearly every guess is a miss: find out with one cheap call
     const rp = real(f);
     if (rp && underRoot(rp) && imageMime(rp)) return rp;
   }
   return null;
 };
 const EXTS = ['.jpg', '.png', '.jpeg', '.webp'];
-function steamArt(id) {
+// Steam keeps its pictures in appcache/librarycache. The folders are listed once
+// in a while (not per game), and a game with nothing there costs nothing.
+let steamIndexAt = 0;
+let steamIndexList = [];
+function steamBases() {
+  const now = Date.now();
+  if (now - steamIndexAt < 30000) return steamIndexList;
   const home = os.homedir();
+  const seen = new Set();
+  const list = [];
   for (const root of ['.local/share/Steam', '.steam/steam', '.steam/root', '.var/app/com.valvesoftware.Steam/.local/share/Steam']) {
     const base = path.join(home, root, 'appcache', 'librarycache');
+    const rp = real(base);
+    if (!rp || seen.has(rp)) continue;
+    seen.add(rp);
+    let names;
+    try { names = fs.readdirSync(base); } catch { continue; }
+    const ids = new Set();
+    for (const n of names) { const m = /^(\d+)(?:_|$)/.exec(n); if (m) ids.add(m[1]); }
+    list.push({ base, ids });
+  }
+  steamIndexAt = now;
+  steamIndexList = list;
+  return list;
+}
+function steamArt(id) {
+  for (const { base, ids } of steamBases()) {
+    if (!ids.has(id)) continue;
     const dirs = [path.join(base, id)];
     try {
       for (const e of fs.readdirSync(dirs[0], { withFileTypes: true })) if (e.isDirectory()) dirs.push(path.join(dirs[0], e.name)); // newer layout: one folder per picture
@@ -1059,7 +1119,7 @@ const artCache = new Map(); // item id -> { at, file }
 let artRev = 0;
 function resolveArt(item) {
   const hit = artCache.get(item.id);
-  if (hit && Date.now() - hit.at < 60000 && hit.custom === (item.art || '')) return hit.file;
+  if (hit && Date.now() - hit.at < (hit.file ? 600000 : 120000) && hit.custom === (item.art || '')) return hit.file;
   let file = null;
   if (item.art) file = firstImage([item.art]);
   if (!file) {
@@ -1079,6 +1139,72 @@ function serveArt(id) {
   const mime = file && imageMime(file);
   if (!mime) return notFound;
   return { status: 200, headers: { 'Content-Type': mime, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' }, body: fs.readFileSync(file) };
+}
+// Box art is shown about 240 to 600 pixels wide, but people drop 4K pictures in. A
+// 4K picture costs about 33 MB of memory once decoded, so a screenful of them
+// stalls the screen. Pictures bigger than ART_SMALL are shrunk once, kept in the
+// cache folder, and that copy is served. Anything that goes wrong serves the original.
+const ART_SMALL = 400 * 1024;
+const ART_FIT = { w: 600, h: 900 }; // the size of Steam's own box art: plenty for a 4K screen
+const artThumbDir = () => path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'tessera', 'art');
+const thumbBad = new Set(); // pictures that couldn't be shrunk: don't keep trying
+let thumbQueue = Promise.resolve();
+function makeThumb(file, st, key) {
+  const native = require('electron').nativeImage;
+  if (!native) return null;
+  let img = native.createFromPath(file);
+  if (!img || img.isEmpty()) return null;
+  const { width, height } = img.getSize();
+  const scale = Math.min(1, ART_FIT.w / width, ART_FIT.h / height);
+  if (scale < 1) img = img.resize({ width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)), quality: 'good' });
+  // JPEG is much smaller and quicker to decode, but can't keep see-through corners.
+  const px = img.toBitmap();
+  let alpha = false;
+  for (let i = 3; i < px.length; i += 4) if (px[i] !== 255) { alpha = true; break; }
+  const out = alpha ? { ext: '.png', buf: img.toPNG() } : { ext: '.jpg', buf: img.toJPEG(88) };
+  if (!out.buf || !out.buf.length || out.buf.length >= st.size) return null; // no smaller: keep the original
+  const dir = artThumbDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const dest = path.join(dir, key + out.ext);
+  const tmp = dest + '.' + process.pid + '.tmp';
+  fs.writeFileSync(tmp, out.buf);
+  fs.renameSync(tmp, dest);
+  return dest;
+}
+// The file to serve for a picture: its shrunken copy if it has one, else the original.
+function artFile(file) {
+  let st;
+  try { st = fs.statSync(file); } catch { return Promise.resolve(file); }
+  if (st.size <= ART_SMALL) return Promise.resolve(file);
+  const key = crypto.createHash('sha1').update(`${file}\0${st.size}\0${st.mtimeMs}`).digest('hex').slice(0, 24);
+  const dir = artThumbDir();
+  for (const ext of ['.jpg', '.png']) {
+    const hit = path.join(dir, key + ext);
+    if (exists(hit)) return Promise.resolve(hit);
+  }
+  if (thumbBad.has(key)) return Promise.resolve(file);
+  // One at a time, so a screenful of new pictures never blocks the whole launcher at once.
+  const job = thumbQueue.then(() => new Promise((resolve) => setImmediate(() => {
+    let out = null;
+    try { out = makeThumb(file, st, key); } catch { out = null; }
+    if (!out) thumbBad.add(key);
+    resolve(out || file);
+  })));
+  thumbQueue = job.catch(() => {});
+  return job;
+}
+async function serveArtAsync(id) {
+  const notFound = { status: 404, headers: { 'Content-Type': 'text/plain' }, body: 'Not found' };
+  const item = itemById(id);
+  const file = item && resolveArt(item);
+  const mime = file && imageMime(file);
+  if (!mime) return notFound;
+  const use = await artFile(file);
+  const useMime = use === file ? mime : path.extname(use) === '.png' ? 'image/png' : 'image/jpeg';
+  let body;
+  try { body = await fs.promises.readFile(use); } catch { return notFound; }
+  // The address carries ?v=<artRev>, which changes whenever a picture does, so it is safe to remember for a while.
+  return { status: 200, headers: { 'Content-Type': useMime, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=600' }, body };
 }
 
 // Launchers worth a shortcut. Shown only if installed. Fixed list, so nothing
@@ -1564,12 +1690,16 @@ function vaultDelete(target) {
 }
 // What "delete the files" means for a game or app: its own folder under Games or
 // Apps (or the file itself if it sits straight in there). Null if it lives anywhere else.
-function itemDeleteTarget(item) {
+const vaultRoots = () => ['games', 'apps'].map((key) => real(vaultFolder(key))).filter(Boolean);
+function itemDeleteTarget(item, roots = vaultRoots()) {
+  if (!roots.length) return null; // no Tessera folder yet: nothing in it to delete
+  // Most games live elsewhere. Skip the (slow) path resolution unless the path starts in the Tessera folder.
+  const raw = ['games', 'apps'].map((key) => vaultFolder(key));
+  if (![...raw, ...roots].some((r) => item.path.startsWith(r + path.sep))) return null;
   const rp = real(item.path);
   if (!rp) return null;
-  for (const key of ['games', 'apps']) {
-    const root = real(vaultFolder(key));
-    if (root && rp.startsWith(root + path.sep)) return path.join(root, path.relative(root, rp).split(path.sep)[0]);
+  for (const root of roots) {
+    if (rp.startsWith(root + path.sep)) return path.join(root, path.relative(root, rp).split(path.sep)[0]);
   }
   return null;
 }
@@ -1653,6 +1783,9 @@ Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
 or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
+Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
+Selection: "selColor": "pastel" gives every tile, tab or menu row the selector lands
+on its own new random pastel (the default, "accent", keeps one highlight color).
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
 };
@@ -1842,12 +1975,25 @@ function send(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
 }
 
+// The background colour of the saved theme, read straight from the settings file (nothing
+// else is loaded yet), so a light theme doesn't flash dark before the page draws.
+function savedBackground() {
+  try {
+    const d = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    const id = d && d.theme && typeof d.theme.active === 'string' ? d.theme.active : 'stock';
+    const own = d && d.theme && d.theme.values && d.theme.values[id] && d.theme.values[id].bg;
+    if (typeof own === 'string' && HEX_RE.test(own)) return own;
+    const b = BUILTIN_THEMES.find((t) => t.id === id);
+    if (b && HEX_RE.test(b.defaults.bg)) return b.defaults.bg;
+  } catch { /* first start */ }
+  return '#10151c';
+}
 function createWindow() {
   mainWindow = new BrowserWindow({
     fullscreen: true,
     frame: false,
     autoHideMenuBar: true,
-    backgroundColor: '#10151c',
+    backgroundColor: savedBackground(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1886,10 +2032,10 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null); // the default menu carries Reload and Toggle DevTools
-    protocol.handle(ART_SCHEME, (req) => {
+    protocol.handle(ART_SCHEME, async (req) => {
       try {
         const m = /^\/([^/]+)$/.exec(new URL(req.url).pathname);
-        const r = serveArt(m ? decodeURIComponent(m[1]) : '');
+        const r = await serveArtAsync(m ? decodeURIComponent(m[1]) : '');
         return new Response(r.body, { status: r.status, headers: r.headers });
       } catch {
         return new Response('Bad request', { status: 400 });
