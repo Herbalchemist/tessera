@@ -5,8 +5,19 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
-# Files copied from a git checkout can lose their executable bit.
-chmod 0755 /usr/bin/tessera-session /usr/bin/tessera-reset-pin
+# A zip, a download or some editors can drop the executable bit of a script on its way into the
+# repo. Every script in system_files starts with "#!", so exactly those are made executable here.
+find /ctx/system_files -type f -print0 | while IFS= read -r -d '' f; do
+  if IFS= read -r -n 2 magic < "$f" && [ "$magic" = '#!' ]; then
+    chmod 0755 "${f#/ctx/system_files}"
+  fi
+done
+# The session cannot start without this one: fail the build now rather than ship an image that
+# drops back to the login screen.
+if [ ! -x /usr/bin/tessera-session ]; then
+  echo "tessera-session is missing or not executable" >&2
+  exit 1
+fi
 
 ### Tessera launcher
 # Node is only needed here, to fetch Electron into the launcher folder.
