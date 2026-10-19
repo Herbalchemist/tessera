@@ -11,6 +11,7 @@ STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
 LOG="$STATE/session.log"
 MAX_QUICK_FAILS=3
 QUICK_SECS=30
+EARLY_EXIT_SECS=5
 
 # Windows that other programs open (a web browser, say) should fill the screen
 # like the launcher does, not sit at their own size. Newer Gamescope can force
@@ -36,12 +37,27 @@ fi
 mkdir -p "$STATE"
 echo "session start $(date -Is)" >"$LOG"
 
+# Without the launcher program there is nothing to run. Say so in the log and end the session
+# (the login screen is the way to the desktop) instead of starting Gamescope with nothing in it.
+if [ ! -x "$ELECTRON" ]; then
+  echo "launcher program missing or not executable: $ELECTRON" >>"$LOG"
+  exit 1
+fi
+
 fails=0
 while true; do
   started=$(date +%s)
   gamescope -f $FORCE_FULL "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
+
+  # Gamescope reports success even when the program it was asked to run could not be started,
+  # which used to look like a normal exit to Desktop Mode. Nobody gets to Desktop Mode within a
+  # few seconds of starting, so a "clean" exit that quick is counted as a failure.
+  if [ "$code" -eq 0 ] && [ $(( $(date +%s) - started )) -lt "$EARLY_EXIT_SECS" ]; then
+    echo "launcher ended after less than ${EARLY_EXIT_SECS}s without being asked to: counted as a failure" >>"$LOG"
+    code=1
+  fi
 
   # Failed quickly with the calibration shader on: turn it off and try again.
   if [ "$code" -ne 0 ] && [ "${#FX_ARGS[@]}" -gt 0 ] && [ $(( $(date +%s) - started )) -lt "$QUICK_SECS" ]; then

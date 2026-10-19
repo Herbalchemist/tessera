@@ -42,6 +42,23 @@ npm_config_update_notifier=false \
 npm_config_fund=false \
 npm_config_audit=false \
   npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact "electron@${ELECTRON_VERSION}"
+# Older Electron packages fetched the actual program (dist/electron) in a postinstall script while
+# the package was being installed. Newer ones have no such script: the program is fetched by Electron's own
+# installer (the "install-electron" command) when it is first needed. So a build could finish
+# "successfully" with no Electron program inside and the console would boot to the desktop.
+# Run the installer ourselves when the program is not there yet (the download is cached in the
+# scratch home and thrown away below), and stop the build if there is still no program.
+ELECTRON_PKG=/usr/lib/tessera/launcher/node_modules/electron
+if [ ! -x "$ELECTRON_PKG/dist/electron" ]; then
+  HOME="$NPM_HOME" \
+  XDG_CACHE_HOME="$NPM_HOME/cache-xdg" \
+  electron_config_cache="$NPM_HOME/cache-electron" \
+    node "$ELECTRON_PKG/install.js"
+fi
+if [ ! -x "$ELECTRON_PKG/dist/electron" ]; then
+  echo "Electron was installed but $ELECTRON_PKG/dist/electron is missing: the console could not start" >&2
+  exit 1
+fi
 rm -rf "$NPM_HOME"
 # Tessera is English only. Electron ships dozens of other translations (about 40 MB) that are never used.
 if [ -d /usr/lib/tessera/launcher/node_modules/electron/dist/locales ]; then
