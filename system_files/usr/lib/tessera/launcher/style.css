@@ -196,7 +196,7 @@ footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
 .box h3 { margin: 0 0 16px; font-size: 1.3rem; font-weight: 600; color: var(--muted); overflow-wrap: anywhere; }
-.box .mbody { margin: -6px 0 18px; font-size: 1.05rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
+.box .mbody { margin: -6px 0 18px; font-size: 1.05rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; white-space: pre-line; }
 /* First-run welcome: a popup over an empty screen. The launcher stays hidden
    (body.hold) until the popup is answered, then fades in. */
 #modal.welcome { background: transparent; }

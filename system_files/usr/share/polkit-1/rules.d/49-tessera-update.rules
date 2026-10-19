@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Settings > Update software: whoever is sitting at the console may start and stop these three jobs
+// without a password, and nothing else. What each job runs is fixed in its unit file
+// (bootc status, bootc upgrade --check, bootc upgrade); the person cannot hand it other commands or
+// other arguments. Restarting afterwards is the normal "restart" permission of an active local
+// session, so it needs no rule here.
+//
+// Written in plain ES5 on purpose: polkit's script engine is old.
+polkit.addRule(function (action, subject) {
+  if (action.id !== "org.freedesktop.systemd1.manage-units") {
+    return polkit.Result.NOT_HANDLED;
+  }
+  if (!subject.local || !subject.active) {
+    return polkit.Result.NOT_HANDLED;
+  }
+  var jobs = [
+    "tessera-update-status.service",
+    "tessera-update-check.service",
+    "tessera-update-apply.service"
+  ];
+  var unit = action.lookup("unit");
+  var verb = action.lookup("verb");
+  if (jobs.indexOf(unit) !== -1 && (verb === "start" || verb === "stop")) {
+    return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

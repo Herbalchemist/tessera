@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Settings > Update software: read which system version is installed and whether an update is
+# already waiting for a restart. Started on demand by Tessera (see 49-tessera-update.rules); it is
+# not enabled and has no [Install] section. The answer is left in /run/tessera-update.
+[Unit]
+Description=Tessera: read the installed system version
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bootc status --format=json
+StandardOutput=truncate:/run/tessera-update/status.json
+StandardError=truncate:/run/tessera-update/status.err
+TimeoutStartSec=60

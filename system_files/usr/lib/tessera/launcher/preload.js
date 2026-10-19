@@ -17,4 +17,5 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   scan: (op, payload) => ipcRenderer.invoke('scan', op, payload),
   storage: (op, payload) => ipcRenderer.invoke('storage', op, payload),
   addons: (op) => ipcRenderer.invoke('addons', op),
+  update: (op, payload) => ipcRenderer.invoke('update', op, payload),
 });

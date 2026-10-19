@@ -350,6 +350,7 @@ const SETTINGS_ROWS = [
     title: 'System',
     tiles: [
       { id: '_storage', title: 'Storage', kind: 'action' },
+      { id: '_update', title: 'Update software', kind: 'action' },
       { id: '_pad', title: 'Controller', kind: 'action' },
       { id: '_controls', title: 'Button mapping', kind: 'action' },
       { id: '_theme', title: 'Theme Settings', kind: 'action' },
@@ -361,9 +362,17 @@ const SETTINGS_ROWS = [
   },
 ];
 
+let updateWaiting = false; // a downloaded update is waiting for a restart (known once Update software has looked)
 function settingsRows() {
   const low = (prefs.storage && prefs.storage.low) || [];
-  return SETTINGS_ROWS.map((r) => ({ ...r, tiles: r.tiles.map((t) => (t.id === '_storage' && low.length ? { ...t, sub: `Low space: ${low[0].name}`, warn: true } : t)) }));
+  return SETTINGS_ROWS.map((r) => ({
+    ...r,
+    tiles: r.tiles.map((t) => {
+      if (t.id === '_storage' && low.length) return { ...t, sub: `Low space: ${low[0].name}`, warn: true };
+      if (t.id === '_update' && updateWaiting) return { ...t, sub: 'Restart to finish', warn: true };
+      return t;
+    }),
+  }));
 }
 
 // ------------------------------------------------------------------ state
@@ -1003,6 +1012,7 @@ function activate() {
 
 function runAction(id) {
   if (id === '_storage') flowStorage();
+  else if (id === '_update') flowUpdate();
   else if (id === '_pad') flowPadMenu();
   else if (id === '_theme') flowTheme();
   else if (id === '_display') flowCalMenu();
@@ -2642,6 +2652,194 @@ async function flowDesktop() {
   if (modal || busy) return;
   const ok = await confirm('Switch to Desktop Mode?  Tessera will close and the login screen will appear.');
   if (ok) api.quit();
+}
+
+// ------------------------------------------------------------ software update
+// Settings > Update software. One button does it all: look for a newer system build, download it if
+// there is one, and offer a restart. The real work is done by system jobs that main.js starts (see
+// tessera-update-*.service); this only shows what they are up to.
+const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '');
+const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const buildLabel = (b) => (b && b.version ? `Version ${b.version}` : b && b.time ? `The build from ${fmtDate(b.time)}` : 'The new version');
+
+// Row notes sit to the right and are cut at about 40 characters: keep them short.
+const UPDATE_ABOUT = 'Updates keep your games, saves and settings. The new version starts after a restart, and the previous one is kept in case you need to go back.';
+function updateItems(info) {
+  if (!info.supported || !info.booted) return [{ label: 'Try again', op: 'retry', plain: true }];
+  const b = info.booted;
+  const items = [{ label: 'Installed', header: true }];
+  items.push({
+    label: `Tessera ${info.launcher || ''}`.trim(),
+    sub: [b.version ? `System ${b.version}` : '', b.time ? `built ${fmtDate(b.time)}` : ''].filter(Boolean).join(' · ') || undefined,
+    info: true,
+    plain: true,
+  });
+  items.push({ label: 'Update', header: true });
+  if (info.staged) items.push({ label: 'Restart now', sub: `${buildLabel(info.staged)} is ready`, op: 'reboot', ok: true });
+  items.push({ label: 'Update now', sub: info.staged ? 'Look for something newer' : 'Get the newest version', op: 'update', plain: true });
+  return items;
+}
+
+async function flowUpdate() {
+  if (modal || busy) return;
+  let info = null;
+  let note = '';
+  let resume = '';
+  let at = -1; // where the cursor rests after a line that was only read; -1 means on the main action
+  for (;;) {
+    if (!info) {
+      busy = true;
+      setStatus('Checking what is installed…');
+      try { info = await api.update('info', {}); } finally { busy = false; }
+      setStatus('');
+      if (!info || !info.ok) { setStatus((info && info.error) || "Couldn't read the system version.", true); break; }
+      if (info.job) resume = info.job;
+      updateWaiting = Boolean(info.staged);
+    }
+    if (resume) {
+      // an update is already running (Tessera was restarted meanwhile): rejoin it
+      const job = resume;
+      resume = '';
+      note = await updateNow(job);
+      info = null;
+      continue;
+    }
+    const items = updateItems(info);
+    const problem = info.supported ? '' : [info.problem, info.detail ? `(${info.detail})` : ''].filter(Boolean).join(' ');
+    const it = await pick('Update software', items, at >= 0 ? at : Math.max(0, items.findIndex((x) => x.op)), { body: note || problem || UPDATE_ABOUT });
+    note = '';
+    if (!it) break;
+    if (it.info) { at = items.indexOf(it); continue; } // a line to read: stay on it
+    at = -1;
+    if (it.op === 'retry') { info = null; continue; }
+    if (it.op === 'reboot') {
+      if (!(await requirePin())) continue;
+      let r = await api.update('reboot', {});
+      if (r && r.needPin) {
+        if (!(await requirePin())) continue;
+        r = await api.update('reboot', {});
+      }
+      if (r && r.ok) {
+        await pick('Restarting…', [{ label: 'Close', op: 'close', plain: true }], 0, { body: 'The console is restarting. This takes a moment.' });
+        break;
+      }
+      note = (r && r.error) || "Couldn't restart from here. Use the power button, or Desktop Mode.";
+      continue;
+    }
+    if (it.op === 'update') {
+      if (!(await requirePin())) continue;
+      note = await updateNow('');
+      info = null; // read where things stand now
+    }
+  }
+  if (page === 'settings') render(); // the Update software tile may now say "Restart to finish"
+}
+
+// Asks main to start a job. Null when it started, else what to tell the person.
+async function updateStart(kind) {
+  let r = await api.update('start', { job: kind });
+  if (r && r.needPin) {
+    if (!(await requirePin())) return { result: 'canceled', quiet: true };
+    r = await api.update('start', { job: kind });
+  }
+  return r && r.ok ? null : { result: 'error', error: (r && r.error) || "Couldn't start the update.", detail: '' };
+}
+// What to tell the person about a job that ended, or null if it found an update that is still to be fetched.
+function updateEnd(r) {
+  switch (r.result) {
+    case 'canceled': return r.quiet ? '' : 'Stopped. Nothing was changed.';
+    case 'error': return r.error + (r.detail ? ` (${r.detail})` : '');
+    case 'uptodate': return "You're up to date. This is the newest version.";
+    case 'staged': return `${buildLabel(r)} is downloaded. Restart to finish installing it.`;
+    default: return null;
+  }
+}
+// Check, then fetch if there is something to fetch. `resume` joins a job that is already running.
+async function updateNow(resume) {
+  let hint = {};
+  if (resume !== 'apply') {
+    const r = (resume ? null : await updateStart('check')) || (await updateWatch('check'));
+    const end = updateEnd(r);
+    if (end !== null) return end;
+    hint = { version: r.version, size: r.size };
+  }
+  const r = (resume === 'apply' ? null : await updateStart('apply')) || (await updateWatch('apply', hint));
+  const end = updateEnd(r);
+  return end !== null ? end : "The update finished, but I couldn't tell whether anything new was installed. Open this screen again to see.";
+}
+// Follows one system job until it ends, then resolves with its result. B (or Stop) asks first.
+function updateWatch(kind, hint = {}) {
+  return new Promise((resolve) => {
+    let mode = 'run'; // run | ask | stopping
+    let p = { elapsed: 0, line: '' };
+    let note = ''; // why Stop did not work, if it did not
+    let over = false;
+    // The status goes in the paragraph under the title (big enough to read from the sofa); the list only holds the choices.
+    const itemsNow = () => {
+      if (mode === 'ask') return [{ label: 'No, keep going', op: 'no', plain: true }, { label: 'Yes, stop', op: 'yes', danger: true }]; // the safe answer first
+      if (mode === 'stopping') return [{ label: 'Stopping…', header: true }];
+      return [{ label: 'Stop', op: 'stop', plain: true }];
+    };
+    const bodyNow = () => {
+      if (mode === 'ask') return 'Stop the update?\nWhat is already downloaded is kept for next time.';
+      if (mode === 'stopping') return '';
+      const what = kind === 'check' ? 'Looking for a newer version' : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
+      const status = [what, kind === 'apply' && hint.size ? `about ${hint.size}` : '', fmtClock(p.elapsed)].filter(Boolean).join(' · ');
+      return [status, kind === 'apply' ? 'Keep the console on until this finishes.' : '', kind === 'apply' ? p.line : '', note].filter(Boolean).join('\n');
+    };
+    openList({
+      title: kind === 'check' ? 'Checking for updates' : 'Updating',
+      items: itemsNow(),
+      index: 0,
+      body: bodyNow(),
+      onChoose: (it) => {
+        if (mode === 'run' && it.op === 'stop') { mode = 'ask'; note = ''; }
+        else if (mode === 'ask' && it.op === 'yes') {
+          mode = 'stopping'; // the loop below sees the job end; if it can't be stopped, say so and carry on
+          Promise.resolve(api.update('cancel', {})).then((r) => {
+            if (r && !r.ok && !over) { mode = 'run'; note = r.error || "Couldn't stop it."; show(); }
+          }).catch(() => {});
+        } else if (mode === 'ask') mode = 'run';
+        show();
+      },
+      onBack: () => {
+        if (mode === 'run') mode = 'ask';
+        else if (mode === 'ask') mode = 'run';
+        show();
+      },
+    });
+    const m = modal;
+    function show() {
+      m.items = itemsNow();
+      m.body = bodyNow();
+      m.index = 0;
+      if (modal === m) renderModal();
+    }
+    const finish = (res) => {
+      over = true;
+      if (modal === m) closeModal();
+      resolve(res);
+    };
+    (async () => {
+      let lost = 0;
+      await sleep(600);
+      while (!over) {
+        let q = null;
+        try { q = await api.update('poll', {}); } catch { /* try again */ }
+        if (over) return;
+        if (!q || !q.ok) {
+          if (++lost > 10) return finish({ result: 'error', error: 'Lost touch with the update.', detail: '' });
+        } else if (q.phase === 'running') {
+          lost = 0;
+          p = q;
+          if (mode === 'run' && modal === m) { m.items = itemsNow(); m.body = bodyNow(); renderModal(); }
+        } else {
+          return finish(q.phase === 'done' ? q : { result: 'unknown' });
+        }
+        await sleep(1000);
+      }
+    })();
+  });
 }
 
 

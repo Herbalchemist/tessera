@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Settings > Update software: ask the registry whether a newer system build exists, without
+# downloading it. Started on demand by Tessera (see 49-tessera-update.rules); it is not enabled.
+# What it prints is left in /run/tessera-update/check.log.
+[Unit]
+Description=Tessera: check for a newer system version
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bootc upgrade --check
+StandardOutput=truncate:/run/tessera-update/check.log
+StandardError=inherit
+TimeoutStartSec=300
+Nice=10
