@@ -885,6 +885,8 @@ function update() {
       const ref = rowsEl.querySelectorAll('.row')[c.row].querySelector('.rail').children[sel];
       const w = rail.parentElement.clientWidth;
       rail.style.transform = ref ? `translateX(${w / 2 - (ref.offsetLeft + ref.offsetWidth / 2)}px)` : 'none';
+      const gt = wrap.querySelector('h2.cat'); // a group title slides with its row, so it stays above the first tile
+      if (gt) gt.style.transform = rail.style.transform;
     } else if (card) {
       const w = rail.parentElement.clientWidth;
       rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
