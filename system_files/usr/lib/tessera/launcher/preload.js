@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   onDriveAdded: (cb) => ipcRenderer.on('drive-added', (_e, d) => cb(d)),
   onLaunchFailed: (cb) => ipcRenderer.on('launch-failed', (_e, msg) => cb(msg)),
   launch: (id) => ipcRenderer.send('launch', id),
-  quit: () => ipcRenderer.send('quit'),
+  quit: () => ipcRenderer.invoke('quit'),
   library: (op, payload) => ipcRenderer.invoke('library', op, payload),
   browse: (op, payload) => ipcRenderer.invoke('browse', op, payload),
   settings: (op, payload) => ipcRenderer.invoke('settings', op, payload),

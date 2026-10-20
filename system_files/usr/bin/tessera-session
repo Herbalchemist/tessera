@@ -2,13 +2,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera console session. Started by the login manager via tessera.desktop.
 # Runs the launcher inside Gamescope and restarts it if it crashes.
-# A clean exit (Settings > Desktop Mode, or Ctrl+Q in a test build) ends the session and returns
-# to the login screen, which is the way back to the desktop.
+# Settings > Desktop Mode (or Ctrl+Q in a test build) ends the session and returns to the login
+# screen, which is the way back to the desktop. The launcher says so by writing a note
+# (TESSERA_LEAVE_FILE) just before it quits; the exit code of Gamescope is not trusted for that,
+# because it is not reliable at shutdown. Without the note a non-zero exit is a crash: restart.
+#
+# When it is started from the desktop (tessera-return, "Return to Tessera") TESSERA_NESTED=1 is
+# set: the same thing runs on top of the desktop, and leaving it shows the desktop again.
 
 APP=/usr/lib/tessera/launcher
 ELECTRON="$APP/node_modules/electron/dist/electron"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
 LOG="$STATE/session.log"
+LEAVE="$STATE/leave-requested"
+export TESSERA_LEAVE_FILE="$LEAVE"
 MAX_QUICK_FAILS=3
 QUICK_SECS=30
 EARLY_EXIT_SECS=5
@@ -35,7 +42,10 @@ if [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q
 fi
 
 mkdir -p "$STATE"
-echo "session start $(date -Is)" >"$LOG"
+# Keep the previous session's log for a while: what happened the last time is the first thing to look at.
+[ -f "$LOG" ] && cp -f "$LOG" "$LOG.1" 2>/dev/null
+echo "session start $(date -Is)${TESSERA_NESTED:+ (from the desktop)}" >"$LOG"
+rm -f "$LEAVE"
 
 # Without the launcher program there is nothing to run. Say so in the log and end the session
 # (the login screen is the way to the desktop) instead of starting Gamescope with nothing in it.
@@ -47,9 +57,17 @@ fi
 fails=0
 while true; do
   started=$(date +%s)
+  rm -f "$LEAVE"
   gamescope -f $FORCE_FULL "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
+
+  # The person chose Desktop Mode: leave, whatever the exit code was.
+  if [ -e "$LEAVE" ]; then
+    echo "Desktop Mode was asked for: ending the session" >>"$LOG"
+    rm -f "$LEAVE"
+    exit 0
+  fi
 
   # Gamescope reports success even when the program it was asked to run could not be started,
   # which used to look like a normal exit to Desktop Mode. Nobody gets to Desktop Mode within a

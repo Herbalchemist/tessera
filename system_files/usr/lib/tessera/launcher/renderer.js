@@ -385,6 +385,7 @@ const cursor = {};          // per page/folder: { row, cols: { rowId: col } }
 let stack = [];             // open folders: [{ id, title }]
 let suspended = false;      // true while a game is running
 let busy = false;           // true while waiting on the main process
+let nestedView = false;     // Tessera was started from the desktop (Return to Tessera), not as the session itself
 let artRev = 0;             // bumps when a game picture changes, so tiles reload it
 let modal = null;
 let lastNav = 0;
@@ -975,6 +976,7 @@ function applyView(view) {
   if (!view) return;
   data = { tabs: view.tabs, folders: view.folders, mosaics: view.mosaics || [], tabOrder: view.tabOrder || data.tabOrder, recent: view.recent || [] };
   if (view.keys) keymap = view.keys;
+  nestedView = Boolean(view.nested);
   if (view.prefs) applyPrefs(view.prefs);
   artRev = view.artRev || 0;
   if (!tabList().includes(page)) {
@@ -2648,10 +2650,30 @@ async function flowCalMenu(index = 0) {
 
 // Desktop Mode is the login screen: Tessera closes, and the person signs in
 // (password and all) to whichever session they pick. See tessera-session.
+let leavingNow = false; // Desktop Mode was chosen and Tessera is closing: ignore further presses
 async function flowDesktop() {
-  if (modal || busy) return;
-  const ok = await confirm('Switch to Desktop Mode?  Tessera will close and the login screen will appear.');
-  if (ok) api.quit();
+  if (modal || busy || leavingNow) return;
+  const ok = await confirm(nestedView
+    ? 'Switch to Desktop Mode?  Tessera will close and the desktop will be shown again.'
+    : 'Switch to Desktop Mode?  Tessera will close and the login screen will appear.  To come back later, choose Return to Tessera in the application menu.');
+  if (!ok) return;
+  leavingNow = true;
+  setStatus('Closing Tessera…');
+  let r;
+  try { r = await api.quit(); } catch { r = { ok: false, error: "Couldn't close Tessera. Try again." }; }
+  if (r && r.needPin) {
+    leavingNow = false;
+    if (!(await requirePin())) return;
+    leavingNow = true;
+    try { r = await api.quit(); } catch { r = { ok: false, error: "Couldn't close Tessera. Try again." }; }
+  }
+  if (r && r.ok === false) {
+    leavingNow = false;
+    setStatus(r.error || "Couldn't close Tessera. Try again.", true);
+    return;
+  }
+  // Tessera is on its way out. If it somehow is not gone after a while, allow another try.
+  setTimeout(() => { leavingNow = false; }, 8000);
 }
 
 // ------------------------------------------------------------ software update

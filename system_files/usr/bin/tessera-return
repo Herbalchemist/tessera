@@ -1,0 +1,24 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Return to Tessera from the desktop ("Return to Tessera" in the application menu).
+# Runs the console session full screen on top of the desktop. Leaving it again
+# (Settings > Desktop Mode) shows the desktop again, no login screen in between.
+# For Tessera as it is after a boot, with the whole screen to itself, log out and
+# choose Tessera on the login screen.
+
+say() {
+  if command -v notify-send >/dev/null 2>&1; then notify-send -a Tessera -i tessera "Tessera" "$1"; else echo "$1" >&2; fi
+}
+
+if pgrep -u "$(id -u)" -f '/usr/lib/tessera/launcher/node_modules/electron/dist/electron' >/dev/null 2>&1; then
+  say "Tessera is already open."
+  exit 0
+fi
+
+export TESSERA_NESTED=1
+/usr/bin/tessera-session
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  say "Tessera could not start. The reason is in ~/.local/state/tessera/session.log"
+fi
+exit "$rc"

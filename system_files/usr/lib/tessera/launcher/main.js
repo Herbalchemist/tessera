@@ -271,7 +271,7 @@ function buildView() {
     .filter(Boolean)
     .slice(0, 12)
     .map(tileOf);
-  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, prefs: prefsPayload(), artRev, error: state.warn };
+  return { tabs, folders, mosaics, tabOrder: computeTabOrder(), recent, keys: settings.keys, prefs: prefsPayload(), artRev, error: state.warn, nested: Boolean(process.env.TESSERA_NESTED) };
 }
 
 // Remember what was launched, newest first. Only the id and a time are stored.
@@ -2022,7 +2022,7 @@ function createWindow() {
     if (input.type !== 'keyDown') return;
     if (DEV && input.control && input.key.toLowerCase() === 'q') {
       event.preventDefault();
-      app.quit();
+      leaveTessera();
     } else if (!DEV && (input.key === 'F12' || (input.control && input.shift && /^[ijc]$/i.test(input.key)) || (input.control && /^[rw]$/i.test(input.key)) || input.key === 'F5' || (input.alt && input.key === 'F4'))) {
       event.preventDefault(); // no inspector, reload or close
     }
@@ -3214,5 +3214,27 @@ ipcMain.on('launch', (_event, id) => {
   runChild(game.path, game.args || [], path.dirname(game.path), 'Game', game.id);
 });
 
-ipcMain.on('quit', () => { if (pinOk()) app.quit(); });
+// Desktop Mode. tessera-session has to tell "the person chose Desktop Mode" from "Tessera crashed"
+// (which it restarts). Gamescope's exit code cannot tell it: at shutdown it is not reliable, and a
+// non-zero code on a normal exit made Tessera start again instead of leaving. So leaving writes a
+// note first and the session goes by the note. tessera-session sets TESSERA_LEAVE_FILE.
+const LEAVE_FILE = process.env.TESSERA_LEAVE_FILE || path.join(path.dirname(LOG_DIR), 'leave-requested');
+let leaving = false;
+function leaveTessera() {
+  if (leaving) return;
+  leaving = true;
+  try {
+    fs.mkdirSync(path.dirname(LEAVE_FILE), { recursive: true });
+    fs.writeFileSync(LEAVE_FILE, `${new Date().toISOString()}\n`);
+  } catch { /* no note: the session falls back to the exit code, as before */ }
+  app.quit();
+  // quit() waits for the window and the helper processes. If one of them hangs, don't leave the
+  // person looking at a frozen screen: end the process anyway.
+  setTimeout(() => app.exit(0), 4000);
+}
+ipcMain.handle('quit', () => {
+  if (!pinOk()) return NEED_PIN;
+  leaveTessera();
+  return { ok: true };
+});
 app.on('window-all-closed', () => app.quit());
