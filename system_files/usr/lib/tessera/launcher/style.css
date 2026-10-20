@@ -390,6 +390,11 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 
 /* Row titles are hidden for now (kept in the markup so they can come back). */
 .row h2 { display: none; }
+/* ...except the group titles on Settings (Connections, Controllers, ...). */
+.rows.cats .row h2.cat { display: block; margin: 0 0 12px 56px; font-size: 1.05rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.rows.cats:not(.grid):not(.flow) .row h2.cat { margin: 0 0 4px; text-align: center; } /* rails: the rail is centred, so is its title */
+.rows.grid.cats .row h2.cat { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; margin: 0 auto 14px; box-sizing: border-box; padding-left: 4px; }
+.rows.grid.cats .rail { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; }
 
 /* ---- Recently played widget ---- */
 .card.kind-inlay .recent-head { font-size: 1rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; flex: none; }

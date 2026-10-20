@@ -2590,17 +2590,18 @@ ipcMain.handle('addons', safe((op, p) => {
 // ------------------------------------------------------------ software updates
 // Settings > Update software swaps in the newest system image with `bootc upgrade`, which needs
 // root. The launcher never runs that itself. It starts three fixed systemd jobs
-// (tessera-update-status, -check and -apply, in usr/lib/systemd/system) that a polkit rule lets
-// whoever is at the console start and stop, and it reads the notes those jobs leave in UPDATE_DIR.
-// Nothing the page sends ever reaches a command line: it can only ask for "check" or "apply".
+// (tessera-update-status, -check, -apply and -rollback, in usr/lib/systemd/system) that a polkit rule
+// lets whoever is at the console start and stop, and it reads the notes those jobs leave in UPDATE_DIR.
+// Nothing the page sends ever reaches a command line: it can only ask for "check", "apply" or "rollback".
 const UPDATE_DIR = process.env.TESSERA_UPDATE_DIR || '/run/tessera-update';
 const SYSTEMCTL = process.env.TESSERA_SYSTEMCTL || 'systemctl';
-const UPDATE_UNIT = { status: 'tessera-update-status.service', check: 'tessera-update-check.service', apply: 'tessera-update-apply.service' };
+const UPDATE_UNIT = { status: 'tessera-update-status.service', check: 'tessera-update-check.service', apply: 'tessera-update-apply.service', rollback: 'tessera-update-rollback.service' };
 const UPDATE_START_GRACE_MS = 15000; // how long a queued job may take to begin
 const LAUNCHER_VERSION = (() => {
   try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version || '').slice(0, 24); } catch { return ''; }
 })();
 let upJob = null; // the job being followed: { kind, unit, before, startedAt, seen, canceled }
+let rolledBackNow = false; // a rollback was queued by this program: asking again would flip it back
 
 const sysctl = (args, timeout = 15000) => new Promise((resolve) => {
   execFile(SYSTEMCTL, ['--no-ask-password', ...args], { timeout, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' } }, (err, stdout, stderr) => {
@@ -2673,6 +2674,8 @@ function parseBootcStatus(text) {
     // an update only counts as waiting if it is a different image from the one that is running
     staged: staged && (!booted || !staged.digest || staged.digest !== booted.digest) ? staged : null,
     rollback: bootcImage(st.rollback),
+    // "go back to the previous version" is already queued for the next restart (bootc says so in rollbackQueued)
+    rollbackQueued: st.rollbackQueued === true,
   };
 }
 // `bootc upgrade --check` prints "No changes in: ..." or "Update available for: ..." with the new
@@ -2719,7 +2722,7 @@ async function fetchStatus() {
 // A job that is already going (Tessera was restarted while it ran) is picked up again, not started twice.
 async function runningJob() {
   if (upJob) return upJob;
-  for (const kind of ['apply', 'check']) {
+  for (const kind of ['apply', 'check', 'rollback']) {
     const p = await unitProps(UPDATE_UNIT[kind]);
     if (p && ['activating', 'active', 'reloading'].includes(p.ActiveState)) {
       upJob = { kind, unit: UPDATE_UNIT[kind], before: '', startedAt: Date.now(), seen: true, canceled: false };
@@ -2733,13 +2736,21 @@ async function updateInfo() {
   if (job) return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: job.kind };
   const st = await fetchStatus();
   if (!st.ok) return { ok: true, launcher: LAUNCHER_VERSION, supported: false, job: null, problem: UPDATE_PROBLEM[st.why] || UPDATE_PROBLEM.unreadable, detail: st.detail };
-  return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: null, booted: st.booted, staged: st.staged, rollback: st.rollback };
+  return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: null, booted: st.booted, staged: st.staged, rollback: st.rollback, rollbackQueued: st.rollbackQueued || rolledBackNow };
 }
 async function startUpdate(kind) {
-  if (kind !== 'check' && kind !== 'apply') return { ok: false, error: 'Unknown action.' };
+  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback') return { ok: false, error: 'Unknown action.' };
   if (running) return { ok: false, error: 'Close the game first.' };
   const cur = await runningJob();
   if (cur) return { ok: true, job: cur.kind };
+  if (kind === 'rollback') {
+    // Going back twice would undo itself, so look first: there has to be an older version, and it must not be queued already.
+    const st = await fetchStatus();
+    if (!st.ok) return { ok: false, error: UPDATE_PROBLEM[st.why] || UPDATE_PROBLEM.unreadable };
+    if (st.rollbackQueued || rolledBackNow) return { ok: false, error: 'Already set. Restart to go back to the previous version.' };
+    if (st.staged) return { ok: false, error: 'An update is waiting for a restart. Restart first, then you can go back if you need to.' };
+    if (!st.rollback) return { ok: false, error: "There's no earlier version to go back to." };
+  }
   const unit = UPDATE_UNIT[kind];
   const before = await unitProps(unit);
   if (!before || before.LoadState === 'not-found') return { ok: false, error: UPDATE_PROBLEM.missing };
@@ -2770,7 +2781,11 @@ async function pollUpdate() {
   upJob = null;
   const done = { ok: true, phase: 'done', job: job.kind };
   if (job.canceled) return { ...done, result: 'canceled' };
-  if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: updateErrorText(log), detail: lastLine(log) };
+  if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: job.kind === 'rollback' ? "Couldn't go back to the previous version." : updateErrorText(log), detail: lastLine(log) };
+  if (job.kind === 'rollback') {
+    rolledBackNow = true;
+    return { ...done, result: 'rolledback' };
+  }
   if (job.kind === 'check') {
     const c = parseCheck(log);
     if (c.state === 'available') return { ...done, result: 'available', version: c.version, size: c.size };
@@ -2812,6 +2827,86 @@ async function updateOp(op, p) {
   }
 }
 ipcMain.handle('update', (_e, op, p) => updateOp(typeof op === 'string' ? op : '', p && typeof p === 'object' ? p : {}));
+
+// ------------------------------------------------------------ power
+// Restart, shut down, sleep: the normal permissions of someone sitting at the console, through logind.
+const POWER_VERB = { restart: 'reboot', shutdown: 'poweroff', sleep: 'suspend' };
+const POWER_FAIL = {
+  restart: "Couldn't restart from here. Use the power button, or Desktop Mode.",
+  shutdown: "Couldn't shut down from here. Hold the power button, or use Desktop Mode.",
+  sleep: "Couldn't go to sleep from here.",
+};
+ipcMain.handle('power', async (_e, op) => {
+  try {
+    const verb = typeof op === 'string' && Object.prototype.hasOwnProperty.call(POWER_VERB, op) ? POWER_VERB[op] : null;
+    if (!verb) return { ok: false, error: 'Unknown action.' };
+    if (!pinOk()) return NEED_PIN;
+    if (running) return { ok: false, error: 'Close the game first.' };
+    const r = await sysctl([verb], 15000);
+    return r.ok ? { ok: true } : { ok: false, error: POWER_FAIL[op] };
+  } catch {
+    return { ok: false, error: 'Something went wrong.' };
+  }
+});
+
+// ------------------------------------------------------------ sound, Bluetooth, Wi-Fi
+// The work is in devices.js. What is asked for here is the operation name plus values that are
+// checked there; pairing, joining, forgetting and the Wi-Fi switch need the PIN (when there is one).
+const devices = require('./devices');
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
+const str = (v) => (typeof v === 'string' ? v : '');
+function deviceHandler(table, needPin) {
+  return async (_e, op, p) => {
+    try {
+      op = typeof op === 'string' ? op : '';
+      p = p && typeof p === 'object' ? p : {};
+      if (!Object.prototype.hasOwnProperty.call(table, op)) return { ok: false, error: 'Unknown action.' };
+      if (needPin.includes(op) && !pinOk()) return NEED_PIN;
+      return await table[op](p);
+    } catch {
+      return { ok: false, error: 'Something went wrong.' };
+    }
+  };
+}
+ipcMain.handle('audio', deviceHandler({
+  info: () => devices.audio.info(),
+  setDefault: (p) => devices.audio.setDefault(str(p.kind), str(p.id)),
+  volume: (p) => devices.audio.setVolume(str(p.kind), str(p.id), num(p.pct)),
+  mute: (p) => devices.audio.setMute(str(p.kind), str(p.id), p.on === true),
+  profile: (p) => devices.audio.setProfile(str(p.card), str(p.profile)),
+}, []));
+ipcMain.handle('bluetooth', deviceHandler({
+  info: () => devices.bluetooth.info(),
+  power: (p) => devices.bluetooth.power(p.on === true),
+  scan: (p) => devices.bluetooth.scan(p.on === true),
+  stop: () => devices.bluetooth.stop(),
+  pair: (p) => devices.bluetooth.pair(str(p.id)),
+  connect: (p) => devices.bluetooth.connect(str(p.id)),
+  disconnect: (p) => devices.bluetooth.disconnect(str(p.id)),
+  forget: (p) => devices.bluetooth.forget(str(p.id)),
+  poll: () => devices.bluetooth.poll(),
+  ack: () => devices.bluetooth.ack(),
+  cancel: () => devices.bluetooth.cancel(),
+}, ['pair', 'forget']));
+ipcMain.handle('wifi', deviceHandler({
+  info: (p) => devices.wifi.info({ rescan: p.rescan === true }),
+  rescan: () => devices.wifi.rescan(),
+  radio: (p) => devices.wifi.radio(p.on === true),
+  join: (p) => devices.wifi.join({ ssid: str(p.ssid), password: str(p.password), hidden: p.hidden === true }),
+  connect: (p) => devices.wifi.connect({ ssid: str(p.ssid) }),
+  disconnect: () => devices.wifi.disconnect(),
+  forget: (p) => devices.wifi.forget({ ssid: str(p.ssid) }),
+  poll: () => devices.wifi.poll(),
+  ack: () => devices.wifi.ack(),
+  cancel: () => devices.wifi.cancel(),
+}, ['radio', 'join', 'forget']));
+// Short notes for the Settings tiles ("HomeNetwork", "WH-1000XM5"). Each is given a few seconds and then left blank.
+ipcMain.handle('summaries', async () => {
+  const quick = (f) => Promise.race([Promise.resolve().then(f).catch(() => ''), new Promise((r) => setTimeout(() => r(''), 4000))]);
+  const [w, b, a] = await Promise.all([quick(() => devices.wifi.summary()), quick(() => devices.bluetooth.summary()), quick(() => devices.audio.summary())]);
+  return { wifi: w || '', bluetooth: b || '', audio: a || '' };
+});
+app.on('before-quit', () => { try { devices.bluetooth.stop(); } catch { /* going away anyway */ } });
 
 // ------------------------------------------------------------ PIN
 // Only a salted hash is kept. A PIN keeps whoever is holding the controller out

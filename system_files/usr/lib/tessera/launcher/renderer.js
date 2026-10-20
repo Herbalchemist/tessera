@@ -343,26 +343,61 @@ const BUTTON_NAMES_BY_ROLE = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb' 
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 let keymap = { back: 2, space: 3, shift: 10, done: 9, cancel: 1 }; // delete X, space Y, shift L3, done Menu, cancel B
 
-// Settings is built in. These are actions, not launchable items.
+// Settings is built in. These are actions, not launchable items. They sit in groups: each group is
+// one titled row on a rail theme, and a run of rows (with its title above the first) in grid and flow.
 const SETTINGS_ROWS = [
   {
-    id: '_settings',
+    id: '_cat_connect',
+    title: 'Connections',
+    cat: true,
+    tiles: [
+      { id: '_wifi', title: 'Wi-Fi', kind: 'action' },
+      { id: '_bluetooth', title: 'Bluetooth', kind: 'action' },
+      { id: '_sound', title: 'Sound', kind: 'action' },
+    ],
+  },
+  {
+    id: '_cat_pads',
+    title: 'Controllers',
+    cat: true,
+    tiles: [
+      { id: '_pad', title: 'Controller', kind: 'action' },
+      { id: '_controls', title: 'Button mapping', kind: 'action' },
+    ],
+  },
+  {
+    id: '_cat_look',
+    title: 'Appearance',
+    cat: true,
+    tiles: [
+      { id: '_theme', title: 'Theme Settings', kind: 'action' },
+      { id: '_display', title: 'Display calibration', kind: 'action' },
+    ],
+  },
+  {
+    id: '_cat_system',
     title: 'System',
+    cat: true,
     tiles: [
       { id: '_storage', title: 'Storage', kind: 'action' },
       { id: '_update', title: 'Update software', kind: 'action' },
-      { id: '_pad', title: 'Controller', kind: 'action' },
-      { id: '_controls', title: 'Button mapping', kind: 'action' },
-      { id: '_theme', title: 'Theme Settings', kind: 'action' },
-      { id: '_display', title: 'Display calibration', kind: 'action' },
       { id: '_addons', title: 'Add-ons', kind: 'action' },
       { id: '_pin', title: 'PIN', kind: 'action' },
+    ],
+  },
+  {
+    id: '_cat_power',
+    title: 'Power',
+    cat: true,
+    tiles: [
+      { id: '_power', title: 'Power', kind: 'action' },
       { id: '_desktop', title: 'Desktop Mode', kind: 'action' },
     ],
   },
 ];
 
 let updateWaiting = false; // a downloaded update is waiting for a restart (known once Update software has looked)
+let tileNotes = { wifi: '', bluetooth: '', audio: '' }; // short live notes under Wi-Fi, Bluetooth and Sound (see screens.js)
 function settingsRows() {
   const low = (prefs.storage && prefs.storage.low) || [];
   return SETTINGS_ROWS.map((r) => ({
@@ -370,6 +405,9 @@ function settingsRows() {
     tiles: r.tiles.map((t) => {
       if (t.id === '_storage' && low.length) return { ...t, sub: `Low space: ${low[0].name}`, warn: true };
       if (t.id === '_update' && updateWaiting) return { ...t, sub: 'Restart to finish', warn: true };
+      if (t.id === '_wifi' && tileNotes.wifi) return { ...t, sub: tileNotes.wifi };
+      if (t.id === '_bluetooth' && tileNotes.bluetooth) return { ...t, sub: tileNotes.bluetooth };
+      if (t.id === '_sound' && tileNotes.audio) return { ...t, sub: tileNotes.audio };
       return t;
     }),
   }));
@@ -490,10 +528,17 @@ function currentRows() {
   if (base.length === 1 && base[0].tiles.length === 1 && base[0].tiles[0].big) return base; // the big empty tile stays big
   // Grid: all the tiles on the page, cut into rows of `cols`. Everything that moves between rows
   // and tiles (D-pad, selection, menus) works on these rows like on any other.
-  const tiles = base.flatMap((r) => r.tiles);
   const out = [];
   // Flow grids are wider than the screen: two extra columns wait off to the sides.
   const per = mode === 'flow' ? cols + 2 : cols;
+  if (base.some((r) => r.cat)) {
+    // A page in groups (Settings): each group is cut into rows of its own, and its title sits above the first.
+    for (const r of base) {
+      for (let i = 0; i < r.tiles.length; i += per) out.push({ id: r.id + ':' + i / per, title: i === 0 ? r.title : '', cat: true, tiles: r.tiles.slice(i, i + per) });
+    }
+    return out.length ? out : base;
+  }
+  const tiles = base.flatMap((r) => r.tiles);
   for (let i = 0; i < tiles.length; i += per) out.push({ id: 'grid:' + i / per, title: '', tiles: tiles.slice(i, i + per) });
   return out.length ? out : base;
 }
@@ -689,7 +734,7 @@ function render() {
   }
   rowsEl.replaceChildren();
   const lc = layoutCfg();
-  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode);
+  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '');
   rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
   const pageKey = page + '/' + stack.map((s) => s.id).join('/');
   if (pageKey !== rowsEl._key) { rowsEl._key = pageKey; rowsEl._ty = 0; }
@@ -699,6 +744,7 @@ function render() {
     wrap.className = 'row';
     const label = document.createElement('h2');
     label.textContent = row.title;
+    if (row.cat && row.title) label.className = 'cat'; // the group titles on Settings stay visible; other row titles are hidden by the style sheet
     const viewport = document.createElement('div');
     viewport.className = 'rowport';
     const rail = document.createElement('div');
@@ -756,6 +802,7 @@ function render() {
   clamp();
   update();
   tickInlays();
+  if (page === 'settings' && !stack.length && typeof refreshTileNotes === 'function') refreshTileNotes();
 }
 
 // Grid tiles are sized so `cols` fit across and `rows` fit down.
@@ -773,7 +820,9 @@ function sizeGrid() {
   const h = Math.max(160, vp.clientHeight);
   const cw = (w - (cols - 1) * gap) / cols;
   const padv = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.1; // a little room above the first row for the selected tile's grow and outline
-  const ch = Math.max(90, Math.min(cw * 1.5, (h - padv - rows * gap) / rows));
+  const titleH = rowsEl.classList.contains('cats') ? parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.7 : 0; // a group title takes a little room too
+  const ch = Math.max(90, Math.min(cw * 1.5, (h - padv - titleH - rows * gap) / rows));
+  rowsEl.style.setProperty('--cols', String(cols));
   rowsEl.style.setProperty('--padv', padv.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-w', cw.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-h', ch.toFixed(1) + 'px');
@@ -1022,6 +1071,10 @@ function runAction(id) {
   else if (id === '_desktop') flowDesktop();
   else if (id === '_addons') flowAddons();
   else if (id === '_pin') flowPin();
+  else if (id === '_wifi') flowWifi();
+  else if (id === '_bluetooth') flowBluetooth();
+  else if (id === '_sound') flowSound();
+  else if (id === '_power') flowPower();
   else setStatus('Not available yet.');
 }
 
@@ -1093,15 +1146,23 @@ const KEY_ROWS = [
   'zxcvbnm-.&'.split(''),
   ['shift', 'space', 'back', 'cancel', 'done'],
 ];
-const SPECIAL = { shift: 'Shift', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
+// For passwords: the same keyboard with a key that swaps the letters for symbols.
+const KEY_ROWS_SYM = [...KEY_ROWS.slice(0, 4), ['shift', 'sym', 'space', 'back', 'cancel', 'done']];
+const SYM_MAP = [
+  '!@#$%^&*()'.split(''),
+  '`~-_=+[]{}'.split(''),
+  '\\|;:\'",.<>'.split(''),
+  ['/', '?', '', '', '', '', '', '', '', ''],
+];
+const SPECIAL = { shift: 'Shift', sym: '#+=', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
 
 // Resolves with the text, or null on cancel.
 const rowsOf = () => modal.rows || KEY_ROWS;
 function ask(title, initial = '', opts = {}) {
   return new Promise((resolve) => {
     modal = {
-      kind: 'keys', title, text: initial.slice(0, MAX_TEXT), shift: false, r: opts.rows ? 0 : 1, c: 0, last: null, resolve, dom: null,
-      rows: opts.rows || null, mask: Boolean(opts.mask), max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern),
+      kind: 'keys', title, text: initial.slice(0, opts.max || MAX_TEXT), shift: false, sym: false, r: opts.rows ? 0 : 1, c: 0, last: null, resolve, dom: null,
+      rows: opts.rows || (opts.symbols ? KEY_ROWS_SYM : null), mask: Boolean(opts.mask), max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern),
     };
     renderModal();
   });
@@ -1119,7 +1180,9 @@ function typeChar(ch) {
   renderModal();
 }
 function keyAction(k) {
-  if (k === 'shift') modal.shift = !modal.shift;
+  if (k === 'sym') modal.sym = !modal.sym;
+  else if (k === '') return; // an empty spot on the symbol keys
+  else if (k === 'shift') modal.shift = !modal.shift;
   else if (k === 'space') typeChar(' ');
   else if (k === 'back') modal.text = modal.text.slice(0, -1);
   else if (k === 'cancel') return finishKeys(false);
@@ -1159,6 +1222,11 @@ function patternButton(n) {
   const act = PIN_CONTROLS[n];
   if (act) { flashKey(act); return keyAction(act); }
 }
+// What the key under the cursor types: on the symbol layer the letter keys stand for symbols.
+function keyFor(r, c) {
+  const k = rowsOf()[r][c];
+  return modal.sym && !SPECIAL[k] && SYM_MAP[r] ? SYM_MAP[r][c] || '' : k;
+}
 function flashKey(k) {
   if (!modal || !modal.dom) return;
   rowsOf().forEach((row, r) => row.forEach((key, c) => {
@@ -1173,7 +1241,7 @@ function flashKey(k) {
 function keysButton(n) {
   modal.last = n;
   if (patternActive()) return patternButton(n);
-  if (n === 0) return keyAction(rowsOf()[modal.r][modal.c]);
+  if (n === 0) return keyAction(keyFor(modal.r, modal.c));
   const action = Object.keys(keymap).find((k) => keymap[k] === n);
   if (action) return keyAction(action);
   renderModal();
@@ -1225,7 +1293,7 @@ function updateKeys() {
     row.forEach((k, c) => {
       const el = cells[r][c];
       const pat = patternActive();
-      el.classList.toggle('on', k === 'shift' && modal.shift);
+      el.classList.toggle('on', (k === 'shift' && modal.shift) || (k === 'sym' && modal.sym));
       el.classList.toggle('active', !pat && r === modal.r && c === modal.c);
       el.classList.toggle('pat', pat);
       if (pat) {
@@ -1243,7 +1311,9 @@ function updateKeys() {
         }
         return;
       }
-      el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
+      if (k === 'sym') el.textContent = modal.sym ? 'abc' : SPECIAL.sym;
+      else if (modal.sym && !SPECIAL[k] && SYM_MAP[r]) el.textContent = SYM_MAP[r][c] || '';
+      else el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
     })
   );
   paintSelection();
@@ -1354,6 +1424,7 @@ function modalPress(act) {
     else if (act === 'down') step(1);
     else if (act === 'a' && n && cur && cur.header) { if (cur.fold) foldOpen.set(cur.fold, !isOpen(cur)); }
     else if (act === 'a' && n) modal.onChoose(cur);
+    else if ((act === 'left' || act === 'right') && cur && cur.adjust) cur.adjust(act === 'right' ? 1 : -1); // a slider
     else if ((act === 'left' || act === 'right') && cur && cur.header && cur.fold) foldOpen.set(cur.fold, act === 'right');
     else if (act === 'left' && cur && !cur.header) {
       // left on a row inside a branch: fold the branch and land on its heading
@@ -2697,8 +2768,17 @@ function updateItems(info) {
     plain: true,
   });
   items.push({ label: 'Update', header: true });
+  if (info.rollbackQueued) {
+    // going back is already set up: the only thing left to do is restart (and no new update on top of it)
+    items.push({ label: 'Restart now', sub: info.rollback ? `Goes back to ${buildLabel(info.rollback)}` : 'Goes back to the previous version', op: 'reboot', ok: true });
+    return items;
+  }
   if (info.staged) items.push({ label: 'Restart now', sub: `${buildLabel(info.staged)} is ready`, op: 'reboot', ok: true });
   items.push({ label: 'Update now', sub: info.staged ? 'Look for something newer' : 'Get the newest version', op: 'update', plain: true });
+  if (info.rollback && !info.staged) {
+    items.push({ label: 'Previous version', header: true });
+    items.push({ label: 'Go back to the previous version', sub: buildLabel(info.rollback), op: 'rollback', plain: true });
+  }
   return items;
 }
 
@@ -2753,6 +2833,13 @@ async function flowUpdate() {
       note = await updateNow('');
       info = null; // read where things stand now
     }
+    if (it.op === 'rollback') {
+      if (!(await confirm(`Go back to ${buildLabel(info.rollback).toLowerCase()}? It starts after the next restart. Your games, saves and settings are kept.`, 'Go back'))) continue;
+      const bad = await updateStart('rollback');
+      const r = bad || (await updateWatch('rollback'));
+      note = updateEnd(r) || "I couldn't tell whether that worked. Open this screen again to see.";
+      info = null;
+    }
   }
   if (page === 'settings') render(); // the Update software tile may now say "Restart to finish"
 }
@@ -2772,6 +2859,7 @@ function updateEnd(r) {
     case 'canceled': return r.quiet ? '' : 'Stopped. Nothing was changed.';
     case 'error': return r.error + (r.detail ? ` (${r.detail})` : '');
     case 'uptodate': return "You're up to date. This is the newest version.";
+    case 'rolledback': return 'Done. The previous version starts after the next restart.';
     case 'staged': return `${buildLabel(r)} is downloaded. Restart to finish installing it.`;
     default: return null;
   }
@@ -2803,14 +2891,14 @@ function updateWatch(kind, hint = {}) {
       return [{ label: 'Stop', op: 'stop', plain: true }];
     };
     const bodyNow = () => {
-      if (mode === 'ask') return 'Stop the update?\nWhat is already downloaded is kept for next time.';
+      if (mode === 'ask') return kind === 'rollback' ? 'Stop going back?\nNothing is changed until it finishes.' : 'Stop the update?\nWhat is already downloaded is kept for next time.';
       if (mode === 'stopping') return '';
-      const what = kind === 'check' ? 'Looking for a newer version' : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
+      const what = kind === 'rollback' ? 'Setting up the previous version' : kind === 'check' ? 'Looking for a newer version' : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
       const status = [what, kind === 'apply' && hint.size ? `about ${hint.size}` : '', fmtClock(p.elapsed)].filter(Boolean).join(' · ');
       return [status, kind === 'apply' ? 'Keep the console on until this finishes.' : '', kind === 'apply' ? p.line : '', note].filter(Boolean).join('\n');
     };
     openList({
-      title: kind === 'check' ? 'Checking for updates' : 'Updating',
+      title: kind === 'check' ? 'Checking for updates' : kind === 'rollback' ? 'Going back' : 'Updating',
       items: itemsNow(),
       index: 0,
       body: bodyNow(),

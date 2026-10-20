@@ -18,4 +18,9 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   storage: (op, payload) => ipcRenderer.invoke('storage', op, payload),
   addons: (op) => ipcRenderer.invoke('addons', op),
   update: (op, payload) => ipcRenderer.invoke('update', op, payload),
+  power: (op) => ipcRenderer.invoke('power', op),
+  audio: (op, payload) => ipcRenderer.invoke('audio', op, payload),
+  bluetooth: (op, payload) => ipcRenderer.invoke('bluetooth', op, payload),
+  wifi: (op, payload) => ipcRenderer.invoke('wifi', op, payload),
+  summaries: () => ipcRenderer.invoke('summaries'),
 });

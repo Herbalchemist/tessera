@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings > Update software: whoever is sitting at the console may start and stop these three jobs
+// Settings > Update software: whoever is sitting at the console may start and stop these four jobs
 // without a password, and nothing else. What each job runs is fixed in its unit file
-// (bootc status, bootc upgrade --check, bootc upgrade); the person cannot hand it other commands or
+// (bootc status, bootc upgrade --check, bootc upgrade, bootc rollback); the person cannot hand it other commands or
 // other arguments. Restarting afterwards is the normal "restart" permission of an active local
 // session, so it needs no rule here.
 //
@@ -17,7 +17,8 @@ polkit.addRule(function (action, subject) {
   var jobs = [
     "tessera-update-status.service",
     "tessera-update-check.service",
-    "tessera-update-apply.service"
+    "tessera-update-apply.service",
+    "tessera-update-rollback.service"
   ];
   var unit = action.lookup("unit");
   var verb = action.lookup("verb");
