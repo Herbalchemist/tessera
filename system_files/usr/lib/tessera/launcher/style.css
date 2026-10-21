@@ -414,6 +414,14 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 .recent-none { color: var(--muted); font-size: 1.1rem; }
 .canvas .card.kind-inlay:has(.recent-list) { justify-content: flex-start; align-items: stretch; }
 
+/* ---- system-info widgets (CPU, Memory, Storage, Battery, Network, Uptime) ---- */
+.sysinfo-label { font-size: 1rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+.sysinfo-value { font-size: 2.2rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+.sysinfo-sub { margin-top: 6px; font-size: 0.95rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.canvas .sysinfo-value { font-size: clamp(1.3rem, 3.2vw, 4.4rem); }
+.canvas .sysinfo-label { font-size: clamp(0.75rem, 1vw, 1.05rem); }
+.canvas .sysinfo-sub { font-size: clamp(0.7rem, 1.1vw, 1.3rem); }
+
 /* ---- controller test ---- */
 #modal.pad { display: flex; align-items: center; justify-content: center; }
 .padbox { width: min(61rem, 94vw); max-height: 94vh; overflow: hidden; padding: 22px 30px; }
@@ -606,7 +614,9 @@ body[data-wg="outline"] .card.kind-inlay, body[data-wg="outline"] .card.has-widg
 body[data-wg="solid"] .card.kind-inlay, body[data-wg="solid"] .card.has-widget { background: var(--wg-color); }
 /* on see-through panes the small text borrows the main text color so it stays readable over any picture */
 body[data-wg="glass"] .card.kind-inlay .recent-head, body[data-wg="glass"] .card.kind-inlay .clock-date, body[data-wg="glass"] .card.kind-inlay .recent-none,
-body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .card.kind-inlay .clock-date, body[data-wg="outline"] .card.kind-inlay .recent-none { color: color-mix(in srgb, var(--text) 80%, transparent); }
+body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .card.kind-inlay .clock-date, body[data-wg="outline"] .card.kind-inlay .recent-none,
+body[data-wg="glass"] .card.kind-inlay .sysinfo-label, body[data-wg="glass"] .card.kind-inlay .sysinfo-sub,
+body[data-wg="outline"] .card.kind-inlay .sysinfo-label, body[data-wg="outline"] .card.kind-inlay .sysinfo-sub { color: color-mix(in srgb, var(--text) 80%, transparent); }
 
 /* ---- Storage: drive bars and charts. Colours come from the theme. ---- */
 .mitem.rich { display: block; }

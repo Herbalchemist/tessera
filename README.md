@@ -12,7 +12,7 @@ Tessera starts straight into a console-style launcher that you drive with a game
 
 **A launcher made for a controller**
 - Tabs you switch with LB / RB: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself), and Settings.
-- Home is a page of widgets (a clock, recently played games, and community-made widgets from Add-ons).
+- Home is a page of widgets: a clock, recently played games, six built-in system widgets (CPU, Memory, Storage, Battery, Network, Uptime), and community-made widgets from Add-ons.
 - Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
 - Mosaics can hold games, apps, widgets and folders. Press Y on a tile for its options.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.

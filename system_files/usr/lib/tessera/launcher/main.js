@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { spawn, execFile, execFileSync } = require('child_process');
+const { verifyAddon } = require('./addon-verify');
 
 // Widgets are shown through their own scheme so the app can control exactly
 // what they may load. Must be registered before the app is ready.
@@ -44,6 +45,34 @@ const BUILTIN_INLAYS = {
   recent: {
     name: 'Recently played', description: 'Your latest games and apps',
     size: { w: 4, h: 3 }, min: { w: 3, h: 2 }, max: { w: 8, h: 6 }, resizable: true,
+  },
+  // The six below all read from systemInfo() (see near the "summaries" IPC handler), polled by
+  // the renderer itself once a second — nothing is pushed from here, and nothing here ever
+  // spawns a process; it's all local /proc, /sys and Node's own os module, so polling it that
+  // often costs nothing worth noticing.
+  cpu: {
+    name: 'CPU', description: 'Processor load',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  ram: {
+    name: 'Memory', description: 'RAM used and free',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  storage: {
+    name: 'Storage', description: 'Free space on the main drive',
+    size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 5, h: 3 }, resizable: true,
+  },
+  battery: {
+    name: 'Battery', description: 'Charge level, if this device has one',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  network: {
+    name: 'Network', description: 'Connection and live speed',
+    size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 5, h: 3 }, resizable: true,
+  },
+  uptime: {
+    name: 'Uptime', description: 'How long this session has been running',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
   },
 };
 const RECENT_MAX = 30; // remembered plays (the widget shows as many as fit)
@@ -510,6 +539,14 @@ let settings = {
   mutedDrives: [], // drives that never trigger that warning
   hiddenDrives: [], // drives left out of Storage altogether
   profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
+  // Shards (~/Tessera/Shards/<id>/) are the one add-on kind with Tessera's own level of system
+  // access — unlike themes (values only) or widgets (sandboxed, no network, own files only).
+  // Both of these are the owner's own call, not a fixed rule: this is a control Tessera gives
+  // you, not a gate Tessera puts on you.
+  codeAddons: {
+    pinRequired: true, // installing or removing a shard needs the PIN, same as everywhere else that only matters once you've set one
+    allowUnverified: true, // shards without Tessera's own signature still run — your device, your call
+  },
 };
 
 function loadSettings() {
@@ -578,6 +615,10 @@ function loadSettings() {
     settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
     if (d && d.pin && /^[0-9a-f]{32}$/.test(d.pin.salt || '') && /^[0-9a-f]{64}$/.test(d.pin.hash || '')) settings.pin = { salt: d.pin.salt, hash: d.pin.hash };
     settings.pinBrowser = !d || d.pinBrowser !== false;
+    settings.codeAddons = {
+      pinRequired: !d || !d.codeAddons || d.codeAddons.pinRequired !== false,
+      allowUnverified: !d || !d.codeAddons || d.codeAddons.allowUnverified !== false,
+    };
     settings.calibration = d && d.calibration ? cleanCal(d.calibration) : null;
     settings.calibrationSystem = Boolean(d && d.calibrationSystem === true && settings.calibration);
     if (d && typeof d.installRoot === 'string' && path.isAbsolute(d.installRoot)) settings.installRoot = d.installRoot;
@@ -1724,11 +1765,21 @@ function runScan() {
 //   widgets/<id>/manifest.json + files    inlays shown on any page
 //   themes/<id>/...                       look and feel (loader comes later)
 //   art/  fonts/  sounds/                 shared assets themes and pages can use
+//   packs/<id>/addon.json + addon.sig?    real code — see below; everything else here is DATA
 //
-// Add-ons are DATA. Tessera never runs code from these folders in its own
-// process. A widget's page runs in a sandboxed frame with no network access.
+// Widgets, themes, art, fonts and sounds are DATA. Tessera never runs code from those folders
+// in its own process — a widget's page runs in a sandboxed frame with no network access, and a
+// theme can only set values from a fixed whitelist.
+//
+// Shards (the 'packs' dir/key below — "Shards" is just the user-facing name) are the one
+// exception: a shard IS code, with Tessera's own level of system access, by design — that's the
+// whole point of one (see tools/README.md and addon-verify.js). Whether a shard is signed by the
+// project ("Official") only says whose bytes they are, never whether they're safe to run; what
+// actually happens with a dropped-in shard is the owner's own call, through settings.codeAddons
+// (pinRequired / allowUnverified) above. Loading and running a shard's code is not wired up yet
+// — right now this folder is reserved and scanned for listing only, nothing in it is require()'d.
 
-const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds'];
+const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds', 'packs'];
 const WIDGET_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const WIDGET_MAX_FILE = 5 * 1024 * 1024;
 // ------------------------------------------------------- the Tessera folder
@@ -1737,7 +1788,7 @@ const WIDGET_MAX_FILE = 5 * 1024 * 1024;
 // itself only ever deletes things *inside* these folders, never the folders
 // themselves, so nothing the system expects to find can be removed from here.
 const VAULT_DIR = process.env.TESSERA_VAULT_DIR || path.join(process.env.TESSERA_DATA_DIR ? DATA_DIR : os.homedir(), 'Tessera');
-const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads' };
+const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads', packs: 'Shards' };
 const addonDir = (name) => path.join(VAULT_DIR, VAULT_FOLDERS[name] || name);
 const vaultFolder = (key) => path.join(VAULT_DIR, VAULT_FOLDERS[key]);
 // Is this real path inside the Tessera folder? With strict, the folder itself and
@@ -1870,6 +1921,32 @@ or key a new random pastel every time the selector moves (fills keep their own c
 the default, "accent", keeps one glow color: the highlight color).
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
 `,
+  packs: `One folder per shard, with an addon.json inside. Unlike a theme or a widget, a shard
+is real code with Tessera's own level of system access — it is not sandboxed and it is not
+checked for safety by the folder name or by being here at all.
+
+  my-shard/
+    addon.json
+    addon.sig     (only on shards signed by the Tessera project — see below)
+    ...whatever the shard's own entry file needs
+
+addon.json:
+  {
+    "id": "my-shard",
+    "name": "My Shard",
+    "author": "You",
+    "version": "1.0.0",
+    "description": "What it does",
+    "entry": "index.js"
+  }
+
+"Official" means Tessera's own signing key actually signed these exact files (see
+tools/README.md in the project repo) — it says whose bytes these are, nothing more. A missing
+or non-matching addon.sig just means "unverified," not "broken" or "unsafe": whether an
+unverified shard is allowed to run at all is your own call, in Settings > Add-ons > Shards.
+Settings > Add-ons > Shards is also where installing or removing a shard can be asked to need
+the PIN, same as everywhere else that only matters once you've set one.
+`,
 };
 
 function ensureTree() {
@@ -1972,6 +2049,56 @@ function scanAddons() {
     }
     widgets.set(e.name, { dir, manifest: r.manifest });
   }
+  scanPacks(); // every place that rescans widgets rescans packs too, so the two never drift apart
+}
+
+let packs = new Map();  // id -> { dir, manifest, official, reason } — see addon-verify.js for official/reason
+let rejectedPacks = []; // [{ id, reason }], same idea as rejected (widgets) above
+
+function readPackManifest(dir) {
+  const file = path.join(dir, 'addon.json');
+  let st;
+  try { st = fs.statSync(file); } catch { return { reason: 'no addon.json' }; }
+  if (!st.isFile() || st.size > 16 * 1024) return { reason: 'addon.json is not a small file' };
+  let m;
+  try { m = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return { reason: 'addon.json is not valid JSON' }; }
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return { reason: 'addon.json has the wrong shape' };
+  const name = cleanTitle(m.name);
+  if (!name) return { reason: 'needs a "name"' };
+  const entry = m.entry;
+  if (typeof entry !== 'string' || !entry || entry.startsWith('/') || entry.split(/[\\/]/).includes('..'))
+    return { reason: '"entry" must be a relative file inside the pack' };
+  const opt = (v, max) => (typeof v === 'string' ? cleanTitle(v, max) || '' : '');
+  return { manifest: { name, description: opt(m.description, 160), author: opt(m.author, 60), version: opt(m.version, 20), entry } };
+}
+
+// Lists what's in the Shards folder and whether each one is genuinely signed by the project.
+// This only discovers and describes shards — nothing here loads or runs a single line of a
+// shard's own code; that comes later, gated by settings.codeAddons.
+function scanPacks() {
+  packs = new Map();
+  rejectedPacks = [];
+  let names = [];
+  try { names = fs.readdirSync(addonDir('packs'), { withFileTypes: true }); } catch { /* none yet */ }
+  for (const e of names) {
+    if (!e.isDirectory() || e.isSymbolicLink()) continue;
+    if (!WIDGET_ID_RE.test(e.name)) {
+      rejectedPacks.push({ id: e.name, reason: 'folder name must be lowercase letters, numbers, . _ -' });
+      continue;
+    }
+    const dir = path.join(addonDir('packs'), e.name);
+    const r = readPackManifest(dir);
+    if (r.reason) { rejectedPacks.push({ id: e.name, reason: r.reason }); continue; }
+    const entryFile = path.join(dir, r.manifest.entry);
+    const rp = real(entryFile);
+    const base = real(dir);
+    if (!rp || !base || !rp.startsWith(base + path.sep) || !fs.statSync(rp).isFile()) {
+      rejectedPacks.push({ id: e.name, reason: `"${r.manifest.entry}" was not found inside the folder` });
+      continue;
+    }
+    const v = verifyAddon(dir);
+    packs.set(e.name, { dir, manifest: r.manifest, official: v.official, reason: v.reason });
+  }
 }
 
 function inlayDef(type) {
@@ -2048,6 +2175,12 @@ function addonsInfo() {
     dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
     themeCount: countDirs('themes'),
     themes: [...themes.values()].filter((t) => !t.builtin).map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
+    packs: [...packs].map(([id, p]) => ({
+      id, name: p.manifest.name, description: p.manifest.description, author: p.manifest.author, version: p.manifest.version,
+      official: p.official, reason: p.reason,
+    })),
+    rejectedPacks,
+    codeAddons: { pinRequired: settings.codeAddons.pinRequired, allowUnverified: settings.codeAddons.allowUnverified },
   };
 }
 
@@ -2652,13 +2785,16 @@ ipcMain.handle('storage', (_e, op, p) => storageOp(typeof op === 'string' ? op :
 
 ipcMain.handle('addons', safe((op, p) => {
   if (op === 'remove') {
-    // Deletes one widget or theme folder from the Tessera folder, never the folder itself.
-    const dir = p.dir === 'widgets' || p.dir === 'themes' ? p.dir : null;
-    if (!dir || typeof p.id !== "string" || !(dir === "widgets" ? WIDGET_ID_RE : THEME_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
+    // Deletes one widget, theme or shard folder from the Tessera folder, never the folder itself.
+    const dir = p.dir === 'widgets' || p.dir === 'themes' || p.dir === 'packs' ? p.dir : null;
+    if (!dir || typeof p.id !== "string" || !(dir === "themes" ? THEME_ID_RE : WIDGET_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
     // A theme isn't blocked from being deleted just because it's active or in use — it's only
-    // the PIN that's conditional on that. Whoever's relying on it falls back to stock.
+    // the PIN that's conditional on that. Whoever's relying on it falls back to stock. A shard's
+    // PIN requirement is the owner's own setting (settings.codeAddons.pinRequired), separate
+    // from everything else here, because a shard is a different kind of thing entirely.
     const inUse = dir === 'themes' && themeInUse(p.id);
     if (inUse && !pinOk()) return NEED_PIN;
+    if (dir === 'packs' && settings.codeAddons.pinRequired && !pinOk()) return NEED_PIN;
     const r = vaultDelete(path.join(addonDir(dir), p.id));
     if (!r.ok) return r;
     let fellBack = [];
@@ -2669,6 +2805,18 @@ ipcMain.handle('addons', safe((op, p) => {
     }
     scanAddons(); scanThemes(); saveSettings();
     return { ok: true, info: addonsInfo(), theme: themePayload(), fellBack };
+  }
+  if (op === 'packsPinRequired') {
+    if (!pinOk()) return NEED_PIN;
+    settings.codeAddons.pinRequired = p.value === true;
+    saveSettings();
+    return { ok: true, info: addonsInfo() };
+  }
+  if (op === 'packsAllowUnverified') {
+    if (!pinOk()) return NEED_PIN;
+    settings.codeAddons.allowUnverified = p.value === true;
+    saveSettings();
+    return { ok: true, info: addonsInfo() };
   }
   if (op === 'saveTheme') {
     if (typeof p.name !== 'string' || !p.name.trim()) return { ok: false, error: 'Give it a name.' };
@@ -3109,6 +3257,83 @@ ipcMain.handle('summaries', async () => {
   const addonsCount = widgets.size + [...themes.values()].filter((t) => !t.builtin).length;
   return { wifi: w || '', bluetooth: b || '', audio: a || '', home, addons: addonsCount, version: LAUNCHER_VERSION };
 });
+
+// ---- system info, for the built-in CPU/Memory/Storage/Battery/Network/Uptime widgets.
+// Everything here is a read; nothing here is ever written, and nothing here ever spawns a
+// process — just /proc, /sys and Node's own os module, cheap enough for the renderer to poll
+// once a second while one of these widgets is actually on screen (see tickInlays in renderer.js).
+let cpuPrev = null; // { idle, total } from the last sample, so usage is a rate, not a snapshot
+function cpuPct() {
+  const cpus = os.cpus();
+  let idle = 0, total = 0;
+  for (const c of cpus) { for (const k in c.times) total += c.times[k]; idle += c.times.idle; }
+  let pct = null;
+  if (cpuPrev) {
+    const dIdle = idle - cpuPrev.idle, dTotal = total - cpuPrev.total;
+    if (dTotal > 0) pct = Math.max(0, Math.min(100, Math.round((1 - dIdle / dTotal) * 100)));
+  }
+  cpuPrev = { idle, total };
+  return pct; // null only on the very first call this process ever makes
+}
+function ramInfo() {
+  try {
+    const text = fs.readFileSync('/proc/meminfo', 'utf8');
+    const get = (k) => { const m = new RegExp(`^${k}:\\s*(\\d+)`, 'm').exec(text); return m ? Number(m[1]) * 1024 : null; };
+    const total = get('MemTotal');
+    const avail = get('MemAvailable');
+    if (total == null || avail == null) throw new Error('unreadable');
+    return { total, used: Math.max(0, total - avail) };
+  } catch {
+    const total = os.totalmem(), free = os.freemem(); // older kernels without MemAvailable
+    return { total, used: Math.max(0, total - free) };
+  }
+}
+function storageInfo() {
+  try {
+    const drives = storageDrives();
+    const d = drives.find((x) => x.system) || drives[0];
+    return d ? { free: d.free, total: d.total } : null;
+  } catch { return null; }
+}
+function batteryInfo() {
+  try {
+    const base = '/sys/class/power_supply';
+    const names = fs.readdirSync(base);
+    const bat = names.find((n) => { try { return fs.readFileSync(path.join(base, n, 'type'), 'utf8').trim() === 'Battery'; } catch { return false; } });
+    if (!bat) return { present: false };
+    const read = (f) => { try { return fs.readFileSync(path.join(base, bat, f), 'utf8').trim(); } catch { return ''; } };
+    const pct = Number(read('capacity'));
+    const status = read('status'); // "Charging", "Discharging", "Full", "Not charging", "Unknown"
+    return { present: true, pct: Number.isFinite(pct) ? pct : null, charging: status === 'Charging' || status === 'Full' };
+  } catch { return { present: false }; }
+}
+let netPrev = null; // { at, rx, tx } from the last sample, so speed is a rate, not a snapshot
+function networkInfo() {
+  try {
+    const base = '/sys/class/net';
+    const names = fs.readdirSync(base).filter((n) => n !== 'lo');
+    let rx = 0, tx = 0, up = false;
+    for (const n of names) {
+      try {
+        if (fs.readFileSync(path.join(base, n, 'operstate'), 'utf8').trim() === 'up') up = true;
+        rx += Number(fs.readFileSync(path.join(base, n, 'statistics', 'rx_bytes'), 'utf8').trim()) || 0;
+        tx += Number(fs.readFileSync(path.join(base, n, 'statistics', 'tx_bytes'), 'utf8').trim()) || 0;
+      } catch { /* that interface came or went between the readdir and the read; skip it */ }
+    }
+    const now = Date.now();
+    let rxRate = null, txRate = null;
+    if (netPrev) {
+      const dt = (now - netPrev.at) / 1000;
+      if (dt > 0) { rxRate = Math.max(0, (rx - netPrev.rx) / dt); txRate = Math.max(0, (tx - netPrev.tx) / dt); }
+    }
+    netPrev = { at: now, rx, tx };
+    return { connected: up, rxRate, txRate };
+  } catch { return { connected: false, rxRate: null, txRate: null }; }
+}
+function systemInfo() {
+  return { cpu: cpuPct(), ram: ramInfo(), storage: storageInfo(), battery: batteryInfo(), network: networkInfo(), uptime: os.uptime() };
+}
+ipcMain.handle('systemInfo', () => systemInfo());
 app.on('before-quit', () => { try { devices.bluetooth.stop(); } catch { /* going away anyway */ } });
 
 // ------------------------------------------------------------ PIN
