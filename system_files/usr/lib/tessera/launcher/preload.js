@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   bluetooth: (op, payload) => ipcRenderer.invoke('bluetooth', op, payload),
   wifi: (op, payload) => ipcRenderer.invoke('wifi', op, payload),
   summaries: () => ipcRenderer.invoke('summaries'),
+  systemInfo: () => ipcRenderer.invoke('systemInfo'),
   pads: (op, payload) => ipcRenderer.invoke('pads', op, payload),
   onPads: (cb) => ipcRenderer.on('pads', (_e, data) => cb(data)),
 });

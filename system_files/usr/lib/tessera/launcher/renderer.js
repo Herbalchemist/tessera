@@ -60,7 +60,28 @@ const INLAYS = {
       card.append(time, date);
     },
   },
+  cpu: { render(card) { sysinfoCard(card, 'CPU', 'cpu'); } },
+  ram: { render(card) { sysinfoCard(card, 'Memory', 'ram', true); } },
+  storage: { render(card) { sysinfoCard(card, 'Storage', 'storage', true); } },
+  battery: { render(card) { sysinfoCard(card, 'Battery', 'battery', true); } },
+  network: { render(card) { sysinfoCard(card, 'Network', 'network', true); } },
+  uptime: { render(card) { sysinfoCard(card, 'Uptime', 'uptime'); } },
 };
+// A plain label + big value (+ optional small sub-line), the same shape for all six system
+// widgets below. tickInlays fills in the live numbers once a second; this just builds the DOM.
+function sysinfoCard(card, label, key, withSub) {
+  const l = document.createElement('div'); l.className = 'sysinfo-label'; l.textContent = label;
+  const v = document.createElement('div'); v.className = `sysinfo-value sysinfo-${key}`; v.textContent = '–';
+  card.append(l, v);
+  if (withSub) { const s = document.createElement('div'); s.className = `sysinfo-sub sysinfo-${key}-sub`; card.append(s); }
+}
+function fmtUptime(s) {
+  if (s == null || Number.isNaN(s)) return '–';
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
 // A downloaded widget runs in a sandboxed frame: scripts allowed, but it has
 // no network, no access to this page, and can only load its own folder
 // (enforced by the tessera-widget protocol in main.js).
@@ -82,6 +103,21 @@ function tickInlays() {
   document.querySelectorAll('.clock-date').forEach((el) => {
     el.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   });
+  if (!document.querySelector('.sysinfo-value')) return; // none of the six are on screen; skip the round trip
+  api.systemInfo().then((s) => {
+    if (!s) return;
+    const set = (sel, text) => document.querySelectorAll(sel).forEach((el) => { el.textContent = text; });
+    set('.sysinfo-cpu', s.cpu == null ? '–' : s.cpu + '%');
+    set('.sysinfo-ram', s.ram ? fmtBytes(s.ram.used) : '–');
+    set('.sysinfo-ram-sub', s.ram ? `of ${fmtBytes(s.ram.total)}` : '');
+    set('.sysinfo-storage', s.storage ? fmtBytes(s.storage.free) : '–');
+    set('.sysinfo-storage-sub', s.storage ? `free of ${fmtBytes(s.storage.total)}` : '');
+    set('.sysinfo-battery', s.battery && s.battery.present ? `${s.battery.pct}%` : 'No battery');
+    set('.sysinfo-battery-sub', s.battery && s.battery.present ? (s.battery.charging ? 'Charging' : 'On battery') : '');
+    set('.sysinfo-network', s.network && s.network.connected ? 'Connected' : 'Disconnected');
+    set('.sysinfo-network-sub', s.network && s.network.connected && s.network.rxRate != null ? `↓${fmtBytes(s.network.rxRate)}/s ↑${fmtBytes(s.network.txRate)}/s` : '');
+    set('.sysinfo-uptime', fmtUptime(s.uptime));
+  }).catch(() => {});
 }
 setInterval(tickInlays, 1000);
 
@@ -1650,9 +1686,10 @@ async function flowAddons() {
         { label: 'Installed', header: true },
         { label: 'Widgets', sub: `${info.widgets.length} installed${info.rejected.length ? ` · ${info.rejected.length} problem${info.rejected.length === 1 ? '' : 's'}` : ''}`, view: 'widgets' },
         { label: 'Themes', sub: info.themes.length ? `${info.themes.length} installed` : 'none installed', view: 'themes' },
+        { label: 'Shards', sub: `${info.packs.length} installed${info.rejectedPacks.length ? ` · ${info.rejectedPacks.length} problem${info.rejectedPacks.length === 1 ? '' : 's'}` : ''}`, view: 'packs' },
         { label: 'Built in', sub: info.presets.map((p) => p.name).join(', '), view: 'builtin' },
         { label: 'Get more', header: true },
-        { label: 'Where to put downloads', sub: 'widgets, themes, art, fonts, sounds', view: 'folders' },
+        { label: 'Where to put downloads', sub: 'widgets, themes, shards, art, fonts, sounds', view: 'folders' },
         { label: '↻  Reload add-ons', op: 'reload' },
       ];
     } else if (view === 'widgets') {
@@ -1670,6 +1707,26 @@ async function flowAddons() {
       title = 'Add-ons · Remove a theme (A removes it)';
       items = info.themes.map((t) => ({ label: t.name, sub: t.author || '', rm: { dir: 'themes', id: t.id }, plain: true }));
       if (!items.length) items.push(inert('No downloaded themes', ''));
+    } else if (view === 'packs') {
+      title = 'Add-ons · Shards (A removes one)';
+      items = info.packs.map((p) => ({
+        label: p.name,
+        sub: [p.official ? 'Official' : 'Unverified', p.author, p.version].filter(Boolean).join(' · '),
+        rmPack: { id: p.id },
+        plain: true,
+      }));
+      info.rejectedPacks.forEach((x) => items.push(inert('⚠  ' + x.id, x.reason)));
+      items.push({ label: 'Shard safety…', view: 'packsSettings', plain: true });
+      if (!info.packs.length && !info.rejectedPacks.length) items.push(inert('No shards installed yet', info.dirs.packs));
+    } else if (view === 'packsSettings') {
+      title = 'Add-ons · Shard safety';
+      items = [
+        inert('What a shard is', 'A shard is real code with Tessera’s own access to this device — your files, your hardware, your settings. It is not sandboxed the way a widget is, and nothing here checks that it’s safe, only whose it is.'),
+        { label: 'Require PIN to install or remove a shard', sub: info.codeAddons.pinRequired ? 'On' : 'Off', op: 'togglePacksPin' },
+        { label: 'Allow unverified shards', sub: info.codeAddons.allowUnverified ? 'On — anything, not just Official' : 'Off — Official (signed by Tessera) only', op: 'toggleUnverified' },
+        inert('Official', 'Signed by the Tessera project itself — a real check against a key only the project holds, not just a label a shard can give itself.'),
+        inert('Unverified', 'Nobody vouches for this one — it didn’t come signed by the Tessera project. It runs with the same reach Tessera itself has: your files, your hardware, your settings. Same deal as running any program you downloaded from somewhere other than an app store — you already know that trade. This toggle is just how you tell Tessera you’re making it.'),
+      ];
     } else if (view === 'builtin') {
       title = 'Add-ons · Built in';
       items = info.presets.map((p) => inert(p.name, p.description || ''));
@@ -1678,6 +1735,7 @@ async function flowAddons() {
       items = [
         inert('Widgets', info.dirs.widgets),
         inert('Themes', info.dirs.themes),
+        inert('Shards', info.dirs.packs),
         inert('Art', info.dirs.art),
         inert('Fonts', info.dirs.fonts),
         inert('Sounds', info.dirs.sounds),
@@ -1700,6 +1758,33 @@ async function flowAddons() {
           if (r.ok && it.rm.dir === 'widgets') lib('none', {}, { quiet: true });
         }
       }
+      continue;
+    }
+    if (it.rmPack) {
+      // A shard's PIN requirement is its own owner-controlled setting (Shard safety, above), not
+      // the blanket "always ask" the widgets/themes removal above uses — so ask the server
+      // first and only interrupt for the PIN when it actually says so.
+      if (await confirm(`Remove “${it.label}”? Its folder is deleted from your Tessera folder.`, 'Remove')) {
+        busy = true;
+        let r;
+        try { r = await api.addons('remove', { dir: 'packs', id: it.rmPack.id }); } finally { busy = false; }
+        if (r && r.needPin) {
+          if (!(await requirePin())) continue;
+          busy = true;
+          try { r = await api.addons('remove', { dir: 'packs', id: it.rmPack.id }); } finally { busy = false; }
+        }
+        setStatus(r && r.ok ? `Removed ${it.label}.` : (r && r.error) || "Couldn't remove that.", !(r && r.ok));
+      }
+      continue;
+    }
+    if (it.op === 'togglePacksPin' || it.op === 'toggleUnverified') {
+      const apiOp = it.op === 'togglePacksPin' ? 'packsPinRequired' : 'packsAllowUnverified';
+      const next = it.op === 'togglePacksPin' ? !info.codeAddons.pinRequired : !info.codeAddons.allowUnverified;
+      busy = true;
+      let r;
+      try { r = await api.addons(apiOp, { value: next }); } finally { busy = false; }
+      if (r && r.needPin) { if (!(await requirePin())) continue; busy = true; try { r = await api.addons(apiOp, { value: next }); } finally { busy = false; } }
+      setStatus(r && r.ok ? 'Updated.' : (r && r.error) || "Couldn't change that.", !(r && r.ok));
       continue;
     }
     if (it.view) view = it.view;
