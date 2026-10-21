@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Settings > Update software: go back to the previous system version. This only queues it: the
+# previous version starts at the next restart, and the running system is left alone. Started on
+# demand by Tessera (see 49-tessera-update.rules); it is not enabled and has no [Install] section.
+# What it prints is left in /run/tessera-update/rollback.log.
+[Unit]
+Description=Tessera: go back to the previous system version
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bootc rollback
+StandardOutput=truncate:/run/tessera-update/rollback.log
+StandardError=inherit
+TimeoutStartSec=120
+Nice=10

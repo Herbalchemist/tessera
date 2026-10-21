@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Desktop Entry]
+Name=Tessera
+Comment=Console-style session
+Exec=/usr/bin/tessera-session
+Type=Application

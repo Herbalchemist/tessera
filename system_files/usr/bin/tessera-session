@@ -1,0 +1,104 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Tessera console session. Started by the login manager via tessera.desktop.
+# Runs the launcher inside Gamescope and restarts it if it crashes.
+# Settings > Desktop Mode (or Ctrl+Q in a test build) ends the session and returns to the login
+# screen, which is the way back to the desktop. The launcher says so by writing a note
+# (TESSERA_LEAVE_FILE) just before it quits; the exit code of Gamescope is not trusted for that,
+# because it is not reliable at shutdown. Without the note a non-zero exit is a crash: restart.
+#
+# When it is started from the desktop (tessera-return, "Return to Tessera") TESSERA_NESTED=1 is
+# set: the same thing runs on top of the desktop, and leaving it shows the desktop again.
+
+APP=/usr/lib/tessera/launcher
+ELECTRON="$APP/node_modules/electron/dist/electron"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
+LOG="$STATE/session.log"
+LEAVE="$STATE/leave-requested"
+export TESSERA_LEAVE_FILE="$LEAVE"
+MAX_QUICK_FAILS=3
+QUICK_SECS=30
+EARLY_EXIT_SECS=5
+
+# Windows that other programs open (a web browser, say) should fill the screen
+# like the launcher does, not sit at their own size. Newer Gamescope can force
+# that; only ask for it if this build knows the option, so an older one can
+# never fail to start because of it.
+FORCE_FULL=""
+if gamescope --help 2>&1 | grep -q -- '--force-windows-fullscreen'; then
+  FORCE_FULL="--force-windows-fullscreen"
+fi
+
+# Display calibration for games too (Settings > Display calibration). Tessera
+# writes a shader there only if the person turned that on. If Gamescope can't
+# start with it, it is dropped for this session and a note is left so Tessera
+# can say so, and nobody is ever locked out by it.
+CAL_FX="${XDG_DATA_HOME:-$HOME/.local/share}/tessera/calibration/tessera-calibration.fx"
+CAL_FAILED="$STATE/calibration-failed"
+FX_ARGS=()
+if [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q -- '--reshade-effect'; then
+  FX_ARGS=(--reshade-effect "$CAL_FX")
+  export TESSERA_CAL_SYSTEM=1
+fi
+
+mkdir -p "$STATE"
+# Keep the previous session's log for a while: what happened the last time is the first thing to look at.
+[ -f "$LOG" ] && cp -f "$LOG" "$LOG.1" 2>/dev/null
+echo "session start $(date -Is)${TESSERA_NESTED:+ (from the desktop)}" >"$LOG"
+rm -f "$LEAVE"
+
+# Without the launcher program there is nothing to run. Say so in the log and end the session
+# (the login screen is the way to the desktop) instead of starting Gamescope with nothing in it.
+if [ ! -x "$ELECTRON" ]; then
+  echo "launcher program missing or not executable: $ELECTRON" >>"$LOG"
+  exit 1
+fi
+
+fails=0
+while true; do
+  started=$(date +%s)
+  rm -f "$LEAVE"
+  gamescope -f $FORCE_FULL "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  code=$?
+  echo "launcher exited with code $code" >>"$LOG"
+
+  # The person chose Desktop Mode: leave, whatever the exit code was.
+  if [ -e "$LEAVE" ]; then
+    echo "Desktop Mode was asked for: ending the session" >>"$LOG"
+    rm -f "$LEAVE"
+    exit 0
+  fi
+
+  # Gamescope reports success even when the program it was asked to run could not be started,
+  # which used to look like a normal exit to Desktop Mode. Nobody gets to Desktop Mode within a
+  # few seconds of starting, so a "clean" exit that quick is counted as a failure.
+  if [ "$code" -eq 0 ] && [ $(( $(date +%s) - started )) -lt "$EARLY_EXIT_SECS" ]; then
+    echo "launcher ended after less than ${EARLY_EXIT_SECS}s without being asked to: counted as a failure" >>"$LOG"
+    code=1
+  fi
+
+  # Failed quickly with the calibration shader on: turn it off and try again.
+  if [ "$code" -ne 0 ] && [ "${#FX_ARGS[@]}" -gt 0 ] && [ $(( $(date +%s) - started )) -lt "$QUICK_SECS" ]; then
+    echo "calibration shader failed, starting without it" >>"$LOG"
+    touch "$CAL_FAILED"
+    FX_ARGS=()
+    unset TESSERA_CAL_SYSTEM
+    continue
+  fi
+
+  # Clean exit: end the session and return to the login screen.
+  [ "$code" -eq 0 ] && exit 0
+
+  # Crash guard: give up after several quick failures in a row,
+  # so a broken launcher can't trap anyone in a restart loop.
+  if [ $(( $(date +%s) - started )) -lt "$QUICK_SECS" ]; then
+    fails=$((fails + 1))
+  else
+    fails=0
+  fi
+  if [ "$fails" -ge "$MAX_QUICK_FAILS" ]; then
+    echo "too many quick failures, giving up" >>"$LOG"
+    exit 1
+  fi
+  sleep 1
+done

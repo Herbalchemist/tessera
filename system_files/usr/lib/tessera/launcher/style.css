@@ -1,0 +1,753 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+:root {
+  --bg: #10151c;
+  --card: #1a222c;
+  --text: #e9e4d8;
+  --muted: #8b95a3;
+  --accent: #7fb2ff;
+  --on-accent: #10151c; /* text on top of the accent color; set from the accent's brightness */
+  /* The glow around the selected tile, tab, menu row or key. Normally the highlight color; a theme can give every
+     selection its own random pastel (JS sets these two on the selected element). Fills never change. */
+  --glow: var(--accent);
+  --glow-ring: var(--accent);
+  --panel: #161d27;
+  --border: #3b475a;
+  --border-w: 0px;
+  --shadow: 1;
+  --tab-shadow: 1;
+  --ring: 3px;
+  --radius: 14px;
+  --danger: #ff6b6b;
+  --ok: #3ddc97;
+  --on-danger: #10151c;
+  --on-ok: #10151c;
+  --motion: 1; /* 0 turns movement off (Theme Settings > Motion) */
+  /* Screen scaling. --auto follows the resolution (set by the launcher),
+     --font-scale and --use are the person's own choices (Theme Settings). */
+  --auto: 1;
+  --font-scale: 1;
+  --use: 1;
+  --bg-image: none;
+  --bg-dim-on: 0;
+  --card-w: calc(240px * var(--auto));
+  --card-h: calc(300px * var(--auto));
+  --gap: calc(28px * var(--auto));
+}
+html { font-size: calc(16px * var(--auto) * var(--font-scale)); }
+* { box-sizing: border-box; cursor: none !important; user-select: none; }
+html, body { margin: 0; height: 100%; }
+body {
+  background-color: var(--bg);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* "Screen area used": padding keeps everything inside a safe area (TVs that crop the edges). */
+  padding: calc((1 - var(--use)) * 50vh) calc((1 - var(--use)) * 50vw);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Dims a background picture so text stays readable. Off when there's no picture. */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--bg); opacity: var(--bg-dim-on); pointer-events: none; }
+header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+  padding: 28px 0 8px;
+}
+.hint {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  padding: 2px 10px;
+}
+header { padding-left: 0; padding-right: 0; }
+.navport {
+  width: min(1100px, 76vw);
+  overflow: hidden;
+  padding: 36px 0; /* room for the focus glow, so it fades out instead of being cut off */
+  margin: -22px 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+nav {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  position: relative; /* offsetLeft is measured from here */
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.tab { white-space: nowrap; }
+.tab {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 24px;
+  border-radius: 999px;
+  transition: background 0.2s, color 0.2s;
+}
+/* The tab you're on, while the tiles have focus: calm. */
+.tab.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+/* Picked up with a long Y press, to be moved left or right. */
+.tab.lifted { transform: translateY(-6px) scale(1.1); box-shadow: 0 10px 24px rgb(0 0 0 / calc(var(--tab-shadow) * 0.4)), 0 0 0 3px var(--accent); animation: wiggle 0.5s ease-in-out infinite alternate; }
+@keyframes wiggle { from { rotate: -1.5deg; } to { rotate: 1.5deg; } }
+/* The tab bar has focus: bright, and the tiles below are deselected. */
+.tab.focused { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) calc(var(--tab-shadow) * 28%), transparent), 0 6px 16px rgb(0 0 0 / calc(var(--tab-shadow) * 0.3)); }
+#crumb { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 1rem; }
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.rows {
+  position: relative; /* offsetTop is measured from here */
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.row { padding: 0 0 24px; opacity: 0.45; transition: opacity 0.2s; }
+.row.active { opacity: 1; }
+.row h2 {
+  margin: 0 0 6px 56px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rowport { overflow: hidden; padding: 28px 0; }
+.rail {
+  display: flex;
+  gap: var(--gap);
+  width: max-content;
+  position: relative; /* offsetLeft is measured from here */
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.card {
+  flex: 0 0 var(--card-w);
+  height: var(--card-h);
+  background: var(--card);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 6px 18px rgb(0 0 0 / calc(var(--shadow) * 0.14)); /* a soft lift even when not selected */
+}
+.card small { color: var(--muted); font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.card.kind-folder { background: color-mix(in srgb, var(--card), white 6%); border: 2px dashed var(--border); }
+.card.kind-action { background: color-mix(in srgb, var(--card), var(--ok) 8%); }
+.card.active {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
+  /* The scale and the glow both reach past the tile's own box into its neighbors' space.
+     Without this, a later tile in the row paints over that overflow and clips the glow's
+     far edge wherever it overlaps the next tile — lift the active tile above its row. */
+  z-index: 1;
+}
+.empty { text-align: center; color: var(--muted); font-size: 1.2rem; margin-top: 80px; }
+h1 {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-height: 1.3em;
+}
+#status {
+  margin: 6px 0 0;
+  min-height: 1.5em;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+#status.error { color: #ffb4a8; }
+footer {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 18px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+footer b { color: var(--text); font-weight: 600; margin-right: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  .rows, .rail, .card, .tab, .row { transition: none; }
+  .rail.split .card { animation: none; }
+}
+
+/* ---- modal: menus and the file browser ---- */
+#modal[hidden] { display: none; }
+#modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 11, 15, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.box {
+  width: min(47.5rem, 90vw);
+  background: var(--panel);
+  border-radius: calc(var(--radius) + 4px);
+  padding: 28px 32px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.box h3 { margin: 0 0 16px; font-size: 1.3rem; font-weight: 600; color: var(--muted); overflow-wrap: anywhere; }
+.box .mbody { margin: -6px 0 18px; font-size: 1.05rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; white-space: pre-line; }
+/* First-run welcome: a popup over an empty screen. The launcher stays hidden
+   (body.hold) until the popup is answered, then fades in. */
+#modal.welcome { background: transparent; }
+#modal.welcome .box { text-align: center; width: min(40rem, 90vw); }
+#modal.welcome .box h3 { font-size: 1.8rem; color: var(--text); margin-bottom: 14px; }
+#modal.welcome .mitem { text-align: left; }
+body > :not(#modal):not(script) { transition: opacity 0.8s ease; }
+body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transition: none; }
+.mlist { max-height: 56vh; overflow-y: auto; scrollbar-width: none; }
+.mitem {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
+}
+.mitem small { color: var(--muted); font-size: 0.85rem; }
+.mitem.dim { color: var(--muted); }
+.mitem.active { background: var(--accent); color: var(--on-accent); }
+.mitem.active small { color: var(--on-accent); opacity: 0.7; }
+.mitem.header { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 18px 4px; }
+.mitem small { text-align: right; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Cancel / Close glow red and Done / Yes glow green. Both colors are theme settings, and the
+   text is mixed from the color and the theme's own text so it reads on light and dark menus. */
+.mitem.danger, .key.cancel { --tone: var(--danger); --on: var(--on-danger); }
+.mitem.ok, .key.done { --tone: var(--ok); --on: var(--on-ok); }
+.mitem.danger, .mitem.ok, .key.cancel, .key.done {
+  color: color-mix(in srgb, var(--tone) 45%, var(--text));
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tone) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--tone) 60%, transparent);
+}
+.mitem.danger small, .mitem.ok small { color: inherit; opacity: 0.8; }
+.mitem.danger.active, .mitem.ok.active, .key.cancel.active, .key.done.active {
+  background: var(--tone);
+  color: var(--on);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--tone) 85%, transparent), inset 0 0 0 2px color-mix(in srgb, var(--on) 40%, transparent);
+}
+.mitem.danger.active small, .mitem.ok.active small { color: var(--on); }
+.mitem.header.fold { color: var(--text); font-size: 1.1rem; text-transform: none; letter-spacing: 0; font-weight: 700; padding: 14px 18px 8px; background: none; }
+.mitem.header.fold.active { background: var(--accent); color: var(--on-accent); }
+.khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: pre; }
+
+/* ---- on-screen keyboard: docked to the bottom, sized to the screen ---- */
+#modal.keys {
+  display: block;
+  /* One size for everything: follows the screen, within sane limits. */
+  --key: clamp(36px, min(4.6vw, 7.4vh), 88px);
+}
+.kbcenter {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  width: min(900px, 84vw);
+  text-align: center;
+}
+.kbcenter h3 { margin: 0 0 14px; font-size: calc(var(--key) * 0.4); font-weight: 600; color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7); }
+.field {
+  min-height: calc(var(--key) * 1.2);
+  padding: calc(var(--key) * 0.2) calc(var(--key) * 0.35);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: calc(var(--key) * 0.2);
+  box-shadow: 0 0 0 2px var(--border-soft, color-mix(in srgb, var(--text) 25%, transparent)), 0 20px 60px rgba(0, 0, 0, 0.55);
+  font-size: calc(var(--key) * 0.6);
+  white-space: pre;
+  text-align: left;
+  overflow: hidden;
+}
+.caret { display: inline-block; width: 3px; height: 0.9em; background: var(--accent); margin-left: 3px; vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.kbpanel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: calc(var(--key) * 0.3) 0 calc(var(--key) * 0.2);
+  background: var(--panel);
+  border-radius: calc(var(--key) * 0.4) calc(var(--key) * 0.4) 0 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+  animation: kbup 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes kbup { from { transform: translateY(100%); } to { transform: none; } }
+.keys-grid { width: min(96vw, calc(var(--key) * 14.5)); margin: 0 auto; }
+.krow { display: flex; gap: calc(var(--key) * 0.12); margin-bottom: calc(var(--key) * 0.12); justify-content: center; }
+.key {
+  flex: 0 0 var(--key);
+  height: var(--key);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border-radius: calc(var(--key) * 0.18);
+  font-size: calc(var(--key) * 0.42);
+  font-weight: 600;
+}
+.key.wide { flex: 1 1 0; }
+/* the PIN keypad: big even keys */
+.keys.numeric .keys-grid { width: auto; }
+.keys.numeric .key, .keys.numeric .key.wide { flex: 0 0 calc(var(--key) * 1.5); }
+.keys.numeric .krow:last-child .key { flex: 0 0 calc(var(--key) * 4.8); }
+.keys.numeric .field { text-align: center; letter-spacing: 0.4em; }
+.key.on { outline: 3px solid var(--accent); outline-offset: -3px; }
+/* PIN button pattern: each number shows the controller button that types it */
+.key { position: relative; }
+.key .kg { position: absolute; right: 8%; bottom: 6%; font-size: calc(var(--key) * 0.22); font-weight: 700; opacity: 0.75; letter-spacing: 0; }
+.key.pat.hit { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
+.keys.numeric .krow:last-child .key .kg { right: 4%; }
+.key.active { background: var(--accent); color: var(--on-accent); transform: scale(1.06); }
+#modal.keys .khint { font-size: calc(var(--key) * 0.26); }
+@media (prefers-reduced-motion: reduce) { .kbpanel, .tab.lifted, .caret { animation: none; } }
+
+/* ---- add tiles and the big empty tile ---- */
+.card.kind-add {
+  background: transparent;
+  border: 2px dashed var(--border);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+}
+.card.kind-add .plus { font-size: 4rem; font-weight: 300; line-height: 1; color: var(--accent); }
+.card.kind-add small { text-transform: none; letter-spacing: 0; font-size: 1rem; margin-top: 6px; }
+.card.big {
+  flex: 0 0 min(60rem, 72vw);
+  background: var(--card);
+  border: 2px dashed var(--border);
+  color: var(--text);
+  font-size: 2rem;
+}
+.card.big .plus { font-size: 7rem; }
+.card.big small { font-size: 1.2rem; color: var(--muted); }
+/* Dashed edges are for tiles at rest; the selection outline replaces them. */
+.card.kind-add.active, .card.big.active, .card.kind-folder.active { border-style: solid; border-color: transparent; }
+/* When something is added, the big tile "splits": tiles fan out from the middle. */
+@keyframes split {
+  from { transform: translateX(var(--from)) scale(1.35); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.rail.split .card {
+  animation: split 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* ---- inlays ---- */
+.card.kind-inlay {
+  align-items: flex-start;
+  justify-content: center;
+}
+.clock-time { font-size: 2.7rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+.clock-date { margin-top: 10px; font-size: 1.05rem; color: var(--muted); font-weight: 500; }
+
+/* ---- Home: a grid over the whole screen ---- */
+.canvas[hidden], .rows[hidden] { display: none; }
+.canvas {
+  position: absolute;
+  inset: 0;
+  padding: 18px 56px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.canvas .card { flex: none; height: auto; min-width: 0; min-height: 0; overflow: hidden; }
+.canvas .card.big { background: var(--card); }
+.canvas .card.active { transform: scale(1.02); z-index: 2; }
+.canvas .card.moving { opacity: 0.25; }
+.cell { border: 1px dashed color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 8px; pointer-events: none; }
+.ghost {
+  z-index: 3;
+  border-radius: 14px;
+  border: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent), 0 18px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  padding: 14px 18px;
+  font-weight: 600;
+  min-width: 0;
+}
+.ghost.bad { border-color: #ff8a7a; background: rgba(255, 138, 122, 0.16); box-shadow: 0 0 0 4px rgba(255, 138, 122, 0.25); }
+.ghost span { background: rgba(8, 11, 15, 0.7); padding: 4px 10px; border-radius: 8px; font-size: 1rem; }
+
+/* ---- downloaded widgets ---- */
+.card.has-widget { padding: 0; overflow: hidden; }
+.widget-frame { width: 100%; height: 100%; border: 0; display: block; pointer-events: none; color-scheme: normal; background: transparent; }
+.canvas .clock-time { font-size: clamp(1.6rem, 4.2vw, 6rem); }
+.canvas .clock-date { font-size: clamp(0.9rem, 1.4vw, 1.8rem); }
+
+/* Row titles are hidden for now (kept in the markup so they can come back). */
+.row h2 { display: none; }
+/* ...except the group titles on Settings (Connections, Controllers, ...). */
+.rows.cats .row h2.cat { display: block; margin: 0 0 12px 56px; font-size: 1.05rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.rows.cats:not(.grid):not(.flow) .row h2.cat { margin: 0 0 4px; text-align: center; } /* rails: the rail is centred, so is its title */
+.rows.grid.cats .row h2.cat { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; margin: 0 auto 14px; box-sizing: border-box; padding-left: 4px; }
+/* More room above a group title than below it, so it reads as belonging to the tiles under it. */
+.rows.grid.cats .row h2.cat, .rows.flow.cats .row h2.cat { margin-bottom: 10px; }
+.rows.grid.cats .row + .row h2.cat, .rows.flow.cats .row + .row h2.cat { margin-top: 14px; }
+/* Flow: the title slides with its row (see renderer), so it starts at the first tile and not in the faded edge. */
+.rows.flow.cats .row h2.cat { margin-left: 0; padding-left: 4px; }
+.rows.grid.cats .rail { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; }
+
+/* ---- Recently played widget ---- */
+.card.kind-inlay .recent-head { font-size: 1rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; flex: none; }
+.card.kind-inlay .recent-list { flex: 1; min-height: 0; overflow: hidden; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.recent-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: clamp(1rem, 1.3vw, 1.5rem); font-weight: 600; flex: none; white-space: nowrap; }
+.recent-row span { overflow: hidden; text-overflow: ellipsis; }
+.recent-row small { color: var(--muted); font-size: 0.7em; letter-spacing: 0.06em; text-transform: uppercase; }
+.recent-none { color: var(--muted); font-size: 1.1rem; }
+.canvas .card.kind-inlay:has(.recent-list) { justify-content: flex-start; align-items: stretch; }
+
+/* ---- controller test ---- */
+#modal.pad { display: flex; align-items: center; justify-content: center; }
+.padbox { width: min(61rem, 94vw); max-height: 94vh; overflow: hidden; padding: 22px 30px; }
+.padbox h3 { margin: 0; word-break: normal; font-size: 1.3rem; color: var(--text); }
+.padsub { color: var(--muted); font-size: 0.95rem; margin: 4px 0 10px; }
+.padsvg { width: min(40rem, 100%); max-height: 44vh; display: block; margin: 0 auto; }
+.padsvg .pbody { fill: color-mix(in srgb, var(--text) 13%, var(--panel)); stroke: color-mix(in srgb, var(--text) 40%, transparent); stroke-width: 3; }
+.padsvg .pb > * { fill: var(--panel); stroke: color-mix(in srgb, var(--text) 45%, transparent); stroke-width: 3; }
+.padsvg .pb.on > * { fill: var(--accent); stroke: var(--accent); }
+.padsvg .pl { fill: var(--muted); font-size: 18px; font-weight: 700; stroke: none !important; pointer-events: none; }
+.padsvg .pb.on .pl { fill: var(--on-accent); }
+.padsvg .pdot { fill: var(--accent); stroke: none; }
+.padsvg .ptrig { fill: var(--panel); stroke: color-mix(in srgb, var(--text) 45%, transparent); stroke-width: 2; }
+.padsvg .ptrigfill { fill: var(--accent); }
+.padsvg text.pl { fill: var(--muted); }
+.padnote { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 6px 0; min-height: 1.3em; }
+.padraw { display: flex; gap: 24px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.rawbtns { display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: 26rem; }
+.rawb.extra { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.rawb { width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--text) 12%, var(--panel)); color: var(--text); font-size: 0.85rem; font-weight: 600; }
+.rawb.on { background: var(--accent); color: var(--on-accent); }
+.rawaxes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; font-size: 0.8rem; color: var(--muted); }
+.rawax { display: flex; align-items: center; gap: 8px; }
+.axtrack { position: relative; width: 5.6rem; height: 0.5rem; background: color-mix(in srgb, var(--text) 22%, var(--panel)); border-radius: 4px; }
+.axdot { position: absolute; top: -0.2rem; width: 0.9rem; height: 0.9rem; margin-left: -0.45rem; border-radius: 50%; background: var(--accent); }
+.axnum { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.padhint { margin-top: 8px; }
+.padbar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 22%, var(--panel)); margin-top: 8px; overflow: hidden; }
+.padbar > div { height: 100%; width: 0; background: var(--accent); }
+
+/* ---- motion: --motion is 1 normally, 0 when animations are off ---- */
+.rows { transition-duration: calc(0.28s * var(--motion)); }
+.rail { transition-duration: calc(0.28s * var(--motion)); }
+.card { transition-duration: calc(0.2s * var(--motion)); }
+.rail.split .card { animation-duration: calc(0.55s * var(--motion)); }
+.tab.lifted { animation-duration: calc(0.5s * var(--motion)); }
+
+/* ---- backdrop effects, drawn from the theme's own colors ---- */
+body::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+body[data-fx="glow"]::after {
+  background:
+    radial-gradient(ellipse 60% 50% at 8% 0%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in srgb, var(--ok) 32%, transparent), transparent 70%);
+}
+body[data-fx="mystic"]::after {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -10%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 110%, color-mix(in srgb, var(--ok) 20%, transparent), transparent 70%),
+    radial-gradient(circle at 18% 28%, rgba(255,255,255,0.55) 0 1px, transparent 2px),
+    radial-gradient(circle at 74% 18%, rgba(255,255,255,0.45) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 72%, rgba(255,255,255,0.35) 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 58%, rgba(255,255,255,0.5) 0 1px, transparent 2px),
+    radial-gradient(circle at 8% 82%, rgba(255,255,255,0.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 40%, rgba(255,255,255,0.3) 0 1px, transparent 2px);
+}
+
+body[data-fx="tiles"]::after {
+  /* Mosaic: a field of small rounded tiles in pastel, fading out toward the middle where the content is. */
+  background: linear-gradient(115deg, #ffc4d6 0%, #ffd9b0 16%, #fff0b3 32%, #d2f2c4 48%, #bdeee5 64%, #c4dcff 80%, #dccbff 100%);
+  opacity: var(--mosaic-op, 0.62);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='3' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='163' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='123' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='3' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='3' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='123' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='3' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3C/svg%3E"), radial-gradient(ellipse 60% 55% at 50% 50%, transparent 0%, transparent 38%, #000 100%);
+  mask-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Crect x='3' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='163' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='3' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='123' y='43' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='3' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='43' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='203' y='83' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='3' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='163' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='123' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='123' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='1'/%3E%3Crect x='203' y='163' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='3' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3Crect x='43' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.35'/%3E%3Crect x='83' y='203' width='34' height='34' rx='7' fill='black' fill-opacity='0.65'/%3E%3C/svg%3E"), radial-gradient(ellipse 60% 55% at 50% 50%, transparent 0%, transparent 38%, #000 100%);
+  -webkit-mask-size: calc(240px * var(--auto)) calc(240px * var(--auto)), 100% 100%;
+  mask-size: calc(240px * var(--auto)) calc(240px * var(--auto)), 100% 100%;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* On a dark page the tiles are deeper, jewel-like tones: pale pastels would just turn muddy. */
+body[data-fx="tiles"][data-tone="dark"]::after {
+  background: linear-gradient(115deg, #ff6b9a 0%, #ff9f5a 16%, #ffd75e 32%, #5fe0a8 48%, #4cc9f0 64%, #6f8bff 80%, #b07cff 100%);
+  --mosaic-op: 0.24;
+}
+/* Soft light-theme glow: the same idea as the dark one, a little quieter. */
+body[data-tone="light"][data-fx="glow"]::after {
+  background:
+    radial-gradient(ellipse 60% 50% at 8% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in srgb, var(--ok) 20%, transparent), transparent 70%);
+}
+
+/* ---- random pastel glow (Mosaic themes, or Theme Settings > Selector glow) ----
+   Only the glow around the selection takes the random color. Tiles, tabs, menu rows and keys keep their own fills.
+   JS sets --glow (the soft light) and --glow-ring (the outline) on whatever is selected. */
+body[data-sel="pastel"] :is(.card.active, .tab.focused, .mitem.active, .key.active) {
+  --halo: 0 0 1rem 0.1rem color-mix(in srgb, var(--glow) 95%, transparent), 0 0 2.6rem 0.4rem color-mix(in srgb, var(--glow) 70%, transparent);
+  --halo-s: 0 0 0.7rem 0.05rem color-mix(in srgb, var(--glow) 90%, transparent), 0 0 1.2rem 0.1rem color-mix(in srgb, var(--glow) 50%, transparent);
+}
+/* A pale page needs a stronger light for the same glow to read. */
+body[data-tone="light"][data-sel="pastel"] :is(.card.active, .tab.focused, .mitem.active, .key.active) {
+  --halo: 0 0 1.1rem 0.2rem color-mix(in srgb, var(--glow) 100%, transparent), 0 0 2.7rem 0.5rem color-mix(in srgb, var(--glow) 75%, transparent);
+  --halo-s: 0 0 0.8rem 0.1rem color-mix(in srgb, var(--glow) 95%, transparent), 0 0 1.3rem 0.15rem color-mix(in srgb, var(--glow) 60%, transparent);
+}
+body[data-sel="pastel"] .card.active {
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), var(--halo), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.3));
+}
+/* On a light page a pastel outline needs a thin darker line around it to stay crisp. */
+body[data-tone="light"][data-sel="pastel"] .card.active {
+  box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 0 0 calc(var(--ring) + 1.5px) color-mix(in srgb, var(--text) 22%, transparent), var(--halo), 0 10px 28px rgb(0 0 0 / calc(var(--shadow) * 0.3));
+}
+body[data-sel="pastel"] .tab.focused {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) calc(var(--tab-shadow) * 100%), transparent), 0 0 1rem 0.1rem color-mix(in srgb, var(--glow) calc(var(--tab-shadow) * 90%), transparent), 0 0 2.2rem 0.3rem color-mix(in srgb, var(--glow) calc(var(--tab-shadow) * 60%), transparent);
+}
+/* Cancel / Done rows and keys keep their red and green glow. */
+body[data-sel="pastel"] .mitem.active:not(.danger):not(.ok), body[data-sel="pastel"] .key.active:not(.cancel):not(.done) {
+  box-shadow: 0 0 0 2px var(--glow-ring), var(--halo-s);
+}
+/* Menu lists and tile rows clip whatever spills past them: give the glow room, with the layout staying where it was. */
+body[data-sel="pastel"] .mlist { max-height: calc(56vh + 1.8rem); padding: 0.9rem 1.5rem; margin: -0.9rem -1.5rem; scroll-padding: 0.9rem 0; }
+/* The list's edge would cut the glow in a line: the last stretch fades out instead (the rows sit clear of it, so only glow and scrolled-out rows fade). */
+body[data-sel="pastel"] .mlist { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 0.9rem, #000 calc(100% - 0.9rem), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 0.9rem, #000 calc(100% - 0.9rem), transparent 100%); }
+body[data-sel="pastel"] .rows:not(.grid):not(.flow) .rowport { padding: 48px 0; margin: -20px 0; }
+/* The tile grid lets the light spill past its edge. Rows that have scrolled wholly out of view are hidden (JS adds .off) so they don't peek in. */
+body[data-sel="pastel"] .viewport:has(> .rows.grid), body[data-sel="pastel"] .viewport:has(> .canvas:not([hidden])) { overflow: clip; overflow-clip-margin: 3rem; }
+.row.off { visibility: hidden; transition: visibility 0s linear 0.3s; }
+
+/* ---- tile layouts: grid and flow ---- */
+.rows.grid .rowport, .rows.flow .rowport { padding: 0; overflow: visible; }
+.rows.grid, .rows.flow { padding-top: var(--padv, 18px); } /* the screen edge clips, so shadows fade out instead of ending in a hard line */
+.rows.grid .row, .rows.flow .row { padding: 0 0 var(--gap); }
+.rows.grid .rail { margin: 0 auto; }
+.rows.flow .rail { margin: 0; } /* left-aligned, so every row's columns line up while the grid slides under the selector */
+.rows.grid .row, .rows.flow .row { opacity: 1; }
+.rows.flow .row:not(.active) { opacity: 0.55; }
+.rows.grid .card, .rows.flow .card { font-size: clamp(0.9rem, calc(var(--card-w) / 11), 1.5rem); }
+/* Flow: tiles that slide off the top fade out under the tabs. */
+.viewport.flowmask {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(90deg, transparent 0, #000 11%, #000 89%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(90deg, transparent 0, #000 11%, #000 89%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* ---- game pictures ---- */
+.card.has-art { position: relative; background-size: cover; background-position: center; background-repeat: no-repeat; overflow: hidden; }
+.card.has-art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0) 55%); pointer-events: none; }
+.card.has-art > * { position: relative; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+.card.has-art > small { display: none; }
+
+/* ---- color wheel ---- */
+#modal.color { display: flex; align-items: center; justify-content: center; }
+.colorbox { width: min(56rem, 94vw); }
+.colorbody { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.wheelwrap { position: relative; width: min(24rem, 60vw); aspect-ratio: 1; flex: none; }
+.wheel { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 3px var(--border), 0 12px 40px rgba(0,0,0,0.4); }
+.wheelmark { position: absolute; width: 1.6rem; height: 1.6rem; margin: -0.8rem 0 0 -0.8rem; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #000, 0 0 12px rgba(0,0,0,0.6); pointer-events: none; }
+.colorside { flex: 1 1 14rem; min-width: 14rem; }
+.swatches { display: flex; gap: 0.6rem; }
+.sw { flex: 1; height: 4rem; border-radius: 0.8rem; box-shadow: inset 0 0 0 2px rgba(127,127,127,0.5); }
+.hexval { font-size: 2.2rem; font-weight: 700; margin: 0.8rem 0; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.brightbar { height: 0.7rem; border-radius: 0.4rem; background: rgba(127,127,127,0.35); overflow: hidden; }
+.brightbar > div { height: 100%; background: var(--accent); }
+.colorhint { text-align: left; margin-top: 1rem; line-height: 1.6; }
+
+/* ---- widget panes: frosted, clear glass, outline or solid, behind whatever a widget draws ----
+   The pane is the tile itself. A widget's own content sits on top of it (its frame is
+   transparent), so the pane only shows in the widget's empty space. */
+:root { --wg-tint: 0.65; --wg-blur: 16px; --wg-color: #ffffff; --wg-sheen: 1; --wg-clear: 0.6; }
+.card.kind-inlay, .card.has-widget { position: relative; overflow: hidden; }
+.card.kind-inlay > *, .card.has-widget > * { position: relative; z-index: 1; }
+.card.kind-inlay::before, .card.kind-inlay::after, .card.has-widget::before, .card.has-widget::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; opacity: 0;
+}
+/* Frosted: one even wash of color and fine grain, like sandblasted glass. No gradient, no shine. */
+body:not([data-wg]) .card.kind-inlay, body[data-wg="frosted"] .card.kind-inlay,
+body:not([data-wg]) .card.has-widget, body[data-wg="frosted"] .card.has-widget {
+  background: color-mix(in srgb, var(--card) calc(var(--wg-tint) * 100%), transparent);
+  -webkit-backdrop-filter: blur(var(--wg-blur)) saturate(1.35) brightness(1.04); backdrop-filter: blur(var(--wg-blur)) saturate(1.35) brightness(1.04);
+}
+body:not([data-wg]) .card.kind-inlay::before, body[data-wg="frosted"] .card.kind-inlay::before,
+body:not([data-wg]) .card.has-widget::before, body[data-wg="frosted"] .card.has-widget::before {
+  opacity: 0.16; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.4 -0.2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+/* Clear glass: a see-through pane. The slider sets how clear; the diagonal shine and bright edge stay. */
+body[data-wg="glass"] .card.kind-inlay, body[data-wg="glass"] .card.has-widget {
+  background: linear-gradient(135deg, rgb(255 255 255 / calc((1 - var(--wg-clear)) * 0.5 + 0.05)), rgb(255 255 255 / calc((1 - var(--wg-clear)) * 0.18 + 0.01)));
+  border-color: rgba(255,255,255,0.38); border-width: 1px;
+  -webkit-backdrop-filter: blur(calc((1 - var(--wg-clear)) * 6px)) saturate(1.5); backdrop-filter: blur(calc((1 - var(--wg-clear)) * 6px)) saturate(1.5);
+}
+body[data-wg="glass"] .card.kind-inlay::before, body[data-wg="glass"] .card.has-widget::before {
+  opacity: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 -16px 34px rgba(255,255,255,0.08);
+}
+body[data-wg="glass"] .card.kind-inlay::after, body[data-wg="glass"] .card.has-widget::after {
+  opacity: var(--wg-sheen);
+  background: linear-gradient(115deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.1) 26%, transparent 40%, transparent 68%, rgba(255,255,255,0.14) 100%);
+}
+body[data-wg="outline"] .card.kind-inlay, body[data-wg="outline"] .card.has-widget {
+  background: transparent; border-color: var(--accent); border-width: max(var(--border-w), 2px);
+}
+body[data-wg="solid"] .card.kind-inlay, body[data-wg="solid"] .card.has-widget { background: var(--wg-color); }
+/* on see-through panes the small text borrows the main text color so it stays readable over any picture */
+body[data-wg="glass"] .card.kind-inlay .recent-head, body[data-wg="glass"] .card.kind-inlay .clock-date, body[data-wg="glass"] .card.kind-inlay .recent-none,
+body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .card.kind-inlay .clock-date, body[data-wg="outline"] .card.kind-inlay .recent-none { color: color-mix(in srgb, var(--text) 80%, transparent); }
+
+/* ---- Storage: drive bars and charts. Colours come from the theme. ---- */
+.mitem.rich { display: block; }
+.mitem.rich .rtop { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+.ugfx { margin-top: 10px; }
+.ugfx.thin { margin-top: 8px; }
+.ubar { display: flex; gap: 3px; height: 0.95rem; border-radius: 99px; overflow: hidden; }
+.ugfx.thin .ubar { height: 0.55rem; }
+.useg { flex: 0 0 auto; min-width: 3px; }
+.ubar .useg { border-radius: 3px; }
+.useg.g { background: var(--accent); }
+.useg.t { background: var(--ok); }
+.useg.o { background: color-mix(in srgb, var(--text) 38%, transparent); }
+.useg.f { background: color-mix(in srgb, var(--text) 13%, transparent); flex-grow: 1; }
+.useg.v0 { background: var(--accent); }
+.useg.v1 { background: var(--ok); }
+.useg.v2 { background: color-mix(in srgb, var(--accent) 50%, var(--ok)); }
+.useg.v3 { background: color-mix(in srgb, var(--danger) 70%, var(--text)); }
+.useg.v4 { background: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+.useg.v5 { background: color-mix(in srgb, var(--ok) 55%, var(--text)); }
+.useg.v6 { background: color-mix(in srgb, var(--accent) 30%, var(--danger)); }
+.useg.v7 { background: color-mix(in srgb, var(--text) 45%, transparent); }
+.ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 60%, transparent); }
+.ubar.measuring .useg.o { animation: umeasure 1.1s ease-in-out infinite; }
+@keyframes umeasure { 50% { opacity: 0.4; } }
+.ulegend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font-size: 0.85rem; opacity: 0.85; }
+.ulegend span { display: inline-flex; align-items: center; gap: 6px; }
+.ulegend i.useg { display: inline-block; width: 0.7rem; height: 0.7rem; min-width: 0; border-radius: 50%; flex: none; }
+.utags { display: flex; gap: 10px; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.utags .warn { color: var(--danger); font-weight: 800; opacity: 1; }
+/* on the highlighted row the accent colour is the background, so the bars use the text-on-accent colour */
+.mitem.active .useg.g, .mitem.active .useg.v0 { background: var(--on-accent); }
+.mitem.active .useg.t, .mitem.active .useg.v1 { background: color-mix(in srgb, var(--on-accent) 78%, transparent); }
+.mitem.active .useg.o, .mitem.active .useg.v7 { background: color-mix(in srgb, var(--on-accent) 50%, transparent); }
+.mitem.active .useg.f { background: color-mix(in srgb, var(--on-accent) 20%, transparent); }
+.mitem.active .useg.v2 { background: color-mix(in srgb, var(--on-accent) 68%, transparent); }
+.mitem.active .useg.v3 { background: color-mix(in srgb, var(--on-accent) 58%, transparent); }
+.mitem.active .useg.v4 { background: color-mix(in srgb, var(--on-accent) 44%, transparent); }
+.mitem.active .useg.v5 { background: color-mix(in srgb, var(--on-accent) 36%, transparent); }
+.mitem.active .useg.v6 { background: color-mix(in srgb, var(--on-accent) 28%, transparent); }
+.mitem.active .utags .warn { color: inherit; }
+.mitem.active .ugfx.low .useg.f { background: color-mix(in srgb, var(--danger) 85%, var(--on-accent)); }
+/* games and apps whose drive is unplugged or whose files are gone */
+.card.offline { opacity: 0.5; filter: grayscale(0.85); }
+.card.offline small { color: var(--danger); }
+.card.warn small { color: var(--danger); font-weight: 700; }
+
+/* display calibration */
+.calsvg { position: absolute; width: 0; height: 0; overflow: hidden; }
+#modal.cal { position: fixed; inset: 0; padding: 0; border: 0; border-radius: 0; background: #000; z-index: 60; display: block; }
+#modal.cal .cal-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#modal.cal .cal-top, #modal.cal .cal-bottom { position: absolute; left: 0; right: 0; padding: 1.2vh 4vw; color: inherit; font-family: sans-serif; text-shadow: none; }
+#modal.cal .cal-top { top: 0; }
+#modal.cal .cal-bottom { bottom: 0; }
+#modal.cal .cal-step { font-size: 2.2vh; opacity: .8; }
+#modal.cal .cal-help { font-size: 2.6vh; margin-top: .6vh; max-width: 80vw; }
+#modal.cal .cal-val { font-size: 3.4vh; text-align: center; }
+#modal.cal .cal-bar { height: .8vh; width: 40vw; margin: 1vh auto; background: rgba(128,128,128,.35); border-radius: 1vh; overflow: hidden; }
+#modal.cal .cal-bar i { display: block; height: 100%; background: currentColor; }
+#modal.cal .cal-hint { font-size: 2vh; text-align: center; opacity: .8; }
+
+/* Change grip/order (Joy-Con): one card per player, the Joy-Cons drawn as rounded bars in their colors. */
+#modal.grip { display: flex; align-items: center; justify-content: center; }
+.gripbox { width: min(64rem, 94vw); max-height: 94vh; overflow: hidden; padding: 24px 30px; }
+.gripbox h3 { margin: 0 0 6px; font-size: 1.3rem; color: var(--text); }
+.griphow { color: var(--muted); margin: 0 0 18px; font-size: 1rem; }
+.gripcards { display: flex; flex-wrap: wrap; gap: 16px; }
+.gripcard { flex: 0 1 13.5rem; background: var(--panel); border-radius: var(--radius); padding: 14px; text-align: center;
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--text) 18%, transparent); }
+.gripplayer { font-weight: 800; color: var(--accent); letter-spacing: 0.04em; }
+.grippic { height: 5.4rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; margin: 10px 0; }
+.grippic .jc { display: block; width: 1.6rem; height: 5rem; border-radius: 0.8rem; background: color-mix(in srgb, var(--text) 30%, var(--panel)); }
+.grippic .jc.jl { background: #3fb0e0; border-top-right-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
+.grippic .jc.jr { background: #f0525b; border-top-left-radius: 0.25rem; border-bottom-left-radius: 0.25rem; }
+.grippic .jc.pro { width: 5.6rem; height: 3.6rem; border-radius: 1.2rem 1.2rem 1.8rem 1.8rem; }
+.gripcard.k-jl .jc, .gripcard.k-jr .jc { transform: rotate(-90deg); }
+.gripcard.k-jr .jc { transform: rotate(90deg); }
+.gripname { color: var(--text); font-weight: 700; }
+.gripsub { color: var(--muted); font-size: 0.85rem; margin-top: 4px; min-height: 1.1em; }
+.gripnone { color: var(--muted); }
+.gripfoot { color: var(--muted); margin: 18px 0 0; font-size: 0.95rem; }
+
+/* Settings page, groups side by side (grid): one title over each group's own tiles. */
+.rows.grid.cats .row h2.cat.segs { display: flex; gap: var(--gap); padding-left: 0; }
+.rows.grid.cats .row h2.cat.segs span { flex: none; box-sizing: border-box; padding-left: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  width: calc(var(--n) * var(--card-w) + (var(--n) - 1) * var(--gap)); }
+.rows.grid.cats .row h2.cat.segs span + span { border-left: 2px solid color-mix(in srgb, var(--text) 16%, transparent); padding-left: 10px; }
+
+/* Icons on the Settings tiles: the icon IS the tile's background, edge to edge, with a soft scrim
+   at the bottom so the title and status stay readable over any color or motion underneath them. */
+.card.has-ico { position: relative; overflow: hidden; }
+.card.has-ico .ico {
+  position: absolute; inset: 0; margin: 0; border-radius: 0;
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 15%;
+  background:
+    linear-gradient(to top, var(--card) 0%, var(--card) 12%, transparent 48%),
+    color-mix(in srgb, var(--accent) 16%, var(--card));
+  color: var(--accent); flex: none; z-index: 0;
+}
+.card .ico svg { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.card .ico svg .dot { fill: currentColor; stroke: none; }
+.card.active.has-ico .ico {
+  background:
+    linear-gradient(to top, var(--card) 0%, var(--card) 12%, transparent 48%),
+    color-mix(in srgb, var(--accent) 28%, var(--card));
+}
+.card.has-ico > span, .card.has-ico > small { position: relative; z-index: 1; }
+.card.has-ico small { order: 2; }   /* title first, then its status, over the icon */
+.card.has-ico span { order: 1; }
+
+/* Their motion: only the selected tile, only with Animations on (--motion 1). */
+.rows.icons-anim .card.active .ico * { animation-duration: calc(1.8s / max(var(--motion), 0.001)); animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a1 { animation-name: ico-seq; animation-delay: 0s; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a2 { animation-name: ico-seq; animation-delay: 0.25s; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a3 { animation-name: ico-seq; animation-delay: 0.5s; }
+@keyframes ico-seq { 0%, 100% { opacity: 1; } 40% { opacity: 0.18; } }
+.rows.icons-anim .card.active .ico[data-anim="press"] :is(.a1, .a2, .a3) { animation-name: ico-press; transform-box: fill-box; transform-origin: center; }
+.rows.icons-anim .card.active .ico[data-anim="press"] .a2 { animation-delay: 0.3s; }
+.rows.icons-anim .card.active .ico[data-anim="press"] .a3 { animation-delay: 0.6s; }
+@keyframes ico-press { 0%, 30%, 100% { transform: none; } 15% { transform: translateY(1.2px) scale(0.86); } }
+.rows.icons-anim .card.active .ico[data-anim="pop"] :is(.a1, .a2, .a3, .a4) { animation-name: ico-pop; transform-box: fill-box; transform-origin: center; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a2 { animation-delay: 0.2s; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a3 { animation-delay: 0.4s; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a4 { animation-delay: 0.6s; }
+@keyframes ico-pop { 0%, 40%, 100% { transform: none; } 20% { transform: scale(1.7); } }
+.rows.icons-anim .card.active .ico[data-anim="draw"] .a1 { stroke-dasharray: 1; animation-name: ico-draw; animation-duration: calc(2.4s / max(var(--motion), 0.001)); }
+@keyframes ico-draw { 0% { stroke-dashoffset: 1; } 60%, 100% { stroke-dashoffset: 0; } }
+.rows.icons-anim .card.active .ico[data-anim="spin"] svg { animation: ico-spin calc(2.4s / max(var(--motion), 0.001)) linear infinite; }
+@keyframes ico-spin { to { transform: rotate(360deg); } }
+.rows.icons-anim .card.active .ico[data-anim="wiggle"] svg { animation: ico-wiggle calc(1.6s / max(var(--motion), 0.001)) ease-in-out infinite; }
+@keyframes ico-wiggle { 0%, 60%, 100% { transform: rotate(0); } 15% { transform: rotate(-10deg); } 30% { transform: rotate(8deg); } 45% { transform: rotate(-4deg); } }
+.rows.icons-anim .card.active .ico[data-anim="lift"] .a1 { animation-name: ico-lift; }
+@keyframes ico-lift { 0%, 100% { transform: none; } 40%, 60% { transform: translateY(-2.2px); } }
+.rows.icons-anim .card.active .ico[data-anim="pulse"] svg { animation: ico-pulse calc(1.8s / max(var(--motion), 0.001)) ease-in-out infinite; }
+@keyframes ico-pulse { 0%, 100% { filter: none; opacity: 1; } 50% { filter: drop-shadow(0 0 3px currentColor); opacity: 0.7; } }
+.rows.icons-anim .card.active .ico[data-anim="slide"] .a1 { animation-name: ico-slide-a; }
+.rows.icons-anim .card.active .ico[data-anim="slide"] .a2 { animation-name: ico-slide-b; }
+@keyframes ico-slide-a { 0%, 100% { transform: none; } 50% { transform: translate(1.5px, 1px); } }
+@keyframes ico-slide-b { 0%, 100% { transform: none; } 50% { transform: translate(-1.5px, -1px); } }
+@media (prefers-reduced-motion: reduce) { .rows.icons-anim .card.active .ico, .rows.icons-anim .card.active .ico * { animation: none !important; } }
+
+/* The mouse pointer: hidden until the mouse moves (body.mouse), then drawn in the theme's colors. */
+body.mouse, body.mouse * { cursor: var(--tcursor, default), default !important; }
+body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: var(--tcursor, pointer), pointer !important; }

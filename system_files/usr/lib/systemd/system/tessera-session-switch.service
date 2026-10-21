@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# "Return to Tessera" from the desktop: waits for the desktop session to end, then restarts the login
+# manager so the boot-time auto-login signs in to Tessera (see switch-to-tessera). Started on demand
+# by the "Return to Tessera" menu entry (see 49-tessera-update.rules); it is not enabled and has no
+# [Install] section. It changes nothing unless the desktop session really ended, and gives up after
+# a few minutes.
+[Unit]
+Description=Tessera: leave the desktop and start Tessera
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tessera/switch-to-tessera
+TimeoutStartSec=300

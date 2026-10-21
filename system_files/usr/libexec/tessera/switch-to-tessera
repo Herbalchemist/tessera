@@ -1,0 +1,95 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# "Return to Tessera" from the desktop, for real: the desktop session ends and the machine signs
+# in to the Tessera console, with nothing of the desktop left running (no Plasma, no file indexer,
+# no panels).
+#
+# How: the boot-time auto-login (autologin-setup) already says "sign this account in to
+# tessera.desktop". The login manager only does that when it starts, so this waits until the
+# desktop session has ended (its programs get the usual chance to ask about unsaved work) and then
+# restarts the login manager. It starts again, finds the same auto-login, and signs in to Tessera.
+# Nothing is rewritten; no configuration is armed that could be left behind.
+#
+#   switch-to-tessera --check   can this machine do it? (no root needed) prints the reason if not
+#   switch-to-tessera           the real thing; runs as root from tessera-session-switch.service,
+#                               which Settings / "Return to Tessera" start (see 49-tessera-update.rules)
+#
+# It never changes anything unless the desktop session really ended first, and it gives up after
+# TESSERA_SWITCH_WAIT seconds (180) if it did not, for example because someone answered
+# "cancel" to a "save your work?" question.
+#
+# TESSERA_ROOT / TESSERA_USER / TESSERA_SWITCH_* are only for tests.
+
+set -u
+ROOT="${TESSERA_ROOT:-}"
+WAIT="${TESSERA_SWITCH_WAIT:-180}"
+POLL=1
+SETTLE="${TESSERA_SWITCH_SETTLE:-2}"
+
+say() { echo "tessera-switch: $*"; }
+
+autologin_conf() {
+  local f
+  for f in "$ROOT/etc/plasmalogin.conf.d/zzz-tessera-autologin.conf" "$ROOT/etc/sddm.conf.d/zzz-tessera-autologin.conf"; do
+    [ -f "$f" ] && { echo "$f"; return 0; }
+  done
+  return 1
+}
+conf_val() { awk -F= -v k="$2" '/^\[/{s=$0} s=="[Autologin]" && $1==k {print $2; exit}' "$1"; }
+
+dm_unit() {
+  local dm=""
+  [ -e "$ROOT/etc/systemd/system/display-manager.service" ] && dm=$(basename "$(readlink -f "$ROOT/etc/systemd/system/display-manager.service")")
+  case "$dm" in sddm.service|plasmalogin.service) echo "$dm" ;; *) return 1 ;; esac
+}
+
+# The names of the accounts that have a live graphical session (wayland or x11), one per line.
+graphical_users() {
+  local s props name type state
+  loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}' | while read -r s; do
+    props=$(loginctl show-session "$s" -p Name -p Class -p Type -p State 2>/dev/null) || continue
+    [ "$(sed -n 's/^Class=//p' <<<"$props")" = user ] || continue
+    type=$(sed -n 's/^Type=//p' <<<"$props")
+    case "$type" in wayland|x11) ;; *) continue ;; esac
+    state=$(sed -n 's/^State=//p' <<<"$props")
+    case "$state" in active|online) ;; *) continue ;; esac
+    sed -n 's/^Name=//p' <<<"$props"
+  done
+}
+
+# check <asker>: 0 = possible. Otherwise prints why not and returns 3. An empty asker means "not known".
+check() {
+  local conf user sess others
+  if [ -e "$ROOT/etc/tessera/no-autologin" ]; then say "automatic sign-in to Tessera is switched off"; return 3; fi
+  conf=$(autologin_conf) || { say "no automatic sign-in to Tessera is set up"; return 3; }
+  user=$(conf_val "$conf" User); sess=$(conf_val "$conf" Session)
+  if [ -z "$user" ] || [ "$sess" != tessera.desktop ]; then say "the automatic sign-in does not start Tessera"; return 3; fi
+  dm_unit >/dev/null || { say "this login manager is not supported"; return 3; }
+  if [ -n "$1" ] && [ "$1" != "$user" ]; then say "the automatic sign-in is for another account"; return 3; fi
+  others=$(graphical_users | grep -vx -- "$user" | head -n 1)
+  if [ -n "$others" ]; then say "another account is signed in"; return 3; fi
+  return 0
+}
+
+case "${1:-}" in
+  --check) check "${TESSERA_USER:-$(id -un)}"; exit $? ;;
+  "") ;;
+  *) echo "usage: switch-to-tessera [--check]" >&2; exit 2 ;;
+esac
+
+check "" || exit 3
+conf=$(autologin_conf); user=$(conf_val "$conf" User); dm=$(dm_unit)
+
+waited=0
+while graphical_users | grep -qx -- "$user"; do
+  if [ "$waited" -ge "$WAIT" ]; then
+    say "the desktop did not close within ${WAIT} seconds: nothing was changed"
+    exit 0
+  fi
+  sleep "$POLL"
+  waited=$((waited + POLL))
+done
+sleep "$SETTLE"
+say "the desktop has closed: restarting $dm so $user is signed in to Tessera"
+exec systemctl restart "$dm"

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Settings > Update software: download the newest system build and stage it, so it starts at the
+# next restart. The running system and the previous version are left alone. Started (and stopped,
+# for Cancel) on demand by Tessera (see 49-tessera-update.rules); it is not enabled. What it prints
+# is left in /run/tessera-update/apply.log. A big update can take a long while, so no time limit.
+[Unit]
+Description=Tessera: download and stage the newest system version
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bootc upgrade
+StandardOutput=truncate:/run/tessera-update/apply.log
+StandardError=inherit
+TimeoutStartSec=infinity
+Nice=10

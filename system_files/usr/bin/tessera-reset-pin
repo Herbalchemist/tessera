@@ -1,0 +1,17 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Forgot the Tessera PIN? Run this from Desktop Mode (you need your login
+# to get there). It removes the PIN; Tessera then starts with no PIN, and you can
+# set a new one in Settings > PIN.
+f="${XDG_DATA_HOME:-$HOME/.local/share}/tessera/settings.json"
+[ -f "$f" ] || { echo "No Tessera settings found at $f. Nothing to reset."; exit 0; }
+python3 - "$f" <<'PY' || exit 1
+import json, sys, os
+p = sys.argv[1]
+d = json.load(open(p))
+had = d.pop("pin", None) is not None
+tmp = p + ".tmp"
+json.dump(d, open(tmp, "w"), indent=2)
+os.replace(tmp, p)
+print("The PIN was removed." if had else "No PIN was set.")
+PY
