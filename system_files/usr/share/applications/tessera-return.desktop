@@ -3,7 +3,7 @@
 Type=Application
 Name=Return to Tessera
 GenericName=Console mode
-Comment=Open Tessera full screen on top of the desktop
+Comment=Close the desktop and start Tessera
 Exec=/usr/bin/tessera-return
 Icon=tessera
 Terminal=false

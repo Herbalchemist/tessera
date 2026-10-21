@@ -357,7 +357,7 @@
     if (security === 'wep') { st.note = "This network uses old WEP security, which isn't supported."; return; }
     let password = '';
     if (security === 'secured' || security === 'hiddenAsk') {
-      const text = await ask(`Password for ${ssid}`, '', { max: 63, symbols: true });
+      const text = await ask(`Password for ${ssid}`, '', { max: 63, secret: true });
       if (text === null) return;
       password = text;
       if (hidden && !password) { /* a hidden network that is open */ } else if (!/^[\x20-\x7e]{8,63}$/.test(password)) { st.note = 'A Wi-Fi password has 8 to 63 characters.'; return; }
@@ -475,7 +475,12 @@
     Promise.resolve(api.summaries()).then((s) => {
       notesBusy = false;
       if (!s || typeof s !== 'object') return;
-      const next = { wifi: hasText(s.wifi).slice(0, 40), bluetooth: hasText(s.bluetooth).slice(0, 40), audio: hasText(s.audio).slice(0, 40) };
+      const next = {
+        wifi: hasText(s.wifi).slice(0, 40), bluetooth: hasText(s.bluetooth).slice(0, 40), audio: hasText(s.audio).slice(0, 40),
+        home: s.home && Number.isFinite(s.home.free) && Number.isFinite(s.home.total) ? { free: s.home.free, total: s.home.total } : null,
+        addons: Number.isInteger(s.addons) && s.addons >= 0 ? s.addons : 0,
+        version: /^[0-9][0-9A-Za-z.+-]{0,23}$/.test(hasText(s.version)) ? hasText(s.version) : '',
+      };
       if (JSON.stringify(next) === JSON.stringify(tileNotes)) return;
       tileNotes = next;
       if (page === 'settings' && !stack.length && !modal) render();

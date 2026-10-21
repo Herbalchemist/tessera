@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Desktop Entry]
+Type=Application
+Name=Open Tessera on top of the desktop
+GenericName=Console mode
+Comment=Opens Tessera full screen and keeps your desktop and its programs running underneath
+Exec=/usr/bin/tessera-return --nested
+Icon=tessera
+Terminal=false
+Categories=System;
+Keywords=Tessera;console;gaming;games;controller;
+StartupNotify=false

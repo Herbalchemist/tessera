@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings > Update software: whoever is sitting at the console may start and stop these four jobs
-// without a password, and nothing else. What each job runs is fixed in its unit file
-// (bootc status, bootc upgrade --check, bootc upgrade, bootc rollback); the person cannot hand it other commands or
-// other arguments. Restarting afterwards is the normal "restart" permission of an active local
-// session, so it needs no rule here.
+// Settings > Update software, and "Return to Tessera" on the desktop: whoever is sitting at the
+// console may start and stop these five jobs without a password, and nothing else. What each job
+// runs is fixed in its unit file (bootc status, bootc upgrade --check, bootc upgrade, bootc rollback,
+// and switch-to-tessera, which only ever restarts the login manager after the desktop session has
+// ended); the person cannot hand it other commands or other arguments. Restarting afterwards is
+// the normal "restart" permission of an active local session, so it needs no rule here.
 //
 // Written in plain ES5 on purpose: polkit's script engine is old.
 polkit.addRule(function (action, subject) {
@@ -18,7 +19,8 @@ polkit.addRule(function (action, subject) {
     "tessera-update-status.service",
     "tessera-update-check.service",
     "tessera-update-apply.service",
-    "tessera-update-rollback.service"
+    "tessera-update-rollback.service",
+    "tessera-session-switch.service"
   ];
   var unit = action.lookup("unit");
   var verb = action.lookup("verb");

@@ -22,16 +22,20 @@ Tessera starts straight into a console-style launcher that you drive with a game
 - Three tile layouts: **Rails** (sideways rows), **Grid** and **Flow**. Grid and Flow come in ready-made sizes, or set your own (up to 12 columns).
 - Display calibration for the launcher and, optionally, for games.
 - Controller settings: dead zones, rumble, button mapping, automatic button glyphs (Xbox, PlayStation, Nintendo).
+- Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
+- A mouse works too: the pointer appears in the theme's colors when you move it, click opens, right-click goes back.
 
 **Settings that don't need a keyboard**
 
 | Group | What's inside |
 |---|---|
-| Connections | **Wi-Fi** (join with the on-screen keyboard, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
+| Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
 | Controllers | Controller settings, button mapping |
 | Appearance | Theme settings, display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Desktop Mode |
+
+Every Settings tile shows its status (free space, version, theme, PIN, controller), and has an icon. In *Theme Settings > Settings page* you can put small groups side by side, and turn the icons, their motion and the status lines off.
 
 **Family friendly**: an optional PIN guards Settings, deleting things and the browser.
 
@@ -69,7 +73,8 @@ After the restart the machine signs in to Tessera by itself.
 
 **Desktop Mode**
 - In Tessera: *Settings > Power > Desktop Mode*. You land on the login screen, so you need your account password; choose the desktop session there.
-- To come back, log out and pick *Tessera*, or open *Return to Tessera* in the application menu.
+- To come back, open *Return to Tessera* in the application menu. It asks first, then closes the desktop (your open programs ask to save their work) and starts Tessera, so nothing of the desktop is left running. Or log out and pick *Tessera* at the login screen.
+- If automatic sign-in is switched off, or someone else is signed in, *Return to Tessera* opens Tessera on top of the running desktop instead and closes nothing. *Open Tessera on top of the desktop* in the application menu does that on purpose.
 - Prefer to boot to the desktop? `sudo touch /etc/tessera/no-autologin`, then restart. Delete that file to turn it back on.
 
 **Forgot the PIN?** From Desktop Mode, run `tessera-reset-pin` in a terminal. It removes the PIN so you can set a new one.

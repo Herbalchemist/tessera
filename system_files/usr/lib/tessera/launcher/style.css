@@ -663,3 +663,87 @@ body[data-wg="outline"] .card.kind-inlay .recent-head, body[data-wg="outline"] .
 #modal.cal .cal-bar { height: .8vh; width: 40vw; margin: 1vh auto; background: rgba(128,128,128,.35); border-radius: 1vh; overflow: hidden; }
 #modal.cal .cal-bar i { display: block; height: 100%; background: currentColor; }
 #modal.cal .cal-hint { font-size: 2vh; text-align: center; opacity: .8; }
+
+/* Change grip/order (Joy-Con): one card per player, the Joy-Cons drawn as rounded bars in their colors. */
+#modal.grip { display: flex; align-items: center; justify-content: center; }
+.gripbox { width: min(64rem, 94vw); max-height: 94vh; overflow: hidden; padding: 24px 30px; }
+.gripbox h3 { margin: 0 0 6px; font-size: 1.3rem; color: var(--text); }
+.griphow { color: var(--muted); margin: 0 0 18px; font-size: 1rem; }
+.gripcards { display: flex; flex-wrap: wrap; gap: 16px; }
+.gripcard { flex: 0 1 13.5rem; background: var(--panel); border-radius: var(--radius); padding: 14px; text-align: center;
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--text) 18%, transparent); }
+.gripplayer { font-weight: 800; color: var(--accent); letter-spacing: 0.04em; }
+.grippic { height: 5.4rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; margin: 10px 0; }
+.grippic .jc { display: block; width: 1.6rem; height: 5rem; border-radius: 0.8rem; background: color-mix(in srgb, var(--text) 30%, var(--panel)); }
+.grippic .jc.jl { background: #3fb0e0; border-top-right-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
+.grippic .jc.jr { background: #f0525b; border-top-left-radius: 0.25rem; border-bottom-left-radius: 0.25rem; }
+.grippic .jc.pro { width: 5.6rem; height: 3.6rem; border-radius: 1.2rem 1.2rem 1.8rem 1.8rem; }
+.gripcard.k-jl .jc, .gripcard.k-jr .jc { transform: rotate(-90deg); }
+.gripcard.k-jr .jc { transform: rotate(90deg); }
+.gripname { color: var(--text); font-weight: 700; }
+.gripsub { color: var(--muted); font-size: 0.85rem; margin-top: 4px; min-height: 1.1em; }
+.gripnone { color: var(--muted); }
+.gripfoot { color: var(--muted); margin: 18px 0 0; font-size: 0.95rem; }
+
+/* Settings page, groups side by side (grid): one title over each group's own tiles. */
+.rows.grid.cats .row h2.cat.segs { display: flex; gap: var(--gap); padding-left: 0; }
+.rows.grid.cats .row h2.cat.segs span { flex: none; box-sizing: border-box; padding-left: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  width: calc(var(--n) * var(--card-w) + (var(--n) - 1) * var(--gap)); }
+.rows.grid.cats .row h2.cat.segs span + span { border-left: 2px solid color-mix(in srgb, var(--text) 16%, transparent); padding-left: 10px; }
+
+/* Icons on the Settings tiles: the icon IS the tile's background, edge to edge, with a soft scrim
+   at the bottom so the title and status stay readable over any color or motion underneath them. */
+.card.has-ico { position: relative; overflow: hidden; }
+.card.has-ico .ico {
+  position: absolute; inset: 0; margin: 0; border-radius: 0;
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 15%;
+  background:
+    linear-gradient(to top, var(--card) 0%, var(--card) 12%, transparent 48%),
+    color-mix(in srgb, var(--accent) 16%, var(--card));
+  color: var(--accent); flex: none; z-index: 0;
+}
+.card .ico svg { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.card .ico svg .dot { fill: currentColor; stroke: none; }
+.card.active.has-ico .ico {
+  background:
+    linear-gradient(to top, var(--card) 0%, var(--card) 12%, transparent 48%),
+    color-mix(in srgb, var(--accent) 28%, var(--card));
+}
+.card.has-ico > span, .card.has-ico > small { position: relative; z-index: 1; }
+.card.has-ico small { order: 2; }   /* title first, then its status, over the icon */
+.card.has-ico span { order: 1; }
+
+/* Their motion: only the selected tile, only with Animations on (--motion 1). */
+.rows.icons-anim .card.active .ico * { animation-duration: calc(1.8s / max(var(--motion), 0.001)); animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a1 { animation-name: ico-seq; animation-delay: 0s; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a2 { animation-name: ico-seq; animation-delay: 0.25s; }
+.rows.icons-anim .card.active .ico[data-anim="seq"] .a3 { animation-name: ico-seq; animation-delay: 0.5s; }
+@keyframes ico-seq { 0%, 100% { opacity: 1; } 40% { opacity: 0.18; } }
+.rows.icons-anim .card.active .ico[data-anim="press"] :is(.a1, .a2, .a3) { animation-name: ico-press; transform-box: fill-box; transform-origin: center; }
+.rows.icons-anim .card.active .ico[data-anim="press"] .a2 { animation-delay: 0.3s; }
+.rows.icons-anim .card.active .ico[data-anim="press"] .a3 { animation-delay: 0.6s; }
+@keyframes ico-press { 0%, 30%, 100% { transform: none; } 15% { transform: translateY(1.2px) scale(0.86); } }
+.rows.icons-anim .card.active .ico[data-anim="pop"] :is(.a1, .a2, .a3, .a4) { animation-name: ico-pop; transform-box: fill-box; transform-origin: center; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a2 { animation-delay: 0.2s; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a3 { animation-delay: 0.4s; }
+.rows.icons-anim .card.active .ico[data-anim="pop"] .a4 { animation-delay: 0.6s; }
+@keyframes ico-pop { 0%, 40%, 100% { transform: none; } 20% { transform: scale(1.7); } }
+.rows.icons-anim .card.active .ico[data-anim="draw"] .a1 { stroke-dasharray: 1; animation-name: ico-draw; animation-duration: calc(2.4s / max(var(--motion), 0.001)); }
+@keyframes ico-draw { 0% { stroke-dashoffset: 1; } 60%, 100% { stroke-dashoffset: 0; } }
+.rows.icons-anim .card.active .ico[data-anim="spin"] svg { animation: ico-spin calc(2.4s / max(var(--motion), 0.001)) linear infinite; }
+@keyframes ico-spin { to { transform: rotate(360deg); } }
+.rows.icons-anim .card.active .ico[data-anim="wiggle"] svg { animation: ico-wiggle calc(1.6s / max(var(--motion), 0.001)) ease-in-out infinite; }
+@keyframes ico-wiggle { 0%, 60%, 100% { transform: rotate(0); } 15% { transform: rotate(-10deg); } 30% { transform: rotate(8deg); } 45% { transform: rotate(-4deg); } }
+.rows.icons-anim .card.active .ico[data-anim="lift"] .a1 { animation-name: ico-lift; }
+@keyframes ico-lift { 0%, 100% { transform: none; } 40%, 60% { transform: translateY(-2.2px); } }
+.rows.icons-anim .card.active .ico[data-anim="pulse"] svg { animation: ico-pulse calc(1.8s / max(var(--motion), 0.001)) ease-in-out infinite; }
+@keyframes ico-pulse { 0%, 100% { filter: none; opacity: 1; } 50% { filter: drop-shadow(0 0 3px currentColor); opacity: 0.7; } }
+.rows.icons-anim .card.active .ico[data-anim="slide"] .a1 { animation-name: ico-slide-a; }
+.rows.icons-anim .card.active .ico[data-anim="slide"] .a2 { animation-name: ico-slide-b; }
+@keyframes ico-slide-a { 0%, 100% { transform: none; } 50% { transform: translate(1.5px, 1px); } }
+@keyframes ico-slide-b { 0%, 100% { transform: none; } 50% { transform: translate(-1.5px, -1px); } }
+@media (prefers-reduced-motion: reduce) { .rows.icons-anim .card.active .ico, .rows.icons-anim .card.active .ico * { animation: none !important; } }
+
+/* The mouse pointer: hidden until the mouse moves (body.mouse), then drawn in the theme's colors. */
+body.mouse, body.mouse * { cursor: var(--tcursor, default), default !important; }
+body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: var(--tcursor, pointer), pointer !important; }

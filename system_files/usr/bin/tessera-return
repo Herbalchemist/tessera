@@ -1,10 +1,22 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Return to Tessera from the desktop ("Return to Tessera" in the application menu).
-# Runs the console session full screen on top of the desktop. Leaving it again
-# (Settings > Desktop Mode) shows the desktop again, no login screen in between.
-# For Tessera as it is after a boot, with the whole screen to itself, log out and
-# choose Tessera on the login screen.
+# "Return to Tessera" in the application menu.
+#
+#   tessera-return            asks first, then closes the desktop (its programs get the usual chance
+#                             to ask about unsaved work) and signs in to the Tessera console, so
+#                             nothing of the desktop is left running.
+#   tessera-return --nested   the other way: Tessera full screen on top of the running desktop.
+#                             Leaving it again (Settings > Power > Desktop Mode) shows the desktop.
+#
+# The nested way is also what happens when the real switch cannot be used (automatic sign-in is
+# switched off, another account is signed in, no dialog program is installed, or the switch could
+# not be started): nothing is closed in those cases.
+#
+# TESSERA_SWITCH / TESSERA_SESSION_BIN are only for tests.
+
+SWITCH="${TESSERA_SWITCH:-/usr/libexec/tessera/switch-to-tessera}"
+SESSION_BIN="${TESSERA_SESSION_BIN:-/usr/bin/tessera-session}"
+UNIT=tessera-session-switch.service
 
 say() {
   if command -v notify-send >/dev/null 2>&1; then notify-send -a Tessera -i tessera "Tessera" "$1"; else echo "$1" >&2; fi
@@ -15,10 +27,57 @@ if pgrep -u "$(id -u)" -f '/usr/lib/tessera/launcher/node_modules/electron/dist/
   exit 0
 fi
 
-export TESSERA_NESTED=1
-/usr/bin/tessera-session
-rc=$?
-if [ "$rc" -ne 0 ]; then
-  say "Tessera could not start. The reason is in ~/.local/state/tessera/session.log"
+run_nested() {
+  export TESSERA_NESTED=1
+  "$SESSION_BIN"
+  local rc=$?
+  if [ "$rc" -ne 0 ]; then
+    say "Tessera could not start. The reason is in ~/.local/state/tessera/session.log"
+  fi
+  return "$rc"
+}
+
+# 0 = go ahead, 1 = stay, 9 = there is no dialog program to ask with
+ask() {
+  local text="Tessera will close your desktop first. Your open programs will ask to save their work, then Tessera starts.
+
+Return to Tessera now?"
+  if command -v kdialog >/dev/null 2>&1; then
+    kdialog --title "Return to Tessera" --warningcontinuecancel "$text" --continue-label "Return to Tessera" --cancel-label "Stay on the desktop"
+    [ $? -eq 0 ] && return 0 || return 1
+  elif command -v zenity >/dev/null 2>&1; then
+    zenity --question --title="Return to Tessera" --text="$text" --ok-label="Return to Tessera" --cancel-label="Stay on the desktop"
+    [ $? -eq 0 ] && return 0 || return 1
+  fi
+  return 9
+}
+
+if [ "${1:-}" = "--nested" ]; then
+  run_nested; exit $?
 fi
-exit "$rc"
+
+if ! reason=$("$SWITCH" --check 2>&1); then
+  say "Opening Tessera on top of the desktop (${reason#tessera-switch: })."
+  run_nested; exit $?
+fi
+
+ask; answer=$?
+if [ "$answer" -eq 1 ]; then exit 0; fi
+if [ "$answer" -eq 9 ]; then
+  say "Opening Tessera on top of the desktop."
+  run_nested; exit $?
+fi
+
+# Arm the switch first (it waits for the desktop to end), then ask the desktop to log out politely.
+if ! systemctl start --no-block "$UNIT" 2>/dev/null; then
+  say "Opening Tessera on top of the desktop."
+  run_nested; exit $?
+fi
+if ! dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout >/dev/null 2>&1; then
+  if [ -z "${XDG_SESSION_ID:-}" ] || ! loginctl terminate-session "$XDG_SESSION_ID" >/dev/null 2>&1; then
+    systemctl stop "$UNIT" 2>/dev/null
+    say "Opening Tessera on top of the desktop."
+    run_nested; exit $?
+  fi
+fi
+exit 0

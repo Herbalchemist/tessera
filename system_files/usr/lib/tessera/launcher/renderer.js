@@ -104,7 +104,7 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together' };
 let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
@@ -343,6 +343,34 @@ const BUTTON_NAMES_BY_ROLE = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb' 
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 let keymap = { back: 2, space: 3, shift: 10, done: 9, cancel: 1 }; // delete X, space Y, shift L3, done Menu, cancel B
 
+// Icons on the Settings tiles: simple line drawings in the theme's highlight color. Each has a small
+// motion ("anim") that plays only on the selected tile, and only with Animations on and Icons set to
+// Animated. Parts with a class a1..a4 are what moves. Drawn with the DOM: no markup strings, no files.
+const ICONS = {
+  wifi: { anim: 'seq', parts: [['path', { d: 'M8.5 15.5a5 5 0 0 1 7 0', class: 'a1' }], ['path', { d: 'M5.5 12.2a9.5 9.5 0 0 1 13 0', class: 'a2' }], ['path', { d: 'M2.5 8.9a14 14 0 0 1 19 0', class: 'a3' }], ['circle', { cx: 12, cy: 19, r: 1.3, class: 'dot' }]] },
+  bluetooth: { anim: 'seq', parts: [['path', { d: 'M7 7.5l10 9-5 4.5V3l5 4.5-10 9' }], ['circle', { cx: 3.5, cy: 12, r: 1.1, class: 'dot a1' }], ['circle', { cx: 20.5, cy: 12, r: 1.1, class: 'dot a2' }]] },
+  sound: { anim: 'seq', parts: [['path', { d: 'M3.5 9.5h3.5L11.5 6v12L7 14.5H3.5z' }], ['path', { d: 'M15 9.5a3.5 3.5 0 0 1 0 5', class: 'a1' }], ['path', { d: 'M17.5 7a7 7 0 0 1 0 10', class: 'a2' }], ['path', { d: 'M20 4.5a10.5 10.5 0 0 1 0 15', class: 'a3' }]] },
+  pad: { anim: 'seq', parts: [['path', { d: 'M7 8h10a4 4 0 0 1 3.9 3.1l1 4.6a2.4 2.4 0 0 1-4.3 1.9L16 16H8l-1.6 1.6a2.4 2.4 0 0 1-4.3-1.9l1-4.6A4 4 0 0 1 7 8z' }], ['path', { d: 'M8 10.6v3.4M6.3 12.3h3.4' }], ['circle', { cx: 15.6, cy: 11.4, r: 0.9, class: 'dot a1' }], ['circle', { cx: 17.6, cy: 13.3, r: 0.9, class: 'dot a2' }]] },
+  controls: { anim: 'press', parts: [['rect', { x: 3, y: 5, width: 5, height: 5, rx: 1.3, class: 'a1' }], ['rect', { x: 9.5, y: 5, width: 5, height: 5, rx: 1.3, class: 'a2' }], ['rect', { x: 16, y: 5, width: 5, height: 5, rx: 1.3, class: 'a3' }], ['rect', { x: 3, y: 13, width: 18, height: 5.5, rx: 1.3 }]] },
+  theme: { anim: 'pop', parts: [['path', { d: 'M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z' }], ['circle', { cx: 7.5, cy: 11, r: 1.2, class: 'dot a1' }], ['circle', { cx: 9.5, cy: 7, r: 1.2, class: 'dot a2' }], ['circle', { cx: 14.5, cy: 7, r: 1.2, class: 'dot a3' }], ['circle', { cx: 17.2, cy: 10.6, r: 1.2, class: 'dot a4' }]] },
+  display: { anim: 'draw', parts: [['rect', { x: 3, y: 4, width: 18, height: 12.5, rx: 2 }], ['path', { d: 'M9 20.5h6M12 16.5v4' }], ['path', { d: 'M6 13l3.2-3.2 2.6 2.6 2.2-2.2L17.8 14', class: 'a1', pathLength: 1 }]] },
+  storage: { anim: 'seq', parts: [['rect', { x: 3, y: 4.5, width: 18, height: 6.5, rx: 2 }], ['rect', { x: 3, y: 13, width: 18, height: 6.5, rx: 2 }], ['circle', { cx: 17, cy: 7.75, r: 1, class: 'dot a1' }], ['circle', { cx: 17, cy: 16.25, r: 1, class: 'dot a2' }], ['path', { d: 'M6.5 7.75h5M6.5 16.25h5' }]] },
+  update: { anim: 'spin', parts: [['path', { d: 'M19.5 12a7.5 7.5 0 0 1-13.6 4.4M4.5 12a7.5 7.5 0 0 1 13.6-4.4' }], ['path', { d: 'M18.6 3.4v4.4h-4.4M5.4 20.6v-4.4h4.4' }]] },
+  addons: { anim: 'wiggle', parts: [['path', { d: 'M10 4.5a2 2 0 0 1 4 0V6h3.5a1.5 1.5 0 0 1 1.5 1.5V11h-1.5a2 2 0 0 0 0 4H19v3.5a1.5 1.5 0 0 1-1.5 1.5H14v-1.5a2 2 0 0 0-4 0V20H6.5A1.5 1.5 0 0 1 5 18.5V15h1.5a2 2 0 0 0 0-4H5V7.5A1.5 1.5 0 0 1 6.5 6H10z' }]] },
+  pin: { anim: 'lift', parts: [['rect', { x: 5, y: 10.5, width: 14, height: 10, rx: 2.2 }], ['path', { d: 'M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5', class: 'a1' }], ['path', { d: 'M12 14.3v2.6' }]] },
+  power: { anim: 'pulse', parts: [['path', { d: 'M12 3.5v8', class: 'a1' }], ['path', { d: 'M7.2 6.2a7.6 7.6 0 1 0 9.6 0' }]] },
+  desktop: { anim: 'slide', parts: [['rect', { x: 3, y: 4, width: 18, height: 13, rx: 2 }], ['path', { d: 'M9 20.5h6M12 17v3.5' }], ['rect', { x: 5.8, y: 6.8, width: 7, height: 5, rx: 1, class: 'a1' }], ['rect', { x: 11.2, y: 9.6, width: 7, height: 5, rx: 1, class: 'a2' }]] },
+};
+function iconEl(name) {
+  const ic = ICONS[name];
+  const box = document.createElement('div');
+  box.className = 'ico';
+  box.dataset.anim = ic.anim;
+  const svg = svgEl('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' }, box);
+  for (const [tag, attrs] of ic.parts) svgEl(tag, attrs, svg);
+  return box;
+}
+
 // Settings is built in. These are actions, not launchable items. They sit in groups: each group is
 // one titled row on a rail theme, and a run of rows (with its title above the first) in grid and flow.
 const SETTINGS_ROWS = [
@@ -351,9 +379,9 @@ const SETTINGS_ROWS = [
     title: 'Connections',
     cat: true,
     tiles: [
-      { id: '_wifi', title: 'Wi-Fi', kind: 'action' },
-      { id: '_bluetooth', title: 'Bluetooth', kind: 'action' },
-      { id: '_sound', title: 'Sound', kind: 'action' },
+      { id: '_wifi', title: 'Wi-Fi', kind: 'action', icon: 'wifi' },
+      { id: '_bluetooth', title: 'Bluetooth', kind: 'action', icon: 'bluetooth' },
+      { id: '_sound', title: 'Sound', kind: 'action', icon: 'sound' },
     ],
   },
   {
@@ -361,8 +389,8 @@ const SETTINGS_ROWS = [
     title: 'Controllers',
     cat: true,
     tiles: [
-      { id: '_pad', title: 'Controller', kind: 'action' },
-      { id: '_controls', title: 'Button mapping', kind: 'action' },
+      { id: '_pad', title: 'Controller', kind: 'action', icon: 'pad' },
+      { id: '_controls', title: 'Button mapping', kind: 'action', icon: 'controls' },
     ],
   },
   {
@@ -370,8 +398,8 @@ const SETTINGS_ROWS = [
     title: 'Appearance',
     cat: true,
     tiles: [
-      { id: '_theme', title: 'Theme Settings', kind: 'action' },
-      { id: '_display', title: 'Display calibration', kind: 'action' },
+      { id: '_theme', title: 'Theme Settings', kind: 'action', icon: 'theme' },
+      { id: '_display', title: 'Display calibration', kind: 'action', icon: 'display' },
     ],
   },
   {
@@ -379,10 +407,10 @@ const SETTINGS_ROWS = [
     title: 'System',
     cat: true,
     tiles: [
-      { id: '_storage', title: 'Storage', kind: 'action' },
-      { id: '_update', title: 'Update software', kind: 'action' },
-      { id: '_addons', title: 'Add-ons', kind: 'action' },
-      { id: '_pin', title: 'PIN', kind: 'action' },
+      { id: '_storage', title: 'Storage', kind: 'action', icon: 'storage' },
+      { id: '_update', title: 'Update software', kind: 'action', icon: 'update' },
+      { id: '_addons', title: 'Add-ons', kind: 'action', icon: 'addons' },
+      { id: '_pin', title: 'PIN', kind: 'action', icon: 'pin' },
     ],
   },
   {
@@ -390,16 +418,41 @@ const SETTINGS_ROWS = [
     title: 'Power',
     cat: true,
     tiles: [
-      { id: '_power', title: 'Power', kind: 'action' },
-      { id: '_desktop', title: 'Desktop Mode', kind: 'action' },
+      { id: '_power', title: 'Power', kind: 'action', icon: 'power' },
+      { id: '_desktop', title: 'Desktop Mode', kind: 'action', icon: 'desktop' },
     ],
   },
 ];
 
 let updateWaiting = false; // a downloaded update is waiting for a restart (known once Update software has looked)
-let tileNotes = { wifi: '', bluetooth: '', audio: '' }; // short live notes under Wi-Fi, Bluetooth and Sound (see screens.js)
+let tileNotes = { wifi: '', bluetooth: '', audio: '', home: null, addons: 0, version: '' }; // short live notes under Wi-Fi, Bluetooth and Sound (see screens.js)
+// The short status under a tile that has nothing urgent to say (Theme Settings > Settings page >
+// Status under every tile). Built from what the page already knows, plus the summaries call.
+const DEFAULT_KEYMAP = { back: 2, space: 3, shift: 10, done: 9, cancel: 1 };
+function calmNote(id) {
+  const shortPad = (p) => {
+    if (!p) return 'No controller';
+    if (p.tessera) return `P${p.player} ${(GRIP_PART[p.info && p.info.kind] || p.id).replace(/ \(Nintendo\)$/, '')}`;
+    return p.id.replace(/\s*\((STANDARD GAMEPAD|Vendor).*$/i, '').slice(0, 36) || 'Controller';
+  };
+  const themeName = () => { const t = prefs.theme && prefs.theme.themes && prefs.theme.themes.find((x) => x.id === prefs.theme.active); return t ? t.name : ''; };
+  switch (id) {
+    case '_pad': return shortPad(activePad());
+    case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed';
+    case '_theme': return themeName();
+    case '_display': return prefs.calibration && prefs.calibration.cal ? (prefs.calibration.cal.enabled === false ? 'Calibrated, off' : 'Calibrated') : 'Not calibrated';
+    case '_storage': return tileNotes.home && Number.isFinite(tileNotes.home.free) ? `${fmtBytes(tileNotes.home.free)} free` : '';
+    case '_update': return tileNotes.version ? `Version ${tileNotes.version}` : '';
+    case '_addons': return tileNotes.addons ? `${tileNotes.addons} installed` : 'None yet';
+    case '_pin': return prefs.pin && prefs.pin.set ? 'On' : 'Off';
+    case '_power': return 'Sleep · Restart · Off';
+    case '_desktop': return 'Login screen';
+    default: return '';
+  }
+}
 function settingsRows() {
   const low = (prefs.storage && prefs.storage.low) || [];
+  const all = layoutCfg().notes;
   return SETTINGS_ROWS.map((r) => ({
     ...r,
     tiles: r.tiles.map((t) => {
@@ -408,7 +461,8 @@ function settingsRows() {
       if (t.id === '_wifi' && tileNotes.wifi) return { ...t, sub: tileNotes.wifi };
       if (t.id === '_bluetooth' && tileNotes.bluetooth) return { ...t, sub: tileNotes.bluetooth };
       if (t.id === '_sound' && tileNotes.audio) return { ...t, sub: tileNotes.audio };
-      return t;
+      const calm = all ? calmNote(t.id) : '';
+      return calm ? { ...t, sub: calm } : t;
     }),
   }));
 }
@@ -519,7 +573,8 @@ function layoutCfg() {
   const own = (prefs.pageGrid || {})[curKey()]; // this page's own size, if it has one
   if (own) { cols = own.cols; rows = own.rows; }
   const gapPct = Math.max(20, Math.min(240, Number(get('tileGap')) || 100));
-  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct };
+  const icons = ['animated', 'still', 'off'].includes(get('setIcons')) ? get('setIcons') : 'animated';
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons };
 }
 function currentRows() {
   const base = baseRows();
@@ -531,6 +586,26 @@ function currentRows() {
   const out = [];
   // Flow grids are wider than the screen: two extra columns wait off to the sides.
   const per = mode === 'flow' ? cols + 2 : cols;
+  if (base.some((r) => r.cat) && mode === 'grid' && layoutCfg().pack) {
+    // Settings, groups side by side: whole groups share a row while they fit, in their own order.
+    // Each keeps its title, above its own tiles. A group wider than the grid still gets rows of its own.
+    let row = null;
+    const flush = () => { if (row) out.push(row); row = null; };
+    for (const r of base) {
+      if (r.tiles.length > per) {
+        flush();
+        for (let i = 0; i < r.tiles.length; i += per) out.push({ id: r.id + ':' + i / per, title: i === 0 ? r.title : '', cat: true, tiles: r.tiles.slice(i, i + per) });
+        continue;
+      }
+      if (row && row.tiles.length + r.tiles.length > per) flush();
+      if (!row) row = { id: r.id, title: r.title, cat: true, tiles: [], segs: [] };
+      else row.id += '+' + r.id;
+      row.segs.push({ title: r.title, n: r.tiles.length });
+      row.tiles = row.tiles.concat(r.tiles);
+    }
+    flush();
+    return out.length ? out : base;
+  }
   if (base.some((r) => r.cat)) {
     // A page in groups (Settings): each group is cut into rows of its own, and its title sits above the first.
     for (const r of base) {
@@ -734,7 +809,7 @@ function render() {
   }
   rowsEl.replaceChildren();
   const lc = layoutCfg();
-  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '');
+  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
   rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
   const pageKey = page + '/' + stack.map((s) => s.id).join('/');
   if (pageKey !== rowsEl._key) { rowsEl._key = pageKey; rowsEl._ty = 0; }
@@ -745,6 +820,12 @@ function render() {
     const label = document.createElement('h2');
     label.textContent = row.title;
     if (row.cat && row.title) label.className = 'cat'; // the group titles on Settings stay visible; other row titles are hidden by the style sheet
+    if (row.segs && row.segs.length > 1) {
+      // groups side by side: one title over each group's own tiles
+      label.textContent = '';
+      label.classList.add('segs');
+      for (const sg of row.segs) { const sp = document.createElement('span'); sp.textContent = sg.title; sp.style.setProperty('--n', sg.n); label.appendChild(sp); }
+    }
     const viewport = document.createElement('div');
     viewport.className = 'rowport';
     const rail = document.createElement('div');
@@ -775,6 +856,7 @@ function render() {
         const name = document.createElement('span');
         name.textContent = t.title;
         card.append(kind, name);
+        if (t.icon && lc.icons !== 'off' && ICONS[t.icon]) { card.prepend(iconEl(t.icon)); card.classList.add('has-ico'); }
         if (t.art) {
           card.classList.add('has-art');
           card._art = `tessera-art://item/${encodeURIComponent(t.id)}?v=${artRev}`; // loaded by artWindow() once the tile is near the selection
@@ -1150,13 +1232,15 @@ const KEY_ROWS = [
 ];
 // For passwords: the same keyboard with a key that swaps the letters for symbols.
 const KEY_ROWS_SYM = [...KEY_ROWS.slice(0, 4), ['shift', 'sym', 'space', 'back', 'cancel', 'done']];
+// For secrets (a Wi-Fi password): hidden while typing, with a key that shows or hides it.
+const KEY_ROWS_SECRET = [...KEY_ROWS.slice(0, 4), ['shift', 'sym', 'show', 'space', 'back', 'cancel', 'done']];
 const SYM_MAP = [
   '!@#$%^&*()'.split(''),
   '`~-_=+[]{}'.split(''),
   '\\|;:\'",.<>'.split(''),
   ['/', '?', '', '', '', '', '', '', '', ''],
 ];
-const SPECIAL = { shift: 'Shift', sym: '#+=', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
+const SPECIAL = { shift: 'Shift', sym: '#+=', show: 'Show', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
 
 // Resolves with the text, or null on cancel.
 const rowsOf = () => modal.rows || KEY_ROWS;
@@ -1164,7 +1248,8 @@ function ask(title, initial = '', opts = {}) {
   return new Promise((resolve) => {
     modal = {
       kind: 'keys', title, text: initial.slice(0, opts.max || MAX_TEXT), shift: false, sym: false, r: opts.rows ? 0 : 1, c: 0, last: null, resolve, dom: null,
-      rows: opts.rows || (opts.symbols ? KEY_ROWS_SYM : null), mask: Boolean(opts.mask), max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern),
+      rows: opts.rows || (opts.secret ? KEY_ROWS_SECRET : opts.symbols ? KEY_ROWS_SYM : null), mask: Boolean(opts.mask || opts.secret), secret: Boolean(opts.secret),
+      max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern), peekUntil: 0,
     };
     renderModal();
   });
@@ -1179,10 +1264,17 @@ function typeChar(ch) {
   if (modal.digits && !/^\d$/.test(ch)) return;
   modal.text += modal.shift ? ch.toUpperCase() : ch;
   modal.shift = false;
+  if (modal.secret && modal.mask) {
+    // a hidden password shows its newest character for a moment, so a slip of the stick is noticed
+    modal.peekUntil = performance.now() + 900;
+    const m = modal;
+    setTimeout(() => { if (modal === m && performance.now() >= m.peekUntil) renderModal(); }, 950);
+  }
   renderModal();
 }
 function keyAction(k) {
   if (k === 'sym') modal.sym = !modal.sym;
+  else if (k === 'show') { modal.mask = !modal.mask; modal.peekUntil = 0; }
   else if (k === '') return; // an empty spot on the symbol keys
   else if (k === 'shift') modal.shift = !modal.shift;
   else if (k === 'space') typeChar(' ');
@@ -1271,8 +1363,10 @@ function buildKeys() {
   const cells = rowsOf().map((row) => {
     const line = document.createElement('div');
     line.className = 'krow';
-    const els = row.map((k) => {
+    const els = row.map((k, c) => {
       const el = document.createElement('div');
+      el.dataset.r = rowsOf().indexOf(row);
+      el.dataset.c = c;
       el.className = 'key' + (SPECIAL[k] ? ' wide' : '') + (k === 'cancel' ? ' cancel' : '') + (k === 'done' ? ' done' : '');
       line.appendChild(el);
       return el;
@@ -1290,7 +1384,8 @@ function updateKeys() {
   if (!modal.dom) buildKeys();
   const { h, text, cells, hint } = modal.dom;
   h.textContent = modal.title;
-  text.textContent = modal.mask ? '•'.repeat(modal.text.length) : modal.text;
+  const peek = modal.mask && modal.secret && modal.text && performance.now() < modal.peekUntil;
+  text.textContent = !modal.mask ? modal.text : peek ? '•'.repeat(modal.text.length - 1) + modal.text.slice(-1) : '•'.repeat(modal.text.length);
   rowsOf().forEach((row, r) =>
     row.forEach((k, c) => {
       const el = cells[r][c];
@@ -1314,6 +1409,7 @@ function updateKeys() {
         return;
       }
       if (k === 'sym') el.textContent = modal.sym ? 'abc' : SPECIAL.sym;
+      else if (k === 'show') el.textContent = modal.mask ? 'Show' : 'Hide';
       else if (modal.sym && !SPECIAL[k] && SYM_MAP[r]) el.textContent = SYM_MAP[r][c] || '';
       else el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
     })
@@ -1371,6 +1467,7 @@ function renderModal() {
     // Cancel / Close glow red, Done / Yes glow green, except in menus that are just lists of settings.
     const danger = !it.plain && (it.danger || /^(cancel|close)\b/i.test(it.label));
     const ok = !it.plain && (it.ok || /^(done|yes|ok|confirm)$/i.test(it.label));
+    el.dataset.i = n; // which item a mouse click means
     el.className = 'mitem' + (n === modal.index ? ' active' : '') + (it.header ? ' header' : '') + (it.fold ? ' fold' : '') + (danger ? ' danger' : '') + (ok ? ' ok' : '') + (it.graphic ? ' rich' : '');
     const mark = modal.multi && 'checked' in it ? (it.checked ? '☑  ' : '☐  ') : '';
     const text = (it.fold ? (isOpen(it) ? '▾  ' : '▸  ') : '') + mark + it.label;
@@ -1411,6 +1508,7 @@ function renderModal() {
 
 function modalPress(act) {
   if (modal.kind === 'capture' || modal.kind === 'pad') return;
+  if (modal.kind === 'grip') { if (act === 'a' || act === 'b') closeModal(); return; }
   if (modal.kind === 'cal') return calPress(act);
   if (modal.kind === 'color') return colorPress(act);
   if (modal.kind === 'list') {
@@ -3044,12 +3142,14 @@ function updatePad(pad, now) {
     for (const k of Object.keys(d.parts)) if (d.parts[k].classList) d.parts[k].classList.remove('on');
     return;
   }
-  const pads = [...navigator.getGamepads()].filter((p) => p && p.connected);
+  const pads = gamepads();
   const standard = pad.mapping === 'standard';
   d.title.textContent = pad.id.slice(0, 70);
   d.sub.textContent =
     `${standard ? 'Standard layout' : 'Non-standard layout (raw numbers only)'}  ·  ${pad.buttons.length} buttons  ·  ${pad.axes.length} axes` +
     (pads.length > 1 ? `  ·  ${pads.length} controllers connected` : '') +
+    (pad.tessera && pad.player ? `  ·  Player ${pad.player}` : '') +
+    (pad.tessera && pad.info && pad.info.battery ? `  ·  ${batteryText(pad.info.battery)}` : '') +
     (modal.last === null ? '' : `  ·  last button: ${modal.last}`);
   const val = (n) => (n === 6 || n === 7 ? triggerValue(pad, n) : pad.buttons[n] ? pad.buttons[n].value : 0);
   const on = (n) => Boolean(pad.buttons[n] && pad.buttons[n].pressed);
@@ -3066,6 +3166,11 @@ function updatePad(pad, now) {
     ? `Left stick ${ax(0).toFixed(2)}, ${ax(1).toFixed(2)}   ·   Right stick ${ax(2).toFixed(2)}, ${ax(3).toFixed(2)}   ·   ${buttonName(6)} ${val(6).toFixed(2)}   ${buttonName(7)} ${val(7).toFixed(2)}` +
       (extra > 0 ? `   ·   ${extra} extra button${extra === 1 ? '' : 's'} (dashed): paddles, share or touchpad` : '')
     : 'This controller does not report the standard layout, so the picture above may not match. The numbers below are always right.';
+  const mo = pad.tessera ? vmotion.get(pad.key) : null;
+  if (mo) {
+    const fmt = (m) => `tilt ${m.accel.map((v) => v.toFixed(1)).join(' / ')} g, turn ${m.gyro.join(' / ')} °/s`;
+    d.note.textContent += '   ·   Motion: ' + Object.entries(mo).map(([part, m]) => (part === 'jl' ? 'L ' : part === 'jr' ? 'R ' : '') + fmt(m)).join('   ');
+  } else if (pad.tessera && pad.info && pad.info.motion) d.note.textContent += '   ·   Motion: move the controller';
   // raw numbers: built once per controller, then only toggled
   if (d.rawCount !== pad.buttons.length + ':' + pad.axes.length) {
     d.rawCount = pad.buttons.length + ':' + pad.axes.length;
@@ -3135,13 +3240,75 @@ function rumble(pad, lt, rt, now) {
   } catch { /* not every controller can rumble */ }
 }
 
-// Resolves when the tester is closed.
+// Resolves when the tester is closed. Motion sensors are only read while it is open.
 function flowPad() {
+  if (api.pads) api.pads('motion', { on: true }).catch(() => {});
   return new Promise((resolve) => {
-    modal = { kind: 'pad', dom: null, last: null, bSince: 0, onClose: resolve };
+    modal = { kind: 'pad', dom: null, last: null, bSince: 0, onClose: () => { if (api.pads) api.pads('motion', { on: false }).catch(() => {}); resolve(); } };
     modalEl.hidden = false;
     buildPad();
     updatePad(activePad(), performance.now());
+  });
+}
+
+// "Change grip/order", as on the Switch: L + R on two Joy-Cons joins them into one controller,
+// SL + SR on one Joy-Con makes it a player of its own (held sideways). Only while this is open.
+const GRIP_PART = { joined: 'Joy-Con L + R', jl: 'Left Joy-Con, sideways', jr: 'Right Joy-Con, sideways', pro: 'Controller' };
+function batteryText(b) {
+  if (!b) return '';
+  const lvl = b.percent !== null && b.percent !== undefined ? b.percent + '%' : b.level;
+  return (lvl ? 'Battery ' + lvl : '') + (b.charging ? ' (charging)' : '');
+}
+function renderGrip() {
+  modalEl.className = 'grip';
+  modalEl.replaceChildren();
+  const box = document.createElement('div');
+  box.className = 'box gripbox';
+  const h = document.createElement('h3');
+  h.textContent = 'Change grip/order';
+  const how = document.createElement('p');
+  how.className = 'griphow';
+  how.textContent = 'Use two Joy-Cons together: press L and R, one on each. Use one Joy-Con on its own, held sideways: press SL and SR on it.';
+  const cards = document.createElement('div');
+  cards.className = 'gripcards';
+  const pads = vpadInfo.pads;
+  if (!pads.length) {
+    const none = document.createElement('p');
+    none.className = 'gripnone';
+    none.textContent = 'No Joy-Con or Pro Controller is connected. Pair one in Settings > Bluetooth, or plug it in.';
+    cards.appendChild(none);
+  }
+  for (const p of pads) {
+    const c = document.createElement('div');
+    c.className = 'gripcard k-' + p.kind;
+    const pl = document.createElement('div');
+    pl.className = 'gripplayer';
+    pl.textContent = 'Player ' + p.player;
+    const pic = document.createElement('div');
+    pic.className = 'grippic';
+    for (const part of p.parts) { const j = document.createElement('i'); j.className = 'jc ' + part; pic.appendChild(j); }
+    const nm = document.createElement('div');
+    nm.className = 'gripname';
+    nm.textContent = GRIP_PART[p.kind] || p.name.replace(/ \(Nintendo\)$/, '');
+    const sub = document.createElement('div');
+    sub.className = 'gripsub';
+    sub.textContent = p.error === 'permission' ? "Tessera isn't allowed to read this one" : [batteryText(p.battery), p.motion ? 'motion sensors' : ''].filter(Boolean).join(' · ');
+    c.append(pl, pic, nm, sub);
+    cards.appendChild(c);
+  }
+  const foot = document.createElement('p');
+  foot.className = 'gripfoot';
+  foot.textContent = `${buttonName(0)} or ${buttonName(1)}: done`;
+  box.append(h, how, cards, foot);
+  modalEl.appendChild(box);
+}
+function flowGrip() {
+  if (!api.pads) return Promise.resolve();
+  api.pads('grip', { on: true }).then(applyPadList).catch(() => {});
+  return new Promise((resolve) => {
+    modal = { kind: 'grip', onClose: () => { api.pads('grip', { on: false }).catch(() => {}); resolve(); } };
+    modalEl.hidden = false;
+    renderGrip();
   });
 }
 
@@ -3151,6 +3318,7 @@ const PAD_LABELS = {
   rumble: { off: 'Off', low: 'Low', normal: 'Normal', high: 'High' },
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
+  joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function padSet(key, value) {
@@ -3221,6 +3389,9 @@ async function flowPadMenu() {
       { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
       { label: 'Labels', header: true },
       { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
+      { label: 'Joy-Con', header: true },
+      { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
+      { label: 'A left and a right Joy-Con', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.together, op: 'joycons' },
     ];
     const it = await pick('Controller', items, index);
     if (!it) return;
@@ -3232,6 +3403,8 @@ async function flowPadMenu() {
     else if (it.op === 'rumble') await pickChoice('Vibration strength', 'rumble');
     else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
     else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
+    else if (it.op === 'grip') await flowGrip();
+    else if (it.op === 'joycons') await pickChoice('When a left and a right Joy-Con are both connected', 'joycons');
   }
 }
 
@@ -3620,6 +3793,7 @@ function onButton(n) {
   }
   if (suspended || busy) return;
   if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
+  if (modal && modal.kind === 'grip') { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm === 'a' || nm === 'b') press(nm); return; }
   if (modal && modal.kind === 'cal') {
     if (n === 3) return calCompare(true);
     const nm = BUTTON_NAMES_BY_ROLE[n];
@@ -3673,20 +3847,91 @@ api.onGameExited(resume);
 api.onShiftTab((dir) => { hoverId = 'browser'; moveTabs(dir); });
 api.onLaunchFailed(resume);
 
-// Prefer a standard-mapped pad, but fall back to any connected one.
-let lastPadId = null;
-function activePad() {
-  let fallback = null;
-  for (const p of navigator.getGamepads()) {
-    if (!p || !p.connected) continue;
-    if (p.mapping === 'standard') return p;
-    fallback = fallback || p;
+// ------------------------------------------------------------------ controllers
+// Chromium's own gamepad list, plus the Nintendo Switch controllers that Tessera reads itself
+// (pads.js in the main process), because Chromium leaves those out on Linux.
+const vpads = new Map(); // pads.js id -> a gamepad-shaped object
+const vmotion = new Map(); // pads.js id -> { L: {gyro, accel}, R: ..., pro: ... }
+let vpadInfo = { ok: false, pads: [], grip: false, mode: 'together' };
+const VBUTTONS = 18;
+function vpadObject(id, bits, axes) {
+  const info = vpadInfo.pads.find((p) => p.id === id);
+  const buttons = [];
+  for (let n = 0; n < VBUTTONS; n++) { const on = Boolean(bits & (1 << n)); buttons.push({ pressed: on, touched: on, value: on ? 1 : 0 }); }
+  return { id: info ? info.name : 'Nintendo controller', key: id, index: 100 + (info ? info.player : 0), connected: true, mapping: 'standard', timestamp: performance.now(), buttons, axes: axes.slice(0, 4), player: info ? info.player : 0, tessera: true, info };
+}
+function applyPadList(list) {
+  if (!list || !list.ok) return;
+  vpadInfo = list;
+  const ids = new Set(list.pads.map((p) => p.id));
+  for (const id of [...vpads.keys()]) if (!ids.has(id)) { vpads.delete(id); vmotion.delete(id); }
+  for (const p of list.pads) {
+    const old = vpads.get(p.id);
+    if (!old) vpads.set(p.id, vpadObject(p.id, 0, [0, 0, 0, 0]));
+    else { old.id = p.name; old.player = p.player; old.info = p; }
   }
-  return fallback;
+  if (modal && modal.kind === 'grip') renderGrip();
+}
+if (api.onPads) {
+  api.onPads((m) => {
+    if (!m) return;
+    if (m.type === 'list') applyPadList(m);
+    else if (m.type === 'frame' && typeof m.id === 'string' && Array.isArray(m.a)) {
+      if (!vpadInfo.pads.some((p) => p.id === m.id)) return;
+      vpads.set(m.id, vpadObject(m.id, m.b | 0, m.a));
+    } else if (m.type === 'motion' && typeof m.id === 'string') {
+      const all = vmotion.get(m.id) || {};
+      all[m.part] = { gyro: m.gyro, accel: m.accel };
+      vmotion.set(m.id, all);
+    }
+  });
+  api.pads('list').then(applyPadList).catch(() => {});
+}
+function gamepads() {
+  const out = [];
+  let native = [];
+  try { native = [...navigator.getGamepads()]; } catch { /* none */ }
+  for (const p of native) {
+    if (!p || !p.connected) continue;
+    if (vpadInfo.ok && /vendor:\s*057e/i.test(p.id)) continue; // Tessera reads these itself
+    out.push(p);
+  }
+  for (const p of vpads.values()) out.push(p);
+  return out;
+}
+// The controller in charge is the one somebody used last: picking up a second controller and
+// pressing a button just works. Until then, the first standard one.
+let lastPadId = null;
+let currentPad = null; // its identity
+const padBusyBefore = new Map();
+const padIdent = (p) => p.key || `${p.id}#${p.index}`;
+const padBusy = (p) => p.buttons.some((b) => b && b.pressed) || p.axes.slice(0, 4).some((a) => Math.abs(a) > 0.6);
+function choosePad() {
+  const pads = gamepads();
+  let chosen = pads.find((p) => padIdent(p) === currentPad) || null;
+  for (const p of pads) {
+    const k = padIdent(p);
+    const busy = padBusy(p);
+    const was = padBusyBefore.get(k);
+    padBusyBefore.set(k, busy);
+    if (was === undefined) continue; // just appeared: a trigger resting at -1 is not somebody pressing
+    if (busy && !was && k !== currentPad) chosen = p;
+  }
+  if (!chosen) chosen = pads.find((p) => p.mapping === 'standard') || pads[0] || null;
+  if (chosen && padIdent(chosen) !== currentPad) {
+    currentPad = padIdent(chosen);
+    prevBtn.fill(false); // start fresh, so the press that woke this controller counts
+  }
+  return chosen;
+}
+function activePad() {
+  const pads = gamepads();
+  return pads.find((p) => padIdent(p) === currentPad) || pads.find((p) => p.mapping === 'standard') || pads[0] || null;
 }
 
 function loop(now) {
-  const pad = suspended ? null : activePad();
+  const pad = suspended ? null : choosePad();
+  if (pad && mouseShown && padBusy(pad)) hideMouse();
   if (pad) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
@@ -3730,8 +3975,102 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+// ------------------------------------------------------------------ mouse
+// A mouse works too: the pointer shows up when the mouse moves, in the theme's highlight color, and
+// hides again after a few seconds or as soon as the controller or keyboard is used. Click opens what
+// is under it (like A), right-click goes back (like B), the wheel moves up and down.
+let mouseShown = false;
+let mouseTimer = 0;
+let cursorFor = '';
+function cursorImage() {
+  const cs = getComputedStyle(document.documentElement);
+  const fill = cs.getPropertyValue('--accent').trim() || '#7fb2ff';
+  const edge = cs.getPropertyValue('--on-accent').trim() || '#10151c';
+  const key = fill + edge;
+  if (key === cursorFor) return;
+  cursorFor = key;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M5 3 L5 25 L11 19.5 L15 28.5 L19 26.8 L15.2 18 L23 18 Z" fill="${fill}" stroke="${edge}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  document.documentElement.style.setProperty('--tcursor', `url("data:image/svg+xml,${encodeURIComponent(svg)}") 5 3`);
+}
+function showMouse() {
+  cursorImage();
+  if (!mouseShown) { mouseShown = true; document.body.classList.add('mouse'); }
+  clearTimeout(mouseTimer);
+  mouseTimer = setTimeout(hideMouse, 3000);
+}
+function hideMouse() {
+  if (!mouseShown) return;
+  mouseShown = false;
+  clearTimeout(mouseTimer);
+  document.body.classList.remove('mouse');
+}
+window.addEventListener('mousemove', showMouse, { passive: true });
+window.addEventListener('contextmenu', (e) => { e.preventDefault(); showMouse(); if (!suspended && !busy) press('b'); });
+let wheelAt = 0;
+window.addEventListener('wheel', (e) => {
+  showMouse();
+  const now = performance.now();
+  if (now - wheelAt < 140 || suspended || busy) return;
+  wheelAt = now;
+  const ax = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+  const d = ax ? e.deltaX : e.deltaY;
+  if (!d) return;
+  press(ax ? (d > 0 ? 'right' : 'left') : (d > 0 ? 'down' : 'up'));
+}, { passive: true });
+window.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  showMouse();
+  if (suspended || busy) return;
+  const t = e.target instanceof Element ? e.target : null;
+  if (!t) return;
+  if (modal) {
+    if (modal.kind === 'list') {
+      const it = t.closest('.mitem');
+      if (!it || it.dataset.i === undefined) return;
+      const i = Number(it.dataset.i);
+      if (!modal.items[i]) return;
+      if (modal.items[i].header && !modal.items[i].fold) return; // a plain label
+      modal.index = i;
+      renderModal();
+      return press('a');
+    }
+    if (modal.kind === 'keys') {
+      const k = t.closest('.key');
+      if (!k || k.dataset.r === undefined) return;
+      modal.r = Number(k.dataset.r); modal.c = Number(k.dataset.c);
+      return keyAction(keyFor(modal.r, modal.c));
+    }
+    if (modal.kind === 'grip') return closeModal();
+    return; // the controller tester, color wheel and calibration are made for the controller
+  }
+  const tab = t.closest('.tab');
+  if (tab && tabsEl.contains(tab)) {
+    const list = tabList();
+    const i = [...tabsEl.children].indexOf(tab);
+    if (i < 0 || !list[i]) return;
+    moveTabs(i - Math.max(0, list.indexOf(hoverId)));
+    if (isButtonTab(hoverId)) press('a'); // Browser and "+ Mosaic" are buttons
+    return;
+  }
+  const card = t.closest('.card');
+  if (!card || !rowsEl.contains(card)) return;
+  const rowEl = card.closest('.row');
+  const r = [...rowsEl.querySelectorAll('.row')].indexOf(rowEl);
+  const n = [...card.parentElement.children].indexOf(card);
+  const rows = currentRows();
+  if (r < 0 || n < 0 || !rows[r]) return;
+  if (reorderId || place) return; // moving something: finish that with the controller
+  const c = cur();
+  c.row = r;
+  c.cols[rows[r].id] = n;
+  focus = 'content';
+  update();
+  press('a');
+});
+
 // Keyboard fallback, handy for testing without a controller.
 window.addEventListener('keydown', (e) => {
+  hideMouse();
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (modal && modal.kind === 'capture') {
     if (e.key === 'Escape') modal.finish(null);

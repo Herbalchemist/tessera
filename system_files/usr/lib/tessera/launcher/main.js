@@ -483,11 +483,12 @@ const SETTINGS_VERSION = 2;
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 
 // Controller preferences. Deadzone and trigger threshold are percentages.
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together' };
 const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
   style: ['split', 'both', 'pulse'],
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
+  joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
 };
 const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50] };
 
@@ -687,6 +688,10 @@ const STOCK_THEME = {
     { id: 'tileGap', group: 'Layout', label: 'Space between tiles (grid and flow)', type: 'range', min: 20, max: 240, step: 10, unit: '%', default: 100, hint: 'The same space across and down' },
     { id: 'gridCols', group: 'Layout', label: 'Custom grid: columns', type: 'range', min: 2, max: 12, step: 1, unit: '', default: 5 },
     { id: 'gridRows', group: 'Layout', label: 'Custom grid: rows on screen', type: 'range', min: 1, max: 8, step: 1, unit: '', default: 3 },
+    { id: 'setPack', group: 'Settings page', label: 'Small groups side by side (grid)', type: 'toggle', default: false, hint: 'Groups that fit share a row, so Settings needs less scrolling' },
+    { id: 'setNotes', group: 'Settings page', label: 'Status under every tile', type: 'toggle', default: true, hint: 'Free space, theme, PIN, controller and more' },
+    { id: 'setIcons', group: 'Settings page', label: 'Icons on tiles', type: 'choice', default: 'animated',
+      options: [{ label: 'Animated (the selected tile moves)', value: 'animated' }, { label: 'Still', value: 'still' }, { label: 'Off', value: 'off' }] },
     { id: 'widgetStyle', group: 'Widgets', label: 'Widget style', type: 'choice', default: 'frosted',
       options: [{ label: 'Frosted (even, like sandblasted glass)', value: 'frosted' }, { label: 'Glass (a see-through pane)', value: 'glass' }, { label: 'Outline only (see-through)', value: 'outline' }, { label: 'Solid color', value: 'solid' }] },
     { id: 'widgetTint', group: 'Widgets', label: 'Frosted: how opaque', type: 'range', min: 0, max: 100, step: 5, unit: '%', default: 55, var: '--wg-tint', scale: 0.01 },
@@ -2054,6 +2059,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     createWindow();
     watchDrives();
+    padsCtl.start();
   });
 }
 
@@ -2853,6 +2859,35 @@ ipcMain.handle('power', async (_e, op) => {
 // The work is in devices.js. What is asked for here is the operation name plus values that are
 // checked there; pairing, joining, forgetting and the Wi-Fi switch need the PIN (when there is one).
 const devices = require('./devices');
+
+// Nintendo Switch controllers, read straight from the kernel (Chromium leaves them out; see pads.js).
+// While the browser has the screen, LB / RB on them close it, like on any other controller.
+let browserShoulder = null;
+const padBits = new Map();
+const padsCtl = require('./pads').create({
+  prefs: () => ({ joycons: settings.pad.joycons }),
+  onList: (p) => send('pads', { type: 'list', ...p }),
+  onMotion: (m) => send('pads', { type: 'motion', ...m }),
+  onFrame: (f) => {
+    const before = padBits.get(f.id) || 0;
+    padBits.set(f.id, f.b);
+    if (browserShoulder) {
+      const down = f.b & ~before;
+      if (down & (1 << 4)) browserShoulder(-1);
+      else if (down & (1 << 5)) browserShoulder(1);
+      return; // Tessera is hidden: the page gets nothing
+    }
+    send('pads', { type: 'frame', ...f });
+  },
+});
+ipcMain.handle('pads', (_e, op, p) => {
+  const on = Boolean(p && p.on);
+  if (op === 'list') return padsCtl.list();
+  if (op === 'grip') return padsCtl.setGrip(on);
+  if (op === 'motion') return padsCtl.setMotion(on);
+  if (op === 'regroup') return padsCtl.regroup();
+  return { ok: false };
+});
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
 const str = (v) => (typeof v === 'string' ? v : '');
 function deviceHandler(table, needPin) {
@@ -2904,7 +2939,11 @@ ipcMain.handle('wifi', deviceHandler({
 ipcMain.handle('summaries', async () => {
   const quick = (f) => Promise.race([Promise.resolve().then(f).catch(() => ''), new Promise((r) => setTimeout(() => r(''), 4000))]);
   const [w, b, a] = await Promise.all([quick(() => devices.wifi.summary()), quick(() => devices.bluetooth.summary()), quick(() => devices.audio.summary())]);
-  return { wifi: w || '', bluetooth: b || '', audio: a || '' };
+  // For the notes under the other Settings tiles: free space where the games live, add-ons, version.
+  let home = null;
+  try { const st = fs.statfsSync(os.homedir()); home = { free: st.bavail * st.bsize, total: st.blocks * st.bsize }; } catch { /* unknown */ }
+  const addonsCount = widgets.size + [...themes.values()].filter((t) => !t.builtin).length;
+  return { wifi: w || '', bluetooth: b || '', audio: a || '', home, addons: addonsCount, version: LAUNCHER_VERSION };
 });
 app.on('before-quit', () => { try { devices.bluetooth.stop(); } catch { /* going away anyway */ } });
 
@@ -3067,6 +3106,7 @@ ipcMain.handle('settings', safe((op, p) => {
       settings.pad[k] = Math.round(p.value);
     }
     saveSettings();
+    if (k === 'joycons') padsCtl.regroup();
     return { ok: true, pad: { ...settings.pad }, calib: settings.calib };
   }
   if (op === 'padCalib') {
@@ -3206,6 +3246,11 @@ function watchJoysticks(onShoulder, dir = '/dev/input') {
   const procs = [];
   let names = [];
   try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
+  // Nintendo controllers number their buttons differently here (Capture would count as LB);
+  // pads.js reads those properly.
+  names = names.filter((n) => {
+    try { return fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() !== '057e'; } catch { return true; }
+  });
   for (const n of names) {
     const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
     let pending = Buffer.alloc(0);
@@ -3241,6 +3286,8 @@ function runChild(file, args, cwd, label, logName) {
     finished = true;
     running = false;
     if (stopWatching) stopWatching();
+    browserShoulder = null;
+    padsCtl.resume();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
       mainWindow.focus();
@@ -3271,15 +3318,18 @@ function runChild(file, args, cwd, label, logName) {
   child.once('close', (code, signal) =>
     finish(isBrowser || code === 0 ? null : `${label} exited (${code !== null ? 'code ' + code : signal}).` + (logFile ? ` Details: ${display(logFile)}` : ''))
   );
+  if (!isBrowser) padsCtl.pause(); // a game reads its controllers itself; Tessera reads nothing meanwhile
   if (isBrowser) {
-    stopWatching = watchJoysticks((dir) => {
+    const closeBrowser = (dir) => {
       if (closing) return;
       closing = dir;
       const app = flatpakAppId(file, args);
       if (app) execFile('flatpak', ['kill', app], () => {});
       try { process.kill(-child.pid, 'SIGTERM'); } catch { /* already gone */ }
       setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } }, 4000);
-    });
+    };
+    stopWatching = watchJoysticks(closeBrowser);
+    browserShoulder = closeBrowser;
   }
 }
 
