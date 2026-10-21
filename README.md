@@ -19,6 +19,9 @@ Tessera starts straight into a console-style launcher that you drive with a game
 
 **Make it yours**
 - Four factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic* and *Tessera Mosaic Dark*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
+- Themes aren't locked to the four factory ones. Drop a `theme.json` in `~/Tessera/Themes/<your-theme-id>/` and it shows up alongside them — a theme is values only (colors, layout, grid density, icon style and more), never code, so nothing it ships can do more than Settings itself already allows.
+- Theme Settings can also save, rename, overwrite and delete the themes you make right there in the console — no file editing needed. The four factory themes stay read-only. Deleting or renaming a theme someone else is relying on asks for the PIN first, then falls them back to *Tessera Bright*.
+- Profiles (Settings > Profiles): name more than one person who uses this Tessera and, optionally, give each their own theme — or leave it following whatever's active. This is the foundation piece, not yet a full switch-user experience with its own library or controls.
 - Three tile layouts: **Rails** (sideways rows), **Grid** and **Flow**. Grid and Flow come in ready-made sizes, or set your own (up to 12 columns).
 - Display calibration for the launcher and, optionally, for games.
 - Controller settings: dead zones, rumble, button mapping, automatic button glyphs (Xbox, PlayStation, Nintendo).
@@ -31,11 +34,11 @@ Tessera starts straight into a console-style launcher that you drive with a game
 |---|---|
 | Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
 | Controllers | Controller settings, button mapping |
-| Appearance | Theme settings, display calibration |
+| Appearance | Theme settings, profiles, display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Desktop Mode |
 
-Every Settings tile shows its status (free space, version, theme, PIN, controller), and has an icon. In *Theme Settings > Settings page* you can put small groups side by side, and turn the icons, their motion and the status lines off.
+Every Settings tile shows its status (free space, version, theme, PIN, controller) under a full-bleed icon that colors the whole tile edge to edge. In *Theme Settings > Settings page* you can put small groups side by side, and turn the icons, their motion and the status lines off.
 
 **Family friendly**: an optional PIN guards Settings, deleting things and the browser.
 

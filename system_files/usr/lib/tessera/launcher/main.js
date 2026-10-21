@@ -509,6 +509,7 @@ let settings = {
   ignoredDrives: [], // drives the person said "don't ask again" for
   mutedDrives: [], // drives that never trigger that warning
   hiddenDrives: [], // drives left out of Storage altogether
+  profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
 };
 
 function loadSettings() {
@@ -555,6 +556,24 @@ function loadSettings() {
       for (const [k, v] of Object.entries(d.driveNames).slice(0, 64))
         if (k.length < 200 && typeof v === 'string' && v.trim() && v.length <= 40) settings.driveNames[k] = v.trim();
     }
+    if (d && Array.isArray(d.profiles)) {
+      const ids = new Set();
+      const loaded = [];
+      for (const pr of d.profiles.slice(0, MAX_PROFILES)) {
+        if (!pr || typeof pr !== 'object' || typeof pr.id !== 'string' || !PROFILE_ID_RE.test(pr.id) || ids.has(pr.id)) continue;
+        const name = clip(pr.name, 24);
+        if (!name) continue;
+        ids.add(pr.id);
+        const themeId = typeof pr.themeId === 'string' && THEME_ID_RE.test(pr.themeId) ? pr.themeId : null;
+        loaded.push({ id: pr.id, name, themeId });
+      }
+      // Replace, don't append: loadSettings() can run again in this same process (restoring a
+      // backup, or a window reload), and appending would let stale or duplicate profiles from
+      // before that reload silently pile up alongside the freshly-read ones.
+      settings.profiles = loaded;
+    } else if (d) {
+      settings.profiles = [];
+    }
     // A settings file from before the welcome page existed counts as "already welcomed".
     settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
     if (d && d.pin && /^[0-9a-f]{32}$/.test(d.pin.salt || '') && /^[0-9a-f]{64}$/.test(d.pin.hash || '')) settings.pin = { salt: d.pin.salt, hash: d.pin.hash };
@@ -597,6 +616,8 @@ function saveSettings() {
 // own in themes/<id>/theme.json. Values only ever become CSS custom
 // properties (never code), so a theme can't run anything.
 const THEME_ID_RE = /^[a-z0-9][a-z0-9._-]{0,39}$/;
+const PROFILE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,23}$/;
+const MAX_PROFILES = 16;
 const SETTING_ID_RE = /^[a-zA-Z][a-zA-Z0-9]{0,23}$/;
 const VAR_RE = /^--(theme-)?[a-z][a-z0-9-]{0,30}$/;
 const SAFE_VALUE_RE = /^[#a-zA-Z0-9 .%(),+-]{1,40}$/;
@@ -730,6 +751,53 @@ function scanThemes() {
     themes.set(e.name, { id: e.name, name: clip(m.name, 40) || e.name, author: clip(m.author, 60), defaults, extra });
   }
 }
+// A theme someone is actually relying on right now: either it's the active theme (today's one
+// implicit "whoever is playing"), or a profile has it as its own explicit choice. Deleting or
+// renaming it then needs the PIN, same as anything else that could surprise someone mid-use.
+function themeInUse(id) {
+  if (activeTheme() === id) return true;
+  return settings.profiles.some((p) => p.themeId === id);
+}
+// A free, valid folder name for a new theme, built from the name someone gave it.
+function newThemeId(name) {
+  const base = (clip(name, 24) || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'theme';
+  for (let i = 0; i < 1000; i++) {
+    const id = i === 0 ? base : `${base}-${i}`;
+    if (THEME_ID_RE.test(id) && !themes.has(id)) return id;
+  }
+  return null;
+}
+// The settings list as it actually stands right now for a theme (its resolved values, not just
+// its defaults) — what "save as new" or "overwrite" should capture.
+function currentThemeValues(id) {
+  const out = {};
+  const saved = settings.theme.values[id] || {};
+  for (const d of schemaFor(id)) {
+    if (d.type === 'image') continue; // a saved theme doesn't carry a picture reference yet
+    const c = saved[d.id] !== undefined ? cleanValue(d, saved[d.id]) : undefined;
+    out[d.id] = c === undefined ? d.default : c;
+  }
+  return out;
+}
+function writeThemeFile(id, name, defaultsObj) {
+  try {
+    const dir = path.join(addonDir('themes'), id);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'theme.json'), JSON.stringify({ name: clip(name, 40) || id, author: 'You', defaults: defaultsObj }, null, 2));
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Couldn't save the theme." };
+  }
+}
+function renameThemeFile(id, name) {
+  const f = path.join(addonDir('themes'), id, 'theme.json');
+  let m;
+  try { m = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return { ok: false, error: "Couldn't read that theme." }; }
+  if (!m || typeof m !== 'object') return { ok: false, error: "Couldn't read that theme." };
+  m.name = clip(name, 40) || id;
+  try { fs.writeFileSync(f, JSON.stringify(m, null, 2)); return { ok: true }; }
+  catch { return { ok: false, error: "Couldn't rename it." }; }
+}
 // One setting from a theme file, or null if it doesn't make sense.
 function cleanSetting(s) {
   if (!s || typeof s !== 'object' || !SETTING_ID_RE.test(s.id) || !['range', 'choice', 'color', 'toggle', 'image'].includes(s.type)) return null;
@@ -806,10 +874,17 @@ function themePayload() {
     // The page never sees where a picture lives, only its file name.
     return { ...d, default: d.type === 'image' ? '' : d.default, value: d.type === 'image' ? (value ? path.basename(value) : '') : value };
   });
+  const themeList = [...themes.values()].map((t) => ({ id: t.id, name: t.name, author: t.author, builtin: Boolean(t.builtin) }));
+  // Two themes can end up with the same display name (a duplicate save, or two downloads of the
+  // same pack). Their ids are always unique; flag the name collision so the page can show a short
+  // tag next to it instead of silently showing two identical-looking rows.
+  const counts = {};
+  for (const t of themeList) counts[t.name.toLowerCase()] = (counts[t.name.toLowerCase()] || 0) + 1;
+  for (const t of themeList) t.dup = counts[t.name.toLowerCase()] > 1;
   return {
     rev: themeRev,
     active: id,
-    themes: [...themes.values()].map((t) => ({ id: t.id, name: t.name, author: t.author })),
+    themes: themeList,
     settings: list,
   };
 }
@@ -845,7 +920,7 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload() });
+const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload(), profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
 
 
 // ------------------------------------------------------- display calibration
@@ -2578,18 +2653,107 @@ ipcMain.handle('storage', (_e, op, p) => storageOp(typeof op === 'string' ? op :
 ipcMain.handle('addons', safe((op, p) => {
   if (op === 'remove') {
     // Deletes one widget or theme folder from the Tessera folder, never the folder itself.
-    if (!pinOk()) return NEED_PIN;
     const dir = p.dir === 'widgets' || p.dir === 'themes' ? p.dir : null;
     if (!dir || typeof p.id !== "string" || !(dir === "widgets" ? WIDGET_ID_RE : THEME_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
-    if (dir === 'themes' && p.id === activeTheme()) return { ok: false, error: 'Switch to another theme first.' };
+    // A theme isn't blocked from being deleted just because it's active or in use — it's only
+    // the PIN that's conditional on that. Whoever's relying on it falls back to stock.
+    const inUse = dir === 'themes' && themeInUse(p.id);
+    if (inUse && !pinOk()) return NEED_PIN;
     const r = vaultDelete(path.join(addonDir(dir), p.id));
     if (!r.ok) return r;
-    if (dir === 'themes') delete settings.theme.values[p.id];
+    let fellBack = [];
+    if (dir === 'themes') {
+      delete settings.theme.values[p.id];
+      if (activeTheme() === p.id) { settings.theme.active = 'stock'; fellBack.push('the active theme'); themeRev++; }
+      for (const pr of settings.profiles) if (pr.themeId === p.id) { pr.themeId = null; fellBack.push(pr.name); }
+    }
     scanAddons(); scanThemes(); saveSettings();
-    return { ok: true, info: addonsInfo() };
+    return { ok: true, info: addonsInfo(), theme: themePayload(), fellBack };
+  }
+  if (op === 'saveTheme') {
+    if (typeof p.name !== 'string' || !p.name.trim()) return { ok: false, error: 'Give it a name.' };
+    const id = newThemeId(p.name);
+    if (!id) return { ok: false, error: "Couldn't make room for a new theme." };
+    const r = writeThemeFile(id, p.name, currentThemeValues(activeTheme()));
+    if (!r.ok) return r;
+    scanThemes();
+    settings.theme.active = id;
+    themeRev++;
+    saveSettings();
+    return { ok: true, info: addonsInfo(), theme: themePayload() };
+  }
+  if (op === 'renameTheme') {
+    const t = themes.get(p.id);
+    if (!t || t.builtin) return { ok: false, error: "That theme can't be renamed." };
+    if (typeof p.name !== 'string' || !p.name.trim()) return { ok: false, error: 'Give it a name.' };
+    const r = renameThemeFile(p.id, p.name);
+    if (!r.ok) return r;
+    scanThemes();
+    return { ok: true, info: addonsInfo(), theme: themePayload() };
+  }
+  if (op === 'overwriteTheme') {
+    const t = themes.get(p.id);
+    if (!t || t.builtin) return { ok: false, error: "That theme can't be overwritten." };
+    if (p.id !== activeTheme()) return { ok: false, error: 'Switch to it first.' };
+    const r = writeThemeFile(p.id, t.name, currentThemeValues(p.id));
+    if (!r.ok) return r;
+    scanThemes();
+    return { ok: true, info: addonsInfo(), theme: themePayload() };
   }
   if (op === 'rescan') { scanAddons(); scanThemes(); }
   if (op === 'list' || op === 'rescan') return addonsInfo();
+  return { error: 'Unknown action.' };
+}));
+
+// ------------------------------------------------------------ profiles
+// Minimal, on purpose: an id, a name, and an optional theme of their own. No switching session,
+// no PIN-per-profile, no startup wizard yet — just enough real state for "is this theme being
+// used by someone else" to mean something, instead of being permanently empty.
+const profilesInfo = () => ({ profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
+ipcMain.handle('profiles', safe((op, p) => {
+  if (op === 'list') return profilesInfo();
+  if (op === 'add') {
+    if (!pinOk()) return NEED_PIN;
+    const name = clip(p.name, 24);
+    if (!name) return { ok: false, error: 'Give them a name.' };
+    if (settings.profiles.length >= MAX_PROFILES) return { ok: false, error: `${MAX_PROFILES} is the most profiles at once.` };
+    let id;
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20) || 'player';
+    for (let i = 0; ; i++) {
+      const cand = i === 0 ? base : `${base}-${i}`;
+      if (PROFILE_ID_RE.test(cand) && !settings.profiles.some((pr) => pr.id === cand)) { id = cand; break; }
+    }
+    settings.profiles.push({ id, name, themeId: null });
+    saveSettings();
+    return { ok: true, ...profilesInfo() };
+  }
+  if (op === 'rename') {
+    if (!pinOk()) return NEED_PIN;
+    const pr = settings.profiles.find((x) => x.id === p.id);
+    if (!pr) return { ok: false, error: "That profile doesn't exist." };
+    const name = clip(p.name, 24);
+    if (!name) return { ok: false, error: 'Give them a name.' };
+    pr.name = name;
+    saveSettings();
+    return { ok: true, ...profilesInfo() };
+  }
+  if (op === 'remove') {
+    if (!pinOk()) return NEED_PIN;
+    const before = settings.profiles.length;
+    settings.profiles = settings.profiles.filter((x) => x.id !== p.id);
+    if (settings.profiles.length !== before) saveSettings();
+    return { ok: true, ...profilesInfo() };
+  }
+  if (op === 'setTheme') {
+    // Giving a profile its own theme is the one profile change that doesn't need the PIN —
+    // it's no more sensitive than switching the active theme already is.
+    const pr = settings.profiles.find((x) => x.id === p.id);
+    if (!pr) return { ok: false, error: "That profile doesn't exist." };
+    if (p.themeId !== null && (typeof p.themeId !== 'string' || !themes.has(p.themeId))) return { ok: false, error: "That theme doesn't exist." };
+    pr.themeId = p.themeId;
+    saveSettings();
+    return { ok: true, ...profilesInfo() };
+  }
   return { error: 'Unknown action.' };
 }));
 

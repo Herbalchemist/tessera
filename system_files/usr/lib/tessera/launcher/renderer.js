@@ -353,6 +353,7 @@ const ICONS = {
   pad: { anim: 'seq', parts: [['path', { d: 'M7 8h10a4 4 0 0 1 3.9 3.1l1 4.6a2.4 2.4 0 0 1-4.3 1.9L16 16H8l-1.6 1.6a2.4 2.4 0 0 1-4.3-1.9l1-4.6A4 4 0 0 1 7 8z' }], ['path', { d: 'M8 10.6v3.4M6.3 12.3h3.4' }], ['circle', { cx: 15.6, cy: 11.4, r: 0.9, class: 'dot a1' }], ['circle', { cx: 17.6, cy: 13.3, r: 0.9, class: 'dot a2' }]] },
   controls: { anim: 'press', parts: [['rect', { x: 3, y: 5, width: 5, height: 5, rx: 1.3, class: 'a1' }], ['rect', { x: 9.5, y: 5, width: 5, height: 5, rx: 1.3, class: 'a2' }], ['rect', { x: 16, y: 5, width: 5, height: 5, rx: 1.3, class: 'a3' }], ['rect', { x: 3, y: 13, width: 18, height: 5.5, rx: 1.3 }]] },
   theme: { anim: 'pop', parts: [['path', { d: 'M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z' }], ['circle', { cx: 7.5, cy: 11, r: 1.2, class: 'dot a1' }], ['circle', { cx: 9.5, cy: 7, r: 1.2, class: 'dot a2' }], ['circle', { cx: 14.5, cy: 7, r: 1.2, class: 'dot a3' }], ['circle', { cx: 17.2, cy: 10.6, r: 1.2, class: 'dot a4' }]] },
+  profiles: { anim: 'pop', parts: [['circle', { cx: 16, cy: 7.5, r: 2.2, class: 'a2' }], ['path', { d: 'M12.3 19c.3-2.8 2.1-4.6 4.2-4.6s3.9 1.8 4.2 4.6', class: 'a2' }], ['circle', { cx: 8.5, cy: 8.5, r: 2.6, class: 'a1' }], ['path', { d: 'M3.5 19c0-3.3 2.2-5.5 5-5.5s5 2.2 5 5.5', class: 'a1' }]] },
   display: { anim: 'draw', parts: [['rect', { x: 3, y: 4, width: 18, height: 12.5, rx: 2 }], ['path', { d: 'M9 20.5h6M12 16.5v4' }], ['path', { d: 'M6 13l3.2-3.2 2.6 2.6 2.2-2.2L17.8 14', class: 'a1', pathLength: 1 }]] },
   storage: { anim: 'seq', parts: [['rect', { x: 3, y: 4.5, width: 18, height: 6.5, rx: 2 }], ['rect', { x: 3, y: 13, width: 18, height: 6.5, rx: 2 }], ['circle', { cx: 17, cy: 7.75, r: 1, class: 'dot a1' }], ['circle', { cx: 17, cy: 16.25, r: 1, class: 'dot a2' }], ['path', { d: 'M6.5 7.75h5M6.5 16.25h5' }]] },
   update: { anim: 'spin', parts: [['path', { d: 'M19.5 12a7.5 7.5 0 0 1-13.6 4.4M4.5 12a7.5 7.5 0 0 1 13.6-4.4' }], ['path', { d: 'M18.6 3.4v4.4h-4.4M5.4 20.6v-4.4h4.4' }]] },
@@ -399,6 +400,7 @@ const SETTINGS_ROWS = [
     cat: true,
     tiles: [
       { id: '_theme', title: 'Theme Settings', kind: 'action', icon: 'theme' },
+      { id: '_profiles', title: 'Profiles', kind: 'action', icon: 'profiles' },
       { id: '_display', title: 'Display calibration', kind: 'action', icon: 'display' },
     ],
   },
@@ -440,6 +442,7 @@ function calmNote(id) {
     case '_pad': return shortPad(activePad());
     case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed';
     case '_theme': return themeName();
+    case '_profiles': return prefs.profiles && prefs.profiles.length ? `${prefs.profiles.length} profile${prefs.profiles.length === 1 ? '' : 's'}` : 'None yet';
     case '_display': return prefs.calibration && prefs.calibration.cal ? (prefs.calibration.cal.enabled === false ? 'Calibrated, off' : 'Calibrated') : 'Not calibrated';
     case '_storage': return tileNotes.home && Number.isFinite(tileNotes.home.free) ? `${fmtBytes(tileNotes.home.free)} free` : '';
     case '_update': return tileNotes.version ? `Version ${tileNotes.version}` : '';
@@ -1150,6 +1153,7 @@ function runAction(id) {
   else if (id === '_update') flowUpdate();
   else if (id === '_pad') flowPadMenu();
   else if (id === '_theme') flowTheme();
+  else if (id === '_profiles') flowProfiles();
   else if (id === '_display') flowCalMenu();
   else if (id === '_controls') flowControls();
   else if (id === '_desktop') flowDesktop();
@@ -2363,12 +2367,12 @@ async function flowControls() {
 const PIN_ROWS = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['back', '0', 'done'], ['cancel']];
 const askPin = (title) => ask(title, '', { rows: PIN_ROWS, mask: true, max: 8, digits: true, pattern: true });
 // True when no PIN is set, it was entered recently, or it is entered now.
-async function requirePin() {
+async function requirePin(reason) {
   let st;
   try { st = await api.settings('pinStatus'); } catch { return true; }
   if (!st.set || st.unlocked) return true;
   for (let i = 0; i < 5; i++) {
-    const pin = await askPin('Enter the PIN');
+    const pin = await askPin(reason || 'Enter the PIN');
     if (pin === null) return false;
     const r = await api.settings('pinCheck', { pin });
     if (r.ok) return true;
@@ -3593,6 +3597,13 @@ async function flowTheme() {
       if (s.group !== group) { group = s.group; items.push(sizes[group] > 1 ? { label: group, header: true, fold: 'theme.' + group } : { label: group, header: true }); }
       items.push({ label: s.label, sub: themeValueText(s), op: 'set', s, plain: true });
     }
+    items.push({ label: 'Your themes', header: true });
+    items.push({ label: 'Save current as a new theme…', op: 'saveNew', plain: true });
+    if (active && !active.builtin) {
+      items.push({ label: 'Rename this theme…', op: 'rename', plain: true });
+      items.push({ label: 'Overwrite this theme with current', op: 'overwrite', plain: true });
+      items.push({ label: 'Delete this theme…', op: 'delete', plain: true });
+    }
     items.push({ label: 'Reset', header: true });
     items.push({ label: 'Reset this theme to defaults', op: 'reset', plain: true });
     const it = await pick('Theme Settings', items, index);
@@ -3604,10 +3615,57 @@ async function flowTheme() {
         try { const r = await api.settings('themeReset'); if (r.theme) applyTheme(r.theme); } finally { busy = false; }
       }
     } else if (it.op === 'switch') {
-      const pickT = await pick('Choose a theme', t.themes.map((x) => ({ label: x.name, sub: x.id === t.active ? 'current' : x.author, id: x.id })));
+      // A short #id tag only shows up when two themes share a name — it's how they stay
+      // told apart on screen without baking a number into the name itself.
+      const pickT = await pick('Choose a theme', t.themes.map((x) => ({
+        label: x.name, sub: [x.id === t.active ? 'current' : x.author, x.dup ? `#${x.id}` : ''].filter(Boolean).join('  ·  '), id: x.id,
+      })));
       if (pickT) {
         busy = true;
         try { const r = await api.settings('themeUse', { id: pickT.id }); if (r.theme) applyTheme(r.theme); } finally { busy = false; }
+      }
+    } else if (it.op === 'saveNew') {
+      const name = await ask('Name this theme', '');
+      if (name === null) continue;
+      if (!name.trim()) { setStatus('Give it a name.', true); continue; }
+      busy = true;
+      try {
+        const r = await api.addons('saveTheme', { name });
+        if (r.ok) { applyTheme(r.theme); setStatus(`Saved as “${name.trim()}”.`); } else setStatus(r.error, true);
+      } finally { busy = false; }
+    } else if (it.op === 'rename') {
+      const name = await ask('Rename this theme', active.name);
+      if (name === null) continue;
+      if (!name.trim()) { setStatus('Give it a name.', true); continue; }
+      busy = true;
+      try {
+        const r = await api.addons('renameTheme', { id: active.id, name });
+        if (r.ok) { applyTheme(r.theme); setStatus('Renamed.'); } else setStatus(r.error, true);
+      } finally { busy = false; }
+    } else if (it.op === 'overwrite') {
+      if (await confirm(`Overwrite “${active.name}” with the Theme Settings you have now?`, 'Overwrite')) {
+        busy = true;
+        try {
+          const r = await api.addons('overwriteTheme', { id: active.id });
+          if (r.ok) { applyTheme(r.theme); setStatus('Saved.'); } else setStatus(r.error, true);
+        } finally { busy = false; }
+      }
+    } else if (it.op === 'delete') {
+      const name = active.name;
+      if (await confirm(`Delete “${name}”? This removes its folder from your Tessera folder.`, 'Delete')) {
+        busy = true;
+        let r;
+        try { r = await api.addons('remove', { dir: 'themes', id: active.id }); } finally { busy = false; }
+        if (r && r.needPin) {
+          // Only in-use themes land here — an unused one deletes with no PIN prompt at all.
+          if (!(await requirePin('This theme is being used by another profile. Enter your PIN to continue deleting.'))) continue;
+          busy = true;
+          try { r = await api.addons('remove', { dir: 'themes', id: active.id }); } finally { busy = false; }
+        }
+        if (r && r.ok) {
+          applyTheme(r.theme);
+          setStatus(r.fellBack && r.fellBack.length ? `Deleted “${name}”. ${r.fellBack.join(' and ')} fell back to Tessera Bright.` : `Deleted “${name}”.`);
+        } else setStatus((r && r.error) || "Couldn't delete that.", true);
       }
     } else if (it.op === 'set') await editThemeSetting(it.s);
   }
@@ -3661,6 +3719,85 @@ async function editThemeSetting(s) {
     if (!it || !it.op) return;
     if (it.op === 'none') await themeSet(s.id, '');
     else await new Promise((res) => flowBrowse('pickImage', res));
+  }
+}
+
+// Minimal, on purpose: who's using this Tessera, and which theme (if any) is theirs. No
+// switching session or startup wizard yet — see the plan doc for where this is headed.
+async function flowProfiles() {
+  if (modal || busy) return;
+  let index = 1;
+  for (;;) {
+    busy = true;
+    let pr, t;
+    try { [pr, t] = await Promise.all([api.profiles('list'), api.settings('themeGet')]); } finally { busy = false; }
+    const list = pr.profiles || [];
+    const themeName = (id) => { const x = t.themes.find((th) => th.id === id); return x ? x.name : id; };
+    const items = [
+      { label: 'Profiles', header: true },
+      { label: 'Add a profile…', op: 'add', plain: true },
+    ];
+    if (list.length) {
+      items.push({ label: 'Press Y on a profile for its options', header: true });
+      list.forEach((p) => items.push({ label: p.name, sub: p.themeId ? `Theme: ${themeName(p.themeId)}` : "Uses Tessera's active theme", id: p.id, plain: true }));
+    }
+    const it = await pick('Profiles', items, index, {
+      onY: list.length
+        ? async (hit) => { if (hit && hit.id) await flowProfileOptions(hit.id, hit.label); }
+        : undefined,
+    });
+    if (!it) return;
+    index = items.indexOf(it);
+    if (it.op === 'add') {
+      const name = await ask('Name this profile', '');
+      if (name === null) continue;
+      if (!name.trim()) { setStatus('Give them a name.', true); continue; }
+      busy = true;
+      let r;
+      try { r = await api.profiles('add', { name }); } finally { busy = false; }
+      if (r && r.needPin) { if (!(await requirePin())) continue; busy = true; try { r = await api.profiles('add', { name }); } finally { busy = false; } }
+      setStatus(r && r.ok ? `Added ${name.trim()}.` : (r && r.error) || "Couldn't add that.", !(r && r.ok));
+    }
+  }
+}
+async function flowProfileOptions(id, name) {
+  const it = await pick(name, [
+    { label: 'Rename…', op: 'rename', plain: true },
+    { label: 'Give it a theme…', op: 'theme', plain: true },
+    { label: "Use Tessera's active theme", op: 'clear', plain: true },
+    { label: 'Remove this profile…', op: 'remove', plain: true },
+  ]);
+  if (!it) return;
+  if (it.op === 'rename') {
+    const newName = await ask('Rename this profile', name);
+    if (newName === null || !newName.trim()) return;
+    busy = true;
+    let r;
+    try { r = await api.profiles('rename', { id, name: newName }); } finally { busy = false; }
+    if (r && r.needPin) { if (!(await requirePin())) return; busy = true; try { r = await api.profiles('rename', { id, name: newName }); } finally { busy = false; } }
+    setStatus(r && r.ok ? 'Renamed.' : (r && r.error) || "Couldn't rename that.", !(r && r.ok));
+  } else if (it.op === 'theme') {
+    busy = true;
+    let t;
+    try { t = await api.settings('themeGet'); } finally { busy = false; }
+    const choice = await pick(`Theme for ${name}`, t.themes.map((x) => ({ label: x.name, sub: x.dup ? `#${x.id}` : x.author, id: x.id })));
+    if (!choice) return;
+    busy = true;
+    let r;
+    try { r = await api.profiles('setTheme', { id, themeId: choice.id }); } finally { busy = false; }
+    setStatus(r && r.ok ? `${name} now uses ${choice.label}.` : (r && r.error) || "Couldn't set that.", !(r && r.ok));
+  } else if (it.op === 'clear') {
+    busy = true;
+    let r;
+    try { r = await api.profiles('setTheme', { id, themeId: null }); } finally { busy = false; }
+    setStatus(r && r.ok ? `${name} now follows the active theme.` : (r && r.error) || "Couldn't set that.", !(r && r.ok));
+  } else if (it.op === 'remove') {
+    if (!(await confirm(`Remove the profile “${name}”?`, 'Remove'))) return;
+    busy = true;
+    let r;
+    try { r = await api.profiles('remove', { id }); } finally { busy = false; }
+    if (r && r.needPin) { if (!(await requirePin())) return; busy = true; try { r = await api.profiles('remove', { id }); } finally { busy = false; } }
+    setStatus(r && r.ok ? `Removed ${name}.` : (r && r.error) || "Couldn't remove that.", !(r && r.ok));
   }
 }
 

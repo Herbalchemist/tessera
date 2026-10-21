@@ -145,6 +145,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .card.active {
   transform: scale(1.08);
   box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 8px 26px rgb(0 0 0 / calc(var(--shadow) * 0.45));
+  /* The scale and the glow both reach past the tile's own box into its neighbors' space.
+     Without this, a later tile in the row paints over that overflow and clips the glow's
+     far edge wherever it overlaps the next tile — lift the active tile above its row. */
+  z-index: 1;
 }
 .empty { text-align: center; color: var(--muted); font-size: 1.2rem; margin-top: 80px; }
 h1 {
