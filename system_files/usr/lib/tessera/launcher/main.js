@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const { app, BrowserWindow, ipcMain, protocol, Menu } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, protocol, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -2253,11 +2253,11 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       devTools: DEV, // no inspector for anyone sitting at the TV
-      webviewTag: true, // the embedded Browser tab is a <webview>, its own isolated guest page
     },
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+  mainWindow.on('resize', fitBrowserView);
   mainWindow.loadFile('index.html');
   mainWindow.webContents.on('did-finish-load', () => {
     ensureTree();
@@ -3805,6 +3805,52 @@ function leaveTessera() {
   // person looking at a frozen screen: end the process anyway.
   setTimeout(() => app.exit(0), 4000);
 }
+// ------------------------------------------------------------- browser view
+// The Browser tab: a real page, drawn by Electron's own BrowserView on top of the
+// launcher window at exact pixel bounds set from here — not a <webview> element
+// sized by CSS, which left the guest page painted at a stale, wrong size across
+// two earlier attempts. A single BrowserView is reused across opens so reopening
+// doesn't re-load the last page from scratch.
+let browserView = null;
+function ensureBrowserView() {
+  if (browserView) return browserView;
+  browserView = new BrowserView({
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  return browserView;
+}
+function fitBrowserView() {
+  if (!browserView || !mainWindow) return;
+  const { width, height } = mainWindow.getContentBounds();
+  browserView.setBounds({ x: 0, y: 0, width, height });
+}
+// The renderer already runs its own interactive PIN check (requirePin()) before ever
+// calling 'open' here, same as it always has for the browser — nothing to re-check.
+ipcMain.handle('browser', (_e, op, payload) => {
+  if (op === 'open' || op === 'go') {
+    const url = payload && typeof payload.url === 'string' ? payload.url : null;
+    if (!url) return { ok: false, error: 'No address given.' };
+    const view = ensureBrowserView();
+    if (!mainWindow.getBrowserViews().includes(view)) mainWindow.addBrowserView(view);
+    fitBrowserView();
+    view.webContents.loadURL(url).catch(() => {});
+    return { ok: true };
+  }
+  if (op === 'hide') {
+    if (browserView) mainWindow.removeBrowserView(browserView);
+    return { ok: true };
+  }
+  if (op === 'show') {
+    if (browserView) { mainWindow.addBrowserView(browserView); fitBrowserView(); }
+    return { ok: true };
+  }
+  if (op === 'close') {
+    if (browserView) mainWindow.removeBrowserView(browserView);
+    return { ok: true };
+  }
+  return { ok: false, error: 'Unknown action.' };
+});
 ipcMain.handle('quit', () => {
   if (!pinOk()) return NEED_PIN;
   leaveTessera();
