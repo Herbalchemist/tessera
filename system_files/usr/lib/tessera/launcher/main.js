@@ -708,6 +708,40 @@ const BUILTIN_THEMES = [
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1f1c2b',
     },
   },
+  // Three console-inspired factory themes.
+  {
+    id: 'cartridge-pop', name: 'Cartridge Pop', author: 'Tessera',
+    defaults: {
+      bg: '#fff6e6', card: '#ffffff', panel: '#fff1d8', text: '#2b1d0e', muted: '#8a7556', accent: '#ff8a2b',
+      border: '#2b1d0e', borderW: '0px', radius: '40px', shadow: 70, tabShadow: 80, selectRing: '3px',
+      confirm: '#1fa67a', cancel: '#e5484d', backdrop: 'tiles', selColor: 'pastel', layout: 'flow', gridPreset: 'c4r2',
+      setPack: false, setNotes: true, setIcons: 'animated',
+      widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 18, widgetClear: 60, widgetColor: '#ffffff', widgetSheen: true,
+      motion: true,
+    },
+  },
+  {
+    id: 'arcade-marquee', name: 'Arcade Marquee', author: 'Tessera',
+    defaults: {
+      bg: '#120a1a', card: '#1e1130', panel: '#180d28', text: '#fbeaff', muted: '#b79bd6', accent: '#ff4fd8',
+      border: '#ff4fd8', borderW: '2px', radius: '28px', shadow: 100, tabShadow: 100, selectRing: '5px',
+      confirm: '#3ee6c7', cancel: '#ff5d6c', backdrop: 'glow', selColor: 'accent', layout: 'rails', gridPreset: 'c5r3',
+      setPack: false, setNotes: true, setIcons: 'animated',
+      widgetStyle: 'glass', widgetTint: 45, widgetBlur: 20, widgetClear: 55, widgetColor: '#1e1130', widgetSheen: true,
+      motion: true,
+    },
+  },
+  {
+    id: 'dashboard-steel', name: 'Dashboard Steel', author: 'Tessera',
+    defaults: {
+      bg: '#0c1118', card: '#17202c', panel: '#121922', text: '#e6edf5', muted: '#8fa0b3', accent: '#4fc3ff',
+      border: '#2c3b4d', borderW: '2px', radius: '10px', shadow: 60, tabShadow: 70, selectRing: '3px',
+      confirm: '#3ee0b0', cancel: '#ff6b6b', backdrop: 'none', selColor: 'accent', layout: 'grid', gridPreset: 'c6r3',
+      setPack: true, setNotes: true, setIcons: 'still',
+      widgetStyle: 'outline', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#17202c', widgetSheen: false,
+      motion: true,
+    },
+  },
 ];
 const STOCK_THEME = {
   id: 'stock',
@@ -2175,6 +2209,10 @@ function addonsInfo() {
     dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
     themeCount: countDirs('themes'),
     themes: [...themes.values()].filter((t) => !t.builtin).map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
+    // Every theme, builtin and custom together — used by the Add-ons > Themes switcher, which
+    // (unlike the remove-a-theme list above) needs to offer every factory theme too, not just
+    // the ones you could delete.
+    allThemes: [...themes.values()].map((t) => ({ id: t.id, name: t.name, author: t.author, builtin: Boolean(t.builtin) })),
     packs: [...packs].map(([id, p]) => ({
       id, name: p.manifest.name, description: p.manifest.description, author: p.manifest.author, version: p.manifest.version,
       official: p.official, reason: p.reason,

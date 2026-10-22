@@ -1699,8 +1699,13 @@ async function flowAddons() {
       if (!items.length) items.push(inert('No widgets installed yet', info.dirs.widgets));
     } else if (view === 'themes') {
       title = 'Add-ons · Themes (A to switch)';
-      items = [{ label: 'Tessera (stock)', sub: 'built in', theme: 'stock' }];
-      info.themes.forEach((t) => items.push({ label: t.name, sub: [t.author, t.settings ? `${t.settings} extra setting${t.settings === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), theme: t.id }));
+      // Every builtin plus anything downloaded — not just stock. (Removal, just below, stays
+      // scoped to downloaded themes only; you can't delete a factory one.)
+      items = info.allThemes.map((t) => ({
+        label: t.name,
+        sub: t.builtin ? 'built in' : (t.author || ''),
+        theme: t.id,
+      }));
       if (info.themes.length) items.push({ label: 'Remove a theme…', view: 'rmthemes', plain: true });
       items.push(inert('Theme packs go in', info.dirs.themes));
     } else if (view === 'rmthemes') {
