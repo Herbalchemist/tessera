@@ -1133,22 +1133,23 @@ async function launchBrowser() {
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
   browserOpen = true;
   document.body.classList.add('browser-open');
-  const wv = document.getElementById('browserWebview');
-  if (wv && wv.src !== browserUrl) wv.src = browserUrl;
   setStatus('');
+  await api.browser('open', { url: browserUrl });
 }
-function closeBrowser() {
+async function closeBrowser() {
   if (!browserOpen) return;
   browserOpen = false;
   document.body.classList.remove('browser-open');
+  await api.browser('close');
 }
 async function openUrlBar() {
-  const wv = document.getElementById('browserWebview');
-  const cur = (wv && wv.src) || browserUrl;
-  const v = await ask('Go to', cur, { max: 300 });
-  if (v === null) return;
-  const u = normalizeUrl(v);
-  if (u) { browserUrl = u; if (wv) wv.src = u; }
+  // The BrowserView draws on top of this whole window, so the on-screen keyboard
+  // underneath would be invisible unless the view steps aside for it first.
+  await api.browser('hide');
+  const v = await ask('Go to', browserUrl, { max: 300 });
+  const u = v === null ? null : normalizeUrl(v);
+  if (u) { browserUrl = u; await api.browser('go', { url: u }); }
+  else await api.browser('show');
 }
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
 // pointer, except on the button tabs.
