@@ -1114,12 +1114,41 @@ function moveRow(d) {
 // "Browser" and "+ Mosaic" are buttons that live on the bar, not pages: the
 // pointer lights them up but the screen keeps showing the page you were on.
 const isButtonTab = (id) => id === 'new' || id === 'browser';
+
+// The Browser tab is a real embedded page (a <webview>), not a separate launched
+// application: full screen, no Tessera chrome over it, Y pops up a Go-to-address
+// prompt using the same on-screen keyboard as everything else. LB / RB close it,
+// same as closing any other tab, landing on the neighbour.
+let browserOpen = false;
+let browserUrl = 'https://duckduckgo.com/';
+function normalizeUrl(v) {
+  const s = (v || '').trim();
+  if (!s) return null;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return s; // already has a scheme
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return 'https://' + s; // looks like a bare address
+  return 'https://duckduckgo.com/?q=' + encodeURIComponent(s); // treat it as a search
+}
 async function launchBrowser() {
+  if (browserOpen) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
-  suspended = true;
-  dropAllArt();
-  setStatus('Opening your browser…');
-  api.launch('_browser');
+  browserOpen = true;
+  document.body.classList.add('browser-open');
+  const wv = document.getElementById('browserWebview');
+  if (wv && wv.src !== browserUrl) wv.src = browserUrl;
+  setStatus('');
+}
+function closeBrowser() {
+  if (!browserOpen) return;
+  browserOpen = false;
+  document.body.classList.remove('browser-open');
+}
+async function openUrlBar() {
+  const wv = document.getElementById('browserWebview');
+  const cur = (wv && wv.src) || browserUrl;
+  const v = await ask('Go to', cur, { max: 300 });
+  if (v === null) return;
+  const u = normalizeUrl(v);
+  if (u) { browserUrl = u; if (wv) wv.src = u; }
 }
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
 // pointer, except on the button tabs.
@@ -3977,6 +4006,11 @@ async function reorderPress(act) {
 
 function press(act) {
   if (suspended || busy) return;
+  if (browserOpen && !modal) {
+    if (act === 'lb' || act === 'rb') { closeBrowser(); moveTabs(act === 'lb' ? -1 : 1); }
+    else if (act === 'b') closeBrowser(); // same as backing out of anything else
+    return; // everything else in the page itself goes through the mouse pointer, not Tessera nav
+  }
   if (modal) return modalPress(act);
   if (reorderId) return reorderPress(act);
   if (place) return placePress(act);
@@ -4035,12 +4069,14 @@ function onButton(n) {
     else { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm) press(nm); }
     return;
   }
+  if (browserOpen) { if (n === 3) openUrlBar(); return; } // Y pops up Go to…, nothing else does anything here
   if (n === 3) return yDown();
   const name = BUTTON_NAMES_BY_ROLE[n];
   if (name) press(name);
 }
 function onRelease(n) {
   if (n === 3 && modal && modal.kind === 'cal') return calCompare(false);
+  if (browserOpen) return; // Y is a tap here (open the address prompt), not a hold
   if (n === 3 && !modal) yUp();
 }
 

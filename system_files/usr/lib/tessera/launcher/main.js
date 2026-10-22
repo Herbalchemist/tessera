@@ -2253,6 +2253,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       devTools: DEV, // no inspector for anyone sitting at the TV
+      webviewTag: true, // the embedded Browser tab is a <webview>, its own isolated guest page
     },
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
