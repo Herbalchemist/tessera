@@ -16,6 +16,7 @@ Tessera starts straight into a console-style launcher that you drive with a game
 - Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
 - Mosaics can hold games, apps, widgets and folders. Press Y on a tile for its options.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.
+- The Browser tab is a real page, full screen, no Tessera bar over it — press Y (or the equivalent on your controller) to type an address or search, LB / RB or B to leave it.
 
 **Make it yours**
 - Seven factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic*, *Tessera Mosaic Dark*, and three console-inspired looks — *Cartridge Pop*, *Arcade Marquee* and *Dashboard Steel*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
@@ -86,7 +87,7 @@ After the restart the machine signs in to Tessera by itself.
 
 - **Steam never starts by itself.** Tessera starts programs only when you pick them, and it doesn't wrap games in a sandbox.
 - **No telemetry.** The launcher makes no network requests of its own (its content-security policy forbids them). Updates are fetched by the system's own `bootc` tool.
-- **Not yet:** a built-in web browser for streaming services, Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
+- **Not yet:** Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
 
 ## How it's built
 
