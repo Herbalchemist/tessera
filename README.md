@@ -18,7 +18,7 @@ Tessera starts straight into a console-style launcher that you drive with a game
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.
 
 **Make it yours**
-- Four factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic* and *Tessera Mosaic Dark*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
+- Seven factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic*, *Tessera Mosaic Dark*, and three console-inspired looks — *Cartridge Pop*, *Arcade Marquee* and *Dashboard Steel*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
 - Themes aren't locked to the four factory ones. Drop a `theme.json` in `~/Tessera/Themes/<your-theme-id>/` and it shows up alongside them — a theme is values only (colors, layout, grid density, icon style and more), never code, so nothing it ships can do more than Settings itself already allows.
 - Theme Settings can also save, rename, overwrite and delete the themes you make right there in the console — no file editing needed. The four factory themes stay read-only. Deleting or renaming a theme someone else is relying on asks for the PIN first, then falls them back to *Tessera Bright*.
 - Profiles (Settings > Profiles): name more than one person who uses this Tessera and, optionally, give each their own theme — or leave it following whatever's active. This is the foundation piece, not yet a full switch-user experience with its own library or controls.
