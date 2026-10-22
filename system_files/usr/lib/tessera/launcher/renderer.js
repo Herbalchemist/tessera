@@ -4069,7 +4069,14 @@ function onButton(n) {
     else { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm) press(nm); }
     return;
   }
-  if (browserOpen) { if (n === 3) openUrlBar(); return; } // Y pops up Go to…, nothing else does anything here
+  if (browserOpen) {
+    // Y pops up Go to…; LB/RB/B need to actually reach press() so they can close the browser —
+    // everything else is left to the page itself (mouse, or typing once Go to… is open).
+    if (n === 3) return openUrlBar();
+    const nm = BUTTON_NAMES_BY_ROLE[n];
+    if (nm === 'lb' || nm === 'rb' || nm === 'b') press(nm);
+    return;
+  }
   if (n === 3) return yDown();
   const name = BUTTON_NAMES_BY_ROLE[n];
   if (name) press(name);

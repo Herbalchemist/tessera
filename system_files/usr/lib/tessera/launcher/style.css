@@ -763,8 +763,13 @@ body.mouse, body.mouse * { cursor: var(--tcursor, default), default !important; 
 body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: var(--tcursor, pointer), pointer !important; }
 
 /* Browser tab: a real embedded page, full screen, no Tessera chrome over it.
-   Hidden entirely until body.browser-open; then it covers everything, including
-   the tab bar and footer hints, and the Y hint changes to reflect what Y does here. */
-webview#browserWebview { display: none; }
-body.browser-open webview#browserWebview { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 500; border: 0; background: #000; }
+   Always kept full-size in the layout (position: fixed; inset: 0) even when not
+   showing — toggling an Electron <webview>'s *display* on and off can leave its
+   guest page painted at a stale, tiny size instead of resizing to fit, so only
+   visibility/stacking change here, never display or its box dimensions. */
+webview#browserWebview {
+  position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; background: #000;
+  visibility: hidden; pointer-events: none; z-index: -1;
+}
+body.browser-open webview#browserWebview { visibility: visible; pointer-events: auto; z-index: 500; }
 body.browser-open header, body.browser-open #crumb, body.browser-open main, body.browser-open footer, body.browser-open h1#title { display: none; }
