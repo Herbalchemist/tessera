@@ -46,6 +46,9 @@ jobs:
         run: |
           just check
 
+      - name: Controller input regression tests
+        run: node --test system_files/usr/lib/tessera/launcher/test/*.test.js
+
       - name: Image Name
         id: image-name
         run: |
