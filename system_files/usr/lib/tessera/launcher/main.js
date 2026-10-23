@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const { app, BrowserWindow, BrowserView, ipcMain, protocol, Menu } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, protocol, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -3228,7 +3228,7 @@ const padsCtl = require('./pads').create({
     const view = browserView;
     const browserViewActive = Boolean(
       view && mainWindow && !mainWindow.isDestroyed() &&
-      mainWindow.getBrowserViews().includes(view) &&
+      browserViewAttached &&
       !view.webContents.isDestroyed()
     );
 
@@ -3823,7 +3823,7 @@ function sendExternalBrowserKey(key) {
 function sendBrowserViewKey(key) {
   const view = browserView;
   if (!view || !mainWindow || mainWindow.isDestroyed() ||
-      !mainWindow.getBrowserViews().includes(view) || view.webContents.isDestroyed()) return;
+      !browserViewAttached || view.webContents.isDestroyed()) return;
   const keyCode = ({ PAGEUP: 'PAGEUP', PAGEDOWN: 'PAGEDOWN' })[key] || key;
   try {
     view.webContents.sendInputEvent({ type: 'keyDown', keyCode });
@@ -3952,23 +3952,36 @@ function leaveTessera() {
   // person looking at a frozen screen: end the process anyway.
   setTimeout(() => app.exit(0), 4000);
 }
-// ------------------------------------------------------------- browser view
-// The Browser tab: a real page, drawn by Electron's own BrowserView on top of the
-// launcher window at exact pixel bounds set from here — not a <webview> element
-// sized by CSS, which left the guest page painted at a stale, wrong size across
-// two earlier attempts. A single BrowserView is reused across opens so reopening
-// doesn't re-load the last page from scratch.
+// ------------------------------------------------------------- embedded browser view
+// WebContentsView is the supported Electron 44 API; the browser remains inside Tessera.
 let browserView = null;
+let browserViewAttached = false;
 function ensureBrowserView() {
   if (browserView) return browserView;
-  browserView = new BrowserView({
+  browserView = new WebContentsView({
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  browserView.webContents.on('will-navigate', (event, target) => {
+    try {
+      const scheme = new URL(target).protocol;
+      if (scheme !== 'http:' && scheme !== 'https:') event.preventDefault();
+    } catch { event.preventDefault(); }
+  });
   return browserView;
 }
+function attachBrowserView() {
+  if (!browserView || !mainWindow || mainWindow.isDestroyed() || browserViewAttached) return;
+  mainWindow.contentView.addChildView(browserView);
+  browserViewAttached = true;
+}
+function detachBrowserView() {
+  if (!browserView || !mainWindow || mainWindow.isDestroyed() || !browserViewAttached) return;
+  mainWindow.contentView.removeChildView(browserView);
+  browserViewAttached = false;
+}
 function fitBrowserView() {
-  if (!browserView || !mainWindow) return;
+  if (!browserView || !mainWindow || mainWindow.isDestroyed()) return;
   const { width, height } = mainWindow.getContentBounds();
   browserView.setBounds({ x: 0, y: 0, width, height });
 }
@@ -3978,24 +3991,28 @@ ipcMain.handle('browser', (_e, op, payload) => {
   if (op === 'open' || op === 'go') {
     const url = payload && typeof payload.url === 'string' ? payload.url : null;
     if (!url) return { ok: false, error: 'No address given.' };
+    try {
+      const scheme = new URL(url).protocol;
+      if (scheme !== 'http:' && scheme !== 'https:') return { ok: false, error: 'Only web addresses are allowed.' };
+    } catch { return { ok: false, error: 'That web address is invalid.' }; }
     const view = ensureBrowserView();
-    if (!mainWindow.getBrowserViews().includes(view)) mainWindow.addBrowserView(view);
+    attachBrowserView();
     startBrowserViewJoystickWatch();
     fitBrowserView();
     view.webContents.loadURL(url).catch(() => {});
     return { ok: true };
   }
   if (op === 'hide') {
-    if (browserView) mainWindow.removeBrowserView(browserView);
+    detachBrowserView();
     stopBrowserViewJoystickWatch();
     return { ok: true };
   }
   if (op === 'show') {
-    if (browserView) { mainWindow.addBrowserView(browserView); startBrowserViewJoystickWatch(); fitBrowserView(); }
+    if (browserView) { attachBrowserView(); startBrowserViewJoystickWatch(); fitBrowserView(); }
     return { ok: true };
   }
   if (op === 'close') {
-    if (browserView) mainWindow.removeBrowserView(browserView);
+    detachBrowserView();
     stopBrowserViewJoystickWatch();
     return { ok: true };
   }
