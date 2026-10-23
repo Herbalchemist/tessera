@@ -16,7 +16,8 @@ function parseJsEvents(buffer, onEvent) {
   }
 }
 
-function createMapper({ onShoulder = () => {}, onAction = () => {} } = {}) {
+function createMapper({ onShoulder, onAction = () => {} } = {}) {
+  if (typeof onShoulder !== 'function') onShoulder = () => {};
   const axes = new Map();
   const directions = new Map();
   const pressed = new Set();
