@@ -23,7 +23,7 @@ function inputEvent(type, code, value) {
 }
 
 test('maps joydev axis indices to Linux ABS codes in kernel order', () => {
-  assert.deepEqual(axisCodesFromSysfs('3f003'), [0, 1, 2, 3, 4, 5, 16, 17]);
+  assert.deepEqual(axisCodesFromSysfs('3003f'), [0, 1, 2, 3, 4, 5, 16, 17]);
   assert.deepEqual(axisCodesFromSysfs('not-hex'), []);
 });
 
