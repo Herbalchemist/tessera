@@ -3718,34 +3718,82 @@ function resolveBrowser() {
 // controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
 const browserGamepad = require('./browser-gamepad');
 function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
-  const procs = new Map();
+  const devices = new Map();
   let directoryWatch = null;
+  const sysRoot = '/sys/class/input';
+  const read = (file) => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return ''; } };
+  const real = (file) => { try { return fs.realpathSync(file); } catch { return ''; } };
+  const bitsHave = (hex, code) => {
+    try { return (BigInt('0x' + hex) & (1n << BigInt(code))) !== 0n; } catch { return false; }
+  };
+  const stopDevice = (entry) => {
+    for (const proc of [entry.jsProc, entry.eventProc]) {
+      if (proc) { try { proc.kill(); } catch { /* gone */ } }
+    }
+  };
   const scan = () => {
     let names = [];
-    try { names = fs.readdirSync(dir).filter((n) => /^js\\d+$/.test(n)); } catch { /* none */ }
-    for (const n of names) {
-      if (procs.has(n)) continue;
-      try {
-        if (fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() === '057e') continue;
-      } catch { /* some drivers do not expose vendor IDs */ }
-      const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction });
-      let pending = Buffer.alloc(0);
-      procs.set(n, cat);
-      cat.stdout.on('data', (chunk) => {
-        pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
-        const whole = pending.length - (pending.length % 8);
-        if (whole) browserGamepad.parseJsEvents(pending.subarray(0, whole), mapper.handleEvent);
-        pending = pending.subarray(whole);
-      });
-      cat.on('error', () => { if (procs.get(n) === cat) procs.delete(n); });
-      cat.on('close', () => { if (procs.get(n) === cat) procs.delete(n); });
+    try { names = fs.readdirSync(dir); } catch { names = []; }
+    const jsNames = names.filter((n) => /^js\\d+$/.test(n));
+    const eventNames = names.filter((n) => /^event\\d+$/.test(n));
+    const eventByDevice = new Map();
+    for (const eventName of eventNames) {
+      const sysDevice = path.join(sysRoot, eventName, 'device');
+      const keyCaps = read(path.join(sysDevice, 'capabilities/key'));
+      // Require the Linux gamepad position codes for South and East. This excludes keyboards,
+      // mice, and the separate IMU event node on controllers that expose one.
+      if (!bitsHave(keyCaps, 0x130) || !bitsHave(keyCaps, 0x131)) continue;
+      const devicePath = real(sysDevice);
+      if (devicePath && !eventByDevice.has(devicePath)) eventByDevice.set(devicePath, eventName);
     }
-    for (const [n, proc] of procs) {
-      if (!names.includes(n)) {
-        procs.delete(n);
-        try { proc.kill(); } catch { /* gone */ }
-      }
+    const seen = new Set();
+    for (const jsName of jsNames) {
+      const sysDevice = path.join(sysRoot, jsName, 'device');
+      const devicePath = real(sysDevice);
+      if (!devicePath) continue;
+      const eventName = eventByDevice.get(devicePath);
+      if (!eventName) continue;
+      const vendor = read(path.join(sysDevice, 'id/vendor')).toLowerCase();
+      if (vendor === '057e') continue; // pads.js handles Switch/Joy-Con mapping specially.
+      seen.add(jsName);
+      const old = devices.get(jsName);
+      if (old && old.eventName === eventName && old.devicePath === devicePath) continue;
+      if (old) { devices.delete(jsName); stopDevice(old); }
+
+      const axisCodes = browserGamepad.axisCodesFromSysfs(read(path.join(sysDevice, 'capabilities/abs')));
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction });
+      const entry = { eventName, devicePath, jsProc: null, eventProc: null };
+      const startReader = (node, eventSize, consume) => {
+        const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
+        let pending = Buffer.alloc(0);
+        proc.stdout.on('data', (chunk) => {
+          pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
+          const whole = pending.length - (pending.length % eventSize);
+          if (whole) consume(pending.subarray(0, whole));
+          pending = pending.subarray(whole);
+        });
+        proc.on('error', () => {});
+        proc.on('close', () => {
+          if (devices.get(jsName) === entry) {
+            devices.delete(jsName);
+            stopDevice(entry);
+          }
+        });
+        return proc;
+      };
+      entry.jsProc = startReader(jsName, 8, (buffer) => {
+        browserGamepad.parseJsEvents(buffer, (event) => {
+          const code = axisCodes[event.number];
+          if (code !== undefined) mapper.handleAxis(code, event.value);
+        });
+      });
+      entry.eventProc = startReader(eventName, 24, (buffer) => {
+        browserGamepad.parseInputEvents(buffer, (event) => mapper.handleButton(event.code, event.value));
+      });
+      devices.set(jsName, entry);
+    }
+    for (const [name, entry] of devices) {
+      if (!seen.has(name)) { devices.delete(name); stopDevice(entry); }
     }
   };
   scan();
@@ -3758,8 +3806,8 @@ function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
   } catch { /* joystick hotplug watch unavailable */ }
   return () => {
     if (directoryWatch) { try { directoryWatch.close(); } catch { /* gone */ } }
-    for (const proc of procs.values()) { try { proc.kill(); } catch { /* gone */ } }
-    procs.clear();
+    for (const entry of devices.values()) stopDevice(entry);
+    devices.clear();
   };
 }
 const BROWSER_KEYSYMS = {
