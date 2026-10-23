@@ -3215,6 +3215,7 @@ const devices = require('./devices');
 // While the browser has the screen, LB / RB on them close it, like on any other controller.
 let browserShoulder = null;
 const padBits = new Map();
+const browserStickDir = new Map();
 const padsCtl = require('./pads').create({
   prefs: () => ({ joycons: settings.pad.joycons }),
   onList: (p) => send('pads', { type: 'list', ...p }),
@@ -3222,12 +3223,78 @@ const padsCtl = require('./pads').create({
   onFrame: (f) => {
     const before = padBits.get(f.id) || 0;
     padBits.set(f.id, f.b);
-    if (browserShoulder) {
+
+    const view = browserView;
+    const browserViewActive = Boolean(
+      view && mainWindow && !mainWindow.isDestroyed() &&
+      mainWindow.getBrowserViews().includes(view) &&
+      !view.webContents.isDestroyed()
+    );
+
+    if (browserShoulder || browserViewActive) {
       const down = f.b & ~before;
-      if (down & (1 << 4)) browserShoulder(-1);
-      else if (down & (1 << 5)) browserShoulder(1);
-      return; // Tessera is hidden: the page gets nothing
+
+      // Preserve the existing shoulder-button browser-close behavior.
+      if (browserShoulder && (down & (1 << 4))) {
+        browserShoulder(-1);
+        return;
+      }
+      if (browserShoulder && (down & (1 << 5))) {
+        browserShoulder(1);
+        return;
+      }
+
+      if (browserViewActive) {
+        const wc = view.webContents;
+        const pressKey = (keyCode) => {
+          try {
+            wc.sendInputEvent({ type: 'keyDown', keyCode });
+            wc.sendInputEvent({ type: 'keyUp', keyCode });
+          } catch {}
+        };
+
+        // D-pad: up, down, left, right.
+        for (const [bit, key] of [
+          [12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']
+        ]) {
+          if (down & (1 << bit)) pressKey(key);
+        }
+
+        // Nintendo face buttons: A activates; B dismisses/backtracks.
+        if (down & (1 << 1)) pressKey('ENTER');
+        if (down & (1 << 0)) pressKey('ESC');
+
+        const axes = Array.isArray(f.a) ? f.a : [];
+        const lx = Number(axes[0]) || 0;
+        const ly = Number(axes[1]) || 0;
+        const rx = Number(axes[2]) || 0;
+        const ry = Number(axes[3]) || 0;
+
+        // Left stick: send an arrow when crossing the navigation threshold.
+        const dir = Math.abs(lx) > Math.abs(ly)
+          ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
+          : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
+        if (!browserStickDir.has(f.id)) browserStickDir.set(f.id, '');
+        if (dir && dir !== browserStickDir.get(f.id)) pressKey(dir);
+        browserStickDir.set(f.id, dir);
+
+        // Right stick: scroll the page when the stick is moved.
+        if (Math.abs(rx) > 0.2 || Math.abs(ry) > 0.2) {
+          try {
+            wc.sendInputEvent({
+              type: 'mouseWheel',
+              x: Math.floor(mainWindow.getContentBounds().width / 2),
+              y: Math.floor(mainWindow.getContentBounds().height / 2),
+              deltaX: Math.round(rx * 80),
+              deltaY: Math.round(ry * 80),
+              canScroll: true
+            });
+          } catch {}
+        }
+      }
+      return; // Keep browser input away from the hidden launcher UI.
     }
+
     send('pads', { type: 'frame', ...f });
   },
 });
