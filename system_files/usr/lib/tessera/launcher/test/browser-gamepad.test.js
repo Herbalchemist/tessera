@@ -44,3 +44,10 @@ test('ignores repeated button presses and incomplete trailing bytes', () => {
   parseJsEvents(b.subarray(0, 23), mapper.handleEvent);
   assert.deepEqual(keys, ['ENTER']);
 });
+
+test('allows browser-view mapping when no shoulder-close callback is installed', () => {
+  const keys = [];
+  const mapper = createMapper({ onAction: key => keys.push(key) });
+  assert.doesNotThrow(() => parseJsEvents(event(1, 4, 1), mapper.handleEvent));
+  assert.deepEqual(keys, []);
+});
