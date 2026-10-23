@@ -20,6 +20,8 @@ default:
 # Controller input regression tests
 [group('Tests')]
 test:
+    node --check system_files/usr/lib/tessera/launcher/main.js
+    node --check system_files/usr/lib/tessera/launcher/browser-gamepad.js
     node --test system_files/usr/lib/tessera/launcher/test/*.test.js
 
 # Check Just Syntax
