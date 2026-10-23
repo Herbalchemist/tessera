@@ -3718,26 +3718,43 @@ function resolveBrowser() {
 // controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
 const browserGamepad = require('./browser-gamepad');
 function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
-  const procs = [];
-  let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
-  names = names.filter((n) => {
-    try { return fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() !== '057e'; } catch { return true; }
-  });
-  for (const n of names) {
-    const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
-    const mapper = browserGamepad.createMapper({ onShoulder, onAction });
-    let pending = Buffer.alloc(0);
-    cat.stdout.on('data', (chunk) => {
-      pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
-      const whole = pending.length - (pending.length % 8);
-      if (whole) browserGamepad.parseJsEvents(pending.subarray(0, whole), mapper.handleEvent);
-      pending = pending.subarray(whole);
-    });
-    cat.on('error', () => {});
-    procs.push(cat);
-  }
-  return () => procs.forEach((p) => { try { p.kill(); } catch { /* gone */ } });
+  const procs = new Map();
+  let directoryWatch = null;
+  const scan = () => {
+    let names = [];
+    try { names = fs.readdirSync(dir).filter((n) => /^js\\d+$/.test(n)); } catch { /* none */ }
+    for (const n of names) {
+      if (procs.has(n)) continue;
+      try {
+        if (fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() === '057e') continue;
+      } catch { /* some drivers do not expose vendor IDs */ }
+      const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction });
+      let pending = Buffer.alloc(0);
+      procs.set(n, cat);
+      cat.stdout.on('data', (chunk) => {
+        pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
+        const whole = pending.length - (pending.length % 8);
+        if (whole) browserGamepad.parseJsEvents(pending.subarray(0, whole), mapper.handleEvent);
+        pending = pending.subarray(whole);
+      });
+      cat.on('error', () => { if (procs.get(n) === cat) procs.delete(n); });
+      cat.on('close', () => { if (procs.get(n) === cat) procs.delete(n); });
+    }
+    for (const [n, proc] of procs) {
+      if (!names.includes(n)) {
+        procs.delete(n);
+        try { proc.kill(); } catch { /* gone */ }
+      }
+    }
+  };
+  scan();
+  try { directoryWatch = fs.watch(dir, scan); } catch { /* joystick hotplug watch unavailable */ }
+  return () => {
+    if (directoryWatch) { try { directoryWatch.close(); } catch { /* gone */ } }
+    for (const proc of procs.values()) { try { proc.kill(); } catch { /* gone */ } }
+    procs.clear();
+  };
 }
 const BROWSER_KEYSYMS = {
   UP: 'Up', DOWN: 'Down', LEFT: 'Left', RIGHT: 'Right',
