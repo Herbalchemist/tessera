@@ -3216,6 +3216,7 @@ const devices = require('./devices');
 let browserShoulder = null;
 const padBits = new Map();
 const browserStickDir = new Map();
+const browserRightStickDir = new Map();
 const padsCtl = require('./pads').create({
   prefs: () => ({ joycons: settings.pad.joycons }),
   onList: (p) => send('pads', { type: 'list', ...p }),
@@ -3244,53 +3245,45 @@ const padsCtl = require('./pads').create({
         return;
       }
 
-      if (browserViewActive) {
-        const wc = view.webContents;
-        const pressKey = (keyCode) => {
-          try {
-            wc.sendInputEvent({ type: 'keyDown', keyCode });
-            wc.sendInputEvent({ type: 'keyUp', keyCode });
-          } catch {}
-        };
+      const pressKey = browserViewActive ? sendBrowserViewKey : sendExternalBrowserKey;
+      const axes = Array.isArray(f.a) ? f.a : [];
+      // D-pad: up, down, left, right.
+      for (const [bit, key] of [[12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']]) {
+        if (down & (1 << bit)) pressKey(key);
+      }
+      // Nintendo face buttons: A activates; B dismisses/backtracks.
+      if (down & (1 << 1)) pressKey('ENTER');
+      if (down & (1 << 0)) pressKey('ESC');
 
-        // D-pad: up, down, left, right.
-        for (const [bit, key] of [
-          [12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']
-        ]) {
-          if (down & (1 << bit)) pressKey(key);
-        }
+      const lx = Number(axes[0]) || 0;
+      const ly = Number(axes[1]) || 0;
+      const rx = Number(axes[2]) || 0;
+      const ry = Number(axes[3]) || 0;
+      const dir = Math.abs(lx) > Math.abs(ly)
+        ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
+        : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
+      if (!browserStickDir.has(f.id)) browserStickDir.set(f.id, '');
+      if (dir && dir !== browserStickDir.get(f.id)) pressKey(dir);
+      browserStickDir.set(f.id, dir);
 
-        // Nintendo face buttons: A activates; B dismisses/backtracks.
-        if (down & (1 << 1)) pressKey('ENTER');
-        if (down & (1 << 0)) pressKey('ESC');
-
-        const axes = Array.isArray(f.a) ? f.a : [];
-        const lx = Number(axes[0]) || 0;
-        const ly = Number(axes[1]) || 0;
-        const rx = Number(axes[2]) || 0;
-        const ry = Number(axes[3]) || 0;
-
-        // Left stick: send an arrow when crossing the navigation threshold.
-        const dir = Math.abs(lx) > Math.abs(ly)
-          ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
-          : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
-        if (!browserStickDir.has(f.id)) browserStickDir.set(f.id, '');
-        if (dir && dir !== browserStickDir.get(f.id)) pressKey(dir);
-        browserStickDir.set(f.id, dir);
-
-        // Right stick: scroll the page when the stick is moved.
-        if (Math.abs(rx) > 0.2 || Math.abs(ry) > 0.2) {
-          try {
-            wc.sendInputEvent({
-              type: 'mouseWheel',
-              x: Math.floor(mainWindow.getContentBounds().width / 2),
-              y: Math.floor(mainWindow.getContentBounds().height / 2),
-              deltaX: Math.round(rx * 80),
-              deltaY: Math.round(ry * 80),
-              canScroll: true
-            });
-          } catch {}
-        }
+      // The embedded view can scroll directly. External browsers use page keys instead.
+      if (browserViewActive && (Math.abs(rx) > 0.2 || Math.abs(ry) > 0.2)) {
+        try {
+          view.webContents.sendInputEvent({
+            type: 'mouseWheel',
+            x: Math.floor(mainWindow.getContentBounds().width / 2),
+            y: Math.floor(mainWindow.getContentBounds().height / 2),
+            deltaX: Math.round(rx * 80),
+            deltaY: Math.round(ry * 80),
+            canScroll: true
+          });
+        } catch {}
+      } else if (!browserViewActive && Math.abs(ry) > 0.65) {
+        const rightDir = ry < 0 ? 'PAGEUP' : 'PAGEDOWN';
+        if (browserRightStickDir.get(f.id) !== rightDir) pressKey(rightDir);
+        browserRightStickDir.set(f.id, rightDir);
+      } else {
+        browserRightStickDir.set(f.id, '');
       }
       return; // Keep browser input away from the hidden launcher UI.
     }
@@ -3720,45 +3713,61 @@ function resolveBrowser() {
   return null;
 }
 
-// While the browser has the screen, Tessera is hidden and can't see the
-// controller through the page. So for that time only, read the kernel's joystick
-// devices directly (via `cat`, which can be stopped cleanly) and watch for
-// LB / RB. js-device button numbers: 4 = LB, 5 = RB on common pads.
-const JS_LB = 4;
-const JS_RB = 5;
-function parseJsEvents(buf, onShoulder) {
-  // Each event is 8 bytes: time u32, value s16, type u8, number u8.
-  for (let i = 0; i + 8 <= buf.length; i += 8) {
-    const type = buf[i + 6];
-    if (type & 0x80) continue; // synthetic "initial state" event
-    if ((type & 0x7f) !== 1 || buf.readInt16LE(i + 4) !== 1) continue; // button pressed
-    const n = buf[i + 7];
-    if (n === JS_LB) onShoulder(-1);
-    else if (n === JS_RB) onShoulder(1);
-  }
-}
-function watchJoysticks(onShoulder, dir = '/dev/input') {
+// Generic Linux joystick input for browser navigation. The joydev interface is non-exclusive:
+// native Gamepad API consumers and games still receive their original controller input. Nintendo
+// controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
+const browserGamepad = require('./browser-gamepad');
+function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
   const procs = [];
   let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
-  // Nintendo controllers number their buttons differently here (Capture would count as LB);
-  // pads.js reads those properly.
+  try { names = fs.readdirSync(dir).filter((n) => /^js\\d+$/.test(n)); } catch { /* none */ }
   names = names.filter((n) => {
     try { return fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() !== '057e'; } catch { return true; }
   });
   for (const n of names) {
     const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
+    const mapper = browserGamepad.createMapper({ onShoulder, onAction });
     let pending = Buffer.alloc(0);
     cat.stdout.on('data', (chunk) => {
-      pending = Buffer.concat([pending, chunk]);
+      pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
       const whole = pending.length - (pending.length % 8);
-      parseJsEvents(pending.subarray(0, whole), onShoulder);
+      if (whole) browserGamepad.parseJsEvents(pending.subarray(0, whole), mapper.handleEvent);
       pending = pending.subarray(whole);
     });
     cat.on('error', () => {});
     procs.push(cat);
   }
   return () => procs.forEach((p) => { try { p.kill(); } catch { /* gone */ } });
+}
+const BROWSER_KEYSYMS = {
+  UP: 'Up', DOWN: 'Down', LEFT: 'Left', RIGHT: 'Right',
+  ENTER: 'Return', ESC: 'Escape', PAGEUP: 'Page_Up', PAGEDOWN: 'Page_Down',
+};
+function sendExternalBrowserKey(key) {
+  const keysym = BROWSER_KEYSYMS[key];
+  if (!keysym) return;
+  const child = spawn('wtype', ['-k', keysym], { stdio: 'ignore' });
+  child.on('error', () => {});
+}
+function sendBrowserViewKey(key) {
+  const view = browserView;
+  if (!view || !mainWindow || mainWindow.isDestroyed() ||
+      !mainWindow.getBrowserViews().includes(view) || view.webContents.isDestroyed()) return;
+  const keyCode = ({ PAGEUP: 'PAGEUP', PAGEDOWN: 'PAGEDOWN' })[key] || key;
+  try {
+    view.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+    view.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+  } catch {}
+}
+let browserViewJoystickStop = null;
+function startBrowserViewJoystickWatch() {
+  if (browserViewJoystickStop) return;
+  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey);
+}
+function stopBrowserViewJoystickWatch() {
+  if (!browserViewJoystickStop) return;
+  browserViewJoystickStop();
+  browserViewJoystickStop = null;
 }
 // Which Flatpak app is this command running, if any (so it can be stopped properly)?
 function flatpakAppId(file, args) {
@@ -3823,7 +3832,7 @@ function runChild(file, args, cwd, label, logName) {
       try { process.kill(-child.pid, 'SIGTERM'); } catch { /* already gone */ }
       setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } }, 4000);
     };
-    stopWatching = watchJoysticks(closeBrowser);
+    stopWatching = watchJoysticks(closeBrowser, sendExternalBrowserKey);
     browserShoulder = closeBrowser;
   }
 }
@@ -3900,20 +3909,23 @@ ipcMain.handle('browser', (_e, op, payload) => {
     if (!url) return { ok: false, error: 'No address given.' };
     const view = ensureBrowserView();
     if (!mainWindow.getBrowserViews().includes(view)) mainWindow.addBrowserView(view);
+    startBrowserViewJoystickWatch();
     fitBrowserView();
     view.webContents.loadURL(url).catch(() => {});
     return { ok: true };
   }
   if (op === 'hide') {
     if (browserView) mainWindow.removeBrowserView(browserView);
+    stopBrowserViewJoystickWatch();
     return { ok: true };
   }
   if (op === 'show') {
-    if (browserView) { mainWindow.addBrowserView(browserView); fitBrowserView(); }
+    if (browserView) { mainWindow.addBrowserView(browserView); startBrowserViewJoystickWatch(); fitBrowserView(); }
     return { ok: true };
   }
   if (op === 'close') {
     if (browserView) mainWindow.removeBrowserView(browserView);
+    stopBrowserViewJoystickWatch();
     return { ok: true };
   }
   return { ok: false, error: 'Unknown action.' };
