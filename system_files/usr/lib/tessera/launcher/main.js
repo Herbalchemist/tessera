@@ -3212,10 +3212,23 @@ ipcMain.handle('power', async (_e, op) => {
 const devices = require('./devices');
 
 // Nintendo Switch controllers, read straight from the kernel (Chromium leaves them out; see pads.js).
-// While the browser has the screen, LB / RB on them close it, like on any other controller.
+// External browsers use their own Gamepad API for ordinary controllers. For Nintendo controllers,
+// translate only while the browser is the active target; never inject global keys while a game runs.
 let browserShoulder = null;
 const padBits = new Map();
 const browserStickDir = new Map();
+const browserRightStickDir = new Map();
+const browserPadInput = require('./browser-pad-input');
+const externalKeysyms = {
+  UP: 'Up', DOWN: 'Down', LEFT: 'Left', RIGHT: 'Right',
+  ENTER: 'Return', ESC: 'Escape', PAGEUP: 'Page_Up', PAGEDOWN: 'Page_Down',
+};
+function sendExternalBrowserKey(key) {
+  const keysym = externalKeysyms[key];
+  if (!keysym) return;
+  const child = spawn('wtype', ['-k', keysym], { stdio: 'ignore' });
+  child.on('error', () => {});
+}
 const padsCtl = require('./pads').create({
   prefs: () => ({ joycons: settings.pad.joycons }),
   onList: (p) => send('pads', { type: 'list', ...p }),
@@ -3244,41 +3257,23 @@ const padsCtl = require('./pads').create({
         return;
       }
 
+      const mapped = browserPadInput.actionsForFrame(
+        f, before, browserStickDir.get(f.id) || '', browserRightStickDir.get(f.id) || ''
+      );
+      browserStickDir.set(f.id, mapped.leftDirection);
+      browserRightStickDir.set(f.id, mapped.rightDirection);
+
       if (browserViewActive) {
         const wc = view.webContents;
-        const pressKey = (keyCode) => {
+        for (const key of mapped.keys) {
           try {
-            wc.sendInputEvent({ type: 'keyDown', keyCode });
-            wc.sendInputEvent({ type: 'keyUp', keyCode });
+            wc.sendInputEvent({ type: 'keyDown', keyCode: key });
+            wc.sendInputEvent({ type: 'keyUp', keyCode: key });
           } catch {}
-        };
-
-        // D-pad: up, down, left, right.
-        for (const [bit, key] of [
-          [12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']
-        ]) {
-          if (down & (1 << bit)) pressKey(key);
         }
-
-        // Nintendo face buttons: A activates; B dismisses/backtracks.
-        if (down & (1 << 1)) pressKey('ENTER');
-        if (down & (1 << 0)) pressKey('ESC');
-
         const axes = Array.isArray(f.a) ? f.a : [];
-        const lx = Number(axes[0]) || 0;
-        const ly = Number(axes[1]) || 0;
         const rx = Number(axes[2]) || 0;
         const ry = Number(axes[3]) || 0;
-
-        // Left stick: send an arrow when crossing the navigation threshold.
-        const dir = Math.abs(lx) > Math.abs(ly)
-          ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
-          : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
-        if (!browserStickDir.has(f.id)) browserStickDir.set(f.id, '');
-        if (dir && dir !== browserStickDir.get(f.id)) pressKey(dir);
-        browserStickDir.set(f.id, dir);
-
-        // Right stick: scroll the page when the stick is moved.
         if (Math.abs(rx) > 0.2 || Math.abs(ry) > 0.2) {
           try {
             wc.sendInputEvent({
@@ -3291,10 +3286,17 @@ const padsCtl = require('./pads').create({
             });
           } catch {}
         }
+      } else {
+        // wtype targets the focused Wayland surface (the external browser under Gamescope),
+        // unlike Electron's sendInputEvent, which only targets the hidden Tessera window.
+        for (const key of mapped.keys) sendExternalBrowserKey(key);
       }
       return; // Keep browser input away from the hidden launcher UI.
     }
 
+    // A removed browser must not leave stale stick-edge state when the controller is reused.
+    browserStickDir.delete(f.id);
+    browserRightStickDir.delete(f.id);
     send('pads', { type: 'frame', ...f });
   },
 });
