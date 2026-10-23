@@ -3749,7 +3749,13 @@ function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
     }
   };
   scan();
-  try { directoryWatch = fs.watch(dir, scan); } catch { /* joystick hotplug watch unavailable */ }
+  try {
+    directoryWatch = fs.watch(dir, scan);
+    directoryWatch.on('error', () => {
+      try { directoryWatch.close(); } catch { /* gone */ }
+      directoryWatch = null;
+    });
+  } catch { /* joystick hotplug watch unavailable */ }
   return () => {
     if (directoryWatch) { try { directoryWatch.close(); } catch { /* gone */ } }
     for (const proc of procs.values()) { try { proc.kill(); } catch { /* gone */ } }
