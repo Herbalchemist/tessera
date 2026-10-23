@@ -3720,7 +3720,7 @@ const browserGamepad = require('./browser-gamepad');
 function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
   const procs = [];
   let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => /^js\\d+$/.test(n)); } catch { /* none */ }
+  try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
   names = names.filter((n) => {
     try { return fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() !== '057e'; } catch { return true; }
   });
