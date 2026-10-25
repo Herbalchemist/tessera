@@ -60,7 +60,28 @@ const INLAYS = {
       card.append(time, date);
     },
   },
+  cpu: { render(card) { sysinfoCard(card, 'CPU', 'cpu'); } },
+  ram: { render(card) { sysinfoCard(card, 'Memory', 'ram', true); } },
+  storage: { render(card) { sysinfoCard(card, 'Storage', 'storage', true); } },
+  battery: { render(card) { sysinfoCard(card, 'Battery', 'battery', true); } },
+  network: { render(card) { sysinfoCard(card, 'Network', 'network', true); } },
+  uptime: { render(card) { sysinfoCard(card, 'Uptime', 'uptime'); } },
 };
+// A plain label + big value (+ optional small sub-line), the same shape for all six system
+// widgets below. tickInlays fills in the live numbers once a second; this just builds the DOM.
+function sysinfoCard(card, label, key, withSub) {
+  const l = document.createElement('div'); l.className = 'sysinfo-label'; l.textContent = label;
+  const v = document.createElement('div'); v.className = `sysinfo-value sysinfo-${key}`; v.textContent = '–';
+  card.append(l, v);
+  if (withSub) { const s = document.createElement('div'); s.className = `sysinfo-sub sysinfo-${key}-sub`; card.append(s); }
+}
+function fmtUptime(s) {
+  if (s == null || Number.isNaN(s)) return '–';
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
 // A downloaded widget runs in a sandboxed frame: scripts allowed, but it has
 // no network, no access to this page, and can only load its own folder
 // (enforced by the tessera-widget protocol in main.js).
@@ -82,6 +103,21 @@ function tickInlays() {
   document.querySelectorAll('.clock-date').forEach((el) => {
     el.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   });
+  if (!document.querySelector('.sysinfo-value')) return; // none of the six are on screen; skip the round trip
+  api.systemInfo().then((s) => {
+    if (!s) return;
+    const set = (sel, text) => document.querySelectorAll(sel).forEach((el) => { el.textContent = text; });
+    set('.sysinfo-cpu', s.cpu == null ? '–' : s.cpu + '%');
+    set('.sysinfo-ram', s.ram ? fmtBytes(s.ram.used) : '–');
+    set('.sysinfo-ram-sub', s.ram ? `of ${fmtBytes(s.ram.total)}` : '');
+    set('.sysinfo-storage', s.storage ? fmtBytes(s.storage.free) : '–');
+    set('.sysinfo-storage-sub', s.storage ? `free of ${fmtBytes(s.storage.total)}` : '');
+    set('.sysinfo-battery', s.battery && s.battery.present ? `${s.battery.pct}%` : 'No battery');
+    set('.sysinfo-battery-sub', s.battery && s.battery.present ? (s.battery.charging ? 'Charging' : 'On battery') : '');
+    set('.sysinfo-network', s.network && s.network.connected ? 'Connected' : 'Disconnected');
+    set('.sysinfo-network-sub', s.network && s.network.connected && s.network.rxRate != null ? `↓${fmtBytes(s.network.rxRate)}/s ↑${fmtBytes(s.network.txRate)}/s` : '');
+    set('.sysinfo-uptime', fmtUptime(s.uptime));
+  }).catch(() => {});
 }
 setInterval(tickInlays, 1000);
 
@@ -140,6 +176,17 @@ fitScreen();
 
 let appliedVars = new Set();
 let imageRev = null;
+// Shells are named, built-in arrangements rather than theme-supplied markup. The
+// pure helper is also used by node:test, keeping custom theme JSON values harmless.
+function shellLayoutOf(theme) {
+  const setting = theme && Array.isArray(theme.settings) && theme.settings.find((s) => s.id === 'shellLayout');
+  const helper = window.TesseraShellLayout;
+  return helper ? helper.normalize(setting && setting.value) : 'classic';
+}
+function shellLayoutInfo() {
+  const helper = window.TesseraShellLayout;
+  return helper ? helper.describe(shellLayoutOf(prefs.theme)) : { id: 'classic', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' };
+}
 // How bright a color is, 0 (black) to 1 (white).
 function lumOf(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -253,6 +300,7 @@ let layoutSig = '';
 function applyTheme(t) {
   if (!t || !Array.isArray(t.settings)) return;
   prefs.theme = t;
+  document.body.dataset.shellLayout = shellLayoutOf(t);
   const fx = t.settings.find((s) => s.id === 'backdrop');
   document.body.dataset.fx = fx ? fx.value : 'none';
   const bgs = t.settings.find((s) => s.id === 'bg');
@@ -577,7 +625,7 @@ function layoutCfg() {
   if (own) { cols = own.cols; rows = own.rows; }
   const gapPct = Math.max(20, Math.min(240, Number(get('tileGap')) || 100));
   const icons = ['animated', 'still', 'off'].includes(get('setIcons')) ? get('setIcons') : 'animated';
-  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons };
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons, shell: shellLayoutOf(prefs.theme) };
 }
 function currentRows() {
   const base = baseRows();
@@ -788,8 +836,8 @@ function homeMove(dir) {
     c.cols._home = best;
     return update();
   }
-  if (dir === 'up') {
-    focus = 'tabs'; // nothing above: the tab bar
+  if (dir === shellLayoutInfo().contentExit) {
+    focus = 'tabs'; // leave Home toward the shell's visible navigation edge
     hoverId = page;
     update();
   }
@@ -812,7 +860,8 @@ function render() {
   }
   rowsEl.replaceChildren();
   const lc = layoutCfg();
-  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
+  document.body.dataset.shellLayout = lc.shell;
+  rowsEl.className = 'rows shell-' + lc.shell + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
   rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
   const pageKey = page + '/' + stack.map((s) => s.id).join('/');
   if (pageKey !== rowsEl._key) { rowsEl._key = pageKey; rowsEl._ty = 0; }
@@ -1055,18 +1104,32 @@ function moveCol(d) {
   const row = selectedRow();
   if (!row) return;
   const c = cur();
+  // Dashboard navigation lives on the left. Once the selection reaches the
+  // left edge, another Left moves into the sidebar instead of doing nothing.
+  if (shellLayoutInfo().contentExit === 'left' && d < 0 && (c.cols[row.id] || 0) === 0) {
+    focus = 'tabs';
+    hoverId = page;
+    return update();
+  }
   c.cols[row.id] = Math.max(0, Math.min(row.tiles.length - 1, (c.cols[row.id] || 0) + d));
   update();
 }
 function moveRow(d) {
   if (homeMode()) return homeMove(d < 0 ? 'up' : 'down');
   const c = cur();
+  const rows = currentRows();
+  // In the bottom-dock shell, Down from the last content row lands on the
+  // dock. Classic and Crossbar retain their familiar Up-to-navigation rule.
+  if (shellLayoutInfo().contentExit === 'down' && d > 0 && c.row === rows.length - 1) {
+    focus = 'tabs';
+    hoverId = page;
+    return update();
+  }
   if (d < 0 && c.row === 0) {
     focus = 'tabs'; // up from the top row lands on the tab bar
     hoverId = page;
     return update();
   }
-  const rows = currentRows();
   const was = rows[c.row];
   c.row = Math.max(0, Math.min(rows.length - 1, c.row + d));
   if (layoutCfg().mode !== 'rails' && was && rows[c.row] && rows[c.row] !== was) {
@@ -1078,12 +1141,56 @@ function moveRow(d) {
 // "Browser" and "+ Mosaic" are buttons that live on the bar, not pages: the
 // pointer lights them up but the screen keeps showing the page you were on.
 const isButtonTab = (id) => id === 'new' || id === 'browser';
+
+// The Browser tab is a real embedded page (a <webview>), not a separate launched
+// application: full screen, no Tessera chrome over it, Y pops up a Go-to-address
+// prompt using the same on-screen keyboard as everything else. LB / RB close it,
+// same as closing any other tab, landing on the neighbour.
+let browserOpen = false;
+let browserUrl = 'https://duckduckgo.com/';
+let urlBarOpening = false;
+function normalizeUrl(v) {
+  const s = (v || '').trim();
+  if (!s) return null;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return s; // already has a scheme
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return 'https://' + s; // looks like a bare address
+  return 'https://duckduckgo.com/?q=' + encodeURIComponent(s); // treat it as a search
+}
 async function launchBrowser() {
+  if (browserOpen) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
-  suspended = true;
-  dropAllArt();
-  setStatus('Opening your browser…');
-  api.launch('_browser');
+  const result = await api.browser('open', { url: browserUrl });
+  if (!result || !result.ok) {
+    setStatus((result && result.error) || "Couldn't open the browser.", true);
+    return;
+  }
+  browserOpen = true;
+  document.body.classList.add('browser-open');
+  setStatus('');
+}
+async function closeBrowser() {
+  if (!browserOpen) return;
+  browserOpen = false;
+  document.body.classList.remove('browser-open');
+  await api.browser('close');
+}
+async function openUrlBar() {
+  if (!browserOpen || modal || urlBarOpening) return;
+  urlBarOpening = true;
+  // The BrowserView draws on top of this whole window, so the on-screen keyboard
+  // underneath would be invisible unless the view steps aside for it first.
+  try {
+    await api.browser('hide');
+    const v = await ask('Go to', browserUrl, { max: 300 });
+    const u = v === null ? null : normalizeUrl(v);
+    const result = u ? await api.browser('go', { url: u }) : await api.browser('show');
+    if (!result || !result.ok) {
+      await closeBrowser();
+      setStatus((result && result.error) || "Couldn't open that address.", true);
+    } else if (u) browserUrl = u;
+  } finally {
+    urlBarOpening = false;
+  }
 }
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
 // pointer, except on the button tabs.
@@ -1650,9 +1757,10 @@ async function flowAddons() {
         { label: 'Installed', header: true },
         { label: 'Widgets', sub: `${info.widgets.length} installed${info.rejected.length ? ` · ${info.rejected.length} problem${info.rejected.length === 1 ? '' : 's'}` : ''}`, view: 'widgets' },
         { label: 'Themes', sub: info.themes.length ? `${info.themes.length} installed` : 'none installed', view: 'themes' },
+        { label: 'Shards', sub: `${info.packs.length} installed${info.rejectedPacks.length ? ` · ${info.rejectedPacks.length} problem${info.rejectedPacks.length === 1 ? '' : 's'}` : ''}`, view: 'packs' },
         { label: 'Built in', sub: info.presets.map((p) => p.name).join(', '), view: 'builtin' },
         { label: 'Get more', header: true },
-        { label: 'Where to put downloads', sub: 'widgets, themes, art, fonts, sounds', view: 'folders' },
+        { label: 'Where to put downloads', sub: 'widgets, themes, shards, art, fonts, sounds', view: 'folders' },
         { label: '↻  Reload add-ons', op: 'reload' },
       ];
     } else if (view === 'widgets') {
@@ -1662,14 +1770,39 @@ async function flowAddons() {
       if (!items.length) items.push(inert('No widgets installed yet', info.dirs.widgets));
     } else if (view === 'themes') {
       title = 'Add-ons · Themes (A to switch)';
-      items = [{ label: 'Tessera (stock)', sub: 'built in', theme: 'stock' }];
-      info.themes.forEach((t) => items.push({ label: t.name, sub: [t.author, t.settings ? `${t.settings} extra setting${t.settings === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '), theme: t.id }));
+      // Every builtin plus anything downloaded — not just stock. (Removal, just below, stays
+      // scoped to downloaded themes only; you can't delete a factory one.)
+      items = info.allThemes.map((t) => ({
+        label: t.name,
+        sub: t.builtin ? 'built in' : (t.author || ''),
+        theme: t.id,
+      }));
       if (info.themes.length) items.push({ label: 'Remove a theme…', view: 'rmthemes', plain: true });
       items.push(inert('Theme packs go in', info.dirs.themes));
     } else if (view === 'rmthemes') {
       title = 'Add-ons · Remove a theme (A removes it)';
       items = info.themes.map((t) => ({ label: t.name, sub: t.author || '', rm: { dir: 'themes', id: t.id }, plain: true }));
       if (!items.length) items.push(inert('No downloaded themes', ''));
+    } else if (view === 'packs') {
+      title = 'Add-ons · Shards (A removes one)';
+      items = info.packs.map((p) => ({
+        label: p.name,
+        sub: [p.official ? 'Official' : 'Unverified', p.author, p.version].filter(Boolean).join(' · '),
+        rmPack: { id: p.id },
+        plain: true,
+      }));
+      info.rejectedPacks.forEach((x) => items.push(inert('⚠  ' + x.id, x.reason)));
+      items.push({ label: 'Shard safety…', view: 'packsSettings', plain: true });
+      if (!info.packs.length && !info.rejectedPacks.length) items.push(inert('No shards installed yet', info.dirs.packs));
+    } else if (view === 'packsSettings') {
+      title = 'Add-ons · Shard safety';
+      items = [
+        inert('What a shard is', 'A shard is real code with Tessera’s own access to this device — your files, your hardware, your settings. It is not sandboxed the way a widget is, and nothing here checks that it’s safe, only whose it is.'),
+        { label: 'Require PIN to install or remove a shard', sub: info.codeAddons.pinRequired ? 'On' : 'Off', op: 'togglePacksPin' },
+        { label: 'Allow unverified shards', sub: info.codeAddons.allowUnverified ? 'On — anything, not just Official' : 'Off — Official (signed by Tessera) only', op: 'toggleUnverified' },
+        inert('Official', 'Signed by the Tessera project itself — a real check against a key only the project holds, not just a label a shard can give itself.'),
+        inert('Unverified', 'Nobody vouches for this one — it didn’t come signed by the Tessera project. It runs with the same reach Tessera itself has: your files, your hardware, your settings. Same deal as running any program you downloaded from somewhere other than an app store — you already know that trade. This toggle is just how you tell Tessera you’re making it.'),
+      ];
     } else if (view === 'builtin') {
       title = 'Add-ons · Built in';
       items = info.presets.map((p) => inert(p.name, p.description || ''));
@@ -1678,6 +1811,7 @@ async function flowAddons() {
       items = [
         inert('Widgets', info.dirs.widgets),
         inert('Themes', info.dirs.themes),
+        inert('Shards', info.dirs.packs),
         inert('Art', info.dirs.art),
         inert('Fonts', info.dirs.fonts),
         inert('Sounds', info.dirs.sounds),
@@ -1700,6 +1834,33 @@ async function flowAddons() {
           if (r.ok && it.rm.dir === 'widgets') lib('none', {}, { quiet: true });
         }
       }
+      continue;
+    }
+    if (it.rmPack) {
+      // A shard's PIN requirement is its own owner-controlled setting (Shard safety, above), not
+      // the blanket "always ask" the widgets/themes removal above uses — so ask the server
+      // first and only interrupt for the PIN when it actually says so.
+      if (await confirm(`Remove “${it.label}”? Its folder is deleted from your Tessera folder.`, 'Remove')) {
+        busy = true;
+        let r;
+        try { r = await api.addons('remove', { dir: 'packs', id: it.rmPack.id }); } finally { busy = false; }
+        if (r && r.needPin) {
+          if (!(await requirePin())) continue;
+          busy = true;
+          try { r = await api.addons('remove', { dir: 'packs', id: it.rmPack.id }); } finally { busy = false; }
+        }
+        setStatus(r && r.ok ? `Removed ${it.label}.` : (r && r.error) || "Couldn't remove that.", !(r && r.ok));
+      }
+      continue;
+    }
+    if (it.op === 'togglePacksPin' || it.op === 'toggleUnverified') {
+      const apiOp = it.op === 'togglePacksPin' ? 'packsPinRequired' : 'packsAllowUnverified';
+      const next = it.op === 'togglePacksPin' ? !info.codeAddons.pinRequired : !info.codeAddons.allowUnverified;
+      busy = true;
+      let r;
+      try { r = await api.addons(apiOp, { value: next }); } finally { busy = false; }
+      if (r && r.needPin) { if (!(await requirePin())) continue; busy = true; try { r = await api.addons(apiOp, { value: next }); } finally { busy = false; } }
+      setStatus(r && r.ok ? 'Updated.' : (r && r.error) || "Couldn't change that.", !(r && r.ok));
       continue;
     }
     if (it.view) view = it.view;
@@ -3887,6 +4048,11 @@ async function reorderPress(act) {
 
 function press(act) {
   if (suspended || busy) return;
+  if (browserOpen && !modal) {
+    if (act === 'lb' || act === 'rb') { closeBrowser(); moveTabs(act === 'lb' ? -1 : 1); }
+    else if (act === 'b') closeBrowser(); // same as backing out of anything else
+    return; // everything else in the page itself goes through the mouse pointer, not Tessera nav
+  }
   if (modal) return modalPress(act);
   if (reorderId) return reorderPress(act);
   if (place) return placePress(act);
@@ -3896,11 +4062,17 @@ function press(act) {
     return;
   }
   if (focus === 'tabs') {
-    // On the tab bar: left/right move the pointer; down or A go to the tiles,
-    // except on "+ Mosaic", which is a button.
-    if (act === 'left') return moveTabs(-1);
-    if (act === 'right') return moveTabs(1);
-    if (act === 'down' || act === 'a') {
+    // Horizontal shells use left/right across categories. Dashboard turns the
+    // same list into a sidebar, so up/down stays visually and spatially true.
+    const shell = shellLayoutInfo();
+    if (shell.navigation === 'vertical') {
+      if (act === 'up') return moveTabs(-1);
+      if (act === 'down') return moveTabs(1);
+    } else {
+      if (act === 'left') return moveTabs(-1);
+      if (act === 'right') return moveTabs(1);
+    }
+    if (act === shell.contentEntry || act === 'a') {
       if (hoverId === 'new') return flowNewMosaic({});
       if (hoverId === 'browser') return launchBrowser();
       focus = 'content';
@@ -3945,12 +4117,21 @@ function onButton(n) {
     else { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm) press(nm); }
     return;
   }
+  if (browserOpen) {
+    // Y pops up Go to…; LB/RB/B need to actually reach press() so they can close the browser —
+    // everything else is left to the page itself (mouse, or typing once Go to… is open).
+    if (n === 3) return openUrlBar();
+    const nm = BUTTON_NAMES_BY_ROLE[n];
+    if (nm === 'lb' || nm === 'rb' || nm === 'b') press(nm);
+    return;
+  }
   if (n === 3) return yDown();
   const name = BUTTON_NAMES_BY_ROLE[n];
   if (name) press(name);
 }
 function onRelease(n) {
   if (n === 3 && modal && modal.kind === 'cal') return calCompare(false);
+  if (browserOpen) return; // Y is a tap here (open the address prompt), not a hold
   if (n === 3 && !modal) yUp();
 }
 
@@ -3982,6 +4163,11 @@ function resume(message) {
 api.onGameExited(resume);
 // Closing the browser with LB / RB lands on the neighbouring tab.
 api.onShiftTab((dir) => { hoverId = 'browser'; moveTabs(dir); });
+api.onBrowserAction((action) => {
+  if (!browserOpen || modal || urlBarOpening) return;
+  if (action === 'y') return openUrlBar();
+  if (action === 'b' || action === 'lb' || action === 'rb') press(action);
+});
 api.onLaunchFailed(resume);
 
 // ------------------------------------------------------------------ controllers
@@ -4069,7 +4255,13 @@ function activePad() {
 function loop(now) {
   const pad = suspended ? null : choosePad();
   if (pad && mouseShown && padBusy(pad)) hideMouse();
-  if (pad) {
+  if (pad && browserOpen && !modal) {
+    // The main-process adapters own browser input. Track held buttons without
+    // dispatch so native Gamepad API polling cannot double-fire B/Y/bumper actions
+    // or replay a held button when the address keyboard opens.
+    for (let n = 0; n < prevBtn.length; n++) prevBtn[n] = Boolean(pad.buttons[n] && pad.buttons[n].pressed);
+    lastNav = now;
+  } else if (pad) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
       applyGlyphs(); // "automatic" labels follow whichever controller is in use

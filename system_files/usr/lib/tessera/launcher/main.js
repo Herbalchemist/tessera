@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const { app, BrowserWindow, ipcMain, protocol, Menu } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, protocol, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { spawn, execFile, execFileSync } = require('child_process');
+const { verifyAddon } = require('./addon-verify');
 
 // Widgets are shown through their own scheme so the app can control exactly
 // what they may load. Must be registered before the app is ready.
@@ -44,6 +45,34 @@ const BUILTIN_INLAYS = {
   recent: {
     name: 'Recently played', description: 'Your latest games and apps',
     size: { w: 4, h: 3 }, min: { w: 3, h: 2 }, max: { w: 8, h: 6 }, resizable: true,
+  },
+  // The six below all read from systemInfo() (see near the "summaries" IPC handler), polled by
+  // the renderer itself once a second — nothing is pushed from here, and nothing here ever
+  // spawns a process; it's all local /proc, /sys and Node's own os module, so polling it that
+  // often costs nothing worth noticing.
+  cpu: {
+    name: 'CPU', description: 'Processor load',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  ram: {
+    name: 'Memory', description: 'RAM used and free',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  storage: {
+    name: 'Storage', description: 'Free space on the main drive',
+    size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 5, h: 3 }, resizable: true,
+  },
+  battery: {
+    name: 'Battery', description: 'Charge level, if this device has one',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
+  },
+  network: {
+    name: 'Network', description: 'Connection and live speed',
+    size: { w: 3, h: 2 }, min: { w: 2, h: 1 }, max: { w: 5, h: 3 }, resizable: true,
+  },
+  uptime: {
+    name: 'Uptime', description: 'How long this session has been running',
+    size: { w: 2, h: 2 }, min: { w: 2, h: 1 }, max: { w: 4, h: 3 }, resizable: true,
   },
 };
 const RECENT_MAX = 30; // remembered plays (the widget shows as many as fit)
@@ -510,6 +539,14 @@ let settings = {
   mutedDrives: [], // drives that never trigger that warning
   hiddenDrives: [], // drives left out of Storage altogether
   profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
+  // Shards (~/Tessera/Shards/<id>/) are the one add-on kind with Tessera's own level of system
+  // access — unlike themes (values only) or widgets (sandboxed, no network, own files only).
+  // Both of these are the owner's own call, not a fixed rule: this is a control Tessera gives
+  // you, not a gate Tessera puts on you.
+  codeAddons: {
+    pinRequired: true, // installing or removing a shard needs the PIN, same as everywhere else that only matters once you've set one
+    allowUnverified: true, // shards without Tessera's own signature still run — your device, your call
+  },
 };
 
 function loadSettings() {
@@ -578,6 +615,10 @@ function loadSettings() {
     settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
     if (d && d.pin && /^[0-9a-f]{32}$/.test(d.pin.salt || '') && /^[0-9a-f]{64}$/.test(d.pin.hash || '')) settings.pin = { salt: d.pin.salt, hash: d.pin.hash };
     settings.pinBrowser = !d || d.pinBrowser !== false;
+    settings.codeAddons = {
+      pinRequired: !d || !d.codeAddons || d.codeAddons.pinRequired !== false,
+      allowUnverified: !d || !d.codeAddons || d.codeAddons.allowUnverified !== false,
+    };
     settings.calibration = d && d.calibration ? cleanCal(d.calibration) : null;
     settings.calibrationSystem = Boolean(d && d.calibrationSystem === true && settings.calibration);
     if (d && typeof d.installRoot === 'string' && path.isAbsolute(d.installRoot)) settings.installRoot = d.installRoot;
@@ -625,8 +666,9 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
 const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear', '--shadow', '--ring', '--tab-shadow'];
-// Four themes ship with Tessera. They share one list of settings and differ
-// only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
+// Seven themes ship with Tessera. They share one list of settings and differ
+// only in their defaults, including a safe structural shell preset. ("stock"
+// stays the id of Bright so saved choices carry over.)
 // The two Mosaic themes turn on "selColor: pastel" (Theme Settings > Selector glow):
 // the glow around whatever the selector lands on takes a new random pastel every
 // move. The tile, tab, menu row or key itself keeps its own colour.
@@ -636,7 +678,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#f4f1fa', card: '#ffffff', panel: '#ffffff', text: '#2b2640', muted: '#6a6586', accent: '#6a58d8',
       border: '#2b2640', borderW: '0px', shadow: 60, radius: '20px', cancel: '#e5484d', confirm: '#12a37f',
-      backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'glow', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 30, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
   },
@@ -645,7 +687,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#0a0714', card: '#1a1230', panel: '#150e29', text: '#e9defc', muted: '#9a8bc0', accent: '#9d7bff',
       border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
-      backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
+      backdrop: 'mystic', shellLayout: 'classic', layout: 'rails', gridPreset: 'c5r3',
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1a1230',
     },
   },
@@ -654,7 +696,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#f8f5ef', card: '#ffffff', panel: '#ffffff', text: '#2a2638', muted: '#6d6882', accent: '#6063d8',
       border: '#2a2638', borderW: '0px', shadow: 55, radius: '20px', cancel: '#e5546b', confirm: '#1fa67a',
-      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'tiles', selColor: 'pastel', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
   },
@@ -663,8 +705,42 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#121018', card: '#1f1c2b', panel: '#1a1724', text: '#ece8f5', muted: '#9a94b0', accent: '#b4a7ff',
       border: '#3a3450', borderW: '0px', shadow: 70, radius: '20px', cancel: '#ff6b8b', confirm: '#4fe0b0',
-      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'tiles', selColor: 'pastel', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1f1c2b',
+    },
+  },
+  // Three console-inspired factory themes.
+  {
+    id: 'cartridge-pop', name: 'Cartridge Pop', author: 'Tessera',
+    defaults: {
+      bg: '#fff6e6', card: '#ffffff', panel: '#fff1d8', text: '#2b1d0e', muted: '#8a7556', accent: '#ff8a2b',
+      border: '#2b1d0e', borderW: '0px', radius: '40px', shadow: 70, tabShadow: 80, selectRing: '3px',
+      confirm: '#1fa67a', cancel: '#e5484d', backdrop: 'tiles', selColor: 'pastel', shellLayout: 'dock', layout: 'rails', gridPreset: 'c4r2',
+      setPack: false, setNotes: true, setIcons: 'animated',
+      widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 18, widgetClear: 60, widgetColor: '#ffffff', widgetSheen: true,
+      motion: true,
+    },
+  },
+  {
+    id: 'arcade-marquee', name: 'Arcade Marquee', author: 'Tessera',
+    defaults: {
+      bg: '#120a1a', card: '#1e1130', panel: '#180d28', text: '#fbeaff', muted: '#b79bd6', accent: '#ff4fd8',
+      border: '#ff4fd8', borderW: '2px', radius: '28px', shadow: 100, tabShadow: 100, selectRing: '5px',
+      confirm: '#3ee6c7', cancel: '#ff5d6c', backdrop: 'glow', selColor: 'accent', shellLayout: 'crossbar', layout: 'grid', gridPreset: 'c5r3',
+      setPack: false, setNotes: true, setIcons: 'animated',
+      widgetStyle: 'glass', widgetTint: 45, widgetBlur: 20, widgetClear: 55, widgetColor: '#1e1130', widgetSheen: true,
+      motion: true,
+    },
+  },
+  {
+    id: 'dashboard-steel', name: 'Dashboard Steel', author: 'Tessera',
+    defaults: {
+      bg: '#0c1118', card: '#17202c', panel: '#121922', text: '#e6edf5', muted: '#8fa0b3', accent: '#4fc3ff',
+      border: '#2c3b4d', borderW: '2px', radius: '10px', shadow: 60, tabShadow: 70, selectRing: '3px',
+      confirm: '#3ee0b0', cancel: '#ff6b6b', backdrop: 'none', selColor: 'accent', shellLayout: 'dashboard', layout: 'grid', gridPreset: 'c6r3',
+      setPack: true, setNotes: true, setIcons: 'still',
+      widgetStyle: 'outline', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#17202c', widgetSheen: false,
+      motion: true,
     },
   },
 ];
@@ -698,6 +774,13 @@ const STOCK_THEME = {
       options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }, { label: 'Mosaic tiles', value: 'tiles' }] },
     { id: 'confirm', group: 'Buttons', label: 'Done / Yes button color', type: 'color', default: '#3ddc97', var: '--ok' },
     { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
+    { id: 'shellLayout', group: 'Layout', label: 'Shell arrangement', type: 'choice', default: 'classic', hint: 'A structural preset for navigation and page framing. It does not edit your Home widgets or create arbitrary layouts.',
+      options: [
+        { label: 'Classic (top navigation)', value: 'classic' },
+        { label: 'Bottom dock / card strip', value: 'dock' },
+        { label: 'Crossbar (top categories)', value: 'crossbar' },
+        { label: 'Dashboard (left sidebar)', value: 'dashboard' },
+      ] },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
       options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
     { id: 'gridPreset', group: 'Layout', label: 'Grid size (default for every page)', type: 'choice', default: 'c5r3',
@@ -1724,11 +1807,21 @@ function runScan() {
 //   widgets/<id>/manifest.json + files    inlays shown on any page
 //   themes/<id>/...                       look and feel (loader comes later)
 //   art/  fonts/  sounds/                 shared assets themes and pages can use
+//   packs/<id>/addon.json + addon.sig?    real code — see below; everything else here is DATA
 //
-// Add-ons are DATA. Tessera never runs code from these folders in its own
-// process. A widget's page runs in a sandboxed frame with no network access.
+// Widgets, themes, art, fonts and sounds are DATA. Tessera never runs code from those folders
+// in its own process — a widget's page runs in a sandboxed frame with no network access, and a
+// theme can only set values from a fixed whitelist.
+//
+// Shards (the 'packs' dir/key below — "Shards" is just the user-facing name) are the one
+// exception: a shard IS code, with Tessera's own level of system access, by design — that's the
+// whole point of one (see tools/README.md and addon-verify.js). Whether a shard is signed by the
+// project ("Official") only says whose bytes they are, never whether they're safe to run; what
+// actually happens with a dropped-in shard is the owner's own call, through settings.codeAddons
+// (pinRequired / allowUnverified) above. Loading and running a shard's code is not wired up yet
+// — right now this folder is reserved and scanned for listing only, nothing in it is require()'d.
 
-const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds'];
+const ADDON_DIRS = ['widgets', 'themes', 'art', 'fonts', 'sounds', 'packs'];
 const WIDGET_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const WIDGET_MAX_FILE = 5 * 1024 * 1024;
 // ------------------------------------------------------- the Tessera folder
@@ -1737,7 +1830,7 @@ const WIDGET_MAX_FILE = 5 * 1024 * 1024;
 // itself only ever deletes things *inside* these folders, never the folders
 // themselves, so nothing the system expects to find can be removed from here.
 const VAULT_DIR = process.env.TESSERA_VAULT_DIR || path.join(process.env.TESSERA_DATA_DIR ? DATA_DIR : os.homedir(), 'Tessera');
-const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads' };
+const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads', packs: 'Shards' };
 const addonDir = (name) => path.join(VAULT_DIR, VAULT_FOLDERS[name] || name);
 const vaultFolder = (key) => path.join(VAULT_DIR, VAULT_FOLDERS[key]);
 // Is this real path inside the Tessera folder? With strict, the folder itself and
@@ -1864,11 +1957,40 @@ Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
 or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
+Shell arrangement: "shellLayout" is "classic", "dock", "crossbar" or "dashboard".
+This repositions approved navigation/content regions; it is not a freeform layout editor.
+Home widget coordinates are preserved when switching shell arrangements.
 Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
 Selector glow: "selColor": "pastel" gives the glow around the selected tile, tab, menu row
 or key a new random pastel every time the selector moves (fills keep their own colors;
 the default, "accent", keeps one glow color: the highlight color).
 Switch themes in Settings > Add-ons > Themes. Changes show in Settings > Theme Settings.
+`,
+  packs: `One folder per shard, with an addon.json inside. Unlike a theme or a widget, a shard
+is real code with Tessera's own level of system access — it is not sandboxed and it is not
+checked for safety by the folder name or by being here at all.
+
+  my-shard/
+    addon.json
+    addon.sig     (only on shards signed by the Tessera project — see below)
+    ...whatever the shard's own entry file needs
+
+addon.json:
+  {
+    "id": "my-shard",
+    "name": "My Shard",
+    "author": "You",
+    "version": "1.0.0",
+    "description": "What it does",
+    "entry": "index.js"
+  }
+
+"Official" means Tessera's own signing key actually signed these exact files (see
+tools/README.md in the project repo) — it says whose bytes these are, nothing more. A missing
+or non-matching addon.sig just means "unverified," not "broken" or "unsafe": whether an
+unverified shard is allowed to run at all is your own call, in Settings > Add-ons > Shards.
+Settings > Add-ons > Shards is also where installing or removing a shard can be asked to need
+the PIN, same as everywhere else that only matters once you've set one.
 `,
 };
 
@@ -1972,6 +2094,56 @@ function scanAddons() {
     }
     widgets.set(e.name, { dir, manifest: r.manifest });
   }
+  scanPacks(); // every place that rescans widgets rescans packs too, so the two never drift apart
+}
+
+let packs = new Map();  // id -> { dir, manifest, official, reason } — see addon-verify.js for official/reason
+let rejectedPacks = []; // [{ id, reason }], same idea as rejected (widgets) above
+
+function readPackManifest(dir) {
+  const file = path.join(dir, 'addon.json');
+  let st;
+  try { st = fs.statSync(file); } catch { return { reason: 'no addon.json' }; }
+  if (!st.isFile() || st.size > 16 * 1024) return { reason: 'addon.json is not a small file' };
+  let m;
+  try { m = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return { reason: 'addon.json is not valid JSON' }; }
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return { reason: 'addon.json has the wrong shape' };
+  const name = cleanTitle(m.name);
+  if (!name) return { reason: 'needs a "name"' };
+  const entry = m.entry;
+  if (typeof entry !== 'string' || !entry || entry.startsWith('/') || entry.split(/[\\/]/).includes('..'))
+    return { reason: '"entry" must be a relative file inside the pack' };
+  const opt = (v, max) => (typeof v === 'string' ? cleanTitle(v, max) || '' : '');
+  return { manifest: { name, description: opt(m.description, 160), author: opt(m.author, 60), version: opt(m.version, 20), entry } };
+}
+
+// Lists what's in the Shards folder and whether each one is genuinely signed by the project.
+// This only discovers and describes shards — nothing here loads or runs a single line of a
+// shard's own code; that comes later, gated by settings.codeAddons.
+function scanPacks() {
+  packs = new Map();
+  rejectedPacks = [];
+  let names = [];
+  try { names = fs.readdirSync(addonDir('packs'), { withFileTypes: true }); } catch { /* none yet */ }
+  for (const e of names) {
+    if (!e.isDirectory() || e.isSymbolicLink()) continue;
+    if (!WIDGET_ID_RE.test(e.name)) {
+      rejectedPacks.push({ id: e.name, reason: 'folder name must be lowercase letters, numbers, . _ -' });
+      continue;
+    }
+    const dir = path.join(addonDir('packs'), e.name);
+    const r = readPackManifest(dir);
+    if (r.reason) { rejectedPacks.push({ id: e.name, reason: r.reason }); continue; }
+    const entryFile = path.join(dir, r.manifest.entry);
+    const rp = real(entryFile);
+    const base = real(dir);
+    if (!rp || !base || !rp.startsWith(base + path.sep) || !fs.statSync(rp).isFile()) {
+      rejectedPacks.push({ id: e.name, reason: `"${r.manifest.entry}" was not found inside the folder` });
+      continue;
+    }
+    const v = verifyAddon(dir);
+    packs.set(e.name, { dir, manifest: r.manifest, official: v.official, reason: v.reason });
+  }
 }
 
 function inlayDef(type) {
@@ -2048,6 +2220,16 @@ function addonsInfo() {
     dirs: Object.fromEntries(ADDON_DIRS.map((d) => [d, display(addonDir(d))])),
     themeCount: countDirs('themes'),
     themes: [...themes.values()].filter((t) => !t.builtin).map((t) => ({ id: t.id, name: t.name, author: t.author, settings: t.extra.length })),
+    // Every theme, builtin and custom together — used by the Add-ons > Themes switcher, which
+    // (unlike the remove-a-theme list above) needs to offer every factory theme too, not just
+    // the ones you could delete.
+    allThemes: [...themes.values()].map((t) => ({ id: t.id, name: t.name, author: t.author, builtin: Boolean(t.builtin) })),
+    packs: [...packs].map(([id, p]) => ({
+      id, name: p.manifest.name, description: p.manifest.description, author: p.manifest.author, version: p.manifest.version,
+      official: p.official, reason: p.reason,
+    })),
+    rejectedPacks,
+    codeAddons: { pinRequired: settings.codeAddons.pinRequired, allowUnverified: settings.codeAddons.allowUnverified },
   };
 }
 
@@ -2086,6 +2268,7 @@ function createWindow() {
   });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+  mainWindow.on('resize', fitBrowserView);
   mainWindow.loadFile('index.html');
   mainWindow.webContents.on('did-finish-load', () => {
     ensureTree();
@@ -2652,13 +2835,16 @@ ipcMain.handle('storage', (_e, op, p) => storageOp(typeof op === 'string' ? op :
 
 ipcMain.handle('addons', safe((op, p) => {
   if (op === 'remove') {
-    // Deletes one widget or theme folder from the Tessera folder, never the folder itself.
-    const dir = p.dir === 'widgets' || p.dir === 'themes' ? p.dir : null;
-    if (!dir || typeof p.id !== "string" || !(dir === "widgets" ? WIDGET_ID_RE : THEME_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
+    // Deletes one widget, theme or shard folder from the Tessera folder, never the folder itself.
+    const dir = p.dir === 'widgets' || p.dir === 'themes' || p.dir === 'packs' ? p.dir : null;
+    if (!dir || typeof p.id !== "string" || !(dir === "themes" ? THEME_ID_RE : WIDGET_ID_RE).test(p.id)) return { ok: false, error: 'Bad request.' };
     // A theme isn't blocked from being deleted just because it's active or in use — it's only
-    // the PIN that's conditional on that. Whoever's relying on it falls back to stock.
+    // the PIN that's conditional on that. Whoever's relying on it falls back to stock. A shard's
+    // PIN requirement is the owner's own setting (settings.codeAddons.pinRequired), separate
+    // from everything else here, because a shard is a different kind of thing entirely.
     const inUse = dir === 'themes' && themeInUse(p.id);
     if (inUse && !pinOk()) return NEED_PIN;
+    if (dir === 'packs' && settings.codeAddons.pinRequired && !pinOk()) return NEED_PIN;
     const r = vaultDelete(path.join(addonDir(dir), p.id));
     if (!r.ok) return r;
     let fellBack = [];
@@ -2669,6 +2855,18 @@ ipcMain.handle('addons', safe((op, p) => {
     }
     scanAddons(); scanThemes(); saveSettings();
     return { ok: true, info: addonsInfo(), theme: themePayload(), fellBack };
+  }
+  if (op === 'packsPinRequired') {
+    if (!pinOk()) return NEED_PIN;
+    settings.codeAddons.pinRequired = p.value === true;
+    saveSettings();
+    return { ok: true, info: addonsInfo() };
+  }
+  if (op === 'packsAllowUnverified') {
+    if (!pinOk()) return NEED_PIN;
+    settings.codeAddons.allowUnverified = p.value === true;
+    saveSettings();
+    return { ok: true, info: addonsInfo() };
   }
   if (op === 'saveTheme') {
     if (typeof p.name !== 'string' || !p.name.trim()) return { ok: false, error: 'Give it a name.' };
@@ -3026,21 +3224,72 @@ const devices = require('./devices');
 
 // Nintendo Switch controllers, read straight from the kernel (Chromium leaves them out; see pads.js).
 // While the browser has the screen, LB / RB on them close it, like on any other controller.
+const browserGamepad = require('./browser-gamepad');
+const browserNavigation = require('./browser-navigation');
 let browserShoulder = null;
 const padBits = new Map();
+const browserPadNavigation = new Map();
 const padsCtl = require('./pads').create({
   prefs: () => ({ joycons: settings.pad.joycons }),
-  onList: (p) => send('pads', { type: 'list', ...p }),
+  onList: (p) => {
+    const ids = new Set((p.pads || []).map(pad => pad.id));
+    for (const id of padBits.keys()) {
+      if (!ids.has(id)) { padBits.delete(id); clearBrowserPadNavigation(id); }
+    }
+    send('pads', { type: 'list', ...p });
+  },
   onMotion: (m) => send('pads', { type: 'motion', ...m }),
   onFrame: (f) => {
     const before = padBits.get(f.id) || 0;
     padBits.set(f.id, f.b);
-    if (browserShoulder) {
+
+    const view = browserView;
+    const browserViewActive = Boolean(
+      view && mainWindow && !mainWindow.isDestroyed() &&
+      browserViewAttached &&
+      !view.webContents.isDestroyed()
+    );
+
+    if (browserShoulder || browserViewActive) {
       const down = f.b & ~before;
-      if (down & (1 << 4)) browserShoulder(-1);
-      else if (down & (1 << 5)) browserShoulder(1);
-      return; // Tessera is hidden: the page gets nothing
+      const pressKey = browserViewActive ? sendBrowserViewKey : sendExternalBrowserKey;
+      const axes = Array.isArray(f.a) ? f.a : [];
+
+      if (browserViewActive) {
+        // BrowserView receives page-navigation input directly. Browser controls which
+        // operate Tessera itself go to the hidden launcher through a narrow IPC event.
+        const actions = browserGamepad.standardButtonActions(down);
+        actions.browserActions.forEach(sendBrowserAction);
+        actions.keys.forEach(pressKey);
+      } else {
+        // Preserve the existing external-browser shoulder-button close behavior.
+        if (browserShoulder && (down & (1 << 4))) { browserShoulder(-1); return; }
+        if (browserShoulder && (down & (1 << 5))) { browserShoulder(1); return; }
+        if (down & (1 << 0)) pressKey('ENTER');
+        if (down & (1 << 1)) pressKey('ESC');
+        if (down & (1 << 2)) pressKey('TAB');
+      }
+
+      const navigation = browserPadDirectionRepeater(f.id);
+      for (const [bit, key] of [[12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']]) {
+        navigation.set('dpad:' + bit, f.b & (1 << bit) ? key : '');
+      }
+      const lx = Number(axes[0]) || 0;
+      const ly = Number(axes[1]) || 0;
+      const rx = Number(axes[2]) || 0;
+      const ry = Number(axes[3]) || 0;
+      const left = Math.abs(lx) > Math.abs(ly)
+        ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
+        : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
+      const right = Math.abs(rx) > Math.abs(ry)
+        ? (Math.abs(rx) > 0.65 ? (rx < 0 ? 'LEFT' : 'RIGHT') : '')
+        : (Math.abs(ry) > 0.65 ? (ry < 0 ? 'PAGEUP' : 'PAGEDOWN') : '');
+      navigation.set('left-stick', left);
+      navigation.set('right-stick', right);
+      return; // Keep browser input away from the hidden launcher UI.
     }
+
+    clearBrowserPadNavigation(f.id);
     send('pads', { type: 'frame', ...f });
   },
 });
@@ -3109,6 +3358,83 @@ ipcMain.handle('summaries', async () => {
   const addonsCount = widgets.size + [...themes.values()].filter((t) => !t.builtin).length;
   return { wifi: w || '', bluetooth: b || '', audio: a || '', home, addons: addonsCount, version: LAUNCHER_VERSION };
 });
+
+// ---- system info, for the built-in CPU/Memory/Storage/Battery/Network/Uptime widgets.
+// Everything here is a read; nothing here is ever written, and nothing here ever spawns a
+// process — just /proc, /sys and Node's own os module, cheap enough for the renderer to poll
+// once a second while one of these widgets is actually on screen (see tickInlays in renderer.js).
+let cpuPrev = null; // { idle, total } from the last sample, so usage is a rate, not a snapshot
+function cpuPct() {
+  const cpus = os.cpus();
+  let idle = 0, total = 0;
+  for (const c of cpus) { for (const k in c.times) total += c.times[k]; idle += c.times.idle; }
+  let pct = null;
+  if (cpuPrev) {
+    const dIdle = idle - cpuPrev.idle, dTotal = total - cpuPrev.total;
+    if (dTotal > 0) pct = Math.max(0, Math.min(100, Math.round((1 - dIdle / dTotal) * 100)));
+  }
+  cpuPrev = { idle, total };
+  return pct; // null only on the very first call this process ever makes
+}
+function ramInfo() {
+  try {
+    const text = fs.readFileSync('/proc/meminfo', 'utf8');
+    const get = (k) => { const m = new RegExp(`^${k}:\\s*(\\d+)`, 'm').exec(text); return m ? Number(m[1]) * 1024 : null; };
+    const total = get('MemTotal');
+    const avail = get('MemAvailable');
+    if (total == null || avail == null) throw new Error('unreadable');
+    return { total, used: Math.max(0, total - avail) };
+  } catch {
+    const total = os.totalmem(), free = os.freemem(); // older kernels without MemAvailable
+    return { total, used: Math.max(0, total - free) };
+  }
+}
+function storageInfo() {
+  try {
+    const drives = storageDrives();
+    const d = drives.find((x) => x.system) || drives[0];
+    return d ? { free: d.free, total: d.total } : null;
+  } catch { return null; }
+}
+function batteryInfo() {
+  try {
+    const base = '/sys/class/power_supply';
+    const names = fs.readdirSync(base);
+    const bat = names.find((n) => { try { return fs.readFileSync(path.join(base, n, 'type'), 'utf8').trim() === 'Battery'; } catch { return false; } });
+    if (!bat) return { present: false };
+    const read = (f) => { try { return fs.readFileSync(path.join(base, bat, f), 'utf8').trim(); } catch { return ''; } };
+    const pct = Number(read('capacity'));
+    const status = read('status'); // "Charging", "Discharging", "Full", "Not charging", "Unknown"
+    return { present: true, pct: Number.isFinite(pct) ? pct : null, charging: status === 'Charging' || status === 'Full' };
+  } catch { return { present: false }; }
+}
+let netPrev = null; // { at, rx, tx } from the last sample, so speed is a rate, not a snapshot
+function networkInfo() {
+  try {
+    const base = '/sys/class/net';
+    const names = fs.readdirSync(base).filter((n) => n !== 'lo');
+    let rx = 0, tx = 0, up = false;
+    for (const n of names) {
+      try {
+        if (fs.readFileSync(path.join(base, n, 'operstate'), 'utf8').trim() === 'up') up = true;
+        rx += Number(fs.readFileSync(path.join(base, n, 'statistics', 'rx_bytes'), 'utf8').trim()) || 0;
+        tx += Number(fs.readFileSync(path.join(base, n, 'statistics', 'tx_bytes'), 'utf8').trim()) || 0;
+      } catch { /* that interface came or went between the readdir and the read; skip it */ }
+    }
+    const now = Date.now();
+    let rxRate = null, txRate = null;
+    if (netPrev) {
+      const dt = (now - netPrev.at) / 1000;
+      if (dt > 0) { rxRate = Math.max(0, (rx - netPrev.rx) / dt); txRate = Math.max(0, (tx - netPrev.tx) / dt); }
+    }
+    netPrev = { at: now, rx, tx };
+    return { connected: up, rxRate, txRate };
+  } catch { return { connected: false, rxRate: null, txRate: null }; }
+}
+function systemInfo() {
+  return { cpu: cpuPct(), ram: ramInfo(), storage: storageInfo(), battery: batteryInfo(), network: networkInfo(), uptime: os.uptime() };
+}
+ipcMain.handle('systemInfo', () => systemInfo());
 app.on('before-quit', () => { try { devices.bluetooth.stop(); } catch { /* going away anyway */ } });
 
 // ------------------------------------------------------------ PIN
@@ -3389,45 +3715,159 @@ function resolveBrowser() {
   return null;
 }
 
-// While the browser has the screen, Tessera is hidden and can't see the
-// controller through the page. So for that time only, read the kernel's joystick
-// devices directly (via `cat`, which can be stopped cleanly) and watch for
-// LB / RB. js-device button numbers: 4 = LB, 5 = RB on common pads.
-const JS_LB = 4;
-const JS_RB = 5;
-function parseJsEvents(buf, onShoulder) {
-  // Each event is 8 bytes: time u32, value s16, type u8, number u8.
-  for (let i = 0; i + 8 <= buf.length; i += 8) {
-    const type = buf[i + 6];
-    if (type & 0x80) continue; // synthetic "initial state" event
-    if ((type & 0x7f) !== 1 || buf.readInt16LE(i + 4) !== 1) continue; // button pressed
-    const n = buf[i + 7];
-    if (n === JS_LB) onShoulder(-1);
-    else if (n === JS_RB) onShoulder(1);
-  }
-}
-function watchJoysticks(onShoulder, dir = '/dev/input') {
-  const procs = [];
-  let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => /^js\d+$/.test(n)); } catch { /* none */ }
-  // Nintendo controllers number their buttons differently here (Capture would count as LB);
-  // pads.js reads those properly.
-  names = names.filter((n) => {
-    try { return fs.readFileSync(`/sys/class/input/${n}/device/id/vendor`, 'utf8').trim().toLowerCase() !== '057e'; } catch { return true; }
-  });
-  for (const n of names) {
-    const cat = spawn('cat', [path.join(dir, n)], { stdio: ['ignore', 'pipe', 'ignore'] });
-    let pending = Buffer.alloc(0);
-    cat.stdout.on('data', (chunk) => {
-      pending = Buffer.concat([pending, chunk]);
-      const whole = pending.length - (pending.length % 8);
-      parseJsEvents(pending.subarray(0, whole), onShoulder);
-      pending = pending.subarray(whole);
+// Generic Linux joystick input for browser navigation. The joydev interface is non-exclusive:
+// native Gamepad API consumers and games still receive their original controller input. Nintendo
+// controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
+function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null, dir = '/dev/input') {
+  const devices = new Map();
+  let directoryWatch = null;
+  const sysRoot = '/sys/class/input';
+  const read = (file) => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return ''; } };
+  const real = (file) => { try { return fs.realpathSync(file); } catch { return ''; } };
+  const bitsHave = browserGamepad.capabilityHas;
+  const stopDevice = (entry) => {
+    if (entry.mapper) entry.mapper.dispose();
+    for (const proc of [entry.jsProc, entry.eventProc]) {
+      if (proc) { try { proc.kill(); } catch { /* gone */ } }
+    }
+  };
+  const scan = () => {
+    let names = [];
+    try { names = fs.readdirSync(dir); } catch { names = []; }
+    const jsNames = names.filter(browserGamepad.isJoystickNodeName);
+    const eventNames = names.filter(browserGamepad.isEventNodeName);
+    const eventByDevice = new Map();
+    for (const eventName of eventNames) {
+      const sysDevice = path.join(sysRoot, eventName, 'device');
+      const keyCaps = read(path.join(sysDevice, 'capabilities/key'));
+      // Require the Linux gamepad position codes for South and East. This excludes keyboards,
+      // mice, and the separate IMU event node on controllers that expose one.
+      if (!bitsHave(keyCaps, 0x130) || !bitsHave(keyCaps, 0x131)) continue;
+      const devicePath = real(sysDevice);
+      if (devicePath && !eventByDevice.has(devicePath)) eventByDevice.set(devicePath, eventName);
+    }
+    const seen = new Set();
+    for (const jsName of jsNames) {
+      const sysDevice = path.join(sysRoot, jsName, 'device');
+      const devicePath = real(sysDevice);
+      if (!devicePath) continue;
+      const eventName = eventByDevice.get(devicePath);
+      if (!eventName) continue;
+      const vendor = read(path.join(sysDevice, 'id/vendor')).toLowerCase();
+      if (vendor === '057e') continue; // pads.js handles Switch/Joy-Con mapping specially.
+      seen.add(jsName);
+      const old = devices.get(jsName);
+      if (old && old.eventName === eventName && old.devicePath === devicePath) continue;
+      if (old) { devices.delete(jsName); stopDevice(old); }
+
+      const axisCodes = browserGamepad.axisCodesFromSysfs(read(path.join(sysDevice, 'capabilities/abs')));
+      const entry = { eventName, devicePath, jsProc: null, eventProc: null, mapper: null };
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction });
+      entry.mapper = mapper;
+      const startReader = (node, eventSize, consume) => {
+        const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
+        let pending = Buffer.alloc(0);
+        proc.stdout.on('data', (chunk) => {
+          pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
+          const whole = pending.length - (pending.length % eventSize);
+          if (whole) consume(pending.subarray(0, whole));
+          pending = pending.subarray(whole);
+        });
+        proc.on('error', () => {});
+        proc.on('close', () => {
+          if (devices.get(jsName) === entry) {
+            devices.delete(jsName);
+            stopDevice(entry);
+          }
+        });
+        return proc;
+      };
+      entry.jsProc = startReader(jsName, 8, (buffer) => {
+        browserGamepad.parseJsEvents(buffer, (event) => {
+          const code = axisCodes[event.number];
+          if (code !== undefined) mapper.handleAxis(code, event.value);
+        });
+      });
+      entry.eventProc = startReader(eventName, 24, (buffer) => {
+        browserGamepad.parseInputEvents(buffer, (event) => mapper.handleButton(event.code, event.value));
+      });
+      devices.set(jsName, entry);
+    }
+    for (const [name, entry] of devices) {
+      if (!seen.has(name)) { devices.delete(name); stopDevice(entry); }
+    }
+  };
+  scan();
+  try {
+    directoryWatch = fs.watch(dir, scan);
+    directoryWatch.on('error', () => {
+      try { directoryWatch.close(); } catch { /* gone */ }
+      directoryWatch = null;
     });
-    cat.on('error', () => {});
-    procs.push(cat);
+  } catch { /* joystick hotplug watch unavailable */ }
+  return () => {
+    if (directoryWatch) { try { directoryWatch.close(); } catch { /* gone */ } }
+    for (const entry of devices.values()) stopDevice(entry);
+    devices.clear();
+  };
+}
+const BROWSER_KEYSYMS = {
+  UP: 'Up', DOWN: 'Down', LEFT: 'Left', RIGHT: 'Right',
+  ENTER: 'Return', ESC: 'Escape', TAB: 'Tab', PAGEUP: 'Page_Up', PAGEDOWN: 'Page_Down',
+};
+function sendExternalBrowserKey(key) {
+  const keysym = BROWSER_KEYSYMS[key];
+  if (!keysym) return;
+  const child = spawn('wtype', ['-k', keysym], { stdio: 'ignore' });
+  child.on('error', () => {});
+}
+function sendBrowserViewKey(key) {
+  const view = browserView;
+  if (!view || !mainWindow || mainWindow.isDestroyed() ||
+      !browserViewAttached || view.webContents.isDestroyed()) return;
+  try {
+    for (const event of browserNavigation.keyEvents(key)) view.webContents.sendInputEvent(event);
+  } catch {}
+}
+function sendBrowserAction(action) {
+  if (action !== 'b' && action !== 'lb' && action !== 'rb' && action !== 'y') return;
+  send('browser-action', action);
+}
+function browserNavigationKey(key) {
+  const view = browserView;
+  const embeddedActive = Boolean(
+    view && mainWindow && !mainWindow.isDestroyed() && browserViewAttached && !view.webContents.isDestroyed()
+  );
+  if (embeddedActive) sendBrowserViewKey(key);
+  else if (browserShoulder) sendExternalBrowserKey(key);
+}
+function browserPadDirectionRepeater(id) {
+  let navigation = browserPadNavigation.get(id);
+  if (!navigation) {
+    navigation = browserGamepad.createDirectionRepeater({ onAction: browserNavigationKey });
+    browserPadNavigation.set(id, navigation);
   }
-  return () => procs.forEach((p) => { try { p.kill(); } catch { /* gone */ } });
+  return navigation;
+}
+function clearBrowserPadNavigation(id) {
+  if (id !== undefined) {
+    const navigation = browserPadNavigation.get(id);
+    if (navigation) navigation.dispose();
+    browserPadNavigation.delete(id);
+    return;
+  }
+  for (const navigation of browserPadNavigation.values()) navigation.dispose();
+  browserPadNavigation.clear();
+}
+let browserViewJoystickStop = null;
+function startBrowserViewJoystickWatch() {
+  if (browserViewJoystickStop) return;
+  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey, sendBrowserAction);
+}
+function stopBrowserViewJoystickWatch() {
+  if (!browserViewJoystickStop) return;
+  browserViewJoystickStop();
+  browserViewJoystickStop = null;
 }
 // Which Flatpak app is this command running, if any (so it can be stopped properly)?
 function flatpakAppId(file, args) {
@@ -3451,6 +3891,7 @@ function runChild(file, args, cwd, label, logName) {
     running = false;
     if (stopWatching) stopWatching();
     browserShoulder = null;
+    clearBrowserPadNavigation();
     padsCtl.resume();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
@@ -3492,7 +3933,7 @@ function runChild(file, args, cwd, label, logName) {
       try { process.kill(-child.pid, 'SIGTERM'); } catch { /* already gone */ }
       setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } }, 4000);
     };
-    stopWatching = watchJoysticks(closeBrowser);
+    stopWatching = watchJoysticks(closeBrowser, sendExternalBrowserKey);
     browserShoulder = closeBrowser;
   }
 }
@@ -3541,6 +3982,102 @@ function leaveTessera() {
   // person looking at a frozen screen: end the process anyway.
   setTimeout(() => app.exit(0), 4000);
 }
+// ------------------------------------------------------------- embedded browser view
+// WebContentsView is the supported Electron 44 API; the browser remains inside Tessera.
+let browserView = null;
+let browserViewAttached = false;
+let browserSessionOpen = false;
+const BROWSER_PARTITION = 'persist:tessera-browser';
+function isLauncherMainFrame(event) {
+  return Boolean(
+    event && mainWindow && !mainWindow.isDestroyed() &&
+    event.sender === mainWindow.webContents &&
+    event.senderFrame && event.senderFrame === mainWindow.webContents.mainFrame
+  );
+}
+function ensureBrowserView() {
+  if (browserView) return browserView;
+  browserView = new WebContentsView({
+    webPreferences: {
+      partition: BROWSER_PARTITION,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+    },
+  });
+  // The remote browser has no preload bridge. Its dedicated session is denied
+  // all permissions until Tessera has a controller-friendly consent flow.
+  const browserSession = browserView.webContents.session;
+  browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  browserSession.setPermissionCheckHandler(() => false);
+  browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  browserView.webContents.on('will-navigate', (event, target) => {
+    if (!browserNavigation.isHttpUrl(target)) event.preventDefault();
+  });
+  browserView.webContents.on('did-finish-load', () => {
+    if (browserViewAttached && !browserView.webContents.isDestroyed()) {
+      try { browserView.webContents.focus(); } catch { /* browser closed while loading */ }
+    }
+  });
+  return browserView;
+}
+function attachBrowserView() {
+  if (!browserView || !mainWindow || mainWindow.isDestroyed() || browserViewAttached) return;
+  mainWindow.contentView.addChildView(browserView);
+  browserViewAttached = true;
+  try { browserView.webContents.focus(); } catch { /* browser closed while attaching */ }
+}
+function detachBrowserView() {
+  if (!browserView || !mainWindow || mainWindow.isDestroyed() || !browserViewAttached) return;
+  clearBrowserPadNavigation();
+  mainWindow.contentView.removeChildView(browserView);
+  browserViewAttached = false;
+  try { mainWindow.focus(); } catch { /* window is closing */ }
+}
+function fitBrowserView() {
+  if (!browserView || !mainWindow || mainWindow.isDestroyed()) return;
+  const { width, height } = mainWindow.getContentBounds();
+  browserView.setBounds({ x: 0, y: 0, width, height });
+}
+// The renderer provides the interactive PIN prompt, but the privileged navigation
+// entry point verifies it too so a compromised renderer cannot bypass browser policy.
+ipcMain.handle('browser', (event, op, payload) => {
+  if (!isLauncherMainFrame(event)) return { ok: false, error: 'Unauthorized browser request.' };
+  if (op === 'open' || op === 'go') {
+    const url = payload && typeof payload.url === 'string' ? payload.url : null;
+    if (settings.pinBrowser !== false && !pinOk()) return NEED_PIN;
+    const checked = browserNavigation.validateHttpUrl(url);
+    if (!checked.ok) return checked;
+    const view = ensureBrowserView();
+    browserSessionOpen = true;
+    attachBrowserView();
+    startBrowserViewJoystickWatch();
+    fitBrowserView();
+    view.webContents.loadURL(checked.url).catch(() => {});
+    return { ok: true };
+  }
+  if (op === 'hide') {
+    detachBrowserView();
+    stopBrowserViewJoystickWatch();
+    return { ok: true };
+  }
+  if (op === 'show') {
+    if (settings.pinBrowser !== false && !pinOk()) return NEED_PIN;
+    if (!browserSessionOpen) return { ok: false, error: 'Open the browser first.' };
+    if (browserView) { attachBrowserView(); startBrowserViewJoystickWatch(); fitBrowserView(); }
+    return { ok: true };
+  }
+  if (op === 'close') {
+    browserSessionOpen = false;
+    detachBrowserView();
+    stopBrowserViewJoystickWatch();
+    return { ok: true };
+  }
+  return { ok: false, error: 'Unknown action.' };
+});
 ipcMain.handle('quit', () => {
   if (!pinOk()) return NEED_PIN;
   leaveTessera();
