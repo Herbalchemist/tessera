@@ -1,0 +1,237 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Normalize Linux evdev button codes and joydev-normalized axes for browser navigation.
+// evdev button codes are position-based (BTN_SOUTH/EAST/TL/TR), unlike joydev button indexes,
+// which can shift depending on which buttons a controller reports.
+'use strict';
+
+const EV_KEY = 1;
+const BTN_SOUTH = 0x130;
+const BTN_EAST = 0x131;
+const BTN_NORTH = 0x133;
+const BTN_WEST = 0x134;
+const BTN_TL = 0x136;
+const BTN_TR = 0x137;
+const BTN_DPAD_UP = 0x220;
+const BTN_DPAD_DOWN = 0x221;
+const BTN_DPAD_LEFT = 0x222;
+const BTN_DPAD_RIGHT = 0x223;
+const ABS_X = 0x00;
+const ABS_Y = 0x01;
+const ABS_RX = 0x03;
+const ABS_RY = 0x04;
+const ABS_HAT0X = 0x10;
+const ABS_HAT0Y = 0x11;
+
+function isJoystickNodeName(name) {
+  return typeof name === 'string' && /^js\d+$/.test(name);
+}
+function isEventNodeName(name) {
+  return typeof name === 'string' && /^event\d+$/.test(name);
+}
+
+// Linux prints sysfs input capabilities as space-separated unsigned-long words,
+// highest word first. Even zero words have their full bit position; concatenating
+// their unpadded hex text or passing the whole string to BigInt is incorrect.
+function capabilityBits(value, wordBits = process.arch === 'ia32' || process.arch === 'arm' ? 32 : 64) {
+  if (wordBits !== 32 && wordBits !== 64) return 0n;
+  const words = String(value || '').trim().split(/\s+/);
+  if (words.length > 32 || words.some(word => !/^[0-9a-f]+$/i.test(word) || word.length > wordBits / 4)) return 0n;
+  return words.reduce((bits, word) => (bits << BigInt(wordBits)) | BigInt('0x' + word), 0n);
+}
+function capabilityHas(value, code, wordBits) {
+  return Number.isInteger(code) && code >= 0 && code < 1024 &&
+    (capabilityBits(value, wordBits) & (1n << BigInt(code))) !== 0n;
+}
+
+// Standard Gamepad API positions, also used by pads.js virtual Nintendo frames.
+// Confirm/cancel follow the launcher's physical roles, not the printed letters.
+function standardButtonActions(down) {
+  const keys = [];
+  const browserActions = [];
+  if (down & (1 << 0)) keys.push('ENTER');
+  if (down & (1 << 1)) browserActions.push('b');
+  if (down & (1 << 2)) keys.push('TAB');
+  for (const [bit, action] of [[3, 'y'], [4, 'lb'], [5, 'rb']]) {
+    if (down & (1 << bit)) browserActions.push(action);
+  }
+  return { keys, browserActions };
+}
+
+function parseJsEvents(buffer, onEvent) {
+  for (let i = 0; i + 8 <= buffer.length; i += 8) {
+    const rawType = buffer[i + 6];
+    if (rawType & 0x80) continue; // Ignore initial state; no navigation until the user moves.
+    const type = rawType & ~0x80;
+    if (type !== 0x02) continue;
+    onEvent({ type: 'axis', number: buffer[i + 7], value: buffer.readInt16LE(i + 4) });
+  }
+}
+
+function parseInputEvents(buffer, onEvent) {
+  for (let i = 0; i + 24 <= buffer.length; i += 24) {
+    const type = buffer.readUInt16LE(i + 16);
+    if (type !== EV_KEY) continue;
+    onEvent({ type: 'button', code: buffer.readUInt16LE(i + 18), value: buffer.readInt32LE(i + 20) });
+  }
+}
+
+function axisCodesFromSysfs(hex) {
+  const bits = capabilityBits(hex);
+  const codes = [];
+  for (let code = 0; code <= 0x3f; code++) {
+    if ((bits & (1n << BigInt(code))) !== 0n) codes.push(code);
+  }
+  return codes;
+}
+
+// Keep keyboard-like navigation moving while a direction is held. Linux gamepad
+// devices do not reliably generate EV_KEY repeats, and sticks report only when
+// their position changes. The most recently engaged input wins; releasing it
+// resumes an older held direction, which makes D-pad/stick handoffs predictable.
+function createDirectionRepeater({
+  onAction = () => {},
+  initialDelay = 350,
+  repeatInterval = 90,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+} = {}) {
+  const held = new Map();
+  let sequence = 0;
+  let active = '';
+  let timer = null;
+  let disposed = false;
+
+  const stopTimer = () => {
+    if (timer !== null) clearTimeoutFn(timer);
+    timer = null;
+  };
+  const current = () => {
+    let winner = null;
+    for (const entry of held.values()) {
+      if (!winner || entry.order > winner.order) winner = entry;
+    }
+    return winner ? winner.key : '';
+  };
+  const schedule = (delay) => {
+    if (!active || disposed) return;
+    timer = setTimeoutFn(() => {
+      timer = null;
+      if (!active || disposed) return;
+      onAction(active);
+      schedule(repeatInterval);
+    }, delay);
+    // Unref normal timers so a disconnected controller cannot keep the launcher alive.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+  };
+  const update = (source, key) => {
+    if (disposed || typeof source !== 'string' || !source) return;
+    const old = held.get(source);
+    if (key) {
+      if (old && old.key === key) return;
+      held.set(source, { key, order: ++sequence });
+    } else if (!old) {
+      return;
+    } else {
+      held.delete(source);
+    }
+    const next = current();
+    if (next === active) return;
+    stopTimer();
+    active = next;
+    if (active) {
+      onAction(active);
+      schedule(initialDelay);
+    }
+  };
+
+  return {
+    set: update,
+    clear() { held.clear(); active = ''; stopTimer(); },
+    dispose() { disposed = true; held.clear(); active = ''; stopTimer(); },
+  };
+}
+
+function createMapper({
+  onShoulder,
+  onAction = () => {},
+  onBrowserAction = null,
+  initialDelay,
+  repeatInterval,
+  setTimeoutFn,
+  clearTimeoutFn,
+} = {}) {
+  if (typeof onShoulder !== 'function') onShoulder = () => {};
+  if (typeof onBrowserAction !== 'function') onBrowserAction = null;
+  const axes = new Map();
+  const pressed = new Set();
+  const directions = createDirectionRepeater({ onAction, initialDelay, repeatInterval, setTimeoutFn, clearTimeoutFn });
+  const setDirection = (source, key) => directions.set(source, key);
+  const get = (code) => axes.get(code) || 0;
+  const dir = (x, y, threshold) => Math.abs(get(x)) > Math.abs(get(y))
+    ? (Math.abs(get(x)) > threshold ? (get(x) < 0 ? 'LEFT' : 'RIGHT') : '')
+    : (Math.abs(get(y)) > threshold ? (get(y) < 0 ? 'UP' : 'DOWN') : '');
+  const browserAction = (action, fallback) => {
+    if (onBrowserAction) onBrowserAction(action);
+    else if (fallback) onAction(fallback);
+  };
+
+  function handleAxis(code, value) {
+    axes.set(code, Math.max(-1, Math.min(1, value / 32767)));
+    if (code === ABS_X || code === ABS_Y) setDirection('left-stick', dir(ABS_X, ABS_Y, 0.65));
+    if (code === ABS_HAT0X || code === ABS_HAT0Y) {
+      const hx = get(ABS_HAT0X), hy = get(ABS_HAT0Y);
+      const hat = Math.abs(hx) > Math.abs(hy)
+        ? (Math.abs(hx) > 0.5 ? (hx < 0 ? 'LEFT' : 'RIGHT') : '')
+        : (Math.abs(hy) > 0.5 ? (hy < 0 ? 'UP' : 'DOWN') : '');
+      setDirection('hat', hat);
+    }
+    if (code === ABS_RX || code === ABS_RY) {
+      const right = dir(ABS_RX, ABS_RY, 0.65);
+      setDirection('right-stick', right === 'UP' ? 'PAGEUP' : right === 'DOWN' ? 'PAGEDOWN' : right);
+    }
+  }
+
+  function handleButton(code, value) {
+    const dpad = {
+      [BTN_DPAD_UP]: 'UP', [BTN_DPAD_DOWN]: 'DOWN',
+      [BTN_DPAD_LEFT]: 'LEFT', [BTN_DPAD_RIGHT]: 'RIGHT',
+    };
+    if (Object.prototype.hasOwnProperty.call(dpad, code)) {
+      if (value === 0) {
+        pressed.delete(code);
+        setDirection('dpad:' + code, '');
+      } else if (value === 1 && !pressed.has(code)) {
+        pressed.add(code);
+        setDirection('dpad:' + code, dpad[code]);
+      }
+      return;
+    }
+    if (value === 0) { pressed.delete(code); return; }
+    if (value !== 1 || pressed.has(code)) return; // Ignore key repeat.
+    pressed.add(code);
+    if (code === BTN_TL) {
+      if (onBrowserAction) return onBrowserAction('lb');
+      return onShoulder(-1);
+    }
+    if (code === BTN_TR) {
+      if (onBrowserAction) return onBrowserAction('rb');
+      return onShoulder(1);
+    }
+    if (code === BTN_SOUTH) return onAction('ENTER');
+    if (code === BTN_WEST) return onAction('TAB');
+    // B is a launcher-level browser action when this is the embedded view. It
+    // intentionally remains Escape for callers without that semantic callback.
+    if (code === BTN_EAST) return browserAction('b', 'ESC');
+    // Standard gamepad button 3 is the top face button (Xbox Y / Nintendo X),
+    // the documented controller equivalent of the browser address action.
+    if (code === BTN_NORTH && onBrowserAction) return onBrowserAction('y');
+  }
+
+  return { handleAxis, handleButton, dispose: () => directions.dispose() };
+}
+
+module.exports = {
+  parseJsEvents, parseInputEvents, axisCodesFromSysfs,
+  capabilityBits, capabilityHas,
+  isJoystickNodeName, isEventNodeName, standardButtonActions, createDirectionRepeater, createMapper,
+};

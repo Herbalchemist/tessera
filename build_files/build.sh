@@ -21,7 +21,7 @@ fi
 
 ### Tessera launcher
 # Node is only needed here, to fetch Electron into the launcher folder.
-dnf5 install -y nodejs npm
+dnf5 install -y nodejs npm wtype
 # Which Electron: the version in launcher/electron-version (one line, like 38.2.0) if that
 # file exists, so every build uses the same one and an update only carries what really
 # changed. Without the file the newest is used, as before.

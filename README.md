@@ -12,17 +12,19 @@ Tessera starts straight into a console-style launcher that you drive with a game
 
 **A launcher made for a controller**
 - Tabs you switch with LB / RB: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself), and Settings.
-- Home is a page of widgets (a clock, recently played games, and community-made widgets from Add-ons).
+- Home is a page of widgets: a clock, recently played games, six built-in system widgets (CPU, Memory, Storage, Battery, Network, Uptime), and community-made widgets from Add-ons.
 - Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
 - Mosaics can hold games, apps, widgets and folders. Press Y on a tile for its options.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.
+- The Browser tab is a real page, full screen, no Tessera bar over it — press Y (or the equivalent on your controller) to type an address or search, X to focus the next link/field, A to activate the focused control, and LB / RB or B to leave it. D-pad/left stick send arrow navigation; the right stick sends page scrolling. These are positional launcher roles: Nintendo's printed face-button letters differ.
 
 **Make it yours**
-- Four factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic* and *Tessera Mosaic Dark*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
-- Themes aren't locked to the four factory ones. Drop a `theme.json` in `~/Tessera/Themes/<your-theme-id>/` and it shows up alongside them — a theme is values only (colors, layout, grid density, icon style and more), never code, so nothing it ships can do more than Settings itself already allows.
-- Theme Settings can also save, rename, overwrite and delete the themes you make right there in the console — no file editing needed. The four factory themes stay read-only. Deleting or renaming a theme someone else is relying on asks for the PIN first, then falls them back to *Tessera Bright*.
+- Seven factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic*, *Tessera Mosaic Dark*, and three console-inspired looks — *Cartridge Pop*, *Arcade Marquee* and *Dashboard Steel*. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
+- Theme Settings includes **Shell arrangement**, a structural preset rather than a colour swap: **Classic** keeps the familiar top navigation, **Bottom dock / card strip** puts categories below compact horizontal cards, **Crossbar** uses full-width horizontal category segments above vertical content, and **Dashboard** uses a left category sidebar. The factory console themes select Dock, Crossbar and Dashboard respectively.
+- Themes aren't locked to the four factory ones. Drop a `theme.json` in `~/Tessera/Themes/<your-theme-id>/` and it shows up alongside them — a theme is values only (colors, approved shell/layout presets, grid density, icon style and more), never code, so nothing it ships can do more than Settings itself already allows. Add `"shellLayout": "classic"`, `"dock"`, `"crossbar"`, or `"dashboard"` under `defaults` to choose one in a custom theme.
+- Theme Settings can also save, rename, overwrite and delete the themes you make right there in the console — no file editing needed. The seven factory themes stay read-only. Deleting or renaming a theme someone else is relying on asks for the PIN first, then falls them back to *Tessera Bright*.
 - Profiles (Settings > Profiles): name more than one person who uses this Tessera and, optionally, give each their own theme — or leave it following whatever's active. This is the foundation piece, not yet a full switch-user experience with its own library or controls.
-- Three tile layouts: **Rails** (sideways rows), **Grid** and **Flow**. Grid and Flow come in ready-made sizes, or set your own (up to 12 columns).
+- Three tile layouts: **Rails** (sideways rows), **Grid** and **Flow**. Grid and Flow come in ready-made sizes, or set your own (up to 12 columns). Shell arrangements are a first structural step, not a freeform layout editor: they reposition only the launcher’s tested chrome and content regions, and never move or rewrite Home widget positions.
 - Display calibration for the launcher and, optionally, for games.
 - Controller settings: dead zones, rumble, button mapping, automatic button glyphs (Xbox, PlayStation, Nintendo).
 - Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
@@ -86,7 +88,8 @@ After the restart the machine signs in to Tessera by itself.
 
 - **Steam never starts by itself.** Tessera starts programs only when you pick them, and it doesn't wrap games in a sandbox.
 - **No telemetry.** The launcher makes no network requests of its own (its content-security policy forbids them). Updates are fetched by the system's own `bootc` tool.
-- **Not yet:** a built-in web browser for streaming services, Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
+- **Browser permissions:** the embedded browser is isolated from the launcher and currently denies camera, microphone, location, notifications and other permission requests. A controller-friendly website-permission prompt is not built yet. Keyboard-accessible links/fields can be focused with X; arbitrary page-field typing, mouse-only sites and a controller-driven web pointer are not fully implemented.
+- **Not yet:** Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
 
 ## How it's built
 
@@ -95,6 +98,15 @@ After the restart the machine signs in to Tessera by itself.
 - `build_files/build.sh`: the image build steps.
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
+
+**Launcher checks** (Node.js required):
+
+```bash
+npm --prefix system_files/usr/lib/tessera/launcher run check
+npm --prefix system_files/usr/lib/tessera/launcher test
+```
+
+These checks cover deterministic input/theme logic, not real controller hardware or a booted Bazzite image. See `docs/tessera-review-and-fixes.md` for the patch assessment and remaining design work.
 
 Bug reports and ideas are welcome as GitHub issues.
 
