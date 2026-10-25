@@ -524,6 +524,8 @@ let holdTimer = null;
 let reorderId = null;       // mosaic being moved with the tab bar
 let place = null;           // an inlay being placed or resized on Home's grid
 let yTap = false;           // Y went down on the tiles: a tap opens Options, a long hold lifts the mosaic
+let escHeld = false;        // Escape is down on the keyboard: Esc+Left/Right swaps tabs instead of going back
+let escChordUsed = false;   // true once that chord fired, so releasing Esc doesn't also trigger "back"
 const prevBtn = new Array(32).fill(false);
 const wasBig = {};          // rows that showed the big empty tile last render
 
@@ -4368,9 +4370,22 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') return finishKeys(false);
     if (e.key === 'Backspace') return keyAction('back');
   }
+  // Esc+Left / Esc+Right is the keyboard equivalent of LB/RB: switch tabs (mosaics).
+  // Esc alone still means "back", but only fires on release, so it can be judged as
+  // a chord first — the same tap-vs-hold pattern used for Y below.
+  if (e.key === 'Escape') {
+    escHeld = true;
+    escChordUsed = false;
+    return e.preventDefault();
+  }
+  if (escHeld && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    escChordUsed = true;
+    moveTabs(e.key === 'ArrowRight' ? 1 : -1);
+    return e.preventDefault();
+  }
   const map = {
     ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
-    Enter: 'a', Escape: 'b', Backspace: 'b', PageUp: 'lb', PageDown: 'rb',
+    Enter: 'a', Backspace: 'b', PageUp: 'lb', PageDown: 'rb',
   };
   if (e.key === 'y') return e.repeat ? undefined : yDown();
   const act = map[e.key] || (e.key === 'x' ? 'x' : null);
@@ -4378,6 +4393,14 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === 'y') yUp();
+  // Only fire "back" here if OUR keydown branch actually claimed this Escape (escHeld).
+  // When a modal (capture/pad/color/keys) already handled it on keydown, escHeld was
+  // never set, so this stays a no-op instead of firing a second, spurious "back".
+  if (e.key === 'Escape' && escHeld) {
+    if (!escChordUsed) press('b');
+    escHeld = false;
+    escChordUsed = false;
+  }
 });
 window.addEventListener('resize', update);
 
