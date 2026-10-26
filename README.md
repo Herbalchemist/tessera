@@ -126,7 +126,8 @@ Tessera is an image of Bazzite with the Tessera session on top, so you start fro
 
 **You need**
 - A PC running the current **Bazzite** (install it from [bazzite.gg](https://bazzite.gg); the [Bazzite docs](https://docs.bazzite.gg) cover that part).
-- Tessera is built on Bazzite's standard desktop image, so it is aimed at **AMD and Intel graphics for now**. NVIDIA machines have not been tried.
+- **AMD or Intel graphics, for now.** Bazzite itself supports NVIDIA cards, but through separate images (`bazzite-nvidia-open` for GTX 16 / RTX cards, `bazzite-nvidia` for older ones) that come with NVIDIA's driver. Tessera is currently built only from the standard `bazzite` image, which doesn't include that driver. An NVIDIA build of Tessera is planned.
+  - **On an NVIDIA Bazzite install, don't switch to Tessera yet.** You'd lose the NVIDIA driver until you switch back.
 
 **Switch to Tessera**
 
@@ -164,6 +165,7 @@ After the restart the machine signs in to Tessera by itself.
 - A freeform, drag-and-drop layout editor, and a separate theme creator app.
 - Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
 - Full profile switching: each person with their own library and controls.
+- An NVIDIA build (on Bazzite's `-nvidia-open` image).
 
 ## How it's built
 
