@@ -766,3 +766,128 @@ body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: 
    exact pixel bounds set from main.js — nothing here sizes or shows it, CSS only hides
    Tessera's own chrome underneath so nothing peeks out around the edges. */
 body.browser-open header, body.browser-open #crumb, body.browser-open main, body.browser-open footer, body.browser-open h1#title { display: none; }
+
+/* ---- structural shell presets ------------------------------------------------
+   These are deliberate whole-screen arrangements, selected by the data-only
+   `shellLayout` Theme Setting. They only reposition Tessera's existing chrome;
+   page rows, the Home canvas and modal DOM all stay the same, so user widgets
+   and their coordinates are never rewritten by a theme. */
+
+/* Cartridge Pop: content is a compact horizontal card strip, with category
+   navigation in a physical-looking dock below it. */
+body[data-shell-layout="dock"] {
+  --card-w: clamp(168px, calc(290px * var(--auto)), 330px);
+  --card-h: clamp(110px, calc(174px * var(--auto)), 200px);
+}
+body[data-shell-layout="dock"] > header {
+  order: 6;
+  flex: 0 0 auto;
+  width: min(1480px, 100%);
+  align-self: center;
+  gap: clamp(8px, 1.5vw, 24px);
+  padding: clamp(8px, 1.3vh, 16px) clamp(12px, 2vw, 30px);
+  margin: clamp(6px, 1.2vh, 14px) 0 clamp(4px, 1vh, 12px);
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 70%, var(--accent));
+  border-radius: calc(var(--radius) + 6px);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  box-shadow: 0 -10px 32px rgb(0 0 0 / calc(var(--shadow) * 0.16));
+}
+body[data-shell-layout="dock"] > header .navport {
+  width: min(1170px, 78vw);
+  padding: clamp(14px, 2vh, 22px) 0;
+  margin: clamp(-12px, -1.5vh, -8px) 0;
+}
+body[data-shell-layout="dock"] > #crumb { order: 1; text-align: left; padding: clamp(8px, 1.5vh, 18px) clamp(12px, 3vw, 52px) 0; }
+body[data-shell-layout="dock"] > main { order: 2; }
+body[data-shell-layout="dock"] > h1#title { order: 3; min-height: 0; text-align: left; margin: 0 clamp(12px, 3vw, 52px); font-size: clamp(1.35rem, 2.1rem, 2.2rem); }
+body[data-shell-layout="dock"] > #status { order: 4; min-height: 1.2em; text-align: left; margin: 3px clamp(12px, 3vw, 52px) 0; }
+body[data-shell-layout="dock"] > footer { order: 5; justify-content: flex-start; gap: clamp(14px, 2.5vw, 40px); padding: clamp(6px, 1vh, 12px) clamp(12px, 3vw, 52px) 0; }
+body[data-shell-layout="dock"] .shell-dock:not(.grid):not(.flow) .rowport { padding: 22px 0; }
+body[data-shell-layout="dock"] .shell-dock:not(.grid):not(.flow) .card { font-size: clamp(0.9rem, 1.25rem, 1.35rem); }
+body[data-shell-layout="dock"] .canvas { padding-bottom: clamp(10px, 2vh, 26px); }
+
+/* Arcade Marquee: a full-width category crossbar sits above vertically-scrolling
+   content. Unlike Classic's centred pills, every category receives a segment. */
+body[data-shell-layout="crossbar"] > header {
+  width: 100%;
+  gap: clamp(6px, 1vw, 16px);
+  padding: clamp(8px, 1.6vh, 20px) clamp(10px, 2vw, 34px);
+  margin: 0 0 clamp(4px, 1vh, 12px);
+  border-top: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
+  border-bottom: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--accent) 13%, var(--panel)), color-mix(in srgb, var(--panel) 92%, transparent));
+}
+body[data-shell-layout="crossbar"] > header .navport {
+  width: min(1680px, 88vw);
+  padding: clamp(14px, 2vh, 24px) 0;
+  margin: clamp(-12px, -1.4vh, -8px) 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+body[data-shell-layout="crossbar"] > header nav { width: 100%; gap: 0; justify-content: stretch; }
+body[data-shell-layout="crossbar"] > header .tab {
+  flex: 1 1 0;
+  min-width: max-content;
+  padding: clamp(7px, 1.1vh, 12px) clamp(12px, 1.8vw, 30px);
+  border-radius: 0;
+  text-align: center;
+  border-left: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
+}
+body[data-shell-layout="crossbar"] > header .tab:first-child { border-left: 0; }
+body[data-shell-layout="crossbar"] > header .tab.active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+body[data-shell-layout="crossbar"] > header .tab.focused { box-shadow: inset 0 -4px 0 var(--accent), 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent); }
+body[data-shell-layout="crossbar"] > #crumb { text-align: left; padding: 0 clamp(12px, 3vw, 56px); }
+body[data-shell-layout="crossbar"] > main { border-left: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-right: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+body[data-shell-layout="crossbar"] .rows.grid { padding-top: clamp(8px, 1.5vh, 18px); }
+body[data-shell-layout="crossbar"] .canvas { padding: clamp(10px, 1.8vh, 22px) clamp(22px, 4vw, 72px); }
+
+/* Dashboard Steel: the category list becomes a true left sidebar while the
+   existing content viewport, status and controller hints use the wide pane. */
+body[data-shell-layout="dashboard"] {
+  display: grid;
+  grid-template-columns: clamp(178px, 18vw, 320px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  column-gap: clamp(14px, 2vw, 34px);
+}
+body[data-shell-layout="dashboard"] > header {
+  grid-column: 1;
+  grid-row: 1 / 6;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: clamp(8px, 1.5vh, 18px);
+  padding: clamp(14px, 2.6vh, 30px) clamp(10px, 1.5vw, 22px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--card) 82%, transparent));
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 76%, var(--accent));
+  border-radius: var(--radius);
+  box-shadow: 12px 0 32px rgb(0 0 0 / calc(var(--shadow) * 0.12));
+}
+body[data-shell-layout="dashboard"] > header .hint { align-self: center; }
+body[data-shell-layout="dashboard"] > header .navport {
+  width: 100%;
+  flex: 1 1 auto;
+  padding: 10px 0;
+  margin: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+body[data-shell-layout="dashboard"] > header nav { width: 100%; flex-direction: column; gap: clamp(4px, 0.8vh, 10px); }
+body[data-shell-layout="dashboard"] > header .tab { width: 100%; padding: clamp(8px, 1.2vh, 14px) clamp(10px, 1vw, 16px); border-radius: calc(var(--radius) * 0.72); text-align: left; }
+body[data-shell-layout="dashboard"] > #crumb { grid-column: 2; grid-row: 1; min-width: 0; padding-top: clamp(4px, 1vh, 12px); text-align: left; }
+body[data-shell-layout="dashboard"] > main { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; }
+body[data-shell-layout="dashboard"] > h1#title { grid-column: 2; grid-row: 3; min-width: 0; min-height: 0; margin: 4px 0 0; text-align: left; font-size: clamp(1.4rem, 2.1rem, 2.2rem); }
+body[data-shell-layout="dashboard"] > #status { grid-column: 2; grid-row: 4; min-width: 0; margin: 3px 0 0; text-align: left; }
+body[data-shell-layout="dashboard"] > footer { grid-column: 2; grid-row: 5; justify-content: flex-start; gap: clamp(14px, 2.5vw, 40px); padding: clamp(8px, 1.3vh, 16px) 0; }
+body[data-shell-layout="dashboard"] .canvas { padding: clamp(8px, 1.6vh, 18px) clamp(10px, 1.5vw, 26px); }
+
+/* These presets must remain useful at 720p, where controller hints take more
+   space relative to the viewport and the dock/sidebar need a little less air. */
+@media (max-height: 760px) {
+  body[data-shell-layout="dock"] > footer { display: flex; flex-shrink: 0; font-size: 0.85rem; padding-top: 4px; gap: clamp(8px, 2vw, 24px); }
+  body[data-shell-layout="dock"] > header { margin-top: 4px; }
+  body[data-shell-layout="dashboard"] { grid-template-columns: clamp(158px, 17vw, 230px) minmax(0, 1fr); column-gap: 14px; }
+  body[data-shell-layout="dashboard"] > header { padding-top: 12px; padding-bottom: 12px; }
+  body[data-shell-layout="dashboard"] > footer { padding-top: 5px; padding-bottom: 5px; font-size: 0.85rem; }
+}

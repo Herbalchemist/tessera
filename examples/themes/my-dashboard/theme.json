@@ -1,0 +1,17 @@
+{
+  "name": "My Dashboard",
+  "author": "You",
+  "defaults": {
+    "shellLayout": "dashboard",
+    "layout": "grid",
+    "gridPreset": "c4r2",
+    "bg": "#10151c",
+    "card": "#1a222c",
+    "panel": "#161d27",
+    "text": "#e9e4d8",
+    "muted": "#a5afbf",
+    "accent": "#71d6a3",
+    "radius": "10px",
+    "backdrop": "none"
+  }
+}

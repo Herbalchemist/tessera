@@ -176,6 +176,17 @@ fitScreen();
 
 let appliedVars = new Set();
 let imageRev = null;
+// Shells are named, built-in arrangements rather than theme-supplied markup. The
+// pure helper is also used by node:test, keeping custom theme JSON values harmless.
+function shellLayoutOf(theme) {
+  const setting = theme && Array.isArray(theme.settings) && theme.settings.find((s) => s.id === 'shellLayout');
+  const helper = window.TesseraShellLayout;
+  return helper ? helper.normalize(setting && setting.value) : 'classic';
+}
+function shellLayoutInfo() {
+  const helper = window.TesseraShellLayout;
+  return helper ? helper.describe(shellLayoutOf(prefs.theme)) : { id: 'classic', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' };
+}
 // How bright a color is, 0 (black) to 1 (white).
 function lumOf(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -289,6 +300,7 @@ let layoutSig = '';
 function applyTheme(t) {
   if (!t || !Array.isArray(t.settings)) return;
   prefs.theme = t;
+  document.body.dataset.shellLayout = shellLayoutOf(t);
   const fx = t.settings.find((s) => s.id === 'backdrop');
   document.body.dataset.fx = fx ? fx.value : 'none';
   const bgs = t.settings.find((s) => s.id === 'bg');
@@ -615,7 +627,7 @@ function layoutCfg() {
   if (own) { cols = own.cols; rows = own.rows; }
   const gapPct = Math.max(20, Math.min(240, Number(get('tileGap')) || 100));
   const icons = ['animated', 'still', 'off'].includes(get('setIcons')) ? get('setIcons') : 'animated';
-  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons };
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons, shell: shellLayoutOf(prefs.theme) };
 }
 function currentRows() {
   const base = baseRows();
@@ -826,8 +838,8 @@ function homeMove(dir) {
     c.cols._home = best;
     return update();
   }
-  if (dir === 'up') {
-    focus = 'tabs'; // nothing above: the tab bar
+  if (dir === shellLayoutInfo().contentExit) {
+    focus = 'tabs'; // leave Home toward the shell's visible navigation edge
     hoverId = page;
     update();
   }
@@ -850,7 +862,8 @@ function render() {
   }
   rowsEl.replaceChildren();
   const lc = layoutCfg();
-  rowsEl.className = 'rows' + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
+  document.body.dataset.shellLayout = lc.shell;
+  rowsEl.className = 'rows shell-' + lc.shell + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
   rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
   const pageKey = page + '/' + stack.map((s) => s.id).join('/');
   if (pageKey !== rowsEl._key) { rowsEl._key = pageKey; rowsEl._ty = 0; }
@@ -1093,18 +1106,32 @@ function moveCol(d) {
   const row = selectedRow();
   if (!row) return;
   const c = cur();
+  // Dashboard navigation lives on the left. Once the selection reaches the
+  // left edge, another Left moves into the sidebar instead of doing nothing.
+  if (shellLayoutInfo().contentExit === 'left' && d < 0 && (c.cols[row.id] || 0) === 0) {
+    focus = 'tabs';
+    hoverId = page;
+    return update();
+  }
   c.cols[row.id] = Math.max(0, Math.min(row.tiles.length - 1, (c.cols[row.id] || 0) + d));
   update();
 }
 function moveRow(d) {
   if (homeMode()) return homeMove(d < 0 ? 'up' : 'down');
   const c = cur();
+  const rows = currentRows();
+  // In the bottom-dock shell, Down from the last content row lands on the
+  // dock. Classic and Crossbar retain their familiar Up-to-navigation rule.
+  if (shellLayoutInfo().contentExit === 'down' && d > 0 && c.row === rows.length - 1) {
+    focus = 'tabs';
+    hoverId = page;
+    return update();
+  }
   if (d < 0 && c.row === 0) {
     focus = 'tabs'; // up from the top row lands on the tab bar
     hoverId = page;
     return update();
   }
-  const rows = currentRows();
   const was = rows[c.row];
   c.row = Math.max(0, Math.min(rows.length - 1, c.row + d));
   if (layoutCfg().mode !== 'rails' && was && rows[c.row] && rows[c.row] !== was) {
@@ -1123,6 +1150,7 @@ const isButtonTab = (id) => id === 'new' || id === 'browser';
 // same as closing any other tab, landing on the neighbour.
 let browserOpen = false;
 let browserUrl = 'https://duckduckgo.com/';
+let urlBarOpening = false;
 function normalizeUrl(v) {
   const s = (v || '').trim();
   if (!s) return null;
@@ -1133,10 +1161,14 @@ function normalizeUrl(v) {
 async function launchBrowser() {
   if (browserOpen) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
+  const result = await api.browser('open', { url: browserUrl });
+  if (!result || !result.ok) {
+    setStatus((result && result.error) || "Couldn't open the browser.", true);
+    return;
+  }
   browserOpen = true;
   document.body.classList.add('browser-open');
   setStatus('');
-  await api.browser('open', { url: browserUrl });
 }
 async function closeBrowser() {
   if (!browserOpen) return;
@@ -1145,13 +1177,22 @@ async function closeBrowser() {
   await api.browser('close');
 }
 async function openUrlBar() {
+  if (!browserOpen || modal || urlBarOpening) return;
+  urlBarOpening = true;
   // The BrowserView draws on top of this whole window, so the on-screen keyboard
   // underneath would be invisible unless the view steps aside for it first.
-  await api.browser('hide');
-  const v = await ask('Go to', browserUrl, { max: 300 });
-  const u = v === null ? null : normalizeUrl(v);
-  if (u) { browserUrl = u; await api.browser('go', { url: u }); }
-  else await api.browser('show');
+  try {
+    await api.browser('hide');
+    const v = await ask('Go to', browserUrl, { max: 300 });
+    const u = v === null ? null : normalizeUrl(v);
+    const result = u ? await api.browser('go', { url: u }) : await api.browser('show');
+    if (!result || !result.ok) {
+      await closeBrowser();
+      setStatus((result && result.error) || "Couldn't open that address.", true);
+    } else if (u) browserUrl = u;
+  } finally {
+    urlBarOpening = false;
+  }
 }
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
 // pointer, except on the button tabs.
@@ -4023,11 +4064,17 @@ function press(act) {
     return;
   }
   if (focus === 'tabs') {
-    // On the tab bar: left/right move the pointer; down or A go to the tiles,
-    // except on "+ Mosaic", which is a button.
-    if (act === 'left') return moveTabs(-1);
-    if (act === 'right') return moveTabs(1);
-    if (act === 'down' || act === 'a') {
+    // Horizontal shells use left/right across categories. Dashboard turns the
+    // same list into a sidebar, so up/down stays visually and spatially true.
+    const shell = shellLayoutInfo();
+    if (shell.navigation === 'vertical') {
+      if (act === 'up') return moveTabs(-1);
+      if (act === 'down') return moveTabs(1);
+    } else {
+      if (act === 'left') return moveTabs(-1);
+      if (act === 'right') return moveTabs(1);
+    }
+    if (act === shell.contentEntry || act === 'a') {
       if (hoverId === 'new') return flowNewMosaic({});
       if (hoverId === 'browser') return launchBrowser();
       focus = 'content';
@@ -4118,6 +4165,13 @@ function resume(message) {
 api.onGameExited(resume);
 // Closing the browser with LB / RB lands on the neighbouring tab.
 api.onShiftTab((dir) => { hoverId = 'browser'; moveTabs(dir); });
+if (api.onBrowserAction) {
+  api.onBrowserAction((action) => {
+    if (!browserOpen || modal || urlBarOpening) return;
+    if (action === 'y') return openUrlBar();
+    if (action === 'b' || action === 'lb' || action === 'rb') press(action);
+  });
+}
 api.onLaunchFailed(resume);
 
 // ------------------------------------------------------------------ controllers
@@ -4205,7 +4259,13 @@ function activePad() {
 function loop(now) {
   const pad = suspended ? null : choosePad();
   if (pad && mouseShown && padBusy(pad)) hideMouse();
-  if (pad) {
+  if (pad && browserOpen && !modal) {
+    // The main-process adapters own browser input. Track held buttons without
+    // dispatch so native Gamepad API polling cannot double-fire B/Y/bumper actions
+    // or replay a held button when the address keyboard opens.
+    for (let n = 0; n < prevBtn.length; n++) prevBtn[n] = Boolean(pad.buttons[n] && pad.buttons[n].pressed);
+    lastNav = now;
+  } else if (pad) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
       applyGlyphs(); // "automatic" labels follow whichever controller is in use
