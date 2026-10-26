@@ -580,6 +580,7 @@ function settingsRows() {
     tiles: r.tiles.map((t) => {
       if (t.id === '_storage' && low.length) return { ...t, sub: `Low space: ${low[0].name}`, warn: true };
       if (t.id === '_update' && updateWaiting) return { ...t, sub: 'Restart to finish', warn: true };
+      if (t.id === '_update' && graphicsNotice) return { ...t, sub: 'New graphics card', warn: true };
       if (t.id === '_wifi' && tileNotes.wifi) return { ...t, sub: tileNotes.wifi };
       if (t.id === '_bluetooth' && tileNotes.bluetooth) return { ...t, sub: tileNotes.bluetooth };
       if (t.id === '_sound' && tileNotes.audio) return { ...t, sub: tileNotes.audio };
@@ -3732,8 +3733,51 @@ function updateItems(info) {
     items.push({ label: 'Previous version', header: true });
     items.push({ label: 'Go back to the previous version', sub: buildLabel(info.rollback), op: 'rollback', plain: true });
   }
+  graphicsItems(info.graphics).forEach((x) => items.push(x));
   return items;
 }
+// ---- graphics builds (see gpu-match.js): a swapped graphics card may want a different Tessera build
+let graphicsNotice = null; // the mismatch main reported at start, until it's dealt with
+const buildName = (g, v) => (g && g.names && g.names[v]) || v;
+function graphicsItems(g) {
+  if (!g || !g.have) return [];
+  const items = [{ label: 'Graphics', header: true, fold: 'update.graphics', open: Boolean(g.mismatch) }];
+  items.push({ label: g.cards.length ? g.cards.join(' + ') : 'Graphics card', sub: `This build: ${buildName(g, g.have)}`, info: true, plain: true });
+  if (g.switching) items.push({ label: `The ${buildName(g, g.need)} build is ready`, sub: 'Restart to finish switching', info: true, plain: true });
+  else if (g.mismatch) items.push({ label: `Switch to the ${buildName(g, g.need)} build`, sub: 'Made for this card · games and settings stay', op: 'graphics', variant: g.need, ok: true });
+  items.push({ label: 'Choose a build myself…', sub: 'For special setups, like an external card', op: 'graphicsPick', plain: true });
+  return items;
+}
+const GRAPHICS_ABOUT = 'Tessera comes in a build for each kind of graphics card, because the NVIDIA driver is part of the system. Switching builds works like an update: your games, saves and settings stay, the new build starts after a restart, and the old one stays in the boot menu.';
+// Download the build for `variant`. Resolves with what to tell the person.
+async function graphicsSwitch(g, variant) {
+  const why = g && g.mismatch && variant === g.need
+    ? `This machine has ${g.cards.join(' + ') || 'a different graphics card'}, but Tessera is running the build for ${buildName(g, g.have)}.`
+    : `Switch to the ${buildName(g, variant)} build?`;
+  if (!(await confirm(`${why} The ${buildName(g, variant)} build downloads now and starts after a restart. Games, saves and settings stay.`, 'Switch'))) return '';
+  if (!(await requirePin())) return '';
+  const bad = await updateStart('graphics', { variant });
+  const r = bad || (await updateWatch('graphics', { name: buildName(g, variant) }));
+  const end = updateEnd(r);
+  if (r.result === 'staged') { graphicsNotice = null; updateWaiting = true; return `The ${buildName(g, variant)} build is downloaded. Restart to finish switching.`; }
+  return end !== null ? end : "I couldn't tell whether that worked. Open this screen again to see.";
+}
+// Main noticed at start that the card and the build don't match.
+async function offerGraphics(g) {
+  graphicsNotice = g;
+  if (page === 'settings') render();
+  if (modal || busy || gameOn || GUIDE_ONLY) { setStatus('New graphics card? Settings > Update software can switch to the build made for it.'); return; }
+  const it = await pick('New graphics card?', [
+    { label: `Switch to the ${buildName(g, g.need)} build`, sub: 'Recommended', op: 'go', ok: true },
+    { label: 'Not now', sub: 'Settings > Update software has it too', op: 'later', plain: true },
+  ], 0, { body: `This machine has ${g.cards.join(' + ') || 'a different graphics card'}, but Tessera is running the build for ${buildName(g, g.have)}. The build made for this card gets the most out of it. Switching keeps your games, saves and settings.` });
+  if (!it || it.op !== 'go') return;
+  const note = await graphicsSwitch(g, g.need);
+  if (note) await pick(updateWaiting ? 'Ready' : 'Graphics build', updateWaiting ? [{ label: 'Restart now', op: 'reboot', ok: true }, { label: 'Later', op: 'later', plain: true }] : [{ label: 'OK', plain: true }], 0, { body: note })
+    .then(async (x) => { if (x && x.op === 'reboot') { const r = await api.update('reboot', {}); if (r && !r.ok) setStatus(r.error, true); } });
+  if (page === 'settings') render();
+}
+if (api.onGraphics) api.onGraphics((g) => { if (g && g.mismatch) offerGraphics(g); });
 
 async function flowUpdate() {
   if (modal || busy) return;
@@ -3761,7 +3805,9 @@ async function flowUpdate() {
     }
     const items = updateItems(info);
     const problem = info.supported ? '' : [info.problem, info.detail ? `(${info.detail})` : ''].filter(Boolean).join(' ');
-    const it = await pick('Update software', items, at >= 0 ? at : Math.max(0, items.findIndex((x) => x.op)), { body: note || problem || UPDATE_ABOUT });
+    const gfx = info.graphics && info.graphics.mismatch && !info.graphics.switching;
+    const first = gfx ? items.findIndex((x) => x.op === 'graphics') : items.findIndex((x) => x.op);
+    const it = await pick('Update software', items, at >= 0 ? at : Math.max(0, first), { body: note || problem || (gfx ? `Your graphics card changed. Tessera is running the build for ${buildName(info.graphics, info.graphics.have)}; switch to the one made for this card below.` : UPDATE_ABOUT) });
     note = '';
     if (!it) break;
     if (it.info) { at = items.indexOf(it); continue; } // a line to read: stay on it
@@ -3786,6 +3832,14 @@ async function flowUpdate() {
       note = await updateNow('');
       info = null; // read where things stand now
     }
+    if (it.op === 'graphics') { note = await graphicsSwitch(info.graphics, it.variant); info = null; continue; }
+    if (it.op === 'graphicsPick') {
+      const g = info.graphics;
+      const opts = ['standard', 'nvidia', 'nvidia-open'];
+      const c = await pick('Which build?', opts.map((v) => ({ label: buildName(g, v), sub: v === g.have ? 'running now' : v === g.need ? 'suits this card' : '', v, plain: true })), Math.max(0, opts.indexOf(g.need || g.have)), { body: GRAPHICS_ABOUT });
+      if (c && c.v !== g.have) { note = await graphicsSwitch(g, c.v); info = null; }
+      continue;
+    }
     if (it.op === 'rollback') {
       if (!(await confirm(`Go back to ${buildLabel(info.rollback).toLowerCase()}? It starts after the next restart. Your games, saves and settings are kept.`, 'Go back'))) continue;
       const bad = await updateStart('rollback');
@@ -3798,11 +3852,11 @@ async function flowUpdate() {
 }
 
 // Asks main to start a job. Null when it started, else what to tell the person.
-async function updateStart(kind) {
-  let r = await api.update('start', { job: kind });
+async function updateStart(kind, extra = {}) {
+  let r = await api.update('start', { ...extra, job: kind });
   if (r && r.needPin) {
     if (!(await requirePin())) return { result: 'canceled', quiet: true };
-    r = await api.update('start', { job: kind });
+    r = await api.update('start', { ...extra, job: kind });
   }
   return r && r.ok ? null : { result: 'error', error: (r && r.error) || "Couldn't start the update.", detail: '' };
 }
@@ -3846,12 +3900,13 @@ function updateWatch(kind, hint = {}) {
     const bodyNow = () => {
       if (mode === 'ask') return kind === 'rollback' ? 'Stop going back?\nNothing is changed until it finishes.' : 'Stop the update?\nWhat is already downloaded is kept for next time.';
       if (mode === 'stopping') return '';
-      const what = kind === 'rollback' ? 'Setting up the previous version' : kind === 'check' ? 'Looking for a newer version' : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
+      const what = kind === 'rollback' ? 'Setting up the previous version' : kind === 'check' ? 'Looking for a newer version' : kind === 'graphics' ? `Downloading the ${hint.name || 'new'} build` : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
       const status = [what, kind === 'apply' && hint.size ? `about ${hint.size}` : '', fmtClock(p.elapsed)].filter(Boolean).join(' · ');
-      return [status, kind === 'apply' ? 'Keep the console on until this finishes.' : '', kind === 'apply' ? p.line : '', note].filter(Boolean).join('\n');
+      const big = kind === 'apply' || kind === 'graphics';
+      return [status, big ? 'Keep the console on until this finishes.' : '', big ? p.line : '', note].filter(Boolean).join('\n');
     };
     openList({
-      title: kind === 'check' ? 'Checking for updates' : kind === 'rollback' ? 'Going back' : 'Updating',
+      title: kind === 'check' ? 'Checking for updates' : kind === 'rollback' ? 'Going back' : kind === 'graphics' ? 'Switching graphics build' : 'Updating',
       items: itemsNow(),
       index: 0,
       body: bodyNow(),

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings > Update software, and "Return to Tessera" on the desktop: whoever is sitting at the
-// console may start and stop these five jobs without a password, and nothing else. What each job
+// console may start and stop these five jobs (plus the graphics-build switch below) without a
+// password, and nothing else. What each job
 // runs is fixed in its unit file (bootc status, bootc upgrade --check, bootc upgrade, bootc rollback,
 // and switch-to-tessera, which only ever restarts the login manager after the desktop session has
 // ended); the person cannot hand it other commands or other arguments. Restarting afterwards is
@@ -25,6 +26,10 @@ polkit.addRule(function (action, subject) {
   var unit = action.lookup("unit");
   var verb = action.lookup("verb");
   if (jobs.indexOf(unit) !== -1 && (verb === "start" || verb === "stop")) {
+    return polkit.Result.YES;
+  }
+  // After a graphics card swap: switch to the matching build. Only these three instances exist.
+  if (/^tessera-graphics-switch@(standard|nvidia|nvidia-open)\.service$/.test(unit) && (verb === "start" || verb === "stop")) {
     return polkit.Result.YES;
   }
   return polkit.Result.NOT_HANDLED;

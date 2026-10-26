@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Settings > Update software, after a graphics card swap: switch to the Tessera build for the new
+# card (%i is standard, nvidia or nvidia-open; anything else is refused by tessera-fix-graphics).
+# Like the other update jobs it is started on demand by Tessera (see 49-tessera-update.rules), runs
+# a fixed command, and leaves what it printed in /run/tessera-update/graphics.log.
+[Unit]
+Description=Tessera: switch to the %i build for this machine's graphics
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/tessera-fix-graphics --to %i
+StandardOutput=truncate:/run/tessera-update/graphics.log
+StandardError=inherit
+TimeoutStartSec=infinity
+Nice=10
