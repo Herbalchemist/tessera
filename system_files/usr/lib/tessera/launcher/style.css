@@ -767,131 +767,6 @@ body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: 
    Tessera's own chrome underneath so nothing peeks out around the edges. */
 body.browser-open header, body.browser-open #crumb, body.browser-open main, body.browser-open footer, body.browser-open h1#title { display: none; }
 
-/* ---- structural shell presets ------------------------------------------------
-   These are deliberate whole-screen arrangements, selected by the data-only
-   `shellLayout` Theme Setting. They only reposition Tessera's existing chrome;
-   page rows, the Home canvas and modal DOM all stay the same, so user widgets
-   and their coordinates are never rewritten by a theme. */
-
-/* Cartridge Pop: content is a compact horizontal card strip, with category
-   navigation in a physical-looking dock below it. */
-body[data-shell-layout="dock"] {
-  --card-w: clamp(168px, calc(290px * var(--auto)), 330px);
-  --card-h: clamp(110px, calc(174px * var(--auto)), 200px);
-}
-body[data-shell-layout="dock"] > header {
-  order: 6;
-  flex: 0 0 auto;
-  width: min(1480px, 100%);
-  align-self: center;
-  gap: clamp(8px, 1.5vw, 24px);
-  padding: clamp(8px, 1.3vh, 16px) clamp(12px, 2vw, 30px);
-  margin: clamp(6px, 1.2vh, 14px) 0 clamp(4px, 1vh, 12px);
-  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 70%, var(--accent));
-  border-radius: calc(var(--radius) + 6px);
-  background: color-mix(in srgb, var(--panel) 90%, transparent);
-  box-shadow: 0 -10px 32px rgb(0 0 0 / calc(var(--shadow) * 0.16));
-}
-body[data-shell-layout="dock"] > header .navport {
-  width: min(1170px, 78vw);
-  padding: clamp(14px, 2vh, 22px) 0;
-  margin: clamp(-12px, -1.5vh, -8px) 0;
-}
-body[data-shell-layout="dock"] > #crumb { order: 1; text-align: left; padding: clamp(8px, 1.5vh, 18px) clamp(12px, 3vw, 52px) 0; }
-body[data-shell-layout="dock"] > main { order: 2; }
-body[data-shell-layout="dock"] > h1#title { order: 3; min-height: 0; text-align: left; margin: 0 clamp(12px, 3vw, 52px); font-size: clamp(1.35rem, 2.1rem, 2.2rem); }
-body[data-shell-layout="dock"] > #status { order: 4; min-height: 1.2em; text-align: left; margin: 3px clamp(12px, 3vw, 52px) 0; }
-body[data-shell-layout="dock"] > footer { order: 5; justify-content: flex-start; gap: clamp(14px, 2.5vw, 40px); padding: clamp(6px, 1vh, 12px) clamp(12px, 3vw, 52px) 0; }
-body[data-shell-layout="dock"] .shell-dock:not(.grid):not(.flow) .rowport { padding: 22px 0; }
-body[data-shell-layout="dock"] .shell-dock:not(.grid):not(.flow) .card { font-size: clamp(0.9rem, 1.25rem, 1.35rem); }
-body[data-shell-layout="dock"] .canvas { padding-bottom: clamp(10px, 2vh, 26px); }
-
-/* Arcade Marquee: a full-width category crossbar sits above vertically-scrolling
-   content. Unlike Classic's centred pills, every category receives a segment. */
-body[data-shell-layout="crossbar"] > header {
-  width: 100%;
-  gap: clamp(6px, 1vw, 16px);
-  padding: clamp(8px, 1.6vh, 20px) clamp(10px, 2vw, 34px);
-  margin: 0 0 clamp(4px, 1vh, 12px);
-  border-top: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
-  border-bottom: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
-  background: linear-gradient(90deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--accent) 13%, var(--panel)), color-mix(in srgb, var(--panel) 92%, transparent));
-}
-body[data-shell-layout="crossbar"] > header .navport {
-  width: min(1680px, 88vw);
-  padding: clamp(14px, 2vh, 24px) 0;
-  margin: clamp(-12px, -1.4vh, -8px) 0;
-  -webkit-mask-image: none;
-  mask-image: none;
-}
-body[data-shell-layout="crossbar"] > header nav { width: 100%; gap: 0; justify-content: stretch; }
-body[data-shell-layout="crossbar"] > header .tab {
-  flex: 1 1 0;
-  min-width: max-content;
-  padding: clamp(7px, 1.1vh, 12px) clamp(12px, 1.8vw, 30px);
-  border-radius: 0;
-  text-align: center;
-  border-left: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
-}
-body[data-shell-layout="crossbar"] > header .tab:first-child { border-left: 0; }
-body[data-shell-layout="crossbar"] > header .tab.active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-body[data-shell-layout="crossbar"] > header .tab.focused { box-shadow: inset 0 -4px 0 var(--accent), 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent); }
-body[data-shell-layout="crossbar"] > #crumb { text-align: left; padding: 0 clamp(12px, 3vw, 56px); }
-body[data-shell-layout="crossbar"] > main { border-left: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-right: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
-body[data-shell-layout="crossbar"] .rows.grid { padding-top: clamp(8px, 1.5vh, 18px); }
-body[data-shell-layout="crossbar"] .canvas { padding: clamp(10px, 1.8vh, 22px) clamp(22px, 4vw, 72px); }
-
-/* Dashboard Steel: the category list becomes a true left sidebar while the
-   existing content viewport, status and controller hints use the wide pane. */
-body[data-shell-layout="dashboard"] {
-  display: grid;
-  grid-template-columns: clamp(178px, 18vw, 320px) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  column-gap: clamp(14px, 2vw, 34px);
-}
-body[data-shell-layout="dashboard"] > header {
-  grid-column: 1;
-  grid-row: 1 / 6;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
-  gap: clamp(8px, 1.5vh, 18px);
-  padding: clamp(14px, 2.6vh, 30px) clamp(10px, 1.5vw, 22px);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--card) 82%, transparent));
-  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 76%, var(--accent));
-  border-radius: var(--radius);
-  box-shadow: 12px 0 32px rgb(0 0 0 / calc(var(--shadow) * 0.12));
-}
-body[data-shell-layout="dashboard"] > header .hint { align-self: center; }
-body[data-shell-layout="dashboard"] > header .navport {
-  width: 100%;
-  flex: 1 1 auto;
-  padding: 10px 0;
-  margin: 0;
-  -webkit-mask-image: none;
-  mask-image: none;
-}
-body[data-shell-layout="dashboard"] > header nav { width: 100%; flex-direction: column; gap: clamp(4px, 0.8vh, 10px); }
-body[data-shell-layout="dashboard"] > header .tab { width: 100%; padding: clamp(8px, 1.2vh, 14px) clamp(10px, 1vw, 16px); border-radius: calc(var(--radius) * 0.72); text-align: left; }
-body[data-shell-layout="dashboard"] > #crumb { grid-column: 2; grid-row: 1; min-width: 0; padding-top: clamp(4px, 1vh, 12px); text-align: left; }
-body[data-shell-layout="dashboard"] > main { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; }
-body[data-shell-layout="dashboard"] > h1#title { grid-column: 2; grid-row: 3; min-width: 0; min-height: 0; margin: 4px 0 0; text-align: left; font-size: clamp(1.4rem, 2.1rem, 2.2rem); }
-body[data-shell-layout="dashboard"] > #status { grid-column: 2; grid-row: 4; min-width: 0; margin: 3px 0 0; text-align: left; }
-body[data-shell-layout="dashboard"] > footer { grid-column: 2; grid-row: 5; justify-content: flex-start; gap: clamp(14px, 2.5vw, 40px); padding: clamp(8px, 1.3vh, 16px) 0; }
-body[data-shell-layout="dashboard"] .canvas { padding: clamp(8px, 1.6vh, 18px) clamp(10px, 1.5vw, 26px); }
-
-/* These presets must remain useful at 720p, where controller hints take more
-   space relative to the viewport and the dock/sidebar need a little less air. */
-@media (max-height: 760px) {
-  body[data-shell-layout="dock"] > footer { display: flex; flex-shrink: 0; font-size: 0.85rem; padding-top: 4px; gap: clamp(8px, 2vw, 24px); }
-  body[data-shell-layout="dock"] > header { margin-top: 4px; }
-  body[data-shell-layout="dashboard"] { grid-template-columns: clamp(158px, 17vw, 230px) minmax(0, 1fr); column-gap: 14px; }
-  body[data-shell-layout="dashboard"] > header { padding-top: 12px; padding-bottom: 12px; }
-  body[data-shell-layout="dashboard"] > footer { padding-top: 5px; padding-bottom: 5px; font-size: 0.85rem; }
-}
-
 /* Browser entrance/exit: a picture of the page, animated in place of the live view
    (see browserCurtain() in renderer.js). Above the launcher chrome, below menus. */
 #browser-curtain { position: fixed; inset: 0; z-index: 9; overflow: hidden; pointer-events: none; will-change: transform, opacity; background: transparent; }
@@ -906,204 +781,6 @@ body[data-shell-layout="dashboard"] .canvas { padding: clamp(8px, 1.6vh, 18px) c
 #browser-curtain .ph b { font-size: clamp(1.4rem, 2.4vw, 2.4rem); color: var(--text); letter-spacing: 0.04em; }
 #browser-curtain.dim .half { filter: brightness(0.4) blur(3px); }
 
-/* ==== console-homage shells ====================================================
-   Each is a named arrangement of the same launcher parts (data-shell-layout on body),
-   echoing a console's home screen through layout, color and motion. No logos, artwork
-   or sounds from any console maker are used. Off by default: */
-.tab-ico { display: none; }
-.tab-ico svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#clockbar, #spotlight, #cube-emblem { display: none; }
-#clockbar .cb-who { display: block; flex: none; box-sizing: border-box; }
-#clockbar .cb-who svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
-
-/* ---- Home row (cartridge-pop): square tiles, a framed selection with a gap, round buttons ---- */
-body[data-shell-layout="switch"] { --card-w: clamp(140px, 30vh, 330px); --card-h: var(--card-w); font-family: "Nunito", "Rubik", "Segoe UI", system-ui, sans-serif; }
-body[data-shell-layout="switch"] #clockbar { display: flex; order: 0; align-items: center; gap: 14px; padding: clamp(10px, 2.6vh, 28px) clamp(18px, 4.5vw, 72px) 0; font-weight: 600; font-size: 1.05rem; color: var(--text); }
-body[data-shell-layout="switch"] #clockbar .cb-who { width: clamp(34px, 6vh, 56px); height: clamp(34px, 6vh, 56px); border-radius: 50%; padding: clamp(6px, 1.1vh, 10px); color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); box-shadow: 0 0 0 3px var(--card), 0 2px 6px rgb(0 0 0 / 0.15); }
-body[data-shell-layout="switch"] #clockbar .cb-time { margin-left: auto; }
-body[data-shell-layout="switch"] #clockbar .cb-date { display: none; }
-body[data-shell-layout="switch"] > #crumb { order: 1; min-height: 0; }
-body[data-shell-layout="switch"] > h1#title { order: 2; margin: clamp(4px, 2vh, 24px) 0 0; font-size: 1.45rem; font-weight: 700; color: var(--accent); min-height: 1.4em; }
-body[data-shell-layout="switch"] > main { order: 3; }
-body[data-shell-layout="switch"] > #status { order: 4; min-height: 1.2em; }
-body[data-shell-layout="switch"] > header { order: 5; gap: 0; padding: clamp(6px, 1.6vh, 18px) 0 clamp(6px, 1.4vh, 16px); }
-body[data-shell-layout="switch"] > footer { order: 6; justify-content: flex-end; margin: 0 clamp(18px, 4.5vw, 72px); padding: clamp(8px, 1.4vh, 14px) 0; border-top: 1px solid color-mix(in srgb, var(--text) 25%, transparent); }
-body[data-shell-layout="switch"] .row h2 { display: none; }
-body[data-shell-layout="switch"] .rows:not(.grid):not(.flow):has(.row.active) .row:not(.active) { opacity: 0.16; }
-body[data-shell-layout="switch"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { flex: 0 0 auto; height: calc(var(--card-h) + 76px); }
-body[data-shell-layout="switch"] > h1#title { margin-top: auto !important; }
-body[data-shell-layout="switch"] > header { margin-bottom: auto; }
-body[data-shell-layout="switch"] .card { border-radius: var(--radius); box-shadow: 0 2px 6px rgb(0 0 0 / 0.12); }
-body[data-shell-layout="switch"] .card:not(.has-ico):not(.kind-inlay):not(.has-widget) { justify-content: center; text-align: center; }
-body[data-shell-layout="switch"] .card.has-art::before, body[data-shell-layout="switch"] .card.has-art > span { display: none; }
-body[data-shell-layout="switch"] .card.active {
-  transform: none;
-  box-shadow: 0 0 0 calc(var(--ring) - 1px) var(--bg), 0 0 0 calc(var(--ring) * 2) var(--sw-frame, var(--glow-ring)), 0 4px 14px rgb(0 0 0 / 0.18);
-  animation: sw-frame calc(1.6s / max(var(--motion), 0.001)) ease-in-out infinite;
-}
-@keyframes sw-frame { 0%, 100% { --sw-frame: var(--glow-ring); } 50% { --sw-frame: color-mix(in srgb, var(--glow-ring) 45%, #2f5bff); } }
-@property --sw-frame { syntax: '<color>'; inherits: false; initial-value: #00b4e6; }
-body[data-shell-layout="switch"] > header .hint { display: none; }
-body[data-shell-layout="switch"] > header .navport { width: auto; max-width: 94vw; padding: 16px 12px 44px; margin: -6px 0 -30px; -webkit-mask-image: none; mask-image: none; }
-body[data-shell-layout="switch"] nav { gap: clamp(14px, 2.4vw, 36px); }
-body[data-shell-layout="switch"] .tab { position: relative; display: grid; place-items: center; width: clamp(46px, 9.5vh, 96px); height: clamp(46px, 9.5vh, 96px); padding: 0; border-radius: 50%; background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.14); }
-body[data-shell-layout="switch"] .tab .tab-ico { display: block; width: 46%; height: 46%; }
-body[data-shell-layout="switch"] .tab .tab-name { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); font-size: 0.85rem; font-weight: 700; color: var(--accent); opacity: 0; transition: opacity calc(0.15s * var(--motion)); }
-body[data-shell-layout="switch"] .tab.focused .tab-name { opacity: 1; }
-body[data-shell-layout="switch"] .tab.active { background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.14), inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
-body[data-shell-layout="switch"] .tab.focused { background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--glow-ring); }
-body[data-shell-layout="switch"] .tab[data-tab="browser"] { --tab-tint: #ff6a13; }
-body[data-shell-layout="switch"] .tab[data-tab="home"] { --tab-tint: #e60012; }
-body[data-shell-layout="switch"] .tab[data-tab="library"] { --tab-tint: #1aa7e8; }
-body[data-shell-layout="switch"] .tab[data-tab="apps"] { --tab-tint: #8e4dff; }
-body[data-shell-layout="switch"] .tab[data-tab="mosaic"] { --tab-tint: #f2a900; }
-body[data-shell-layout="switch"] .tab[data-tab="new"] { --tab-tint: #22b14c; }
-body[data-shell-layout="switch"] .tab[data-tab="settings"] { --tab-tint: #6f6f6f; }
-body[data-shell-layout="switch"][data-tone="dark"] .tab { box-shadow: 0 2px 6px rgb(0 0 0 / 0.4); }
-
-/* ---- Spotlight (nova-black): small tabs top-left, the selection's art across the screen ---- */
-body[data-shell-layout="hero"] { --card-w: clamp(92px, 18vh, 200px); --card-h: var(--card-w); --edge: clamp(18px, 5vw, 96px); }
-body[data-shell-layout="hero"] #spotlight { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; background-color: var(--bg); background-image: var(--hero, none); background-size: cover; background-position: center 30%; transition: background-image calc(0.5s * var(--motion)) ease; }
-body[data-shell-layout="hero"] #spotlight::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 92%, transparent) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 45%, color-mix(in srgb, var(--bg) 20%, transparent) 100%), linear-gradient(0deg, var(--bg) 0%, transparent 50%), linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0%, transparent 28%); }
-body[data-shell-layout="hero"] #clockbar { display: flex; position: fixed; top: clamp(12px, 3vh, 32px); right: var(--edge); align-items: center; gap: 18px; font-size: 1.15rem; font-weight: 500; color: var(--text); }
-body[data-shell-layout="hero"] #clockbar .cb-who { order: 2; width: 2.2rem; height: 2.2rem; border-radius: 50%; padding: 0.35rem; background: color-mix(in srgb, var(--text) 18%, transparent); }
-body[data-shell-layout="hero"] #clockbar .cb-date { display: none; }
-body[data-shell-layout="hero"] > header { justify-content: flex-start; padding: clamp(12px, 3vh, 32px) var(--edge) 0; gap: 0; }
-body[data-shell-layout="hero"] > header .hint { display: none; }
-body[data-shell-layout="hero"] > header .navport { width: auto; max-width: 70vw; padding: 10px 6px; margin: -10px -6px; -webkit-mask-image: none; mask-image: none; }
-body[data-shell-layout="hero"] nav { gap: clamp(18px, 2.4vw, 40px); }
-body[data-shell-layout="hero"] .tab { padding: 4px 0; border-radius: 0; font-size: 1.15rem; font-weight: 500; color: var(--muted); background: none; }
-body[data-shell-layout="hero"] .tab.active { color: var(--text); font-weight: 700; background: none; }
-body[data-shell-layout="hero"] .tab.focused { color: var(--text); font-weight: 700; background: none; box-shadow: none; text-decoration: underline 3px var(--glow-ring); text-underline-offset: 8px; }
-body[data-shell-layout="hero"] > #crumb { display: none; }
-body[data-shell-layout="hero"] > main { margin-top: clamp(12px, 3vh, 34px); }
-body[data-shell-layout="hero"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { flex: 0 0 auto; height: calc(var(--card-h) * 1.32 + 64px); }
-body[data-shell-layout="hero"] .rowport { padding: 26px var(--edge); }
-/* Tiles already passed are tucked away, as on the console: nothing peeks in at the left edge. */
-body[data-shell-layout="hero"] .rows:not(.grid):not(.flow):not(.cats) .rowport { clip-path: inset(-80px -80px -80px calc(var(--edge) - 10px)); }
-body[data-shell-layout="hero"] .rows:not(.grid):not(.flow) .rail { gap: clamp(10px, 1.2vw, 18px); align-items: center; }
-body[data-shell-layout="hero"] .rows:not(.cats) .row h2 { display: none; }
-body[data-shell-layout="hero"] .rows:not(.grid):not(.flow):not(.cats):has(.row.active) .row:not(.active) { opacity: 0; }
-body[data-shell-layout="hero"] .card { padding: 10px; font-size: 0.85rem; background: color-mix(in srgb, var(--card) 80%, transparent); box-shadow: 0 6px 18px rgb(0 0 0 / 0.45); transition-property: transform, box-shadow; }
-body[data-shell-layout="hero"] .card.has-art::before, body[data-shell-layout="hero"] .card.has-art > span { display: none; }
-body[data-shell-layout="hero"] .rows:not(.grid):not(.flow) .card.active { flex-basis: calc(var(--card-w) * 1.32); height: calc(var(--card-h) * 1.32); transform: none; box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 12px 34px rgb(0 0 0 / 0.6); }
-body[data-shell-layout="hero"] > h1#title { text-align: left; margin: clamp(8px, 3vh, 36px) var(--edge) 0; font-size: clamp(2rem, 3.4rem, 3.6rem); font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 4px 24px rgb(0 0 0 / 0.6); }
-body[data-shell-layout="hero"] > #status { text-align: left; margin: 6px var(--edge) 0; }
-body[data-shell-layout="hero"] > footer { justify-content: flex-start; padding: 18px var(--edge); margin-top: auto; }
-body[data-shell-layout="hero"] footer b { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: color-mix(in srgb, var(--text) 16%, transparent); }
-
-/* ---- Pivot (dashboard-steel): text pivots, flat square tiles, a white focus frame ---- */
-body[data-shell-layout="pivot"] { --tile-aspect: 1; --radius: 2px; --edge: clamp(18px, 5vw, 90px); font-family: "Segoe UI", "Selawik", "Open Sans", system-ui, sans-serif; }
-body[data-shell-layout="pivot"] #clockbar { display: flex; position: fixed; top: clamp(14px, 3vh, 34px); right: var(--edge); align-items: center; gap: 14px; font-size: 1.05rem; color: var(--text); }
-body[data-shell-layout="pivot"] #clockbar .cb-who { order: -1; width: 2.3rem; height: 2.3rem; padding: 0.4rem; background: var(--accent); color: #fff; }
-body[data-shell-layout="pivot"] #clockbar .cb-date { display: none; }
-body[data-shell-layout="pivot"] > header { justify-content: flex-start; padding: clamp(12px, 3vh, 34px) var(--edge) 0; gap: 0; }
-body[data-shell-layout="pivot"] > header .hint { display: none; }
-body[data-shell-layout="pivot"] > header .navport { width: auto; max-width: 74vw; padding: 10px 4px 14px; margin: -10px -4px -6px; -webkit-mask-image: none; mask-image: none; }
-body[data-shell-layout="pivot"] nav { gap: clamp(20px, 2.6vw, 44px); align-items: baseline; }
-body[data-shell-layout="pivot"] .tab { padding: 2px 0 6px; border-radius: 0; font-size: 1.7rem; font-weight: 300; color: color-mix(in srgb, var(--text) 45%, transparent); background: none; transition-property: color; }
-body[data-shell-layout="pivot"] .tab.active { color: var(--text); font-weight: 400; background: none; }
-body[data-shell-layout="pivot"] .tab.focused { color: var(--text); font-weight: 400; background: none; box-shadow: inset 0 -4px 0 var(--accent); }
-body[data-shell-layout="pivot"] > #crumb { text-align: left; padding: 0 var(--edge); }
-body[data-shell-layout="pivot"] .row h2, body[data-shell-layout="pivot"] .rows.cats .row h2.cat { font-weight: 400; font-size: 1.05rem; color: var(--muted); }
-body[data-shell-layout="pivot"] .card { padding: 12px 14px; font-size: 0.95rem; font-weight: 400; box-shadow: none; }
-body[data-shell-layout="pivot"] .card.kind-app, body[data-shell-layout="pivot"] .card.kind-action { background: var(--accent); }
-body[data-shell-layout="pivot"] .card.kind-app small, body[data-shell-layout="pivot"] .card.kind-action small { color: rgb(255 255 255 / 0.75); }
-body[data-shell-layout="pivot"] .card.has-art::before { background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0) 40%); }
-body[data-shell-layout="pivot"] .card.active { transform: scale(1.04); box-shadow: 0 0 0 var(--ring) #fff, 0 10px 24px rgb(0 0 0 / 0.5); }
-body[data-shell-layout="pivot"] > h1#title { text-align: left; margin: 2px var(--edge) 0; font-size: 1.5rem; font-weight: 300; }
-body[data-shell-layout="pivot"] > #status { text-align: left; margin: 2px var(--edge) 0; }
-body[data-shell-layout="pivot"] > footer { justify-content: flex-start; padding: 12px var(--edge) 18px; }
-
-/* ---- Cube (indigo-cube): a turning cube over chunky glossy buttons down the left ---- */
-body[data-shell-layout="cube"] {
-  display: grid;
-  grid-template-columns: clamp(190px, 21vw, 360px) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  column-gap: clamp(16px, 2.4vw, 40px);
-  padding-left: clamp(14px, 2.4vw, 40px);
-  padding-right: clamp(14px, 2.4vw, 40px);
-  font-style: normal;
-}
-body[data-shell-layout="cube"] #cube-emblem { display: block; position: fixed; left: calc(clamp(14px, 2.4vw, 40px) + clamp(190px, 21vw, 360px) / 2 - 4.2vh); top: clamp(16px, 4vh, 44px); width: 8.4vh; height: 8.4vh; perspective: 60vh; pointer-events: none; }
-body[data-shell-layout="cube"] #cube-emblem .spin { position: absolute; inset: 0; transform-style: preserve-3d; animation: cube-turn calc(14s / max(var(--motion), 0.001)) linear infinite; transform: rotateX(-24deg) rotateY(38deg); }
-body[data-shell-layout="cube"] #cube-emblem i { position: absolute; inset: 0; border: 0.45vh solid color-mix(in srgb, var(--accent) 80%, #fff); border-radius: 0.6vh; background: color-mix(in srgb, var(--border) 55%, transparent); box-shadow: inset 0 0 2.2vh color-mix(in srgb, var(--accent) 45%, transparent); }
-body[data-shell-layout="cube"] #cube-emblem .f { transform: translateZ(4.2vh); }
-body[data-shell-layout="cube"] #cube-emblem .b { transform: rotateY(180deg) translateZ(4.2vh); }
-body[data-shell-layout="cube"] #cube-emblem .l { transform: rotateY(-90deg) translateZ(4.2vh); }
-body[data-shell-layout="cube"] #cube-emblem .r { transform: rotateY(90deg) translateZ(4.2vh); }
-body[data-shell-layout="cube"] #cube-emblem .t { transform: rotateX(90deg) translateZ(4.2vh); }
-body[data-shell-layout="cube"] #cube-emblem .u { transform: rotateX(-90deg) translateZ(4.2vh); }
-@keyframes cube-turn { from { transform: rotateX(-24deg) rotateY(38deg); } to { transform: rotateX(-24deg) rotateY(398deg); } }
-body[data-shell-layout="cube"] > header {
-  grid-column: 1; grid-row: 1 / 6; min-width: 0; min-height: 0;
-  flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 10px;
-  padding: calc(clamp(16px, 4vh, 44px) + 12vh) 0 clamp(14px, 3vh, 30px);
-  perspective: 900px;
-}
-body[data-shell-layout="cube"] > header .hint { display: none; }
-body[data-shell-layout="cube"] > header .navport { width: 100%; flex: 1 1 auto; padding: 12px 14px; margin: 0; -webkit-mask-image: none; mask-image: none; transform: rotateY(14deg); transform-origin: left center; }
-body[data-shell-layout="cube"] > header nav { width: 100%; flex-direction: column; gap: clamp(8px, 1.4vh, 16px); }
-body[data-shell-layout="cube"] .tab {
-  width: 100%; padding: clamp(10px, 1.9vh, 20px) clamp(14px, 1.6vw, 26px); border-radius: 999px; text-align: left;
-  font-size: 1.25rem; font-weight: 800; letter-spacing: 0.02em; color: color-mix(in srgb, var(--text) 75%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--border) 70%, var(--panel)), var(--panel) 70%);
-  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.22), inset 0 -3px 0 rgb(0 0 0 / 0.35), 0 6px 14px rgb(0 0 0 / 0.35);
-  text-shadow: 0 2px 0 rgb(0 0 0 / 0.35);
-  transition-property: transform, background, color, box-shadow;
-}
-body[data-shell-layout="cube"] .tab.active { color: var(--text); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 35%, var(--border)), var(--panel) 75%); }
-body[data-shell-layout="cube"] .tab.focused { color: #fff; transform: translateX(10px) scale(1.04); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, var(--border)), color-mix(in srgb, var(--accent) 15%, var(--panel)) 80%); box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -3px 0 rgb(0 0 0 / 0.3), 0 0 0 3px var(--glow-ring), 0 0 26px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
-body[data-shell-layout="cube"] > #crumb { grid-column: 2; grid-row: 1; text-align: left; padding-top: clamp(14px, 3vh, 32px); }
-body[data-shell-layout="cube"] > main { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; }
-body[data-shell-layout="cube"] > h1#title { grid-column: 2; grid-row: 3; text-align: left; font-weight: 800; font-size: 1.9rem; text-shadow: 0 3px 0 rgb(0 0 0 / 0.3); }
-body[data-shell-layout="cube"] > #status { grid-column: 2; grid-row: 4; text-align: left; }
-body[data-shell-layout="cube"] > footer { grid-column: 2; grid-row: 5; justify-content: flex-start; }
-body[data-shell-layout="cube"] .card { background: linear-gradient(180deg, color-mix(in srgb, var(--card) 85%, #fff), var(--card) 55%); box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.18), inset 0 -4px 0 rgb(0 0 0 / 0.3), 0 10px 22px rgb(0 0 0 / 0.4); }
-body[data-shell-layout="cube"] .card.active { box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 0 30px color-mix(in srgb, var(--glow-ring) 50%, transparent), 0 12px 28px rgb(0 0 0 / 0.5); }
-
-/* ---- Channels (channel-white): wide rounded channels, a curved bar with the clock ---- */
-body[data-shell-layout="channel"] { --tile-aspect: 0.6; --bar-h: clamp(118px, 23vh, 230px); font-family: "Rubik", "Nunito", "Segoe UI", system-ui, sans-serif; }
-body[data-shell-layout="channel"] > #crumb { display: none; }
-body[data-shell-layout="channel"] > main { order: 1; padding-top: clamp(14px, 4vh, 44px); }
-body[data-shell-layout="channel"] > h1#title { order: 2; font-size: 1.25rem; font-weight: 600; color: var(--muted); min-height: 1.3em; }
-body[data-shell-layout="channel"] > #status { order: 3; min-height: 1.1em; }
-body[data-shell-layout="channel"] > footer { order: 4; padding: 4px 0 6px; font-size: 0.85rem; }
-body[data-shell-layout="channel"] > header {
-  order: 5; position: relative; height: var(--bar-h); margin: 0 calc((1 - var(--use)) * -50vw) calc((1 - var(--use)) * -50vh);
-  justify-content: space-between; align-items: flex-end; gap: 0; padding: 0 clamp(18px, 4vw, 70px) clamp(12px, 3.2vh, 32px);
-  background: linear-gradient(180deg, #fbfbfb, #dedede 70%, #d2d2d2);
-  border-top-left-radius: 50% clamp(34px, 8vh, 80px); border-top-right-radius: 50% clamp(34px, 8vh, 80px);
-  box-shadow: 0 -3px 0 #c8c8c8, 0 -10px 30px rgb(0 0 0 / 0.08);
-}
-body[data-shell-layout="channel"] > header .hint {
-  display: grid; place-items: center; width: clamp(56px, 11vh, 108px); height: clamp(56px, 11vh, 108px); padding: 0; border-radius: 50%;
-  font-size: 1.05rem; font-weight: 700; color: #8a8a8a; border: 3px solid #c3c3c3;
-  background: radial-gradient(circle at 50% 30%, #ffffff, #e6e6e6 70%); box-shadow: 0 4px 10px rgb(0 0 0 / 0.12);
-  margin-bottom: clamp(4px, 1vh, 10px);
-}
-body[data-shell-layout="channel"] > header .navport { width: auto; max-width: 64vw; padding: 14px 10px; margin: 0 0 -6px; -webkit-mask-image: none; mask-image: none; }
-body[data-shell-layout="channel"] nav { gap: clamp(8px, 1vw, 16px); }
-body[data-shell-layout="channel"] .tab { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: 1rem; font-weight: 600; color: #8f8f8f; background: rgb(255 255 255 / 0.65); border: 2px solid #cfcfcf; }
-body[data-shell-layout="channel"] .tab .tab-ico { display: block; width: 1.1em; height: 1.1em; }
-body[data-shell-layout="channel"] .tab[data-tab="new"] .tab-ico { display: none; }
-body[data-shell-layout="channel"] .tab.active { color: #5a5a5a; background: #fff; border-color: color-mix(in srgb, var(--accent) 50%, #cfcfcf); }
-body[data-shell-layout="channel"] .tab.focused { color: #4a4a4a; background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) 45%, transparent), 0 0 18px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
-body[data-shell-layout="channel"] #clockbar { display: flex; position: fixed; left: 50%; bottom: calc(var(--bar-h) * 0.4); transform: translateX(-50%); flex-direction: column; align-items: center; z-index: 1; color: #9a9a9a; pointer-events: none; }
-body[data-shell-layout="channel"] #clockbar .cb-who { display: none; }
-body[data-shell-layout="channel"] #clockbar .cb-time { font-size: clamp(1.8rem, 6.5vh, 3.6rem); font-weight: 600; letter-spacing: 0.04em; line-height: 1; }
-body[data-shell-layout="channel"] #clockbar .cb-date { font-size: clamp(0.85rem, 2.4vh, 1.3rem); font-weight: 600; margin-top: 4px; }
-body[data-shell-layout="channel"] .rows.grid .rail, body[data-shell-layout="pivot"] .rows.grid .rail { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; margin: 0 auto; }
-body[data-shell-layout="channel"] .card:not(.has-ico):not(.kind-inlay):not(.has-widget) { justify-content: center; text-align: center; }
-body[data-shell-layout="channel"] .card {
-  font-size: 1rem; color: #7a7a7a;
-  background: linear-gradient(180deg, #ffffff, #f1f1f1); border: 3px solid #d2d2d2;
-  box-shadow: inset 0 0 0 2px #fff, 0 3px 8px rgb(0 0 0 / 0.08);
-}
-body[data-shell-layout="channel"] .card.has-art { border-color: #d2d2d2; box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.85), 0 3px 8px rgb(0 0 0 / 0.1); }
-body[data-shell-layout="channel"] .card.has-art::before { background: linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0) 45%); border-radius: inherit; }
-body[data-shell-layout="channel"] .card.active { transform: scale(1.04); border-color: var(--glow-ring); box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px color-mix(in srgb, var(--glow-ring) 60%, transparent), 0 0 22px 4px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
-
 /* ---- backdrops for the homages ---- */
 body[data-fx="cubes"]::after {
   background:
@@ -1117,4 +794,329 @@ body[data-fx="stripes"]::after {
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.65), transparent 40%),
     repeating-linear-gradient(0deg, transparent 0 3px, rgb(0 0 0 / 0.035) 3px 4px);
+}
+
+/* ==== layout parts ==============================================================
+   Each piece of the screen is styled by its own part (data-nav, data-part-* on body),
+   resolved in renderer.js from the theme's Shell arrangement plus any part picked on
+   its own in Theme Settings > Layout parts. Arrangements are presets of these parts
+   (shell-layout.js); the console homages echo layout, color and motion only. */
+body { --edge: clamp(18px, 5vw, 96px); --bar-h: clamp(118px, 23vh, 230px); }
+.tab-ico { display: none; }
+.tab-ico svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#clockbar, #spotlight, #cube-emblem { display: none; }
+#clockbar .cb-who { display: block; flex: none; box-sizing: border-box; }
+#clockbar .cb-who svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+
+/* The order of things down the screen (every menu position except the left sidebar). */
+body > #clockbar { order: 0; }
+body > header { order: 1; }
+body > #crumb { order: 2; }
+body > main { order: 4; }
+body > h1#title { order: 5; }
+body > #status { order: 6; }
+body > footer { order: 7; }
+body[data-part-title="above"] > h1#title { order: 3; }
+
+/* ---- Menu position ---------------------------------------------------------- */
+/* top-left: the menu and everything under it line up on the left edge. */
+body[data-nav="top-left"] > header { justify-content: flex-start; padding: clamp(12px, 3vh, 32px) var(--edge) 0; gap: 0; }
+body[data-nav="top-left"] > header .navport { width: auto; max-width: 72vw; padding: 10px 6px 14px; margin: -10px -6px -6px; -webkit-mask-image: none; mask-image: none; }
+body[data-nav="top-left"] > #crumb, body[data-nav="top-left"] > h1#title, body[data-nav="top-left"] > #status { text-align: left; margin-left: var(--edge); margin-right: var(--edge); }
+
+/* bottom: the menu sits under the tiles, the hints under the menu. */
+body[data-nav="bottom"] > header { order: 8; gap: 0; padding: clamp(6px, 1.6vh, 18px) 0 clamp(6px, 1.4vh, 16px); }
+body[data-nav="bottom"] > footer { order: 9; margin: 0 clamp(18px, 4.5vw, 72px); padding: clamp(8px, 1.4vh, 14px) 0; border-top: 1px solid color-mix(in srgb, var(--text) 25%, transparent); }
+
+/* bottom-dock: a framed dock under compact cards. */
+body[data-nav="bottom-dock"] > header {
+  order: 8; flex: 0 0 auto; width: min(1480px, 100%); align-self: center;
+  gap: clamp(8px, 1.5vw, 24px); padding: clamp(8px, 1.3vh, 16px) clamp(12px, 2vw, 30px); margin: clamp(6px, 1.2vh, 14px) 0 clamp(4px, 1vh, 12px);
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 70%, var(--accent));
+  border-radius: calc(var(--radius) + 6px);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  box-shadow: 0 -10px 32px rgb(0 0 0 / calc(var(--shadow) * 0.16));
+}
+body[data-nav="bottom-dock"] > header .navport { width: min(1170px, 78vw); padding: clamp(14px, 2vh, 22px) 0; margin: clamp(-12px, -1.5vh, -8px) 0; }
+body[data-nav="bottom-dock"] > #crumb { text-align: left; padding: clamp(8px, 1.5vh, 18px) clamp(12px, 3vw, 52px) 0; }
+body[data-nav="bottom-dock"] > h1#title { min-height: 0; text-align: left; margin: 0 clamp(12px, 3vw, 52px); font-size: clamp(1.35rem, 2.1rem, 2.2rem); }
+body[data-nav="bottom-dock"] > #status { min-height: 1.2em; text-align: left; margin: 3px clamp(12px, 3vw, 52px) 0; }
+body[data-nav="bottom-dock"] > footer { padding: clamp(6px, 1vh, 12px) clamp(12px, 3vw, 52px) 0; }
+body[data-nav="bottom-dock"] .rows:not(.grid):not(.flow) .rowport { padding: 22px 0; }
+body[data-nav="bottom-dock"] .canvas { padding-bottom: clamp(10px, 2vh, 26px); }
+
+/* bottom-bar: a curved bar along the bottom, round end buttons, room for the clock. */
+body[data-nav="bottom-bar"] > #crumb { display: none; }
+body[data-nav="bottom-bar"] > main { padding-top: clamp(14px, 4vh, 44px); }
+body[data-nav="bottom-bar"] > h1#title { font-size: 1.25rem; font-weight: 600; color: var(--muted); min-height: 1.3em; }
+body[data-nav="bottom-bar"] > #status { min-height: 1.1em; }
+body[data-nav="bottom-bar"] > footer { padding: 4px 0 6px; font-size: 0.85rem; }
+body[data-nav="bottom-bar"] > header {
+  order: 8; position: relative; height: var(--bar-h); margin: 0 calc((1 - var(--use)) * -50vw) calc((1 - var(--use)) * -50vh);
+  justify-content: space-between; align-items: flex-end; gap: 0; padding: 0 clamp(18px, 4vw, 70px) clamp(12px, 3.2vh, 32px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 25%, #fff), var(--panel) 70%, color-mix(in srgb, var(--panel) 92%, #000));
+  border-top-left-radius: 50% clamp(34px, 8vh, 80px); border-top-right-radius: 50% clamp(34px, 8vh, 80px);
+  box-shadow: 0 -3px 0 color-mix(in srgb, var(--border) 85%, transparent), 0 -10px 30px rgb(0 0 0 / 0.08);
+}
+body[data-nav="bottom-bar"] > header .hint {
+  display: grid; place-items: center; width: clamp(56px, 11vh, 108px); height: clamp(56px, 11vh, 108px); padding: 0; border-radius: 50%;
+  font-size: 1.05rem; font-weight: 700; color: var(--muted); border: 3px solid var(--border);
+  background: radial-gradient(circle at 50% 30%, var(--card), var(--panel) 70%); box-shadow: 0 4px 10px rgb(0 0 0 / 0.12);
+  margin-bottom: clamp(4px, 1vh, 10px);
+}
+body[data-nav="bottom-bar"] > header .navport { width: auto; max-width: 64vw; padding: 14px 10px; margin: 0; -webkit-mask-image: none; mask-image: none; }
+
+/* left: a sidebar column; everything else in a wide column beside it. */
+body[data-nav="left"] {
+  display: grid;
+  grid-template-columns: clamp(178px, 18vw, 320px) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "nav crumb" "nav above" "nav main" "nav below" "nav status" "nav hints";
+  column-gap: clamp(14px, 2vw, 34px);
+}
+body[data-nav="left"] > header {
+  grid-area: nav; min-width: 0; min-height: 0;
+  flex-direction: column; justify-content: flex-start; align-items: stretch;
+  gap: clamp(8px, 1.5vh, 18px); padding: clamp(14px, 2.6vh, 30px) clamp(10px, 1.5vw, 22px);
+}
+body[data-nav="left"] > header .hint { align-self: center; }
+body[data-nav="left"] > header .navport { width: 100%; flex: 1 1 auto; padding: 10px 0; margin: 0; -webkit-mask-image: none; mask-image: none; }
+body[data-nav="left"] > header nav { width: 100%; flex-direction: column; gap: clamp(4px, 0.8vh, 10px); }
+body[data-nav="left"] > #crumb { grid-area: crumb; min-width: 0; padding-top: clamp(4px, 1vh, 12px); text-align: left; }
+body[data-nav="left"] > main { grid-area: main; min-width: 0; min-height: 0; }
+body[data-nav="left"] > h1#title { grid-area: below; min-width: 0; min-height: 0; margin: 4px 0 0; text-align: left; font-size: clamp(1.4rem, 2.1rem, 2.2rem); }
+body[data-nav="left"][data-part-title="above"] > h1#title { grid-area: above; }
+body[data-nav="left"] > #status { grid-area: status; min-width: 0; margin: 3px 0 0; text-align: left; }
+body[data-nav="left"] > footer { grid-area: hints; padding: clamp(8px, 1.3vh, 16px) 0; }
+body[data-nav="left"] > #clockbar { position: fixed; top: clamp(12px, 3vh, 32px); right: var(--edge); }
+
+/* ---- Tab look ---------------------------------------------------------------- */
+body[data-part-tabs="text"] > header .hint, body[data-part-tabs="pivots"] > header .hint,
+body[data-part-tabs="round"] > header .hint, body[data-part-tabs="chunky"] > header .hint { display: none; }
+body[data-nav="bottom-bar"] > header .hint { display: grid; }
+
+/* pills in a left sidebar: a framed panel of full-width rows */
+body[data-nav="left"][data-part-tabs="pills"] > header {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), color-mix(in srgb, var(--card) 82%, transparent));
+  border: max(var(--border-w), 1px) solid color-mix(in srgb, var(--border) 76%, var(--accent));
+  border-radius: var(--radius);
+  box-shadow: 12px 0 32px rgb(0 0 0 / calc(var(--shadow) * 0.12));
+}
+body[data-nav="left"][data-part-tabs="pills"] .tab { width: 100%; padding: clamp(8px, 1.2vh, 14px) clamp(10px, 1vw, 16px); border-radius: calc(var(--radius) * 0.72); text-align: left; }
+/* pills in the curved bar: small, light, with icons */
+body[data-nav="bottom-bar"][data-part-tabs="pills"] nav { gap: clamp(8px, 1vw, 16px); }
+body[data-nav="bottom-bar"][data-part-tabs="pills"] .tab { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: 1rem; font-weight: 600; color: var(--muted); background: color-mix(in srgb, var(--card) 65%, transparent); border: 2px solid var(--border); }
+body[data-nav="bottom-bar"][data-part-tabs="pills"] .tab .tab-ico { display: block; width: 1.1em; height: 1.1em; }
+body[data-nav="bottom-bar"][data-part-tabs="pills"] .tab[data-tab="new"] .tab-ico { display: none; }
+body[data-nav="bottom-bar"][data-part-tabs="pills"] .tab.active { color: var(--text); background: var(--card); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+body[data-nav="bottom-bar"][data-part-tabs="pills"] .tab.focused { color: var(--text); background: var(--card); border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow-ring) 45%, transparent), 0 0 18px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
+
+/* text: small plain words, the current one bold */
+body[data-part-tabs="text"] > header .navport { -webkit-mask-image: none; mask-image: none; }
+body[data-part-tabs="text"] nav { gap: clamp(18px, 2.4vw, 40px); }
+body[data-part-tabs="text"] .tab { padding: 4px 0; border-radius: 0; font-size: 1.15rem; font-weight: 500; color: var(--muted); background: none; }
+body[data-part-tabs="text"] .tab.active { color: var(--text); font-weight: 700; background: none; }
+body[data-part-tabs="text"] .tab.focused { color: var(--text); font-weight: 700; background: none; box-shadow: none; text-decoration: underline 3px var(--glow-ring); text-underline-offset: 8px; }
+body[data-part-tabs="text"] footer b { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: color-mix(in srgb, var(--text) 16%, transparent); }
+
+/* pivots: large light words, an accent bar under the focused one */
+body[data-part-tabs="pivots"] > header .navport { -webkit-mask-image: none; mask-image: none; }
+body[data-part-tabs="pivots"] nav { gap: clamp(20px, 2.6vw, 44px); align-items: baseline; }
+body[data-part-tabs="pivots"] .tab { padding: 2px 0 6px; border-radius: 0; font-size: 1.7rem; font-weight: 300; color: color-mix(in srgb, var(--text) 45%, transparent); background: none; transition-property: color; }
+body[data-part-tabs="pivots"] .tab.active { color: var(--text); font-weight: 400; background: none; }
+body[data-part-tabs="pivots"] .tab.focused { color: var(--text); font-weight: 400; background: none; box-shadow: inset 0 -4px 0 var(--accent); }
+
+/* round: icon buttons in circles, the name under the focused one */
+body[data-part-tabs="round"] > header .navport { width: auto; max-width: 94vw; padding: 16px 12px 44px; margin: -6px 0 -30px; -webkit-mask-image: none; mask-image: none; }
+body[data-part-tabs="round"] nav { gap: clamp(14px, 2.4vw, 36px); }
+body[data-part-tabs="round"] .tab { position: relative; display: grid; place-items: center; width: clamp(46px, 9.5vh, 96px); height: clamp(46px, 9.5vh, 96px); padding: 0; border-radius: 50%; background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.14); }
+body[data-part-tabs="round"] .tab .tab-ico { display: block; width: 46%; height: 46%; }
+body[data-part-tabs="round"] .tab .tab-name { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); font-size: 0.85rem; font-weight: 700; color: var(--accent); opacity: 0; transition: opacity calc(0.15s * var(--motion)); }
+body[data-part-tabs="round"] .tab.focused .tab-name { opacity: 1; }
+body[data-part-tabs="round"] .tab.active { background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 2px 6px rgb(0 0 0 / 0.14), inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+body[data-part-tabs="round"] .tab.focused { background: var(--card); color: var(--tab-tint, var(--muted)); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--glow-ring); }
+body[data-part-tabs="round"] .tab[data-tab="browser"] { --tab-tint: #ff6a13; }
+body[data-part-tabs="round"] .tab[data-tab="home"] { --tab-tint: #e60012; }
+body[data-part-tabs="round"] .tab[data-tab="library"] { --tab-tint: #1aa7e8; }
+body[data-part-tabs="round"] .tab[data-tab="apps"] { --tab-tint: #8e4dff; }
+body[data-part-tabs="round"] .tab[data-tab="mosaic"] { --tab-tint: #f2a900; }
+body[data-part-tabs="round"] .tab[data-tab="new"] { --tab-tint: #22b14c; }
+body[data-part-tabs="round"] .tab[data-tab="settings"] { --tab-tint: #6f6f6f; }
+body[data-part-tabs="round"][data-tone="dark"] .tab { box-shadow: 0 2px 6px rgb(0 0 0 / 0.4); }
+body[data-nav="left"][data-part-tabs="round"] > header nav { align-items: center; }
+
+/* chunky: glossy rounded buttons, tilted a little in depth */
+body[data-nav="left"][data-part-tabs="chunky"] { grid-template-columns: clamp(190px, 21vw, 360px) minmax(0, 1fr); column-gap: clamp(16px, 2.4vw, 40px); padding-left: clamp(14px, 2.4vw, 40px); padding-right: clamp(14px, 2.4vw, 40px); }
+body[data-part-tabs="chunky"] > header { perspective: 900px; }
+body[data-nav="left"][data-part-tabs="chunky"] > header { padding-left: 0; padding-right: 0; gap: 10px; }
+body[data-part-tabs="chunky"] > header .navport { padding: 12px 14px; -webkit-mask-image: none; mask-image: none; transform: rotateY(14deg); transform-origin: left center; }
+body[data-part-tabs="chunky"] > header nav { gap: clamp(8px, 1.4vh, 16px); }
+body[data-part-tabs="chunky"] .tab {
+  padding: clamp(10px, 1.9vh, 20px) clamp(14px, 1.6vw, 26px); border-radius: 999px; text-align: left;
+  font-size: 1.25rem; font-weight: 800; letter-spacing: 0.02em; color: color-mix(in srgb, var(--text) 75%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--border) 70%, var(--panel)), var(--panel) 70%);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.22), inset 0 -3px 0 rgb(0 0 0 / 0.35), 0 6px 14px rgb(0 0 0 / 0.35);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.35);
+  transition-property: transform, background, color, box-shadow;
+}
+body[data-nav="left"][data-part-tabs="chunky"] .tab { width: 100%; }
+body[data-part-tabs="chunky"] .tab.active { color: var(--text); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 35%, var(--border)), var(--panel) 75%); }
+body[data-part-tabs="chunky"] .tab.focused { color: #fff; transform: translateX(10px) scale(1.04); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, var(--border)), color-mix(in srgb, var(--accent) 15%, var(--panel)) 80%); box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -3px 0 rgb(0 0 0 / 0.3), 0 0 0 3px var(--glow-ring), 0 0 26px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
+
+/* segments: a full-width bar, every category gets an equal segment */
+body[data-nav="top"][data-part-tabs="segments"] > header, body[data-nav="top-left"][data-part-tabs="segments"] > header {
+  width: 100%; gap: clamp(6px, 1vw, 16px); padding: clamp(8px, 1.6vh, 20px) clamp(10px, 2vw, 34px); margin: 0 0 clamp(4px, 1vh, 12px);
+  border-top: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
+  border-bottom: max(var(--border-w), 2px) solid color-mix(in srgb, var(--accent) 86%, var(--border));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--panel) 92%, transparent), color-mix(in srgb, var(--accent) 13%, var(--panel)), color-mix(in srgb, var(--panel) 92%, transparent));
+}
+body[data-part-tabs="segments"] > header .navport { width: min(1680px, 88vw); padding: clamp(14px, 2vh, 24px) 0; margin: clamp(-12px, -1.4vh, -8px) 0; -webkit-mask-image: none; mask-image: none; }
+body[data-part-tabs="segments"] > header nav { width: 100%; gap: 0; justify-content: stretch; }
+body[data-part-tabs="segments"] .tab { flex: 1 1 0; min-width: max-content; padding: clamp(7px, 1.1vh, 12px) clamp(12px, 1.8vw, 30px); border-radius: 0; text-align: center; border-left: 1px solid color-mix(in srgb, var(--text) 22%, transparent); }
+body[data-part-tabs="segments"] .tab:first-child { border-left: 0; }
+body[data-part-tabs="segments"] .tab.active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+body[data-part-tabs="segments"] .tab.focused { box-shadow: inset 0 -4px 0 var(--accent), 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent); }
+body[data-nav="top"][data-part-tabs="segments"] > #crumb { text-align: left; padding: 0 clamp(12px, 3vw, 56px); }
+body[data-nav="top"][data-part-tabs="segments"] > main { border-left: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-right: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+body[data-nav="top"][data-part-tabs="segments"] .rows.grid { padding-top: clamp(8px, 1.5vh, 18px); }
+body[data-nav="top"][data-part-tabs="segments"] .canvas { padding: clamp(10px, 1.8vh, 22px) clamp(22px, 4vw, 72px); }
+
+/* ---- Clock ------------------------------------------------------------------- */
+/* corner: time and a round profile icon in the top-right corner (also the fallback for "bar" with no bar) */
+body[data-part-clock="corner"] #clockbar, body[data-part-clock="bar"]:not([data-nav="bottom-bar"]) #clockbar {
+  display: flex; position: fixed; top: clamp(12px, 3vh, 32px); right: var(--edge); align-items: center; gap: 18px; font-size: 1.15rem; font-weight: 500; color: var(--text); z-index: 1;
+}
+body[data-part-clock="corner"] #clockbar .cb-who, body[data-part-clock="bar"]:not([data-nav="bottom-bar"]) #clockbar .cb-who { order: 2; width: 2.2rem; height: 2.2rem; border-radius: 50%; padding: 0.35rem; background: color-mix(in srgb, var(--text) 18%, transparent); }
+body[data-part-clock="corner"] #clockbar .cb-date, body[data-part-clock="bar"]:not([data-nav="bottom-bar"]) #clockbar .cb-date { display: none; }
+/* next to large pivots the profile icon is a square tile on the left of the time */
+body[data-part-clock="corner"][data-part-tabs="pivots"] #clockbar { gap: 14px; font-size: 1.05rem; font-weight: 400; }
+body[data-part-clock="corner"][data-part-tabs="pivots"] #clockbar .cb-who { order: -1; width: 2.3rem; height: 2.3rem; padding: 0.4rem; border-radius: 0; background: var(--accent); color: #fff; }
+/* topbar: a row across the top, profile icon on the left, time on the right */
+body[data-part-clock="topbar"] #clockbar { display: flex; align-items: center; gap: 14px; padding: clamp(10px, 2.6vh, 28px) clamp(18px, 4.5vw, 72px) 0; font-weight: 600; font-size: 1.05rem; color: var(--text); }
+body[data-part-clock="topbar"] #clockbar .cb-who { width: clamp(34px, 6vh, 56px); height: clamp(34px, 6vh, 56px); border-radius: 50%; padding: clamp(6px, 1.1vh, 10px); color: #fff; background: color-mix(in srgb, var(--accent) 85%, #000); box-shadow: 0 0 0 3px var(--card), 0 2px 6px rgb(0 0 0 / 0.15); }
+body[data-part-clock="topbar"] #clockbar .cb-time { margin-left: auto; }
+body[data-part-clock="topbar"] #clockbar .cb-date { display: none; }
+body[data-nav="left"][data-part-clock="topbar"] #clockbar { left: auto; padding: 0; }
+/* bar: big time and date in the middle of the curved bar */
+body[data-part-clock="bar"][data-nav="bottom-bar"] #clockbar { display: flex; position: fixed; left: 50%; bottom: calc(var(--bar-h) * 0.4); transform: translateX(-50%); flex-direction: column; align-items: center; z-index: 1; color: var(--muted); pointer-events: none; }
+body[data-part-clock="bar"][data-nav="bottom-bar"] #clockbar .cb-who { display: none; }
+/* bigger tabs in the bar (round, chunky): a taller bar, the clock above them */
+body[data-nav="bottom-bar"]:is([data-part-tabs="round"], [data-part-tabs="chunky"]) { --bar-h: clamp(170px, 32vh, 330px); }
+body[data-nav="bottom-bar"]:is([data-part-tabs="round"], [data-part-tabs="chunky"]) #clockbar { bottom: calc(var(--bar-h) * 0.58) !important; }
+body[data-nav="bottom-bar"][data-part-tabs="round"] > header .navport { padding-bottom: 34px; margin-bottom: -6px; }
+body[data-part-clock="bar"][data-nav="bottom-bar"] #clockbar .cb-time { font-size: clamp(1.8rem, 6.5vh, 3.6rem); font-weight: 600; letter-spacing: 0.04em; line-height: 1; }
+body[data-part-clock="bar"][data-nav="bottom-bar"] #clockbar .cb-date { font-size: clamp(0.85rem, 2.4vh, 1.3rem); font-weight: 600; margin-top: 4px; }
+
+/* ---- Name of the selection --------------------------------------------------- */
+body[data-part-title="above"] > h1#title { margin-top: clamp(4px, 2vh, 24px); margin-bottom: 0; font-size: 1.45rem; font-weight: 700; color: var(--accent); min-height: 1.4em; }
+body[data-part-title="big"] > h1#title { text-align: left; margin: clamp(8px, 3vh, 36px) var(--edge) 0; font-size: clamp(2rem, 3.4rem, 3.6rem); font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 4px 24px rgb(0 0 0 / 0.6); }
+body[data-part-title="big"] > #status { text-align: left; margin: 6px var(--edge) 0; }
+body[data-nav="left"][data-part-title="big"] > h1#title { margin-left: 0; margin-right: 0; }
+
+body[data-part-tabs="pivots"] > h1#title { font-size: 1.5rem; font-weight: 300; margin-top: 2px; }
+body[data-part-tabs="pivots"] > #status { margin-top: 2px; }
+body[data-part-tabs="chunky"] > h1#title { font-weight: 800; font-size: 1.9rem; text-shadow: 0 3px 0 rgb(0 0 0 / 0.3); }
+body[data-nav="bottom-dock"] .rows:not(.grid):not(.flow) .card { font-size: clamp(0.9rem, 1.25rem, 1.35rem); }
+
+/* ---- Tile shape and size (rows of tiles; grids keep the shape and fit the screen) --- */
+body[data-part-size="small"] { --card-w: calc(180px * var(--auto)); --card-h: calc(225px * var(--auto)); }
+body[data-part-size="large"] { --card-w: calc(300px * var(--auto)); --card-h: calc(375px * var(--auto)); }
+body[data-part-tile="square"] { --tile-aspect: 1; --card-w: clamp(110px, 24vh, 260px); --card-h: var(--card-w); }
+body[data-part-tile="square"][data-part-size="small"] { --card-w: clamp(92px, 18vh, 200px); }
+body[data-part-tile="square"][data-part-size="large"] { --card-w: clamp(140px, 30vh, 330px); }
+body[data-part-tile="wide"] { --tile-aspect: 0.6; --card-w: clamp(168px, calc(290px * var(--auto)), 330px); --card-h: clamp(110px, calc(174px * var(--auto)), 200px); }
+body[data-part-tile="wide"][data-part-size="small"] { --card-w: clamp(130px, calc(220px * var(--auto)), 250px); --card-h: clamp(80px, calc(132px * var(--auto)), 150px); }
+body[data-part-tile="wide"][data-part-size="large"] { --card-w: clamp(220px, calc(380px * var(--auto)), 440px); --card-h: clamp(132px, calc(228px * var(--auto)), 264px); }
+
+/* ---- Row movement ------------------------------------------------------------ */
+/* focus: the row you're on stands out, the others fade; the row sits between its name and the menu */
+body[data-part-row="focus"] .row h2 { display: none; }
+body[data-part-row="focus"] .rows:not(.grid):not(.flow):has(.row.active) .row:not(.active) { opacity: 0.16; }
+body[data-part-row="focus"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { flex: 0 0 auto; height: calc(var(--card-h) + 76px); margin-top: auto; }
+body[data-part-row="focus"][data-part-title="above"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { margin-top: 0; }
+body[data-part-row="focus"][data-part-title="above"] > h1#title { margin-top: auto !important; }
+body[data-part-row="focus"][data-nav="bottom"] > header { margin-bottom: auto; }
+body[data-part-row="focus"]:not([data-nav="bottom"]) > #status { margin-bottom: auto; }
+/* start: the selection leads its row and grows; only that row shows */
+body[data-part-row="start"] > main { margin-top: clamp(12px, 3vh, 34px); }
+body[data-part-row="start"] > #crumb { display: none; }
+body[data-part-row="start"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { flex: 0 0 auto; height: calc(var(--card-h) * 1.32 + 64px); }
+body[data-part-row="start"] .rows:not(.grid):not(.flow):not(.cats) .rowport { padding: 26px var(--edge); clip-path: inset(-80px -80px -80px calc(var(--edge) - 10px)); }
+body[data-part-row="start"] .rows:not(.grid):not(.flow) .rail { gap: clamp(10px, 1.2vw, 18px); align-items: center; }
+body[data-part-row="start"] .rows:not(.cats) .row h2 { display: none; }
+body[data-part-row="start"] .rows:not(.grid):not(.flow):not(.cats):has(.row.active) .row:not(.active) { opacity: 0; }
+body[data-part-row="start"] .card { transition-property: transform, box-shadow; }
+body[data-part-row="start"] .rows:not(.grid):not(.flow) .card.active { flex-basis: calc(var(--card-w) * 1.32); height: calc(var(--card-h) * 1.32); transform: none; box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 12px 34px rgb(0 0 0 / 0.6); }
+body[data-part-row="start"][data-part-size="small"] .card { padding: 10px; font-size: 0.85rem; }
+
+/* ---- Tile look ---------------------------------------------------------------- */
+/* flat: the picture alone; the name is shown elsewhere */
+body[data-part-card="flat"] .card { box-shadow: 0 2px 6px rgb(0 0 0 / 0.12); }
+body[data-part-card="flat"] .card.has-art::before, body[data-part-card="flat"] .card.has-art > span { display: none; }
+body[data-part-card="flat"] .card:not(.has-ico):not(.kind-inlay):not(.has-widget) { justify-content: center; text-align: center; }
+body[data-part-card="flat"][data-part-spot="on"] .card { background: color-mix(in srgb, var(--card) 80%, transparent); box-shadow: 0 6px 18px rgb(0 0 0 / 0.45); }
+body[data-part-card="flat"][data-part-spot="on"] .card:not(.has-ico):not(.kind-inlay):not(.has-widget) { justify-content: flex-end; text-align: left; }
+/* metro: flat squares, sharp corners, app tiles in the accent color */
+body[data-part-card="metro"] { --radius: 2px; }
+body[data-part-card="metro"] .card { padding: 12px 14px; font-size: 0.95rem; font-weight: 400; box-shadow: none; }
+body[data-part-card="metro"] .card.kind-app, body[data-part-card="metro"] .card.kind-action { background: var(--accent); }
+body[data-part-card="metro"] .card.kind-app small, body[data-part-card="metro"] .card.kind-action small { color: rgb(255 255 255 / 0.75); }
+body[data-part-card="metro"] .card.has-art::before { background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0) 40%); }
+body[data-part-card="metro"] .row h2, body[data-part-card="metro"] .rows.cats .row h2.cat { font-weight: 400; font-size: 1.05rem; color: var(--muted); }
+/* glossy: a beveled, shiny tile */
+body[data-part-card="glossy"] .card { background: linear-gradient(180deg, color-mix(in srgb, var(--card) 85%, #fff), var(--card) 55%); box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.18), inset 0 -4px 0 rgb(0 0 0 / 0.3), 0 10px 22px rgb(0 0 0 / 0.4); }
+/* bezel: a rounded channel with a light rim */
+body[data-part-card="bezel"] .card { font-size: 1rem; color: color-mix(in srgb, var(--text) 75%, var(--muted)); background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 94%, #000)); border: 3px solid var(--border); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--card) 70%, #fff), 0 3px 8px rgb(0 0 0 / 0.08); }
+body[data-part-card="bezel"] .card:not(.has-ico):not(.kind-inlay):not(.has-widget) { justify-content: center; text-align: center; }
+body[data-part-card="bezel"] .card.has-art { box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.85), 0 3px 8px rgb(0 0 0 / 0.1); }
+body[data-part-card="bezel"] .card.has-art::before { background: linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0) 45%); border-radius: inherit; }
+/* grids of metro or bezel tiles line up on the left, like a console wall of tiles */
+body[data-part-card="metro"] .rows.grid .rail, body[data-part-card="bezel"] .rows.grid .rail { width: calc(var(--cols, 5) * var(--card-w) + (var(--cols, 5) - 1) * var(--gap)); max-width: 100%; margin: 0 auto; }
+
+/* ---- Selection frame (after the tile looks, so it wins) ---------------------- */
+body[data-part-frame="framed"] .card.active {
+  transform: none;
+  box-shadow: 0 0 0 calc(var(--ring) - 1px) var(--bg), 0 0 0 calc(var(--ring) * 2) var(--sw-frame, var(--glow-ring)), 0 4px 14px rgb(0 0 0 / 0.18);
+  animation: sw-frame calc(1.6s / max(var(--motion), 0.001)) ease-in-out infinite;
+}
+@keyframes sw-frame { 0%, 100% { --sw-frame: var(--glow-ring); } 50% { --sw-frame: color-mix(in srgb, var(--glow-ring) 45%, #2f5bff); } }
+@property --sw-frame { syntax: '<color>'; inherits: false; initial-value: #00b4e6; }
+body[data-part-frame="white"] .card.active { transform: scale(1.04); box-shadow: 0 0 0 var(--ring) #fff, 0 10px 24px rgb(0 0 0 / 0.5); }
+body[data-part-frame="halo"] .card.active { transform: scale(1.04); border-color: var(--glow-ring); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--card) 70%, #fff), 0 0 0 3px color-mix(in srgb, var(--glow-ring) 60%, transparent), 0 0 22px 4px color-mix(in srgb, var(--glow-ring) 55%, transparent); }
+body[data-part-frame="glow"][data-part-card="glossy"] .card.active { box-shadow: 0 0 0 var(--ring) var(--glow-ring), 0 0 30px color-mix(in srgb, var(--glow-ring) 50%, transparent), 0 12px 28px rgb(0 0 0 / 0.5); }
+body[data-part-row="start"] .rows:not(.grid):not(.flow) .card.active { transform: none; }
+
+/* ---- Selection art behind everything ------------------------------------------ */
+body[data-part-spot="on"] #spotlight { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; background-color: var(--bg); background-image: var(--hero, none); background-size: cover; background-position: center 30%; transition: background-image calc(0.5s * var(--motion)) ease; }
+body[data-part-spot="on"] #spotlight::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 92%, transparent) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 45%, color-mix(in srgb, var(--bg) 20%, transparent) 100%), linear-gradient(0deg, var(--bg) 0%, transparent 50%), linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0%, transparent 28%); }
+
+/* ---- Emblem: a turning glass cube over the menu -------------------------------- */
+body[data-part-emblem="cube"] #cube-emblem { display: block; position: fixed; left: var(--edge); top: clamp(16px, 4vh, 44px); width: 8.4vh; height: 8.4vh; perspective: 60vh; pointer-events: none; z-index: 1; }
+body[data-part-emblem="cube"]:is([data-nav="bottom"], [data-nav="bottom-dock"], [data-nav="bottom-bar"]) #cube-emblem { top: auto; bottom: clamp(52px, 10vh, 110px); }
+body[data-part-emblem="cube"][data-nav="left"] #cube-emblem { left: calc(clamp(14px, 2.4vw, 40px) + clamp(190px, 21vw, 360px) / 2 - 4.2vh); }
+body[data-part-emblem="cube"][data-nav="left"] > header { padding-top: calc(clamp(16px, 4vh, 44px) + 12vh); }
+body[data-part-emblem="cube"][data-nav="top"] > header, body[data-part-emblem="cube"][data-nav="top-left"] > header { padding-left: calc(var(--edge) + 11vh); }
+#cube-emblem .spin { position: absolute; inset: 0; transform-style: preserve-3d; animation: cube-turn calc(14s / max(var(--motion), 0.001)) linear infinite; transform: rotateX(-24deg) rotateY(38deg); }
+#cube-emblem i { position: absolute; inset: 0; border: 0.45vh solid color-mix(in srgb, var(--accent) 80%, #fff); border-radius: 0.6vh; background: color-mix(in srgb, var(--border) 55%, transparent); box-shadow: inset 0 0 2.2vh color-mix(in srgb, var(--accent) 45%, transparent); }
+#cube-emblem .f { transform: translateZ(4.2vh); }
+#cube-emblem .b { transform: rotateY(180deg) translateZ(4.2vh); }
+#cube-emblem .l { transform: rotateY(-90deg) translateZ(4.2vh); }
+#cube-emblem .r { transform: rotateY(90deg) translateZ(4.2vh); }
+#cube-emblem .t { transform: rotateX(90deg) translateZ(4.2vh); }
+#cube-emblem .u { transform: rotateX(-90deg) translateZ(4.2vh); }
+@keyframes cube-turn { from { transform: rotateX(-24deg) rotateY(38deg); } to { transform: rotateX(-24deg) rotateY(398deg); } }
+
+/* ---- Button hints -------------------------------------------------------------- */
+body[data-part-hints="left"] > footer { justify-content: flex-start; gap: clamp(14px, 2.5vw, 40px); }
+body[data-part-hints="right"] > footer { justify-content: flex-end; }
+body[data-nav="top-left"] > footer, body[data-part-row="start"] > footer { padding-left: var(--edge); padding-right: var(--edge); }
+body[data-part-tabs="text"] > footer { margin-top: auto; }
+
+/* These must stay usable at 720p, where hints take more room relative to the screen. */
+@media (max-height: 760px) {
+  body[data-nav="bottom-dock"] > footer { display: flex; flex-shrink: 0; font-size: 0.85rem; padding-top: 4px; gap: clamp(8px, 2vw, 24px); }
+  body[data-nav="bottom-dock"] > header { margin-top: 4px; }
+  body[data-nav="left"]:not([data-part-tabs="chunky"]) { grid-template-columns: clamp(158px, 17vw, 230px) minmax(0, 1fr); column-gap: 14px; }
+  body[data-nav="left"]:not([data-part-tabs="chunky"]) > header { padding-top: 12px; padding-bottom: 12px; }
+  body[data-nav="left"] > footer { padding-top: 5px; padding-bottom: 5px; font-size: 0.85rem; }
 }

@@ -50,26 +50,34 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.waitForFunction(() => !document.body.classList.contains('hold') && document.querySelectorAll('.tab').length >= 5);
     const all = await page.evaluate(async () => (await launcherAPI.settings('themeGet')).themes.map((t) => t.id));
+    // THEMES entries can be "themeId" or "themeId+setting=value+setting=value" (applied on top).
     const ids = process.env.THEMES ? process.env.THEMES.split(',') : all;
     for (const [w, h] of sizes) {
       await app.evaluate(({ BrowserWindow }, s) => { const win = BrowserWindow.getAllWindows()[0]; win.setFullScreen(false); win.setContentSize(s[0], s[1]); win.setPosition(0, 0); }, [w, h]);
       await page.waitForTimeout(400);
       for (const id of ids) {
-        await page.evaluate(async (id) => {
-          const r = await launcherAPI.settings('themeUse', { id });
+        await page.evaluate(async (spec) => {
+          const [id, ...sets] = spec.split('+');
+          let r = await launcherAPI.settings('themeUse', { id });
           if (!r.ok) throw Error('no theme ' + id);
+          for (const kv of sets) {
+            const [k, v] = kv.split('=');
+            r = await launcherAPI.settings('themeSet', { id: k, value: /^\d+$/.test(v) ? Number(v) : v });
+            if (!r.ok) throw Error('bad setting ' + kv);
+          }
           applyTheme(r.theme);
         }, id);
+        const name = id.replace(/[^a-z0-9=+-]/gi, '_');
         for (const view of ['library', 'home', 'settings']) {
           await page.evaluate((v) => { page = v; hoverId = v; stack = []; focus = 'content'; const c = cur(); c.row = 0; c.cols = {}; render(); }, view);
           if (view === 'library') { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150); await page.keyboard.press('ArrowRight'); }
           await page.waitForTimeout(900);
-          await page.screenshot({ path: path.join(output, `theme-${id}-${view}-${w}.png`) });
+          await page.screenshot({ path: path.join(output, `theme-${name}-${view}-${w}.png`) });
         }
         // the tab bar focused
         await page.evaluate(() => { page = 'library'; hoverId = 'library'; focus = 'tabs'; render(); });
         await page.waitForTimeout(500);
-        await page.screenshot({ path: path.join(output, `theme-${id}-tabs-${w}.png`) });
+        await page.screenshot({ path: path.join(output, `theme-${name}-tabs-${w}.png`) });
       }
     }
     console.log(errors.length ? 'ERRORS ' + JSON.stringify(errors) : 'OK ' + ids.join(','));
