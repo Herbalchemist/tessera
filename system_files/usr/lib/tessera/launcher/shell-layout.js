@@ -11,6 +11,12 @@
     dock: Object.freeze({ id: 'dock', navigation: 'horizontal', contentEntry: 'up', contentExit: 'down' }),
     crossbar: Object.freeze({ id: 'crossbar', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' }),
     dashboard: Object.freeze({ id: 'dashboard', navigation: 'vertical', contentEntry: 'right', contentExit: 'left' }),
+    // Console homages. Each is still only a named arrangement of the same launcher parts.
+    switch: Object.freeze({ id: 'switch', navigation: 'horizontal', contentEntry: 'up', contentExit: 'down' }),     // a row of square tiles over round icon buttons
+    hero: Object.freeze({ id: 'hero', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' }),         // small tabs top-left, a tile row, the selection's art filling the screen
+    pivot: Object.freeze({ id: 'pivot', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' }),       // left-aligned text pivots over flat square tiles
+    cube: Object.freeze({ id: 'cube', navigation: 'vertical', contentEntry: 'right', contentExit: 'left' }),        // chunky menu buttons down the left under a turning cube
+    channel: Object.freeze({ id: 'channel', navigation: 'horizontal', contentEntry: 'up', contentExit: 'down' }),   // a wall of wide channels over a curved bar with the clock
   });
 
   function normalize(value) {

@@ -48,7 +48,7 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
       await page.waitForTimeout(250);
     };
     const goto = async id => { await page.evaluate(id => { page = id; hoverId = id; stack = []; focus = 'content'; render(); }, id); await page.waitForTimeout(250); };
-    const factory = ['stock', 'cartridge-pop', 'arcade-marquee', 'dashboard-steel'];
+    const factory = ['stock', 'cartridge-pop', 'nova-black', 'dashboard-steel', 'indigo-cube', 'channel-white', 'arcade-marquee'];
     for (const [w, h] of [[1920, 1080], [1280, 720]]) {
       await resize(w, h);
       for (const id of factory) {
@@ -81,9 +81,9 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
     });
     assert.equal(saved.invalid, false);
     assert.equal(saved.ok, true);
-    assert.equal(saved.shell, 'dashboard');
+    assert.equal(saved.shell, 'pivot');
     const themeFile = path.join(dataDir, 'Tessera', 'Themes', saved.active, 'theme.json');
-    assert.equal(JSON.parse(fs.readFileSync(themeFile, 'utf8')).defaults.shellLayout, 'dashboard');
+    assert.equal(JSON.parse(fs.readFileSync(themeFile, 'utf8')).defaults.shellLayout, 'pivot');
     checks.push('Saved theme round-trips structural shell; invalid choice rejected');
     await goto('library');
     await page.evaluate(() => {
