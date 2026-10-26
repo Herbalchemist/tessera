@@ -140,7 +140,7 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50 };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
 let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
@@ -558,7 +558,12 @@ let escChordUsed = false;   // true once that chord fired, so releasing Esc does
 const prevBtn = new Array(32).fill(false);
 const wasBig = {};          // rows that showed the big empty tile last render
 
+const statusLog = []; // the last few messages, for the guide
 function setStatus(msg, isError) {
+  if (msg && msg !== 'Starting…' && (!statusLog.length || statusLog[0].msg !== msg)) {
+    statusLog.unshift({ msg, isError: Boolean(isError), at: Date.now() });
+    statusLog.length = Math.min(statusLog.length, 6);
+  }
   statusEl.textContent = msg || '';
   statusEl.classList.toggle('error', Boolean(isError));
 }
@@ -1518,11 +1523,11 @@ function visibleFlags(items) {
   });
 }
 const pickable = (items, flags, i) => Boolean(items[i]) && flags[i] && !(items[i].header && !items[i].fold);
-function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, body = '', welcome = false }) {
+function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, body = '', welcome = false, cls = '', onRender = null }) {
   // Never start on a label or on something folded away.
   const flags = visibleFlags(items);
   for (let i = index; i < items.length; i++) if (pickable(items, flags, i)) { index = i; break; }
-  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, body, welcome };
+  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, body, welcome, cls, onRender };
   renderModal();
 }
 // Resolves with the chosen item, or null if the user backs out.
@@ -1765,7 +1770,7 @@ function renderModal() {
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
   if (modal.kind === 'pad' || modal.kind === 'color' || modal.kind === 'cal') return;
-  modalEl.className = modal.welcome ? 'welcome' : '';
+  modalEl.className = modal.welcome ? 'welcome' : (modal.cls || '');
   modalEl.replaceChildren();
   const box = document.createElement('div');
   box.className = 'box';
@@ -1834,6 +1839,7 @@ function renderModal() {
   modalEl.appendChild(box);
   const active = list.querySelector('.mitem.active');
   if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+  if (modal.onRender) modal.onRender(box);
   paintSelection();
 }
 
@@ -2819,19 +2825,294 @@ let welcomed = false;
 async function flowWelcome() {
   if (welcomed) return;
   welcomed = true;
-  const it = await pick('Welcome to Tessera', [
+  const W = { welcome: true };
+  // 1. Hello
+  const hi = await pick('Welcome to Tessera', [
+    { label: 'Get started', op: 'go', plain: true },
+    { label: 'Skip setup', sub: 'Everything here is in Settings too', op: 'skip', plain: true },
+  ], 0, { ...W, body: "Let's set a few things up: who's playing, how Tessera looks, and whether to lock things behind a PIN. It takes about a minute." });
+  if (hi && hi.op === 'go') {
+    // 2. Who's playing
+    const who = await pick("Who's playing?", [
+      { label: 'Add my name', op: 'name', plain: true },
+      { label: 'Skip', sub: 'Profiles can be added later in Settings > Profiles', op: 'skip', plain: true },
+    ], 0, { ...W, body: 'A profile keeps your own theme, and the guide shows who is playing. More people can be added later.' });
+    let profileId = null;
+    if (who && who.op === 'name') {
+      const name = await ask('Your name', '', { max: 24 });
+      if (name && name.trim()) {
+        const r = await api.profiles('add', { name });
+        if (r && r.ok) {
+          const mine = (r.profiles || []).find((p) => p.name === name.trim()) || (r.profiles || []).slice(-1)[0];
+          if (mine) { profileId = mine.id; await api.profiles('use', { id: mine.id }); }
+        } else if (r && r.error) setStatus(r.error, true);
+      }
+    }
+    // 3. How it looks. The launcher is shown behind the menu now, so each choice is seen whole.
+    reveal();
+    let t = await api.settings('themeGet');
+    for (;;) {
+      const themesList = t.themes.map((th) => ({ label: th.name, sub: th.id === t.active ? 'this one' : '', id: th.id, plain: true }));
+      const cur = Math.max(0, themesList.findIndex((x) => x.id === t.active));
+      const it = await pick('Pick a look', [...themesList, { label: 'Keep this one', op: 'keep', ok: true }], cur, { body: 'Choose one to see it. Every part of it can be changed later in Theme Settings.' });
+      if (!it || it.op === 'keep') break;
+      const r = await api.settings('themeUse', { id: it.id });
+      if (r && r.ok) { applyTheme(r.theme); t = await api.settings('themeGet'); }
+    }
+    if (profileId) await api.profiles('setTheme', { id: profileId, themeId: t.active });
+  }
+  // 4. PIN
+  const pinIt = await pick(hi && hi.op === 'go' ? 'A PIN?' : 'Welcome to Tessera', [
     { label: 'Set a PIN', sub: 'Choose 4 to 8 digits', op: 'set', plain: true },
     { label: 'Skip for now', sub: 'You can set one later in Settings', op: 'skip', plain: true },
   ], 0, {
-    welcome: true,
+    welcome: document.body.classList.contains('hold'),
     body: 'Want an extra layer of security? With a PIN set, changing settings, adding or deleting games and apps, and opening the browser all ask for it first. Handy if you like a little peace of mind day to day.',
   });
-  if (it && it.op === 'set') {
+  if (pinIt && pinIt.op === 'set') {
     if (!(await flowSetPin())) setStatus('No PIN was set. You can set one in Settings > PIN.');
+  }
+  // 5. Done, with the one thing worth knowing
+  if (hi && hi.op === 'go') {
+    reveal();
+    await pick("You're all set", [{ label: 'Start playing', ok: true }], 0, {
+      body: 'Press the Guide button (Xbox, PS or Home) any time for quick settings, profiles and power, even during a game. LB and RB switch tabs.',
+    });
   }
   const r = await api.settings('firstRunDone');
   if (r && r.prefs) applyPrefs(r.prefs);
 }
+
+// ------------------------------------------------------------------ the guide
+// The Guide button (Xbox / PS / Home) opens this panel from anywhere: the launcher, the
+// browser, or in front of a running game (the main process watches the button and brings
+// Tessera up). It holds game controls, quick settings, profiles, notifications and power.
+// The Desktop Mode helper loads this page with ?guide: only the guide is ever shown.
+const GUIDE_ONLY = new URLSearchParams(location.search).has('guide');
+if (GUIDE_ONLY) document.body.classList.add('guide-only');
+let guideWatching = 0;     // controllers the main process reads Guide from (0: the page reads it)
+let guideOpen = false;
+let gameOn = null;         // { title, since } while Tessera is up in front of a running game
+let guideBrowserHidden = false;
+function refreshGuideWatch() {
+  if (!api.guide) return;
+  api.guide('status').then((st) => { guideWatching = (st && st.watching) || 0; }).catch(() => {});
+}
+refreshGuideWatch();
+setInterval(refreshGuideWatch, 20000);
+// The page itself saw Guide (keyboard F1/Home, or a pad the main process can't read).
+function guidePressFromPage() {
+  const press = (prefs.pad.guideButton || 'menu-home') === 'home-menu' ? 'home' : 'menu';
+  if (api.guide) api.guide('press', { action: press }).catch(() => handleGuide({ action: press }));
+  else handleGuide({ action: press });
+}
+// Whatever menu is up gets backed out of first, so its flow ends cleanly.
+function dismissModal() {
+  if (!modal) return;
+  if (modal.kind === 'list' && modal.onBack) return modal.onBack();
+  if (modal.kind === 'keys') return finishKeys(false);
+  if (modal.kind === 'capture') return modal.finish(null);
+  if (modal.kind === 'color') return colorButton(1);
+  closeModal();
+}
+function handleGuide(msg) {
+  if (!msg) return;
+  if (msg.action === 'blur') { if (GUIDE_ONLY && guideOpen) closeGuide(); return; } // clicked away on the desktop
+  if (msg.inGame) {
+    gameOn = { title: msg.title || 'Game', since: gameOn ? gameOn.since : Date.now() };
+    if (suspended) { suspended = false; update(); }
+  }
+  if (msg.action === 'home') return guideGoHome();
+  if (guideOpen) return closeGuide();
+  return openGuide();
+}
+function guideGoHome() {
+  if (guideOpen) closeGuide({ stay: true });
+  while (modal) dismissModal();
+  if (browserOpen) closeBrowser(-1);
+  page = 'home'; hoverId = 'home'; stack = []; focus = 'content';
+  render();
+  if (gameOn) setStatus(`${gameOn.title} is still running. Press Guide to go back to it.`);
+}
+async function closeGuide({ stay = false } = {}) {
+  if (!guideOpen) return;
+  guideOpen = false;
+  if (modal && modal.cls === 'guide') closeModal();
+  if (GUIDE_ONLY) { if (!stay) await api.guide('hideHelper'); return; }
+  if (guideBrowserHidden) {
+    guideBrowserHidden = false;
+    const c = browserCurtain();
+    c.classList.remove('dim');
+    if (browserOpen) { await api.browser('show'); setTimeout(() => { if (browserOpen) c.hidden = true; }, 300); }
+  }
+  // Closing the guide in front of a game goes back to the game, unless Home was asked for.
+  if (gameOn && !stay) await resumeGame();
+}
+async function resumeGame() {
+  if (!gameOn) return;
+  gameOn = null;
+  suspended = true;
+  dropAllArt();
+  setStatus('');
+  try { await api.guide('resume'); } catch { /* the game may have just ended */ }
+}
+const fmtAgo = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+async function openGuide() {
+  if (guideOpen) return;
+  while (modal) dismissModal();
+  guideOpen = true;
+  // The page draws over everything: step it aside, leaving a dimmed picture behind the guide.
+  if (browserOpen && !guideBrowserHidden) {
+    guideBrowserHidden = true;
+    const c = browserCurtain();
+    try {
+      const snap = await api.browser('snapshot');
+      if (snap && snap.ok) browserShot = snap.image;
+      paintCurtain(c, browserShot);
+      await decodeShot(browserShot);
+      c.hidden = false;
+      c.classList.add('dim');
+    } catch { /* no picture: the guide still opens */ }
+    await api.browser('hide');
+  }
+  let info = {}; let audio = null; let prof = { profiles: [], active: null }; let wifi = null; let bt = null; let st = {};
+  const quick = (pr) => Promise.race([Promise.resolve(pr).catch(() => null), sleep(1500).then(() => null)]);
+  [info, audio, prof, wifi, bt, st] = await Promise.all([
+    quick(api.systemInfo ? api.systemInfo() : null), quick(api.audio('info')), quick(api.profiles('list')),
+    quick(api.wifi('info', {})), quick(api.bluetooth('info')), quick(api.guide ? api.guide('status') : null),
+  ]);
+  if (!guideOpen) return;
+  info = info || {}; prof = prof || { profiles: [], active: null }; st = st || {};
+  if (st.running && !gameOn) gameOn = { title: st.title || 'Game', since: st.since || Date.now() };
+  const out = audio && audio.ok ? audio.outputs.find((o) => o.isDefault) : null;
+  const items = [];
+  // ---- what's running
+  if (gameOn) {
+    items.push({ label: `Playing · ${gameOn.title}`, header: true });
+    items.push({ label: `Resume ${gameOn.title}`, sub: `started ${fmtAgo(gameOn.since)}`, op: 'resume', plain: true });
+    items.push({ label: `Close ${gameOn.title}`, op: 'closeGame', danger: true });
+  }
+  items.push({ label: 'Go', header: true });
+  if (GUIDE_ONLY) {
+    items.push({ label: 'Return to Tessera', sub: 'Closes the desktop and starts Tessera', op: 'returnTessera', plain: true });
+  } else {
+    items.push({ label: 'Home', op: 'home', plain: true });
+    if (browserOpen) items.push({ label: 'Back to the browser', op: 'close', plain: true });
+    items.push({ label: 'Settings', op: 'settings', plain: true });
+  }
+  // ---- quick settings
+  items.push({ label: 'Quick settings', header: true });
+  if (out) {
+    const vol = {
+      label: 'Volume', sub: out.mute ? 'Muted' : `${out.volume}%`, op: 'mute', plain: true,
+      adjust: (dir) => {
+        const v = Math.max(0, Math.min(100, (out.volume || 0) + dir * 5));
+        if (v === out.volume && !out.mute) return;
+        out.volume = v;
+        if (out.mute && dir > 0) { out.mute = false; api.audio('mute', { kind: 'output', id: out.id, on: false }).catch(() => {}); }
+        vol.sub = out.mute ? 'Muted' : `${v}%`;
+        api.audio('volume', { kind: 'output', id: out.id, pct: v }).catch(() => {});
+      },
+    };
+    items.push(vol);
+  }
+  if (wifi && wifi.ok && wifi.present) {
+    const cur = (wifi.networks || []).find((n) => n.active || n.connected || n.inUse);
+    items.push({ label: 'Wi-Fi', sub: wifi.radio ? (cur ? `On · ${cur.ssid}` : 'On') : 'Off', op: 'wifi', on: Boolean(wifi.radio), plain: true });
+  }
+  if (bt && bt.ok && bt.adapter && bt.adapter.present) items.push({ label: 'Bluetooth', sub: bt.adapter.powered ? 'On' : 'Off', op: 'bt', on: Boolean(bt.adapter.powered), plain: true });
+  for (const pad of info.pads || []) {
+    const level = pad.pct !== null && pad.pct !== undefined ? `${pad.pct}%` : (pad.level || 'unknown');
+    items.push({ label: pad.name, sub: `Battery ${level}${pad.charging ? ', charging' : ''}`, plain: true, info: true });
+  }
+  // ---- profiles
+  items.push({ label: 'Profiles', header: true });
+  for (const pr of prof.profiles || []) items.push({ label: pr.name, sub: pr.id === prof.active ? 'playing now' : '', op: 'profile', id: pr.id, plain: true });
+  if (!GUIDE_ONLY) items.push({ label: (prof.profiles || []).length ? 'Manage profiles…' : 'Add a profile…', op: 'profiles', plain: true });
+  // ---- notifications
+  const notes = [];
+  for (const l of (prefs.storage && prefs.storage.low) || []) notes.push({ label: `Low storage on ${l.name}`, sub: `${fmtBytes(l.free)} left`, op: 'storage', plain: true });
+  for (const m of statusLog.slice(0, 4)) notes.push({ label: m.msg.length > 70 ? m.msg.slice(0, 68) + '…' : m.msg, sub: fmtAgo(m.at), plain: true, info: true });
+  if (notes.length) { items.push({ label: 'Notifications', header: true }); items.push(...notes); }
+  // ---- power
+  items.push({ label: 'Power', header: true, fold: 'guide.power' });
+  items.push({ label: 'Sleep', op: 'sleep', plain: true });
+  items.push({ label: 'Restart', op: 'restart', plain: true });
+  items.push({ label: 'Shut down', op: 'shutdown', plain: true });
+  if (!GUIDE_ONLY) items.push({ label: 'Desktop Mode', op: 'desktop', plain: true });
+
+  const now = new Date();
+  const who = (prof.profiles || []).find((p) => p.id === prof.active);
+  const bits = [now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })];
+  if (info.battery && info.battery.present && info.battery.pct !== null) bits.push(`Battery ${info.battery.pct}%${info.battery.charging ? ' ⚡' : ''}`);
+  if (wifi && wifi.ok && wifi.present && wifi.radio) { const cur = (wifi.networks || []).find((n) => n.active || n.connected || n.inUse); if (cur) bits.push(cur.ssid); }
+  if (who) bits.push(who.name);
+  openList({
+    title: 'Guide',
+    body: bits.join('  ·  '),
+    items,
+    index: 0,
+    cls: 'guide',
+    onChoose: (it) => guideChoose(it),
+    onBack: () => closeGuide(),
+  });
+}
+async function guideChoose(it) {
+  if (!it || it.info) return;
+  const op = it.op;
+  if (op === 'close') return closeGuide({ stay: true });
+  if (op === 'resume') return closeGuide();
+  if (op === 'home') return guideGoHome();
+  if (op === 'returnTessera') { await closeGuide({ stay: true }); await api.guide('returnToTessera'); return api.guide('hideHelper'); }
+  if (op === 'closeGame') {
+    const title = gameOn ? gameOn.title : 'the game';
+    closeGuide({ stay: true });
+    if (!(await confirm(`Close ${title}? Anything you haven't saved in it is lost.`, 'Close it'))) return openGuide();
+    const r = await api.guide('closeGame');
+    setStatus(r && r.ok ? `Closing ${title}…` : (r && r.error) || "Couldn't close it.", !(r && r.ok));
+    return;
+  }
+  if (op === 'mute') {
+    const out = modal.items.find((x) => x.label === 'Volume');
+    const a = await api.audio('info');
+    const o = a && a.ok && a.outputs.find((x) => x.isDefault);
+    if (o) { await api.audio('mute', { kind: 'output', id: o.id, on: !o.mute }); if (out) out.sub = !o.mute ? 'Muted' : `${o.volume}%`; renderModal(); }
+    return;
+  }
+  if (op === 'wifi' || op === 'bt') {
+    if (!(await requirePin())) return;
+    const r = op === 'wifi' ? await api.wifi('radio', { on: !it.on }) : await api.bluetooth('power', { on: !it.on });
+    if (r && r.ok) { it.on = !it.on; it.sub = it.on ? 'On' : 'Off'; renderModal(); }
+    else setStatus((r && r.error) || "Couldn't change that.", true);
+    return;
+  }
+  if (op === 'profile') {
+    const r = await api.profiles('use', { id: it.id });
+    if (r && r.ok) {
+      if (r.theme) applyTheme(r.theme);
+      for (const x of modal.items) if (x.op === 'profile') x.sub = x.id === it.id ? 'playing now' : '';
+      renderModal();
+      setStatus(`Hi, ${it.label}!`);
+    }
+    return;
+  }
+  const leaveTo = async (fn) => { await closeGuide({ stay: true }); fn(); };
+  if (op === 'settings') return leaveTo(() => { page = 'settings'; hoverId = 'settings'; stack = []; focus = 'content'; render(); });
+  if (op === 'profiles') return leaveTo(() => flowProfiles());
+  if (op === 'storage') return leaveTo(() => flowStorage());
+  if (op === 'sleep' || op === 'restart' || op === 'shutdown' || op === 'desktop') {
+    await closeGuide({ stay: true });
+    const words = { sleep: ['Go to sleep?', 'Sleep'], restart: ['Restart the computer?', 'Restart'], shutdown: ['Shut down the computer?', 'Shut down'], desktop: ['Switch to Desktop Mode?', 'Switch'] }[op];
+    if (gameOn && op !== 'sleep') { setStatus(`Close ${gameOn.title} first.`, true); return openGuide(); }
+    const done = () => { if (GUIDE_ONLY) api.guide('hideHelper'); };
+    if (!(await confirm(words[0], words[1]))) return done();
+    if (!(await requirePin())) return done();
+    const r = op === 'desktop' ? await api.quit() : await api.power(op);
+    if (r && !r.ok) setStatus(r.error || "Couldn't do that.", true);
+    done();
+  }
+}
+if (api.onGuide) api.onGuide(handleGuide);
 
 // ------------------------------------------------------ display calibration
 // Settings → Display calibration. Done by eye with test patterns, so it is a
@@ -3705,6 +3986,8 @@ const PAD_LABELS = {
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
   joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
+  guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
+  guideDesktop: { auto: 'On, except while Steam is running', on: 'Always on', off: 'Off' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function padSet(key, value) {
@@ -3766,6 +4049,8 @@ async function flowPadMenu() {
     const calibrated = prefs.calib[(activePad() || { id: '' }).id.slice(0, 80)];
     const items = [
       { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
+      { label: 'Guide button', sub: PAD_LABELS.guideButton[prefs.pad.guideButton] || PAD_LABELS.guideButton['menu-home'], op: 'guideButton' },
+      { label: 'Guide on the desktop', sub: PAD_LABELS.guideDesktop[prefs.pad.guideDesktop] || PAD_LABELS.guideDesktop.auto, op: 'guideDesktop' },
       { label: 'Button mapping', sub: Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed', op: 'mapping' },
       { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
       { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
@@ -3791,6 +4076,8 @@ async function flowPadMenu() {
     if (it.info) continue;
     if (it.op === 'test') await flowPad();
     else if (it.op === 'mapping') await flowControls();
+    else if (it.op === 'guideButton') await pickChoice('The Guide button (Xbox, PS or Home button)', 'guideButton');
+    else if (it.op === 'guideDesktop') await pickChoice('The guide in Desktop Mode (Steam takes the button for itself while it runs)', 'guideDesktop');
     else if (it.op === 'browserCursor') await pickChoice('In the browser, which stick moves the cursor?', 'browserCursor');
     else if (it.op === 'cursorSpeed') await pickNumber('Cursor speed · how fast the browser cursor moves', 'cursorSpeed', 10, 100, 10);
     else if (it.op === 'scrollSpeed') await pickNumber('Scroll speed · how fast pages scroll at full tilt', 'scrollSpeed', 10, 100, 10);
@@ -4332,6 +4619,7 @@ function onButton(n) {
     }
     return modal.finish(n);
   }
+  if (n === 16 && !(modal && modal.kind === 'pad')) { if (!guideWatching) guidePressFromPage(); return; }
   if (suspended || busy) return;
   if (modal && modal.kind === 'pad') { modal.last = n; return; } // the tester just watches
   if (modal && modal.kind === 'grip') { const nm = BUTTON_NAMES_BY_ROLE[n]; if (nm === 'a' || nm === 'b') press(nm); return; }
@@ -4381,13 +4669,16 @@ api.onInit((payload) => {
     const l = payload.prefs.storage.low[0];
     setStatus(`Low storage: ${l.name} has ${fmtBytes(l.free)} left. Settings > Storage can help free some up.`, true);
   }
-  if (payload.prefs && payload.prefs.pin && payload.prefs.pin.firstRun && !welcomed) {
+  if (!GUIDE_ONLY && payload.prefs && payload.prefs.pin && payload.prefs.pin.firstRun && !welcomed) {
     if (!modal && !busy) flowWelcome().then(reveal);
   } else reveal();
 });
 
 function resume(message) {
   suspended = false;
+  // The game ended (maybe while the guide was up in front of it).
+  gameOn = null;
+  if (guideOpen) closeGuide({ stay: true });
   update(); // loads the pictures near the selection again
   prevBtn[0] = true; // if A is still held, don't relaunch until it's released
   setStatus(message, Boolean(message));
@@ -4678,6 +4969,7 @@ window.addEventListener('keydown', (e) => {
     Enter: 'a', Backspace: 'b', PageUp: 'lb', PageDown: 'rb',
   };
   if (e.key === 'y') return e.repeat ? undefined : yDown();
+  if (e.key === 'F1' || e.key === 'Home') return e.repeat ? undefined : guidePressFromPage();
   const act = map[e.key] || (e.key === 'x' ? 'x' : null);
   if (act) press(act);
 });

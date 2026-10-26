@@ -1,0 +1,17 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# The Tessera guide in Desktop Mode. Started with the desktop (/etc/xdg/autostart/tessera-guide.desktop).
+# It is the Tessera launcher showing only its guide, in a hidden see-through window that comes up
+# over the desktop when a controller's Guide button is pressed: quick settings, profiles, power and
+# "Return to Tessera". Holding Guide goes straight back to Tessera.
+# Settings > Controller > Guide on the desktop turns it off, or on even while Steam is running
+# (by default it steps aside for Steam, which takes the Guide button for itself).
+
+APP=/usr/lib/tessera/launcher
+ELECTRON="$APP/node_modules/electron/dist/electron"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
+[ -x "$ELECTRON" ] || exit 0
+mkdir -p "$STATE"
+export TESSERA_GUIDE_ONLY=1
+# X11 (XWayland) so the window can stay on top of everything; native Wayland windows can't ask for that.
+exec "$ELECTRON" --ozone-platform=x11 "$APP" --tessera-guide >>"$STATE/guide.log" 2>&1
