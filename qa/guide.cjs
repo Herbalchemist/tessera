@@ -202,6 +202,8 @@ const visible = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAl
     await choose('Pick a look', (x) => x.op === 'keep');
     await choose('A PIN?', (x) => x.op === 'skip');
     await page.screenshot({ path: path.join(output, 'setup-5-done.png') });
+    await page.waitForFunction(() => modal && modal.title === "You're all set", null, { timeout: 8000 });
+    assert.ok(await page.evaluate(() => modal.items.some((x) => x.tour)), 'the end of setup offers the tour');
     await choose("You're all set", (x) => x.ok);
     await page.waitForTimeout(500);
     const after = await page.evaluate(async () => ({ prof: await launcherAPI.profiles('list'), theme: (await launcherAPI.settings('themeGet')).active, pin: (await launcherAPI.settings('pinStatus')) }));
@@ -210,7 +212,7 @@ const visible = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAl
     assert.equal(after.theme, 'nova-black');
     const settings = JSON.parse(fs.readFileSync(path.join(fx.dataDir, 'settings.json'), 'utf8'));
     assert.equal(settings.firstRunDone, true, 'setup does not come back next time');
-    checks.push('First-run setup: name a profile, pick a look (live), optional PIN, done');
+    checks.push('First-run setup: name a profile, pick a look (live), optional PIN, offer of a tour, done');
   } finally {
     await app.close().catch(() => {});
     fs.rmSync(fx.temp, { recursive: true, force: true });

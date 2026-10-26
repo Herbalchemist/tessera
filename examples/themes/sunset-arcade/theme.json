@@ -1,0 +1,32 @@
+{
+  "name": "Sunset Arcade",
+  "author": "Tessera examples",
+  "defaults": {
+    "bg": "#1b0f24",
+    "panel": "#24132f",
+    "card": "#2e1a3c",
+    "text": "#fff1e6",
+    "muted": "#c7a7c9",
+    "accent": "#ff8a3d",
+    "border": "#ff8a3d",
+    "confirm": "#3ddcb0",
+    "cancel": "#ff4f6d",
+    "borderW": "2px",
+    "radius": "20px",
+    "shadow": 90,
+    "tabShadow": 80,
+    "selectRing": "5px",
+    "backdrop": "glow",
+    "shellLayout": "switch",
+    "partTabs": "chunky",
+    "partClock": "corner",
+    "partCard": "glossy",
+    "partHints": "center",
+    "layout": "rails",
+    "widgetStyle": "glass",
+    "widgetClear": 55,
+    "widgetSheen": true,
+    "motion": true,
+    "browserAnim": "doors"
+  }
+}

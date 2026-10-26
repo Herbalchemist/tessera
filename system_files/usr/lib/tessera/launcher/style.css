@@ -1140,3 +1140,32 @@ body[data-part-tabs="text"] > footer { margin-top: auto; }
 html:has(body.guide-only), body.guide-only { background: transparent !important; }
 body.guide-only::before, body.guide-only::after { display: none !important; }
 body.guide-only > :not(#modal):not(script) { display: none !important; }
+
+/* ---- keyboard & mouse: when the last input was a keyboard (or mouse), hints read as keycaps */
+body.hint-keys footer b[data-g] {
+  display: inline-block; height: auto; min-width: 1.6em; padding: 0 0.45em; text-align: center;
+  border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--text) 38%, transparent); border-bottom-width: 3px;
+  font-family: ui-monospace, 'DejaVu Sans Mono', monospace; font-size: 0.85em; line-height: 1.55;
+}
+body.hint-keys > header .hint { border-bottom-width: 4px; border-radius: 6px; font-family: ui-monospace, 'DejaVu Sans Mono', monospace; }
+body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b[data-g="1"] {
+  border: none; background: none; padding: 0; font-family: inherit; font-size: inherit;
+}
+
+/* ---- the tour: one lit-up part of the screen, everything else dimmed, and a card that explains it */
+#modal.tour { background: transparent; display: block; }
+#modal.tour .tour-ring {
+  position: fixed; border-radius: 18px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 24px 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 0 200vmax rgba(6, 9, 13, 0.72);
+  transition: left 0.35s cubic-bezier(.2,.8,.2,1), top 0.35s cubic-bezier(.2,.8,.2,1), width 0.35s cubic-bezier(.2,.8,.2,1), height 0.35s cubic-bezier(.2,.8,.2,1);
+}
+#modal.tour .tour-card {
+  position: fixed; width: min(30rem, 86vw); margin: 0;
+  transition: top 0.35s cubic-bezier(.2,.8,.2,1), left 0.35s cubic-bezier(.2,.8,.2,1);
+  animation: tour-in 0.3s ease-out;
+}
+#modal.tour .tour-step { margin: 0 0 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+#modal.tour .tour-card h3 { margin-top: 0; }
+@keyframes tour-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #modal.tour .tour-ring, #modal.tour .tour-card { transition: none; animation: none; } }

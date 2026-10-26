@@ -16,7 +16,8 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tessera-themes-'));
 const dataDir = path.join(temp, 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(output, { recursive: true });
-fs.writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify({ firstRunDone: true }));
+// The shots are driven with keys; pin the hints to controller buttons so they look like a console.
+fs.writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify({ firstRunDone: true, kb: { hints: process.env.HINTS || 'controller' } }));
 const titles = ['Starfall', 'Coastal Circuit', 'Lantern Quest', 'Deep Orbit', 'Pixel Garden', 'Moonlight Rally', 'Cloudbound', 'Neon Frontier', 'Ember Keep', 'Tidal Drift'];
 // Pictures must live under the home folder (the launcher refuses art from anywhere else).
 const homeArt = path.join(temp, 'Pictures');
