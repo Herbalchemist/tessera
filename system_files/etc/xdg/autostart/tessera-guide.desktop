@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Tessera guide
+Comment=Opens the Tessera guide when a controller's Guide button is pressed
+Exec=/usr/bin/tessera-guide
+Icon=tessera
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

@@ -22,7 +22,10 @@ say() {
   if command -v notify-send >/dev/null 2>&1; then notify-send -a Tessera -i tessera "Tessera" "$1"; else echo "$1" >&2; fi
 }
 
-if pgrep -u "$(id -u)" -f '/usr/lib/tessera/launcher/node_modules/electron/dist/electron' >/dev/null 2>&1; then
+# Is the launcher open? It leaves its process id in launcher.pid while it runs. (The desktop guide
+# helper, tessera-guide, runs the same Electron program, so the program alone can't tell.)
+PIDFILE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera/launcher.pid"
+if [ -f "$PIDFILE" ] && pid=$(cat "$PIDFILE" 2>/dev/null) && [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
   say "Tessera is already open."
   exit 0
 fi

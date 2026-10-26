@@ -27,6 +27,9 @@ const LIBRARY_FILE = process.env.LAUNCHER_LIBRARY || path.join(DATA_DIR, 'librar
 const LEGACY_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DEV = process.env.TESSERA_DEV === '1';
+// Desktop Mode helper (tessera-guide): the same program, showing only the guide, in a hidden
+// window that comes up over the desktop when a controller's Guide button is pressed.
+const GUIDE_ONLY = process.env.TESSERA_GUIDE_ONLY === '1';
 
 const LEGACY_TABS = ['home', 'library', 'apps']; // older files put rows on tabs
 const KINDS = ['game', 'app'];
@@ -84,6 +87,8 @@ const SCAN_DEPTH = 3;       // folders below a library folder
 const SCAN_MAX_VISITS = 20000;
 const BROWSE_MAX = 500;
 const LOG_DIR = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'tessera', 'logs');
+// While the launcher runs it leaves its process id here, so the desktop helper knows to stay quiet.
+const LAUNCHER_PID_FILE = path.join(path.dirname(LOG_DIR), 'launcher.pid');
 
 let mainWindow = null;
 let running = false;
@@ -516,6 +521,9 @@ const PAD_DEFAULTS = {
   deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together',
   // The browser pointer: which stick moves the cursor (the other one scrolls), and how fast.
   browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,
+  // The Guide button: what a quick press and a long hold do (see guide-button.js).
+  guideButton: 'menu-home',
+  guideDesktop: 'auto', // the guide in Desktop Mode: 'auto' (not while Steam runs), 'on', 'off'
 };
 const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
@@ -523,6 +531,8 @@ const PAD_CHOICES = {
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
   joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
   browserCursor: ['right', 'left'],
+  guideButton: ['menu-home', 'home-menu', 'menu'],
+  guideDesktop: ['auto', 'on', 'off'],
 };
 const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50], cursorSpeed: [10, 100], scrollSpeed: [10, 100] };
 
@@ -613,6 +623,7 @@ function loadSettings() {
       // backup, or a window reload), and appending would let stale or duplicate profiles from
       // before that reload silently pile up alongside the freshly-read ones.
       settings.profiles = loaded;
+      settings.activeProfile = typeof d.activeProfile === 'string' && loaded.some((pr) => pr.id === d.activeProfile) ? d.activeProfile : null;
     } else if (d) {
       settings.profiles = [];
     }
@@ -2336,7 +2347,54 @@ function savedBackground() {
   } catch { /* first start */ }
   return '#10151c';
 }
+function createGuideWindow() {
+  const { screen } = require('electron');
+  const area = screen.getPrimaryDisplay().workArea;
+  mainWindow = new BrowserWindow({
+    x: area.x, y: area.y, width: area.width, height: area.height,
+    show: false, frame: false, transparent: true, backgroundColor: '#00000000',
+    alwaysOnTop: true, skipTaskbar: true, resizable: false, movable: false, fullscreenable: false,
+    autoHideMenuBar: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: DEV },
+  });
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  mainWindow.setVisibleOnAllWorkspaces(true);
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+  mainWindow.loadFile('index.html', { query: { guide: '1' } });
+  mainWindow.webContents.on('did-finish-load', () => {
+    ensureTree(); scanAddons(); scanThemes(); loadState(); loadSettings();
+    send('init', buildView());
+  });
+  mainWindow.on('blur', () => { if (guideHelperShown) send('guide', { action: 'blur' }); });
+}
+let guideHelperShown = false;
+// Is the Tessera launcher itself running (nested over the desktop, say)? Then it handles Guide.
+function launcherRunning() {
+  try {
+    const pid = Number(fs.readFileSync(LAUNCHER_PID_FILE, 'utf8').trim());
+    if (!pid) return false;
+    process.kill(pid, 0);
+    return true;
+  } catch { return false; }
+}
+// Steam on the desktop takes the Guide button for itself (Big Picture). Two menus at once is worse
+// than one, so by default the helper steps aside while Steam is running.
+function steamRunning() {
+  try {
+    for (const d of fs.readdirSync('/proc')) {
+      if (!/^\d+$/.test(d)) continue;
+      let comm = '';
+      try { comm = fs.readFileSync(`/proc/${d}/comm`, 'utf8').trim(); } catch { continue; }
+      if (comm === 'steam' || comm === 'steamwebhelper') return true;
+    }
+  } catch { /* can't tell */ }
+  return false;
+}
 function createWindow() {
+  if (GUIDE_ONLY) return createGuideWindow();
+  try { fs.mkdirSync(path.dirname(LAUNCHER_PID_FILE), { recursive: true }); fs.writeFileSync(LAUNCHER_PID_FILE, String(process.pid)); } catch { /* the helper just won't know */ }
+  app.on('will-quit', () => { try { if (fs.readFileSync(LAUNCHER_PID_FILE, 'utf8').trim() === String(process.pid)) fs.unlinkSync(LAUNCHER_PID_FILE); } catch { /* gone */ } });
   mainWindow = new BrowserWindow({
     fullscreen: true,
     frame: false,
@@ -2376,6 +2434,8 @@ function createWindow() {
   });
 }
 
+// The helper keeps its own browser profile, so it never blocks or shares the launcher's single-instance lock.
+if (GUIDE_ONLY) app.setPath('userData', path.join(app.getPath('userData'), 'guide'));
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -2400,8 +2460,10 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
     createWindow();
-    watchDrives();
+    if (!GUIDE_ONLY) watchDrives();
     padsCtl.start();
+    if (GUIDE_ONLY) padsCtl.pause(); // Nintendo pads are read only while the guide is up
+    guideWatch = watchGuideButtons();
   });
 }
 
@@ -2991,7 +3053,8 @@ ipcMain.handle('addons', safe((op, p) => {
 // Minimal, on purpose: an id, a name, and an optional theme of their own. No switching session,
 // no PIN-per-profile, no startup wizard yet — just enough real state for "is this theme being
 // used by someone else" to mean something, instead of being permanently empty.
-const profilesInfo = () => ({ profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
+const activeProfile = () => (settings.profiles.some((p) => p.id === settings.activeProfile) ? settings.activeProfile : null);
+const profilesInfo = () => ({ profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })), active: activeProfile() });
 ipcMain.handle('profiles', safe((op, p) => {
   if (op === 'list') return profilesInfo();
   if (op === 'add') {
@@ -3025,6 +3088,17 @@ ipcMain.handle('profiles', safe((op, p) => {
     settings.profiles = settings.profiles.filter((x) => x.id !== p.id);
     if (settings.profiles.length !== before) saveSettings();
     return { ok: true, ...profilesInfo() };
+  }
+  // Who is playing. Switching needs no PIN (it is no more than picking a theme); the profile's
+  // own theme, if it has one, comes with it.
+  if (op === 'use') {
+    if (p.id === null) { settings.activeProfile = null; saveSettings(); return { ok: true, ...profilesInfo(), theme: themePayload() }; }
+    const pr = settings.profiles.find((x) => x.id === p.id);
+    if (!pr) return { ok: false, error: "That profile doesn't exist." };
+    settings.activeProfile = pr.id;
+    if (pr.themeId && themes.has(pr.themeId)) { settings.theme.active = pr.themeId; themeRev++; }
+    saveSettings();
+    return { ok: true, ...profilesInfo(), theme: themePayload() };
   }
   if (op === 'setTheme') {
     // Giving a profile its own theme is the one profile change that doesn't need the PIN —
@@ -3493,7 +3567,11 @@ function batteryInfo() {
   try {
     const base = '/sys/class/power_supply';
     const names = fs.readdirSync(base);
-    const bat = names.find((n) => { try { return fs.readFileSync(path.join(base, n, 'type'), 'utf8').trim() === 'Battery'; } catch { return false; } });
+    // Controllers report their batteries here too, as scope "Device": those aren't the computer's.
+    const bat = names.find((n) => {
+      const r = (f) => { try { return fs.readFileSync(path.join(base, n, f), 'utf8').trim(); } catch { return ''; } };
+      return r('type') === 'Battery' && r('scope') !== 'Device';
+    });
     if (!bat) return { present: false };
     const read = (f) => { try { return fs.readFileSync(path.join(base, bat, f), 'utf8').trim(); } catch { return ''; } };
     const pct = Number(read('capacity'));
@@ -3524,8 +3602,26 @@ function networkInfo() {
     return { connected: up, rxRate, txRate };
   } catch { return { connected: false, rxRate: null, txRate: null }; }
 }
+// Controller batteries (Xbox, PlayStation, Nintendo drivers all list them as scope "Device").
+function controllerBatteries() {
+  const out = [];
+  try {
+    const base = '/sys/class/power_supply';
+    for (const n of fs.readdirSync(base)) {
+      const r = (f) => { try { return fs.readFileSync(path.join(base, n, f), 'utf8').trim(); } catch { return ''; } };
+      if (r('type') !== 'Battery' || r('scope') !== 'Device') continue;
+      const pct = Number(r('capacity'));
+      const level = r('capacity_level'); // some pads only say "Low"/"Normal"/"Full"
+      const status = r('status');
+      const model = r('model_name') || (/nintendo|joycon/i.test(n) ? 'Nintendo controller' : /ps-controller|dualsense|sony/i.test(n) ? 'PlayStation controller' : /xpad|xbox|gip/i.test(n) ? 'Xbox controller' : 'Controller');
+      out.push({ name: model.slice(0, 40), pct: Number.isFinite(pct) && r('capacity') !== '' ? pct : null, level: level || null, charging: status === 'Charging' || status === 'Full' });
+      if (out.length >= 8) break;
+    }
+  } catch { /* none */ }
+  return out;
+}
 function systemInfo() {
-  return { cpu: cpuPct(), ram: ramInfo(), storage: storageInfo(), battery: batteryInfo(), network: networkInfo(), uptime: os.uptime() };
+  return { cpu: cpuPct(), ram: ramInfo(), storage: storageInfo(), battery: batteryInfo(), network: networkInfo(), uptime: os.uptime(), pads: controllerBatteries() };
 }
 ipcMain.handle('systemInfo', () => systemInfo());
 app.on('before-quit', () => { try { devices.bluetooth.stop(); } catch { /* going away anyway */ } });
@@ -4067,7 +4163,7 @@ function flatpakAppId(file, args) {
 // Run one program full-screen-style: hide the launcher, bring it back when it ends.
 // A browser can also be closed from the controller (LB / RB), which then moves
 // Tessera to the neighbouring tab.
-function runChild(file, args, cwd, label, logName) {
+function runChild(file, args, cwd, label, logName, title) {
   running = true;
   let finished = false;
   let closing = 0;
@@ -4077,6 +4173,8 @@ function runChild(file, args, cwd, label, logName) {
     if (finished) return;
     finished = true;
     running = false;
+    runningInfo = null;
+    guideOverGame = false;
     if (stopWatching) stopWatching();
     browserShoulder = null;
     clearBrowserPadNavigation();
@@ -4105,7 +4203,18 @@ function runChild(file, args, cwd, label, logName) {
       out = fd;
     } catch { logFile = null; }
   }
-  const child = spawn(file, args, { cwd, shell: false, stdio: ['ignore', out, out], detached: isBrowser });
+  // Its own process group, so "Close game" in the guide can end it and anything it started.
+  const child = spawn(file, args, { cwd, shell: false, stdio: ['ignore', out, out], detached: true });
+  runningInfo = {
+    kind: isBrowser ? 'browser' : 'game',
+    title: title || label,
+    since: Date.now(),
+    close: () => {
+      if (isBrowser && browserShoulder) return browserShoulder(0);
+      try { process.kill(-child.pid, 'SIGTERM'); } catch { try { child.kill('SIGTERM'); } catch { /* gone */ } }
+      setTimeout(() => { if (!finished) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } } }, 5000);
+    },
+  };
   if (typeof out === 'number') try { fs.closeSync(out); } catch { /* the child has its own copy */ }
   child.once('error', (err) => finish(`Launch failed: ${err.message}`));
   child.once('close', (code, signal) =>
@@ -4127,12 +4236,13 @@ function runChild(file, args, cwd, label, logName) {
 }
 
 ipcMain.on('launch', (_event, id) => {
-  if (running || typeof id !== 'string') return;
+  if (typeof id !== 'string') return;
+  if (running) return send('launch-failed', `${runningInfo ? runningInfo.title : 'A game'} is still running. Close it from the guide first.`);
   if (id === '_browser') {
     if (settings.pinBrowser !== false && !pinOk()) return send('launch-failed', 'Enter the PIN first.');
     const b = resolveBrowser();
     if (!b) return send('launch-failed', "Couldn't find a web browser to open.");
-    return runChild(b.file, b.args, os.homedir(), 'Browser');
+    return runChild(b.file, b.args, os.homedir(), 'Browser', null, 'Browser');
   }
   const game = itemById(id);
   if (!game) return send('launch-failed', 'Unknown game.');
@@ -4149,8 +4259,147 @@ ipcMain.on('launch', (_event, id) => {
   }
   recordPlay(game.id);
   // The game runs from its own folder so AnyPS5 can find libs/ and app0/.
-  runChild(game.path, game.args || [], path.dirname(game.path), 'Game', game.id);
+  runChild(game.path, game.args || [], path.dirname(game.path), 'Game', game.id, game.title);
 });
+
+// ------------------------------------------------------------------ the Guide button
+// Watched here, not in the page: during a game the launcher window is hidden and Chromium
+// gives hidden windows no controller input. Every controller's Guide button (evdev BTN_MODE)
+// is read directly, read-only, so games keep seeing it too. guide-button.js tells a quick
+// press from a long hold; Settings > Controller > Guide button says what each one does.
+const guideButtonLib = require('./guide-button');
+let runningInfo = null;     // what is running: { kind, title, since, close }
+let guideOverGame = false;  // the launcher is up in front of a running game
+const guideButton = guideButtonLib.createGuideButton({ mode: () => settings.pad.guideButton, onAction: guideAction });
+function guideAction(action, how) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (GUIDE_ONLY) return guideHelperAction(action);
+  const inGame = Boolean(running && runningInfo);
+  if (inGame && !guideOverGame) {
+    // Bring Tessera up in front of the game. Most games stop reading the controller once they
+    // lose focus, so the guide's buttons don't leak into the game. The game keeps running.
+    guideOverGame = true;
+    if (runningInfo.kind === 'game') padsCtl.resume();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+  send('guide', { action, how, inGame, overGame: guideOverGame, title: inGame ? runningInfo.title : '' });
+}
+function watchGuideButtons(dir = '/dev/input') {
+  const readers = new Map(); // event node -> cat process
+  const refused = new Set(); // nodes we may not read (permissions): not retried every scan
+  const sysRoot = '/sys/class/input';
+  const read = (file) => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return ''; } };
+  const scan = () => {
+    let names = [];
+    try { names = fs.readdirSync(dir).filter(browserGamepad.isEventNodeName); } catch { names = []; }
+    const seen = new Set();
+    for (const ev of names) {
+      const caps = read(path.join(sysRoot, ev, 'device', 'capabilities/key'));
+      // A controller: it has the Guide button and face buttons (a keyboard's "mode" key doesn't count).
+      if (!browserGamepad.capabilityHas(caps, guideButtonLib.BTN_MODE)) continue;
+      if (!browserGamepad.capabilityHas(caps, 0x130) && !browserGamepad.capabilityHas(caps, 0x131)) continue;
+      seen.add(ev);
+      if (readers.has(ev) || refused.has(ev)) continue;
+      const startedAt = Date.now();
+      const proc = spawn('cat', [path.join(dir, ev)], { stdio: ['ignore', 'pipe', 'ignore'] });
+      let pending = Buffer.alloc(0);
+      proc.stdout.on('data', (chunk) => {
+        pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
+        const whole = pending.length - (pending.length % 24);
+        if (whole) {
+          browserGamepad.parseInputEvents(pending.subarray(0, whole), (e) => {
+            if (e.code !== guideButtonLib.BTN_MODE) return;
+            if (e.value === 1) guideButton.down(ev);
+            else if (e.value === 0) guideButton.up(ev);
+          });
+        }
+        pending = pending.subarray(whole);
+      });
+      proc.on('error', () => {});
+      proc.on('close', () => {
+        if (readers.get(ev) !== proc) return;
+        readers.delete(ev);
+        guideButton.drop(ev);
+        if (Date.now() - startedAt < 2000) refused.add(ev); // couldn't open it
+      });
+      readers.set(ev, proc);
+    }
+    for (const [ev, proc] of readers) {
+      if (seen.has(ev)) continue;
+      readers.delete(ev);
+      guideButton.drop(ev);
+      try { proc.kill(); } catch { /* gone */ }
+    }
+    for (const ev of refused) if (!seen.has(ev)) refused.delete(ev); // replugged later: try again
+  };
+  scan();
+  let watcher = null;
+  try { watcher = fs.watch(dir, () => setTimeout(scan, 400)); watcher.on('error', () => {}); } catch { /* hotplug falls back to the timer */ }
+  const timer = setInterval(scan, 15000);
+  if (timer.unref) timer.unref();
+  return {
+    count: () => readers.size,
+    stop() { clearInterval(timer); if (watcher) try { watcher.close(); } catch { /* gone */ } for (const p of readers.values()) try { p.kill(); } catch { /* gone */ } readers.clear(); },
+  };
+}
+function guideHelperAction(action) {
+  // The launcher (nested over the desktop) is showing: it answers Guide itself.
+  if (launcherRunning()) return;
+  const when = settings.pad.guideDesktop || 'auto';
+  if (when === 'off' || (when === 'auto' && steamRunning())) return;
+  if (action === 'home') {
+    // Holding Guide on the desktop means "take me to Tessera".
+    return execFile('/usr/bin/tessera-return', [], () => {});
+  }
+  if (guideHelperShown) return send('guide', { action: 'menu', desktop: true });
+  guideHelperShown = true;
+  padsCtl.resume();
+  mainWindow.show();
+  mainWindow.focus();
+  send('guide', { action: 'menu', desktop: true });
+}
+let guideWatch = null;
+ipcMain.handle('guide', (_e, op, p) => {
+  p = p && typeof p === 'object' ? p : {};
+  if (op === 'status') {
+    return { watching: guideWatch ? guideWatch.count() : 0, running: Boolean(running && runningInfo), title: runningInfo ? runningInfo.title : '', kind: runningInfo ? runningInfo.kind : '', since: runningInfo ? runningInfo.since : 0, overGame: guideOverGame, mode: settings.pad.guideButton, helper: GUIDE_ONLY };
+  }
+  // The page saw Guide itself (keyboard, or a controller this process can't read).
+  if (op === 'press') {
+    const action = p.action === 'home' || p.action === 'menu' ? p.action : null;
+    if (action) guideAction(action, 'press');
+    return { ok: Boolean(action) };
+  }
+  if (op === 'resume') {
+    if (!running || !runningInfo) { guideOverGame = false; return { ok: false }; }
+    guideOverGame = false;
+    if (runningInfo.kind === 'game') padsCtl.pause();
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide(); // the game comes back to the front
+    return { ok: true };
+  }
+  // Desktop helper: the guide closed, hide the window again. Or go back to Tessera.
+  if (op === 'hideHelper') {
+    if (!GUIDE_ONLY) return { ok: false };
+    guideHelperShown = false;
+    padsCtl.pause();
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+    return { ok: true };
+  }
+  if (op === 'returnToTessera') {
+    if (!GUIDE_ONLY) return { ok: false };
+    execFile('/usr/bin/tessera-return', [], () => {});
+    return { ok: true };
+  }
+  if (op === 'closeGame') {
+    if (!running || !runningInfo) return { ok: false, error: 'Nothing is running.' };
+    runningInfo.close();
+    return { ok: true };
+  }
+  return { ok: false, error: 'Unknown action.' };
+});
+// Integration tests (TESSERA_DEV=1 only) press the Guide button through this, standing in for a pad.
+if (DEV) globalThis.__tesseraGuide = { down: (s) => guideButton.down(s || 'qa'), up: (s) => guideButton.up(s || 'qa') };
 
 // Desktop Mode. tessera-session has to tell "the person chose Desktop Mode" from "Tessera crashed"
 // (which it restarts). Gamescope's exit code cannot tell it: at shutdown it is not reliable, and a

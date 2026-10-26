@@ -24,6 +24,7 @@ Three more checks drive the embedded browser with stand-in controller input (fed
 ```bash
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-pointer.cjs      # cursor, analog scroll, trigger clicks, stick swap
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-transitions.cjs  # every entrance/exit animation, resume, Esc+arrow chord
+xvfb-run -a -s "-screen 0 1280x720x24" node qa/guide.cjs                # the guide (launcher, over a game, over the browser), first-run setup, desktop helper
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs
 ```
 

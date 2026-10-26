@@ -15,6 +15,8 @@ Tessera starts straight into a console-style launcher that you drive with a game
 - Home is a page of widgets: a clock, recently played games, six built-in system widgets (CPU, Memory, Storage, Battery, Network, Uptime), and community-made widgets from Add-ons.
 - Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
 - Mosaics can hold games, apps, widgets and folders. Press Y on a tile for its options.
+- **The guide**: press the Guide button (Xbox, PS or Home) from anywhere, even in the middle of a game, for a panel with what's running (resume or close it), volume, Wi-Fi, Bluetooth, controller batteries, profiles, recent notifications and power. Holding Guide goes straight Home (swap press and hold in *Settings > Controller*). In Desktop Mode the same guide comes up over the desktop, with *Return to Tessera*; it steps aside while Steam is running, since Steam takes the button for itself.
+- A first-run setup: who's playing (a profile), pick a look with the whole launcher previewing behind it, and an optional PIN.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.
 - The Browser tab is a real page, full screen, no Tessera bar over it. The right stick moves an on-screen cursor and the left stick scrolls, both faster the further you push; RT clicks and LT right-clicks (swap the sticks or change their speed in *Settings > Controller*). Y types an address or search, X jumps to the next link or field, A activates it, the D-pad steps through the page, and LB / RB or B leave it. Esc+Left / Esc+Right on a keyboard switch tabs too, even from inside a page. Coming back resumes the page where you left it, with an entrance and exit animation you can pick (slide, zoom, fade, rise, flip, doors or none) in *Theme Settings > Motion*. Button roles are positional: Nintendo's printed face-button letters differ.
 
@@ -35,7 +37,7 @@ Tessera starts straight into a console-style launcher that you drive with a game
 | Group | What's inside |
 |---|---|
 | Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
-| Controllers | Controller: settings, button mapping, browser cursor and scroll |
+| Controllers | Controller: settings, Guide button, button mapping, browser cursor and scroll |
 | Appearance | Theme settings, profiles, display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Desktop Mode |

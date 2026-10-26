@@ -29,4 +29,6 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   browser: (op, payload) => ipcRenderer.invoke('browser', op, payload),
   onPads: (cb) => ipcRenderer.on('pads', (_e, data) => cb(data)),
   onBrowserAction: (cb) => ipcRenderer.on('browser-action', (_e, action) => cb(action)),
+  guide: (op, payload) => ipcRenderer.invoke('guide', op, payload),
+  onGuide: (cb) => ipcRenderer.on('guide', (_e, msg) => cb(msg)),
 });

@@ -1120,3 +1120,23 @@ body[data-part-tabs="text"] > footer { margin-top: auto; }
   body[data-nav="left"]:not([data-part-tabs="chunky"]) > header { padding-top: 12px; padding-bottom: 12px; }
   body[data-nav="left"] > footer { padding-top: 5px; padding-bottom: 5px; font-size: 0.85rem; }
 }
+
+/* ==== the guide: a panel down the left side, over whatever is on screen ==== */
+#modal.guide { justify-content: flex-start; align-items: stretch; background: linear-gradient(90deg, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.25) 60%, rgb(0 0 0 / 0.1)); }
+#modal.guide .box {
+  width: min(30rem, 92vw); height: 100%; border-radius: 0 calc(var(--radius) + 8px) calc(var(--radius) + 8px) 0;
+  padding: clamp(18px, 4vh, 40px) clamp(16px, 2vw, 30px); display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(18px);
+  box-shadow: 18px 0 60px rgb(0 0 0 / 0.45);
+  animation: guide-in calc(0.22s * var(--motion)) cubic-bezier(.2,.8,.25,1);
+}
+#modal.guide .box h3 { font-size: 1.6rem; color: var(--text); margin-bottom: 6px; }
+#modal.guide .box .mbody { font-size: 1rem; color: var(--muted); margin: 0 0 14px; }
+#modal.guide .mlist { flex: 1; max-height: none; min-height: 0; }
+#modal.guide .mitem { font-size: 1.15rem; padding: 11px 16px; }
+#modal.guide .mitem.header { font-size: 0.8rem; padding-top: 16px; }
+@keyframes guide-in { from { transform: translateX(-104%); } to { transform: none; } }
+/* The Desktop Mode helper: nothing but the guide, over a see-through window. */
+html:has(body.guide-only), body.guide-only { background: transparent !important; }
+body.guide-only::before, body.guide-only::after { display: none !important; }
+body.guide-only > :not(#modal):not(script) { display: none !important; }
