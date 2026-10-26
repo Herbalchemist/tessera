@@ -2481,6 +2481,7 @@ if (!app.requestSingleInstanceLock()) {
     padsCtl.start();
     if (GUIDE_ONLY) padsCtl.pause(); // Nintendo pads are read only while the guide is up
     guideWatch = watchGuideButtons();
+    if (!GUIDE_ONLY) setTimeout(() => { graphicsCheck().catch(() => {}); }, GRAPHICS_CHECK_DELAY_MS);
   });
 }
 
@@ -3279,10 +3280,58 @@ async function updateInfo() {
   if (job) return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: job.kind };
   const st = await fetchStatus();
   if (!st.ok) return { ok: true, launcher: LAUNCHER_VERSION, supported: false, job: null, problem: UPDATE_PROBLEM[st.why] || UPDATE_PROBLEM.unreadable, detail: st.detail };
-  return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: null, booted: st.booted, staged: st.staged, rollback: st.rollback, rollbackQueued: st.rollbackQueued || rolledBackNow };
+  return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: null, booted: st.booted, staged: st.staged, rollback: st.rollback, rollbackQueued: st.rollbackQueued || rolledBackNow, graphics: await graphicsFor(st) };
 }
-async function startUpdate(kind) {
-  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback') return { ok: false, error: 'Unknown action.' };
+
+// ---- graphics builds
+// Tessera comes in a build per graphics family (see gpu-match.js). After a card swap the running build
+// may not suit the new card; Settings > Update software then offers to switch, which is the same kind
+// of image switch as an update: games, saves and settings stay, and the old build stays in the boot menu.
+const gpuMatch = require('./gpu-match');
+const PCI_DIR = process.env.TESSERA_PCI_DIR || '/sys/bus/pci/devices';
+const GRAPHICS_CHECK_DELAY_MS = Number(process.env.TESSERA_GRAPHICS_DELAY_MS) || 20000;
+const GRAPHICS_UNIT = (v) => `tessera-graphics-switch@${v}.service`;
+function readGpus() {
+  const out = [];
+  let names = [];
+  try { names = fs.readdirSync(PCI_DIR); } catch { return out; }
+  for (const d of names.slice(0, 256)) {
+    const rd = (f) => { try { return fs.readFileSync(path.join(PCI_DIR, d, f), 'utf8').trim().toLowerCase().replace(/^0x/, ''); } catch { return ''; } };
+    const cls = rd('class');
+    if (/^03/.test(cls)) out.push({ slot: d, vendor: rd('vendor'), device: rd('device'), cls });
+  }
+  return out;
+}
+// Card names, from lspci when it's there (it is on Bazzite). Without it the ids are shown instead.
+function nameGpus(gpus) {
+  return Promise.all(gpus.map((g) => new Promise((resolve) => {
+    if (!/^[0-9a-f:.]+$/i.test(g.slot)) return resolve(g);
+    execFile('lspci', ['-mm', '-s', g.slot], { timeout: 4000, encoding: 'utf8' }, (err, stdout) => {
+      const parts = err ? [] : [...String(stdout).matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+      resolve(parts.length >= 3 ? { ...g, name: shortText(`${parts[1]} ${parts[2]}`.replace(/Advanced Micro Devices, Inc\. \[AMD\/ATI\]/, 'AMD').replace(/NVIDIA Corporation/, 'NVIDIA').replace(/Intel Corporation/, 'Intel'), 80) } : g);
+    });
+  })));
+}
+async function graphicsFor(st) {
+  if (!st || !st.booted || !st.booted.ref) return null;
+  const gpus = await nameGpus(readGpus());
+  const m = gpuMatch.match(gpus, st.booted.ref);
+  const stagedFor = st.staged && st.staged.ref ? gpuMatch.variantOfRef(st.staged.ref) : null;
+  return { ...m, names: gpuMatch.VARIANT_NAMES, staged: stagedFor, switching: Boolean(m.mismatch && stagedFor === m.need) };
+}
+// Shortly after start: if the card and the build don't match (and the switch isn't already waiting
+// for a restart), tell the page so it can offer the switch.
+async function graphicsCheck() {
+  const gpus = readGpus();
+  if (!gpus.length) return;
+  const st = await fetchStatus();
+  if (!st.ok) return;
+  const g = await graphicsFor(st);
+  if (g && g.mismatch && !g.switching) send('graphics', g);
+}
+async function startUpdate(kind, p = {}) {
+  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback' && kind !== 'graphics') return { ok: false, error: 'Unknown action.' };
+  if (kind === 'graphics' && !gpuMatch.VARIANTS.includes(p.variant)) return { ok: false, error: 'Unknown action.' };
   if (running) return { ok: false, error: 'Close the game first.' };
   const cur = await runningJob();
   if (cur) return { ok: true, job: cur.kind };
@@ -3294,7 +3343,7 @@ async function startUpdate(kind) {
     if (st.staged) return { ok: false, error: 'An update is waiting for a restart. Restart first, then you can go back if you need to.' };
     if (!st.rollback) return { ok: false, error: "There's no earlier version to go back to." };
   }
-  const unit = UPDATE_UNIT[kind];
+  const unit = kind === 'graphics' ? GRAPHICS_UNIT(p.variant) : UPDATE_UNIT[kind];
   const before = await unitProps(unit);
   if (!before || before.LoadState === 'not-found') return { ok: false, error: UPDATE_PROBLEM.missing };
   const r = await sysctl(['start', '--no-block', unit], 15000);
@@ -3359,7 +3408,7 @@ async function updateOp(op, p) {
     if (['start', 'reboot'].includes(op) && !pinOk()) return NEED_PIN;
     switch (op) {
       case 'info': return await updateInfo();
-      case 'start': return await startUpdate(p.job);
+      case 'start': return await startUpdate(p.job, p);
       case 'poll': return await pollUpdate();
       case 'cancel': return await cancelUpdate();
       case 'reboot': return await restartNow();

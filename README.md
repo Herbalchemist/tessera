@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.21.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.22.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -89,7 +89,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 | Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
 | Controllers | **Controller**: live test, Guide button, button mapping, dead zones, rumble, button labels, browser cursor and scroll. **Keyboard & mouse**: key layouts, every key rebindable, hint style, pointer and scroll wheel |
 | Appearance | Theme settings, profiles, display calibration |
-| System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*), Add-ons, PIN |
+| System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Desktop Mode |
 
 ![Settings, in groups](docs/screenshots/settings.jpg)
@@ -136,6 +136,8 @@ Tessera is an image of Bazzite with the Tessera session on top, so you start fro
   | NVIDIA GTX 900 / 1000-series (Maxwell, Pascal, Volta) | `bazzite-nvidia` | `ghcr.io/herbalchemist/tessera-nvidia:latest` |
 
   Never switch an NVIDIA machine to the standard `tessera` image: it has no NVIDIA driver.
+
+**Changed your graphics card?** You don't reinstall anything. Tessera notices the new card shortly after it starts and offers to switch to the build made for it (it's also in *Settings › Update software › Graphics*). Switching works like an update: it downloads, starts after a restart, and keeps every game, save and setting. The old build stays in the boot menu. From a terminal, `sudo tessera-fix-graphics` does the same.
 
 **Switch to Tessera**
 

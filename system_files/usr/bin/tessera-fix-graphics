@@ -1,0 +1,167 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Switch Tessera to the build that suits this machine's graphics card.
+
+Tessera comes in three builds, because Bazzite ships the NVIDIA driver inside the system image:
+  tessera              AMD and Intel
+  tessera-nvidia       NVIDIA GTX 900 / 1000 and Titan V (Maxwell, Pascal, Volta)
+  tessera-nvidia-open  NVIDIA GTX 16 / RTX and newer (Turing onwards)
+
+After swapping a graphics card, run this (or use Settings > Update software, which offers the same
+thing). It switches builds with `bootc switch`, exactly how Tessera was installed: games, saves,
+settings and your home folder all stay. The new build starts after a restart, and the old one stays
+in the boot menu in case you need it.
+
+  tessera-fix-graphics              show the cards and the build that suits them, and offer to switch
+  tessera-fix-graphics --check      only show
+  tessera-fix-graphics --to BUILD   switch to standard, nvidia or nvidia-open (used by Settings)
+
+The rules match gpu-match.js in the launcher.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+VARIANTS = ("standard", "nvidia", "nvidia-open")
+SUFFIX = {"standard": "", "nvidia": "-nvidia", "nvidia-open": "-nvidia-open"}
+NAMES = {"standard": "AMD / Intel", "nvidia": "NVIDIA, GTX 900-1000", "nvidia-open": "NVIDIA, GTX 16 / RTX"}
+
+
+def cards():
+    out = []
+    base = "/sys/bus/pci/devices"
+    try:
+        entries = sorted(os.listdir(base))
+    except OSError:
+        return out
+    for d in entries:
+        def rd(name):
+            try:
+                with open(os.path.join(base, d, name)) as f:
+                    return f.read().strip().lower().replace("0x", "")
+            except OSError:
+                return ""
+        cls = rd("class")
+        if cls.startswith("03"):
+            out.append({"slot": d, "vendor": rd("vendor"), "device": rd("device"), "cls": cls})
+    return out
+
+
+def card_name(c):
+    try:
+        r = subprocess.run(["lspci", "-mm", "-s", c["slot"]], capture_output=True, text=True, timeout=5)
+        parts = re.findall(r'"([^"]*)"', r.stdout)
+        if len(parts) >= 3:
+            return f"{parts[1]} {parts[2]}"
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return f"{c['vendor']}:{c['device']}"
+
+
+def generation(device):
+    try:
+        d = int(device, 16)
+    except ValueError:
+        return "unknown"
+    if d >= 0x1E00:
+        return "open"
+    if d >= 0x1300:
+        return "legacy"
+    return "unsupported"
+
+
+def need(cs):
+    gens = [generation(c["device"]) for c in cs if c["vendor"] == "10de"]
+    if "legacy" in gens:
+        return "nvidia"
+    if "open" in gens:
+        return "nvidia-open"
+    if "unknown" in gens or not cs:
+        return None
+    return "standard"
+
+
+def booted_ref():
+    r = subprocess.run(["bootc", "status", "--format=json"], capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        sys.exit("Couldn't read the installed system (bootc status failed). Is this a Tessera install?")
+    try:
+        return json.loads(r.stdout)["status"]["booted"]["image"]["image"]["image"]
+    except (ValueError, KeyError, TypeError):
+        sys.exit("Couldn't read which image is installed.")
+
+
+REF_RE = re.compile(r"^(.*/)?([a-z0-9._-]+?)(-nvidia-open|-nvidia)?(:[A-Za-z0-9._-]+|@sha256:[0-9a-f]{64})?$")
+
+
+def split(ref):
+    m = REF_RE.match(ref.strip())
+    if not m or not m.group(2):
+        return None
+    variant = {"-nvidia-open": "nvidia-open", "-nvidia": "nvidia"}.get(m.group(3) or "", "standard")
+    tag = m.group(4) if m.group(4) and m.group(4).startswith(":") else ":latest"
+    return (m.group(1) or "", m.group(2), variant, tag)
+
+
+def main():
+    args = sys.argv[1:]
+    to = None
+    if args[:1] == ["--to"] and len(args) == 2:
+        to = args[1]
+        if to not in VARIANTS:
+            sys.exit(f"Unknown build: {to}. Use one of: {', '.join(VARIANTS)}")
+    elif args and args != ["--check"]:
+        print(__doc__.strip())
+        return 2
+
+    ref = booted_ref()
+    parts = split(ref)
+    if not parts:
+        sys.exit(f"The installed image ({ref}) doesn't look like a Tessera build.")
+    prefix, name, have, tag = parts
+
+    if to is None:
+        cs = cards()
+        print("Graphics:")
+        for c in cs:
+            print(f"  {card_name(c)}")
+        if not cs:
+            print("  (none found)")
+        want = need(cs)
+        print(f"This build: {NAMES[have]}  ({ref})")
+        if want is None:
+            print("Couldn't tell which build suits these graphics. Nothing to do.")
+            return 0
+        print(f"Suits these graphics: {NAMES[want]}")
+        if want == have:
+            print("They match. Nothing to do.")
+            return 0
+        if args == ["--check"]:
+            return 1
+        to = want
+        if os.geteuid() != 0:
+            print(f"\nTo switch, run:  sudo tessera-fix-graphics --to {to}")
+            return 1
+        answer = input(f"\nSwitch to the {NAMES[to]} build? Games, saves and settings stay. [y/N] ").strip().lower()
+        if answer not in ("y", "yes"):
+            print("Nothing changed.")
+            return 0
+
+    if os.geteuid() != 0:
+        sys.exit(f"Switching needs administrator rights:  sudo tessera-fix-graphics --to {to}")
+    if to == have:
+        print(f"Already on the {NAMES[to]} build.")
+        return 0
+    target = f"{prefix}{name}{SUFFIX[to]}{tag}"
+    print(f"Switching to {target}", flush=True)
+    r = subprocess.run(["bootc", "switch", target])
+    if r.returncode != 0:
+        return r.returncode
+    print("Done. Restart to start the new build.", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

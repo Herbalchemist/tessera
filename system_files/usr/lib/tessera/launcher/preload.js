@@ -31,4 +31,5 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   onBrowserAction: (cb) => ipcRenderer.on('browser-action', (_e, action) => cb(action)),
   guide: (op, payload) => ipcRenderer.invoke('guide', op, payload),
   onGuide: (cb) => ipcRenderer.on('guide', (_e, msg) => cb(msg)),
+  onGraphics: (cb) => ipcRenderer.on('graphics', (_e, g) => cb(g)),
 });

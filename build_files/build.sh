@@ -19,6 +19,9 @@ if [ ! -x /usr/bin/tessera-session ]; then
   exit 1
 fi
 
+# tessera-fix-graphics (switching builds after a graphics card swap) is a Python script.
+command -v python3 >/dev/null || dnf5 install -y python3
+
 ### Tessera launcher
 # Node is only needed here, to fetch Electron into the launcher folder.
 dnf5 install -y nodejs npm wtype
