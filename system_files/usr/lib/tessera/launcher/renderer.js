@@ -141,7 +141,8 @@ const GLYPH_SETS = {
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
 const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
-let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
+const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
+let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
   const v = /vendor:\s*([0-9a-f]{4})/i.exec(id || '');
@@ -157,10 +158,58 @@ const glyphSet = () => {
 };
 const glyph = (n) => glyphSet()[n];
 const buttonName = (n) => glyph(n) || `Button ${n}`;
+// ---- keyboard & mouse
+// Keys are looked up by KeyboardEvent.code (the key's position), so bindings survive a
+// change of keyboard layout; labels come from the layout when Chromium can tell us.
+const KBM = window.TesseraKeyboardMap;
+let kbLayout = null;
+try {
+  if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keyboard.getLayoutMap().then((m) => { kbLayout = m; applyGlyphs(); }).catch(() => {});
+} catch { /* no layout map: fall back to the built-in names */ }
+const kbBindings = () => KBM.normalize(prefs.kb && prefs.kb.bindings, prefs.kb && prefs.kb.preset);
+let kbIndex = KBM.lookup(kbBindings());
+const keyLabel = (code) => KBM.label(code, kbLayout);
+const actionKeys = (act) => (kbBindings()[act] || []).map(keyLabel);
+function kbRefresh() { kbIndex = KBM.lookup(kbBindings()); applyGlyphs(); }
+
+// What the person last touched: 'pad', 'keyboard' or 'mouse'. Button hints follow it
+// (unless Settings > Keyboard & mouse pins them), so a keyboard shows PgUp / PgDn, not LB / RB.
+let inputMode = 'pad';
+function hintMode() {
+  const h = (prefs.kb && prefs.kb.hints) || 'auto';
+  if (h === 'controller') return 'pad';
+  if (h === 'keyboard') return inputMode === 'mouse' ? 'mouse' : 'keyboard';
+  return inputMode;
+}
+function setInputMode(m) {
+  if (m === inputMode) return;
+  const before = hintMode();
+  inputMode = m;
+  if (hintMode() === before) return;
+  applyGlyphs();
+  if (modal && (modal.kind === 'keys' || modal.kind === 'cal' || modal.kind === 'tour')) renderModal();
+  else if (!modal && (hoverId === 'new' || hoverId === 'browser') && typeof update === 'function') update(); // "Press A to…" under those tabs
+}
+const ROLE_ACTION = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 12: 'up', 13: 'down', 14: 'left', 15: 'right', 16: 'guide' };
+// The name to show in a hint for controller button n, in whatever the person is using.
+function hintName(n) {
+  const m = hintMode();
+  if (m === 'pad') return buttonName(n);
+  if (m === 'mouse' && n === 0) return 'Click';
+  if (m === 'mouse' && n === 1) return 'Right-click';
+  const a = ROLE_ACTION[n];
+  const k = a ? actionKeys(a)[0] : '';
+  return k || buttonName(n);
+}
+// "Press Enter" / "Press A", or just "Click" for the mouse.
+const pressTo = (n) => (hintMode() === 'mouse' && n <= 1 ? hintName(n) : `Press ${hintName(n)}`);
 function applyGlyphs() {
+  const m = hintMode();
+  document.body.classList.toggle('hint-keys', m !== 'pad');
+  document.body.dataset.input = m;
   for (const el of document.querySelectorAll('[data-g]')) {
     const ids = el.dataset.g.split(',').map(Number);
-    el.textContent = ids.length === 1 ? buttonName(ids[0]) : ids[0] === 8 ? `Hold ${buttonName(8)} + ${buttonName(9)}` : ids.map(buttonName).join(' / ');
+    el.textContent = ids.length === 1 ? hintName(ids[0]) : ids[0] === 8 ? `Hold ${buttonName(8)} + ${buttonName(9)}` : ids.map(hintName).join(' / ');
   }
 }
 
@@ -171,7 +220,7 @@ function fitScreen() {
   const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
   document.documentElement.style.setProperty('--auto', Math.min(2.5, Math.max(0.6, s)).toFixed(3));
 }
-window.addEventListener('resize', fitScreen);
+window.addEventListener('resize', () => { fitScreen(); if (modal && modal.kind === 'tour') setTimeout(() => { if (modal && modal.kind === 'tour') renderModal(); }, 50); });
 fitScreen();
 
 let appliedVars = new Set();
@@ -383,6 +432,8 @@ function applyTheme(t) {
 function applyPrefs(p) {
   if (!p) return;
   prefs.pad = { ...PAD_DEFAULTS, ...(p.pad || {}) };
+  prefs.kb = { ...KB_DEFAULTS, ...(p.kb || {}) };
+  kbIndex = KBM.lookup(kbBindings());
   prefs.calib = p.calib || {};
   prefs.pageGrid = p.pageGrid || {};
   if (p.pin) prefs.pin = p.pin;
@@ -417,6 +468,7 @@ const ICONS = {
   bluetooth: { anim: 'seq', parts: [['path', { d: 'M7 7.5l10 9-5 4.5V3l5 4.5-10 9' }], ['circle', { cx: 3.5, cy: 12, r: 1.1, class: 'dot a1' }], ['circle', { cx: 20.5, cy: 12, r: 1.1, class: 'dot a2' }]] },
   sound: { anim: 'seq', parts: [['path', { d: 'M3.5 9.5h3.5L11.5 6v12L7 14.5H3.5z' }], ['path', { d: 'M15 9.5a3.5 3.5 0 0 1 0 5', class: 'a1' }], ['path', { d: 'M17.5 7a7 7 0 0 1 0 10', class: 'a2' }], ['path', { d: 'M20 4.5a10.5 10.5 0 0 1 0 15', class: 'a3' }]] },
   pad: { anim: 'seq', parts: [['path', { d: 'M7 8h10a4 4 0 0 1 3.9 3.1l1 4.6a2.4 2.4 0 0 1-4.3 1.9L16 16H8l-1.6 1.6a2.4 2.4 0 0 1-4.3-1.9l1-4.6A4 4 0 0 1 7 8z' }], ['path', { d: 'M8 10.6v3.4M6.3 12.3h3.4' }], ['circle', { cx: 15.6, cy: 11.4, r: 0.9, class: 'dot a1' }], ['circle', { cx: 17.6, cy: 13.3, r: 0.9, class: 'dot a2' }]] },
+  keyboard: { anim: 'press', parts: [['rect', { x: 2.5, y: 6, width: 19, height: 12, rx: 2 }], ['path', { d: 'M6 9.5h.01M9 9.5h.01M12 9.5h.01M15 9.5h.01M18 9.5h.01', class: 'a1' }], ['path', { d: 'M7.5 12.5h.01M10.5 12.5h.01M13.5 12.5h.01M16.5 12.5h.01', class: 'a2' }], ['path', { d: 'M8 15.3h8', class: 'a3' }]] },
   controls: { anim: 'press', parts: [['rect', { x: 3, y: 5, width: 5, height: 5, rx: 1.3, class: 'a1' }], ['rect', { x: 9.5, y: 5, width: 5, height: 5, rx: 1.3, class: 'a2' }], ['rect', { x: 16, y: 5, width: 5, height: 5, rx: 1.3, class: 'a3' }], ['rect', { x: 3, y: 13, width: 18, height: 5.5, rx: 1.3 }]] },
   theme: { anim: 'pop', parts: [['path', { d: 'M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z' }], ['circle', { cx: 7.5, cy: 11, r: 1.2, class: 'dot a1' }], ['circle', { cx: 9.5, cy: 7, r: 1.2, class: 'dot a2' }], ['circle', { cx: 14.5, cy: 7, r: 1.2, class: 'dot a3' }], ['circle', { cx: 17.2, cy: 10.6, r: 1.2, class: 'dot a4' }]] },
   profiles: { anim: 'pop', parts: [['circle', { cx: 16, cy: 7.5, r: 2.2, class: 'a2' }], ['path', { d: 'M12.3 19c.3-2.8 2.1-4.6 4.2-4.6s3.9 1.8 4.2 4.6', class: 'a2' }], ['circle', { cx: 8.5, cy: 8.5, r: 2.6, class: 'a1' }], ['path', { d: 'M3.5 19c0-3.3 2.2-5.5 5-5.5s5 2.2 5 5.5', class: 'a1' }]] },
@@ -457,6 +509,7 @@ const SETTINGS_ROWS = [
     cat: true,
     tiles: [
       { id: '_pad', title: 'Controller', kind: 'action', icon: 'pad' },
+      { id: '_keyboard', title: 'Keyboard & mouse', kind: 'action', icon: 'keyboard' },
     ],
   },
   {
@@ -505,6 +558,7 @@ function calmNote(id) {
   const themeName = () => { const t = prefs.theme && prefs.theme.themes && prefs.theme.themes.find((x) => x.id === prefs.theme.active); return t ? t.name : ''; };
   switch (id) {
     case '_pad': return shortPad(activePad());
+    case '_keyboard': return (KBM.PRESET_NAMES[(prefs.kb && prefs.kb.preset) || 'standard'] || '').replace(/ \(.*$/, '') + (prefs.kb && prefs.kb.bindings ? ', changed' : '');
     case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed';
     case '_theme': return themeName();
     case '_profiles': return prefs.profiles && prefs.profiles.length ? `${prefs.profiles.length} profile${prefs.profiles.length === 1 ? '' : 's'}` : 'None yet';
@@ -1162,7 +1216,7 @@ function update() {
   paintSelection();
   const t = selectedTile();
   titleEl.textContent = !inTiles
-    ? hoverId === 'new' ? `Press A to create a ${TERM}` : hoverId === 'browser' ? 'Press A to open your browser' : tabName(hoverId)
+    ? hoverId === 'new' ? `${pressTo(0)} to create a ${TERM}` : hoverId === 'browser' ? `${pressTo(0)} to open your browser` : tabName(hoverId)
     : t && !t.big ? t.title : '';
 }
 
@@ -1484,6 +1538,7 @@ function runAction(id) {
   if (id === '_storage') flowStorage();
   else if (id === '_update') flowUpdate();
   else if (id === '_pad') flowPadMenu();
+  else if (id === '_keyboard') flowKeyboardMenu();
   else if (id === '_theme') flowTheme();
   else if (id === '_profiles') flowProfiles();
   else if (id === '_display') flowCalMenu();
@@ -1554,6 +1609,19 @@ function capture(label) {
       resolve(n);
     };
     modal = { kind: 'capture', label, finish, note: '' };
+    renderModal();
+  });
+}
+// Waits for the next keyboard key and resolves with its code (null: cancelled with Esc or B).
+function captureKey(label) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => finish(null), 15000);
+    const finish = (code) => {
+      clearTimeout(timer);
+      closeModal();
+      resolve(code);
+    };
+    modal = { kind: 'capture', keyboard: true, label, finish, note: '' };
     renderModal();
   });
 }
@@ -1755,6 +1823,12 @@ function updateKeys() {
     hint.textContent = 'Press the button shown on each number to type it.';
     return;
   }
+  if (hintMode() !== 'pad') {
+    hint.textContent = modal.digits
+      ? 'Type the numbers on your keyboard   Backspace delete   Enter done   Esc cancel'
+      : 'Type on your keyboard   Backspace delete   Enter done   Esc cancel';
+    return;
+  }
   if (modal.digits) {
     hint.textContent = `A press   ${buttonName(keymap.back)} delete   ${buttonName(keymap.done)} done   ${buttonName(keymap.cancel)} cancel`;
     return;
@@ -1767,6 +1841,7 @@ function updateKeys() {
 
 function renderModal() {
   if (!modal) return;
+  if (modal.kind === 'tour') return renderTour();
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
   if (modal.kind === 'pad' || modal.kind === 'color' || modal.kind === 'cal') return;
@@ -1784,10 +1859,10 @@ function renderModal() {
   }
 
   if (modal.kind === 'capture') {
-    h.textContent = `Press a button for “${modal.label}”`;
+    h.textContent = modal.keyboard ? `Press a key for “${modal.label}”` : `Press a button for “${modal.label}”`;
     const p = document.createElement('p');
     p.className = 'khint';
-    p.textContent = modal.note || 'Press Esc on a keyboard to cancel';
+    p.textContent = modal.note || (modal.keyboard ? `Esc or ${buttonName(1)} on a controller to cancel` : 'Press Esc on a keyboard to cancel');
     box.appendChild(p);
     modalEl.appendChild(box);
     return;
@@ -1844,6 +1919,7 @@ function renderModal() {
 }
 
 function modalPress(act) {
+  if (modal.kind === 'tour') return tourPress(act);
   if (modal.kind === 'capture' || modal.kind === 'pad') return;
   if (modal.kind === 'grip') { if (act === 'a' || act === 'b') closeModal(); return; }
   if (modal.kind === 'cal') return calPress(act);
@@ -1870,6 +1946,7 @@ function modalPress(act) {
       }
     }
     else if (act === 'b') modal.onBack();
+    else if (act === 'y' && modal.onY) return modal.onY(cur); // Y on a keyboard (the controller's Y goes straight to onY)
     renderModal();
     return;
   }
@@ -2875,12 +2952,120 @@ async function flowWelcome() {
   // 5. Done, with the one thing worth knowing
   if (hi && hi.op === 'go') {
     reveal();
-    await pick("You're all set", [{ label: 'Start playing', ok: true }], 0, {
-      body: 'Press the Guide button (Xbox, PS or Home) any time for quick settings, profiles and power, even during a game. LB and RB switch tabs.',
+    const end = await pick("You're all set", [{ label: 'Start playing', ok: true }, { label: 'Take a quick tour', sub: 'a minute, shows where everything is', tour: true }], 0, {
+      body: `Press ${hintName(16)} any time for quick settings, profiles and power, even during a game. ${hintName(4)} and ${hintName(5)} switch tabs.`,
     });
+    wantTour = Boolean(end && end.tour);
   }
   const r = await api.settings('firstRunDone');
   if (r && r.prefs) applyPrefs(r.prefs);
+  if (wantTour) runTour();
+}
+
+// ------------------------------------------------------------------- the tour
+// An optional walk around the launcher: a ring lights up one part of the screen at a time,
+// with a card that explains it. Offered at the end of setup and from the guide. A or a click:
+// next, B: back, Y: leave the tour. The texts name the keys of whatever the person is using.
+let wantTour = false;
+const tabEl = (id) => tabsEl.children[tabList().indexOf(id)] || null;
+function tourSteps() {
+  const g = hintName;
+  const kb = hintMode() !== 'pad';
+  return [
+    { title: 'A quick tour', text: `Here's where everything is. ${g(0)}: next   ${g(1)}: back   ${g(3)}: leave the tour.` },
+    { tab: 'home', target: () => tabsEl, title: 'Tabs', text: `Everything lives in tabs. ${g(4)} and ${g(5)} switch between them from anywhere${kb ? ', and so do Esc + ← / →' : ''}.` },
+    { tab: 'home', target: () => rowsEl, title: 'Home', text: 'Your page of widgets: the clock, what you played last, system status, and community widgets from Add-ons.' },
+    { tab: 'library', target: () => rowsEl.querySelector('.row') || rowsEl, title: 'Library', text: `Your games. ${g(0)} plays one. ${g(3)} shows options: scan for games from Steam, Lutris and Heroic, add one from a file, change box art, rename or move.` },
+    { tab: 'new', target: () => tabEl('new'), title: 'Make your own tabs', text: '+ Mosaic builds a tab of your own, with games, apps, widgets and folders arranged the way you like.' },
+    { tab: 'browser', target: () => tabEl('browser'), title: 'The browser', text: kb ? 'A full web page, full screen. The mouse and keyboard work as usual; Esc + ← / → leaves it.' : `A full web page, full screen. One stick moves a cursor and the other scrolls; ${g(7)} clicks, ${g(3)} types an address, ${g(1)} leaves.` },
+    { tab: 'settings', target: () => tabEl('settings'), title: 'Settings', text: 'Wi-Fi, Bluetooth, sound, controllers, keyboard & mouse, the look (Theme Settings), profiles, storage and updates.' },
+    { target: () => document.querySelector('footer'), title: 'Button hints', text: 'These follow what you hold: controller buttons, keyboard keys or mouse clicks. Change keys in Settings > Keyboard & mouse.' },
+    { title: 'The guide', text: `Press ${g(16)} any time, even in the middle of a game, for quick settings, profiles, notifications and power. You can take this tour again from there.` },
+  ];
+}
+function goTabFor(id) {
+  if (!id || hoverId === id) return;
+  const list = tabList();
+  if (!list.includes(id)) return;
+  moveTabs(list.indexOf(id) - Math.max(0, list.indexOf(hoverId)));
+}
+function runTour() {
+  if (modal || browserOpen) return;
+  const back = { page, hoverId, focus };
+  modal = {
+    kind: 'tour', i: 0, steps: tourSteps(),
+    onClose: () => {
+      document.body.classList.remove('touring');
+      if (back.page !== page || back.hoverId !== hoverId) { page = back.page; hoverId = back.hoverId; stack = []; render(); }
+      focus = back.focus;
+      update();
+    },
+  };
+  document.body.classList.add('touring');
+  renderModal();
+}
+function renderTour() {
+  modal.steps = tourSteps(); // texts follow the input in use
+  const st = modal.steps[modal.i];
+  goTabFor(st.tab);
+  modalEl.hidden = false;
+  modalEl.className = 'tour';
+  let ring = modalEl.querySelector('.tour-ring');
+  let card = modalEl.querySelector('.tour-card');
+  if (!ring) {
+    modalEl.replaceChildren();
+    ring = document.createElement('div');
+    ring.className = 'tour-ring';
+    card = document.createElement('div');
+    card.className = 'tour-card box';
+    modalEl.append(ring, card);
+  }
+  const el = st.target ? st.target() : null;
+  const r = el ? el.getBoundingClientRect() : null;
+  const pad = 10;
+  const shown = r && r.width > 4 && r.height > 4;
+  if (shown) {
+    const x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad);
+    const w = Math.min(innerWidth - 8, r.right + pad) - x, h = Math.min(innerHeight - 8, r.bottom + pad) - y;
+    Object.assign(ring.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, opacity: '1' });
+  } else {
+    Object.assign(ring.style, { left: `${innerWidth / 2}px`, top: `${innerHeight / 2}px`, width: '0px', height: '0px', opacity: '1' });
+  }
+  card.replaceChildren();
+  const step = document.createElement('p');
+  step.className = 'tour-step';
+  step.textContent = `${modal.i + 1} of ${modal.steps.length}`;
+  const h = document.createElement('h3');
+  h.textContent = st.title;
+  const p = document.createElement('p');
+  p.className = 'mbody';
+  p.textContent = st.text;
+  const hint = document.createElement('p');
+  hint.className = 'khint';
+  const last = modal.i === modal.steps.length - 1;
+  hint.textContent = `${hintName(0)} ${last ? 'done' : 'next'}${modal.i ? `   ${hintName(1)} back` : ''}${last ? '' : `   ${hintName(3)} leave the tour`}`;
+  card.append(step, h, p, hint);
+  // The card sits below the lit-up part when there's room, above it otherwise, or in the middle.
+  const ch = card.offsetHeight, cw = card.offsetWidth;
+  let top = (innerHeight - ch) / 2, left = (innerWidth - cw) / 2;
+  if (shown) {
+    if (r.bottom + pad + 16 + ch < innerHeight) top = r.bottom + pad + 16;
+    else if (r.top - pad - 16 - ch > 0) top = r.top - pad - 16 - ch;
+    left = Math.min(innerWidth - cw - 16, Math.max(16, r.left + r.width / 2 - cw / 2));
+  }
+  Object.assign(card.style, { top: `${Math.round(top)}px`, left: `${Math.round(left)}px` });
+}
+function tourPress(act) {
+  const n = modal.steps.length;
+  if (act === 'a' || act === 'right' || act === 'down') {
+    if (modal.i >= n - 1) return closeModal();
+    modal.i++;
+  } else if (act === 'b' || act === 'left' || act === 'up') {
+    if (modal.i === 0) return closeModal();
+    modal.i--;
+  } else if (act === 'y') return closeModal();
+  else return;
+  renderTour();
 }
 
 // ------------------------------------------------------------------ the guide
@@ -3034,6 +3219,7 @@ async function openGuide() {
   for (const l of (prefs.storage && prefs.storage.low) || []) notes.push({ label: `Low storage on ${l.name}`, sub: `${fmtBytes(l.free)} left`, op: 'storage', plain: true });
   for (const m of statusLog.slice(0, 4)) notes.push({ label: m.msg.length > 70 ? m.msg.slice(0, 68) + '…' : m.msg, sub: fmtAgo(m.at), plain: true, info: true });
   if (notes.length) { items.push({ label: 'Notifications', header: true }); items.push(...notes); }
+  if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); }
   // ---- power
   items.push({ label: 'Power', header: true, fold: 'guide.power' });
   items.push({ label: 'Sleep', op: 'sleep', plain: true });
@@ -3099,6 +3285,7 @@ async function guideChoose(it) {
   const leaveTo = async (fn) => { await closeGuide({ stay: true }); fn(); };
   if (op === 'settings') return leaveTo(() => { page = 'settings'; hoverId = 'settings'; stack = []; focus = 'content'; render(); });
   if (op === 'profiles') return leaveTo(() => flowProfiles());
+  if (op === 'tour') return leaveTo(() => runTour());
   if (op === 'storage') return leaveTo(() => flowStorage());
   if (op === 'sleep' || op === 'restart' || op === 'shutdown' || op === 'desktop') {
     await closeGuide({ stay: true });
@@ -3366,7 +3553,7 @@ function renderCal() {
   def.draw(ctx, W, H, modal.w);
   stepEl.textContent = `${modal.mode === 'quick' ? 'Quick' : 'Thorough'} calibration · step ${modal.i + 1} of ${modal.defs.length} · ${def.title}`;
   const nextLabel = def.review ? 'Save' : 'Next';
-  const g = (n) => buttonName(n);
+  const g = (n) => hintName(n);
   if (def.review) {
     const s = calSummary(modal.w, modal.mode);
     helpEl.textContent = (modal.compare ? 'Showing your screen as it was.' : 'Showing the corrected screen.') + ' Hold ' + g(3) + ' to compare with how it was.';
@@ -3964,7 +4151,7 @@ function renderGrip() {
   }
   const foot = document.createElement('p');
   foot.className = 'gripfoot';
-  foot.textContent = `${buttonName(0)} or ${buttonName(1)}: done`;
+  foot.textContent = `${hintName(0)} or ${hintName(1)}: done`;
   box.append(h, how, cards, foot);
   modalEl.appendChild(box);
 }
@@ -4092,6 +4279,96 @@ async function flowPadMenu() {
   }
 }
 
+
+// Settings → Keyboard & mouse: a key layout to start from, every action rebindable, and how
+// the hints and the pointer behave.
+const KB_LABELS = {
+  hints: { auto: 'Automatic (whatever I used last)', controller: 'Always controller buttons', keyboard: 'Always keyboard keys' },
+  wheel: { move: 'Moves the selection', tabs: 'Switches tabs (menus still scroll)', off: 'Does nothing' },
+};
+async function kbSet(op, payload) {
+  busy = true;
+  try {
+    const r = await api.settings(op, payload);
+    if (r && r.ok) { prefs.kb = { ...KB_DEFAULTS, ...r.kb }; kbRefresh(); }
+    else if (r && r.error) setStatus(r.error, true);
+    return r;
+  } finally { busy = false; }
+}
+async function flowKeyboardMenu() {
+  if (modal || busy) return;
+  let index = 0;
+  for (;;) {
+    const b = kbBindings();
+    const k = prefs.kb || KB_DEFAULTS;
+    const items = [
+      { label: 'Key layout', sub: KBM.PRESET_NAMES[k.preset] || KBM.PRESET_NAMES.standard, op: 'preset' },
+      { label: 'Button hints', sub: KB_LABELS.hints[k.hints] || KB_LABELS.hints.auto, op: 'hints' },
+      { label: 'Keys', header: true, fold: 'kb.keys', open: true },
+    ];
+    for (const a of KBM.ACTIONS) items.push({ label: KBM.ACTION_LABELS[a], sub: b[a].map(keyLabel).join('  ·  '), act: a });
+    items.push({ label: 'Reset keys to the layout', sub: k.bindings ? 'you changed some keys' : 'nothing changed', op: 'reset', plain: true });
+    items.push({ label: 'Always', sub: 'Volume keys change the volume. Esc + ← / → switches tabs, even inside a web page.', plain: true, info: true });
+    items.push({ label: 'Mouse', header: true, fold: 'kb.mouse', open: true });
+    items.push({ label: 'Hide the pointer after', sub: k.mouseHide ? `${k.mouseHide} s without moving` : 'Never (while using the mouse)', op: 'mouseHide' });
+    items.push({ label: 'Scroll wheel', sub: KB_LABELS.wheel[k.wheel] || KB_LABELS.wheel.move, op: 'wheel' });
+    items.push({ label: 'Buttons', sub: 'Click opens · right-click or the back thumb button goes back · middle click shows options · forward thumb button: next tab', plain: true, info: true });
+    const it = await pick('Keyboard & mouse', items, index);
+    if (!it) return;
+    index = items.indexOf(it);
+    if (it.info) continue;
+    if (it.act) await flowKeyAction(it.act);
+    else if (it.op === 'reset') await kbSet('kbReset', {});
+    else if (it.op === 'preset' || it.op === 'hints' || it.op === 'wheel') {
+      const opts = it.op === 'preset' ? Object.entries(KBM.PRESET_NAMES) : Object.entries(KB_LABELS[it.op]);
+      const titles = { preset: 'Key layout (the arrow keys always work)', hints: 'Button hints at the bottom of the screen', wheel: 'The scroll wheel' };
+      const choice = await pick(titles[it.op], opts.map(([v, label]) => ({ label, sub: v === k[it.op] ? 'current' : '', v })), Math.max(0, opts.findIndex(([v]) => v === k[it.op])));
+      if (!choice) continue;
+      if (it.op === 'preset' && k.bindings && choice.v !== k.preset) {
+        const ok = await pick('Switching layout replaces the keys you changed', [{ label: 'Switch', v: true }, { label: 'Keep my keys' }]);
+        if (!ok || !ok.v) continue;
+      }
+      await kbSet('kbSet', { key: it.op, value: choice.v });
+    } else if (it.op === 'mouseHide') {
+      const vals = [1, 2, 3, 5, 10, 30, 0];
+      const choice = await pick('Hide the pointer after', vals.map((v) => ({ label: v ? `${v} second${v === 1 ? '' : 's'}` : 'Never', sub: v === k.mouseHide ? 'current' : '', v })), Math.max(0, vals.indexOf(k.mouseHide)));
+      if (choice) await kbSet('kbSet', { key: 'mouseHide', value: choice.v });
+    }
+  }
+}
+async function flowKeyAction(act) {
+  let index = 0;
+  for (;;) {
+    const keys = kbBindings()[act];
+    const items = [{ label: 'Add a key', sub: `up to ${KBM.MAX_PER_ACTION} keys, the first one shows in hints`, op: 'add' }];
+    keys.forEach((code, i) => items.push({ label: keyLabel(code), sub: i === 0 ? 'shown in hints · A: make another one first, Y: remove' : 'A: show this one in hints · Y: remove', code }));
+    let removing = null;
+    const it = await new Promise((resolve) => {
+      openList({
+        title: `${KBM.ACTION_LABELS[act]} · keys`, items, index,
+        onChoose: (x) => { closeModal(); resolve(x); },
+        onBack: () => { closeModal(); resolve(null); },
+        onY: (x) => { if (x && x.code) { removing = x; closeModal(); resolve(x); } },
+      });
+    });
+    if (!it) return;
+    index = items.indexOf(it);
+    if (removing) {
+      await kbSet('kbUnbind', { action: act, code: removing.code });
+    } else if (it.op === 'add') {
+      const code = await captureKey(KBM.ACTION_LABELS[act]);
+      if (!code) continue;
+      const other = kbIndex.get(code);
+      if (other && other !== act) {
+        const ok = await pick(`${keyLabel(code)} is used for ${KBM.ACTION_LABELS[other]}`, [{ label: `Use it for ${KBM.ACTION_LABELS[act]} instead`, v: true }, { label: 'Cancel' }]);
+        if (!ok || !ok.v) continue;
+      }
+      await kbSet('kbBind', { action: act, code });
+    } else if (it.code && index > 1) {
+      await kbSet('kbBind', { action: act, code: it.code }); // binding again moves it to the front
+    }
+  }
+}
 
 // ------------------------------------------------------------ color wheel
 // Hue is the angle, saturation the distance from the centre, and brightness
@@ -4268,7 +4545,7 @@ async function flowTheme() {
     try { t = await api.settings('themeGet'); } finally { busy = false; }
     applyTheme(t);
     const active = t.themes.find((x) => x.id === t.active);
-    const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera Bright', sub: t.themes.length > 1 ? 'A to switch' : 'more themes: Add-ons', op: 'switch', plain: true }];
+    const items = [{ label: 'Theme', header: true }, { label: active ? active.name : 'Tessera Bright', sub: t.themes.length > 1 ? `${hintName(0)} to switch` : 'more themes: Add-ons', op: 'switch', plain: true }];
     let group = null;
     const sizes = {};
     t.settings.forEach((s) => { sizes[s.group] = (sizes[s.group] || 0) + 1; });
@@ -4418,7 +4695,7 @@ async function flowProfiles() {
       { label: 'Add a profile…', op: 'add', plain: true },
     ];
     if (list.length) {
-      items.push({ label: 'Press Y on a profile for its options', header: true });
+      items.push({ label: `Press ${hintName(3)} on a profile for its options`, header: true });
       list.forEach((p) => items.push({ label: p.name, sub: p.themeId ? `Theme: ${themeName(p.themeId)}` : "Uses Tessera's active theme", id: p.id, plain: true }));
     }
     const it = await pick('Profiles', items, index, {
@@ -4612,6 +4889,10 @@ function press(act) {
 
 // One controller button went down.
 function onButton(n) {
+  if (modal && modal.kind === 'capture' && modal.keyboard) {
+    if (n === 1) modal.finish(null); // B cancels; other buttons are ignored while waiting for a key
+    return;
+  }
   if (modal && modal.kind === 'capture') {
     if (RESERVED_BUTTONS.includes(n)) {
       modal.note = `${buttonName(n)} can't be used here. Try another button.`;
@@ -4753,6 +5034,7 @@ let lastPadId = null;
 let currentPad = null; // its identity
 const padBusyBefore = new Map();
 const padIdent = (p) => p.key || `${p.id}#${p.index}`;
+let padWasBusy = true; // a controller already held at start doesn't count as a fresh press
 const padBusy = (p) => p.buttons.some((b) => b && b.pressed) || p.axes.slice(0, 4).some((a) => Math.abs(a) > 0.6);
 function choosePad() {
   const pads = gamepads();
@@ -4780,6 +5062,13 @@ function activePad() {
 function loop(now) {
   const pad = suspended ? null : choosePad();
   if (pad && mouseShown && padBusy(pad)) hideMouse();
+  if (pad) {
+    // A fresh press or push on the controller makes the hints show its buttons again. Only a
+    // change counts, so a trigger that rests half-pressed can't hold the hints on the controller.
+    const busyNow = padBusy(pad);
+    if (busyNow && !padWasBusy) setInputMode('pad');
+    padWasBusy = busyNow;
+  }
   if (pad && browserOpen && !modal) {
     // The main-process adapters own browser input. Track held buttons without
     // dispatch so native Gamepad API polling cannot double-fire B/Y/bumper actions
@@ -4850,7 +5139,8 @@ function showMouse() {
   cursorImage();
   if (!mouseShown) { mouseShown = true; document.body.classList.add('mouse'); }
   clearTimeout(mouseTimer);
-  mouseTimer = setTimeout(hideMouse, 3000);
+  const secs = prefs.kb && Number.isFinite(prefs.kb.mouseHide) ? prefs.kb.mouseHide : 3;
+  if (secs > 0) mouseTimer = setTimeout(hideMouse, secs * 1000);
 }
 function hideMouse() {
   if (!mouseShown) return;
@@ -4858,20 +5148,38 @@ function hideMouse() {
   clearTimeout(mouseTimer);
   document.body.classList.remove('mouse');
 }
-window.addEventListener('mousemove', showMouse, { passive: true });
-window.addEventListener('contextmenu', (e) => { e.preventDefault(); showMouse(); if (!suspended && !busy) press('b'); });
+// Only real movement counts: Chromium also sends mousemove when the page moves under a still pointer.
+let mouseAt = null;
+window.addEventListener('mousemove', (e) => {
+  const at = `${e.screenX},${e.screenY}`;
+  if (at === mouseAt) return;
+  mouseAt = at;
+  setInputMode('mouse');
+  showMouse();
+}, { passive: true });
+window.addEventListener('contextmenu', (e) => { e.preventDefault(); setInputMode('mouse'); showMouse(); if (!suspended && !busy) press('b'); });
 let wheelAt = 0;
 window.addEventListener('wheel', (e) => {
+  setInputMode('mouse');
   showMouse();
+  const how = (prefs.kb && prefs.kb.wheel) || 'move';
+  if (how === 'off') return;
   const now = performance.now();
   if (now - wheelAt < 140 || suspended || busy) return;
   wheelAt = now;
   const ax = Math.abs(e.deltaX) > Math.abs(e.deltaY);
   const d = ax ? e.deltaX : e.deltaY;
   if (!d) return;
+  // 'tabs': up/down on the wheel flips between tabs (lists in a menu still scroll).
+  if (how === 'tabs' && !modal && !ax) return press(d > 0 ? 'rb' : 'lb');
   press(ax ? (d > 0 ? 'right' : 'left') : (d > 0 ? 'down' : 'up'));
 }, { passive: true });
 window.addEventListener('mousedown', (e) => {
+  setInputMode('mouse');
+  // The back and forward thumb buttons on many mice: back, and next tab.
+  if (e.button === 3) { e.preventDefault(); if (!suspended && !busy) press('b'); return; }
+  if (e.button === 4) { e.preventDefault(); if (!suspended && !busy && !modal) press('rb'); return; }
+  if (e.button === 1) { e.preventDefault(); if (!suspended && !busy) press('y'); return; } // middle click: options
   if (e.button !== 0) return;
   showMouse();
   if (suspended || busy) return;
@@ -4895,6 +5203,7 @@ window.addEventListener('mousedown', (e) => {
       return keyAction(keyFor(modal.r, modal.c));
     }
     if (modal.kind === 'grip') return closeModal();
+    if (modal.kind === 'tour') return press('a');
     return; // the controller tester, color wheel and calibration are made for the controller
   }
   const tab = t.closest('.tab');
@@ -4922,10 +5231,39 @@ window.addEventListener('mousedown', (e) => {
   press('a');
 });
 
-// Keyboard fallback, handy for testing without a controller.
+// The keyboard. Every action can be rebound in Settings > Keyboard & mouse; keys are matched by
+// position (e.code). Volume keys always work.
+function volumeKey(e) {
+  const d = { AudioVolumeUp: 1, AudioVolumeDown: -1, AudioVolumeMute: 0 }[e.code];
+  if (d === undefined) return false;
+  if (!api.audio) return true;
+  api.audio('info').then(async (a) => {
+    const out = a && a.ok ? a.outputs.find((o) => o.isDefault) : null;
+    if (!out) return;
+    if (d === 0) {
+      await api.audio('mute', { kind: 'output', id: out.id, on: !out.mute });
+      return setStatus(out.mute ? `Sound on · ${out.volume}%` : 'Muted');
+    }
+    const v = Math.max(0, Math.min(100, (out.volume || 0) + d * 5));
+    if (out.mute && d > 0) await api.audio('mute', { kind: 'output', id: out.id, on: false });
+    await api.audio('volume', { kind: 'output', id: out.id, pct: v });
+    setStatus(`Volume ${v}%`);
+  }).catch(() => {});
+  return true;
+}
 window.addEventListener('keydown', (e) => {
+  setInputMode('keyboard');
   hideMouse();
+  if (modal && modal.kind === 'capture' && modal.keyboard) {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (e.code === 'Escape') return modal.finish(null);
+    if (!KBM.validCode(e.code)) { modal.note = "That key can't be used. Try another."; return renderModal(); }
+    return modal.finish(e.code);
+  }
+  if (volumeKey(e)) return e.preventDefault();
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const act = kbIndex.get(e.code) || null;
   if (modal && modal.kind === 'capture') {
     if (e.key === 'Escape') modal.finish(null);
     return;
@@ -4935,13 +5273,14 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (modal && modal.kind === 'color') {
-    const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
-    if (k) colorPress(k);
-    else if (e.key === 'Enter') colorButton(0);
-    else if (e.key === 'Escape') colorButton(1);
-    else if (e.key === 'h') colorButton(3);
-    else if (e.key === 'PageUp' || e.key === ']') colorButton(5);
-    else if (e.key === 'PageDown' || e.key === '[') colorButton(4);
+    if (act === 'left' || act === 'right' || act === 'up' || act === 'down') colorPress(act);
+    else if (act === 'a') colorButton(0);
+    else if (act === 'b') colorButton(1);
+    else if (act === 'x') colorButton(2);
+    else if (act === 'y' || e.key === 'h') colorButton(3);
+    else if (act === 'lb') colorButton(4);
+    else if (act === 'rb') colorButton(5);
+    if (act) e.preventDefault();
     return;
   }
   if (suspended || busy) return;
@@ -4954,31 +5293,28 @@ window.addEventListener('keydown', (e) => {
   // Esc+Left / Esc+Right is the keyboard equivalent of LB/RB: switch tabs (mosaics).
   // Esc alone still means "back", but only fires on release, so it can be judged as
   // a chord first — the same tap-vs-hold pattern used for Y below.
-  if (e.key === 'Escape') {
+  if (e.code === 'Escape' && act === 'b') {
     escHeld = true;
     escChordUsed = false;
     return e.preventDefault();
   }
-  if (escHeld && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+  if (escHeld && (act === 'left' || act === 'right')) {
     escChordUsed = true;
-    press(e.key === 'ArrowRight' ? 'rb' : 'lb');
+    press(act === 'right' ? 'rb' : 'lb');
     return e.preventDefault();
   }
-  const map = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
-    Enter: 'a', Backspace: 'b', PageUp: 'lb', PageDown: 'rb',
-  };
-  if (e.key === 'y') return e.repeat ? undefined : yDown();
-  if (e.key === 'F1' || e.key === 'Home') return e.repeat ? undefined : guidePressFromPage();
-  const act = map[e.key] || (e.key === 'x' ? 'x' : null);
-  if (act) press(act);
+  if (!act) return;
+  e.preventDefault();
+  if (act === 'y') return e.repeat ? undefined : yDown();
+  if (act === 'guide') return e.repeat ? undefined : guidePressFromPage();
+  press(act);
 });
 window.addEventListener('keyup', (e) => {
-  if (e.key === 'y') yUp();
+  if (kbIndex.get(e.code) === 'y') yUp();
   // Only fire "back" here if OUR keydown branch actually claimed this Escape (escHeld).
   // When a modal (capture/pad/color/keys) already handled it on keydown, escHeld was
   // never set, so this stays a no-op instead of firing a second, spurious "back".
-  if (e.key === 'Escape' && escHeld) {
+  if (e.code === 'Escape' && escHeld) {
     if (!escChordUsed) press('b');
     escHeld = false;
     escChordUsed = false;

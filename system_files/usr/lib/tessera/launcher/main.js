@@ -535,12 +535,19 @@ const PAD_CHOICES = {
   guideDesktop: ['auto', 'on', 'off'],
 };
 const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50], cursorSpeed: [10, 100], scrollSpeed: [10, 100] };
+// Keyboard & mouse. Bindings are KeyboardEvent.code lists per action (see keyboard-map.js).
+const keyboardMap = require('./keyboard-map');
+const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
+const KB_CHOICES = { preset: Object.keys(keyboardMap.PRESETS), hints: ['auto', 'controller', 'keyboard'], wheel: ['move', 'tabs', 'off'] };
+const KB_RANGES = { mouseHide: [0, 30] }; // seconds; 0 = never hide while the mouse is in use
+const kbPayload = () => ({ ...settings.kb, bindings: keyboardMap.normalize(settings.kb.bindings, settings.kb.preset) });
 
 let settings = {
   scanRoots: [],
   keys: { ...DEFAULT_KEYS },
   theme: { active: 'stock', values: {} }, // values[themeId][settingId]
   pad: { ...PAD_DEFAULTS },
+  kb: { ...KB_DEFAULTS },
   calib: {}, // per controller: resting offsets of each axis
   driveNames: {}, // drive key -> the name the person gave it
   pin: null, // { salt, hash } for the PIN (never the PIN itself)
@@ -597,6 +604,14 @@ function loadSettings() {
         if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(v)) settings.pad[k] = v;
         else if (PAD_RANGES[k] && Number.isFinite(v) && v >= PAD_RANGES[k][0] && v <= PAD_RANGES[k][1]) settings.pad[k] = Math.round(v);
       }
+    }
+    if (d && d.kb && typeof d.kb === 'object') {
+      for (const k of Object.keys(KB_CHOICES)) if (KB_CHOICES[k].includes(d.kb[k])) settings.kb[k] = d.kb[k];
+      for (const k of Object.keys(KB_RANGES)) {
+        const v = d.kb[k];
+        if (Number.isFinite(v) && v >= KB_RANGES[k][0] && v <= KB_RANGES[k][1]) settings.kb[k] = Math.round(v);
+      }
+      if (d.kb.bindings && typeof d.kb.bindings === 'object') settings.kb.bindings = keyboardMap.normalize(d.kb.bindings, settings.kb.preset);
     }
     if (d && d.calib && typeof d.calib === 'object') {
       for (const [id, arr] of Object.entries(d.calib).slice(0, 16)) {
@@ -1098,7 +1113,7 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ pad: { ...settings.pad }, calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload(), profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
+const prefsPayload = () => ({ pad: { ...settings.pad }, kb: kbPayload(), calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload(), profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
 
 
 // ------------------------------------------------------- display calibration
@@ -2055,7 +2070,9 @@ Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
 Shell arrangement: "shellLayout" is "classic", "dock", "crossbar", "dashboard", "switch", "hero", "pivot", "cube" or "channel". Single parts can be set too: "partNav", "partTabs", "partClock", "partFrame", "partTitle", "partTile", "partSize", "partRow", "partCard", "partSpot", "partEmblem", "partHints" (each "auto" or one of its listed values).
 This repositions approved navigation/content regions; it is not a freeform layout editor.
 Home widget coordinates are preserved when switching shell arrangements.
-Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
+Backdrop: "backdrop" is "none", "glow", "mystic", "tiles" (the Mosaic tile field), "cubes" or "stripes".
+Browser transition: "browserAnim" is "slide", "zoom", "fade", "rise", "flip", "doors" or "none".
+The full guide, with every setting: docs/theming.md in the Tessera repository (github.com/Herbalchemist/tessera).
 Selector glow: "selColor": "pastel" gives the glow around the selected tile, tab, menu row
 or key a new random pastel every time the selector moves (fills keep their own colors;
 the default, "accent", keeps one glow color: the highlight color).
@@ -3787,6 +3804,43 @@ ipcMain.handle('settings', safe((op, p) => {
     saveSettings();
     if (k === 'joycons') padsCtl.regroup();
     return { ok: true, pad: { ...settings.pad }, calib: settings.calib };
+  }
+  if (op === 'kbSet') {
+    const k = p.key;
+    if (KB_CHOICES[k]) {
+      if (!KB_CHOICES[k].includes(p.value)) return { ok: false };
+      settings.kb[k] = p.value;
+      if (k === 'preset') settings.kb.bindings = null; // a preset starts from its own keys
+    } else if (KB_RANGES[k]) {
+      if (!Number.isFinite(p.value) || p.value < KB_RANGES[k][0] || p.value > KB_RANGES[k][1]) return { ok: false };
+      settings.kb[k] = Math.round(p.value);
+    } else return { ok: false };
+    saveSettings();
+    return { ok: true, kb: kbPayload() };
+  }
+  if (op === 'kbBind') {
+    const cur = kbPayload().bindings;
+    const owner = keyboardMap.lookup(cur).get(p.code);
+    if (owner && owner !== p.action && cur[owner].length <= 1) return { ok: false, error: `That's the only key for ${keyboardMap.ACTION_LABELS[owner]}. Give it another key first.` };
+    const next = keyboardMap.bind(cur, p.action, p.code, settings.kb.preset);
+    if (!next) return { ok: false, error: "That key can't be used." };
+    settings.kb.bindings = next;
+    saveSettings();
+    return { ok: true, kb: kbPayload() };
+  }
+  if (op === 'kbUnbind') {
+    const cur = kbPayload().bindings;
+    if (!keyboardMap.ACTIONS.includes(p.action) || !Array.isArray(cur[p.action])) return { ok: false };
+    if (cur[p.action].length <= 1) return { ok: false, error: 'Every action needs at least one key.' };
+    cur[p.action] = cur[p.action].filter((c) => c !== p.code);
+    settings.kb.bindings = keyboardMap.normalize(cur, settings.kb.preset);
+    saveSettings();
+    return { ok: true, kb: kbPayload() };
+  }
+  if (op === 'kbReset') {
+    settings.kb.bindings = null;
+    saveSettings();
+    return { ok: true, kb: kbPayload() };
   }
   if (op === 'padCalib') {
     const id = typeof p.id === 'string' ? p.id.slice(0, 80) : '';

@@ -1,58 +1,124 @@
+<div align="center">
+
 # Tessera
 
-**A controller-first, themeable gaming OS built on [Bazzite](https://bazzite.gg). Community-made tiles.**
+**A gaming OS you drive from the couch.**<br>
+Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
+
+[![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
+![Version](https://img.shields.io/badge/launcher-0.21.0-6a58d8)
+![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
+![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
+
+[Install](#install) · [Controls](#controls) · [Make it yours](#make-it-yours) · [Theming guide](docs/theming.md) · [How it's built](#how-its-built)
 
 ![Tessera's Library in the Mosaic Dark theme](docs/screenshots/hero.jpg)
 
-Tessera starts straight into a console-style launcher that you drive with a gamepad: pick a game, press A, play. Everything else a gaming PC needs (Wi-Fi, Bluetooth, sound, updates, storage) lives in the same controller-friendly Settings. The full desktop is one login away when you want it.
+</div>
 
-> **Status: early preview.** Tessera is a one-person project that has so far been tried on one machine. It works, but expect rough edges, and please keep a backup of anything you care about. Sections marked *Not yet* below are planned, not built.
+Turn the PC on and you're in a console-style launcher: pick a game, press A, play. Everything else a gaming PC needs (Wi-Fi, Bluetooth, sound, updates, storage) lives in the same controller-friendly Settings. A keyboard and mouse work just as well. The full KDE desktop is one menu away when you want it.
+
+> **Status: early preview.** Tessera is a one-person project tested on one machine so far. It works, but expect rough edges, and keep a backup of anything you care about. Anything marked *Not yet* is planned, not built.
+
+## Highlights
+
+| | |
+|---|---|
+| 🎮 **Couch-first** | Every screen works with a controller: Xbox, PlayStation, Switch Pro and Joy-Cons, with button labels that match the pad in your hands. |
+| ⌨️ **Keyboard & mouse too** | Hints switch to keycaps or *Click* the moment you touch a keyboard or mouse. Every key can be rebound, with layouts for WASD, H J K L and TV remotes. |
+| 🧩 **Themes that change the layout** | Ten factory themes, and every part of the layout is a setting: where the menu sits, tile shape, clock, selection frame, the art behind everything. |
+| 🏠 **The guide** | Press Guide from anywhere, even mid-game or on the desktop, for quick settings, controller batteries, profiles and power. |
+| 🌐 **A real browser** | Full-screen pages with a stick-driven cursor, analog scrolling and trigger clicks. |
+| 👋 **A friendly first run** | Setup asks who's playing, lets you pick a look with the launcher previewing live, and ends with an optional guided tour. |
+| 🔒 **Family friendly** | An optional PIN guards Settings, deleting things and the browser. |
+| 🕊️ **Yours** | No telemetry, no account, and Steam never starts unless you start it. |
+
+## Ten looks out of the box
+
+![The ten factory themes](docs/screenshots/themes.jpg)
+
+*Tessera Bright, Dark, Mosaic and Mosaic Dark; Arcade Marquee; and five homages to console home screens: Cartridge Pop, Nova Black, Dashboard Steel, Indigo Cube and Channel White. The homages echo layout, color and motion only; no console maker's logos, artwork or sounds are used.*
+
+## Controls
+
+The hints at the bottom of the screen always show the buttons for what you're holding.
+
+| | Controller | Keyboard (Standard layout) | Mouse |
+|---|---|---|---|
+| Move | D-pad or left stick | Arrow keys (or the number pad) | Scroll wheel |
+| Open / select | A | Enter or Space | Click |
+| Back | B | Esc or Backspace | Right-click or the back thumb button |
+| Options for a tile | Y (hold Y to pick a tile up and move it) | Y or the Menu key | Middle click |
+| Switch tab | LB / RB | PgUp / PgDn, `[` / `]`, or Esc + ← / → | Click a tab, or the forward thumb button |
+| The guide | Guide (Xbox / PS / Home button) | F1 or Home | |
+| Volume | | Volume keys | |
+
+Every keyboard action can be rebound in **Settings › Keyboard & mouse**. Bindings follow the key's position, so they survive a change of keyboard layout, and the hints show what's actually printed on your keys. Pick a starting layout there:
+
+- **Standard**: arrows.
+- **WASD**: Q / E for tabs, Space to select.
+- **H J K L**: for vim hands.
+- **TV remote / media keys**: OK, Back, Home and the channel keys.
+
+You can also keep the hints on controller buttons, or hide the pointer sooner or never.
+
+**In the browser:** the right stick moves a cursor and the left stick scrolls, both faster the further you push. RT clicks and LT right-clicks, Y types an address, X jumps to the next link, and LB / RB or B leave the page. Swap the sticks or change their speed in **Settings › Controller**.
 
 ## What you get
 
 **A launcher made for a controller**
-- Tabs you switch with LB / RB: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself), and Settings.
-- Home is a page of widgets: a clock, recently played games, six built-in system widgets (CPU, Memory, Storage, Battery, Network, Uptime), and community-made widgets from Add-ons.
+- Tabs: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself) and Settings.
+- **Home** is a page of widgets: a clock, recently played, six system widgets (CPU, Memory, Storage, Battery, Network, Uptime) and community widgets from Add-ons.
 - Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
-- Mosaics can hold games, apps, widgets and folders. Press Y on a tile for its options.
-- **The guide**: press the Guide button (Xbox, PS or Home) from anywhere, even in the middle of a game, for a panel with what's running (resume or close it), volume, Wi-Fi, Bluetooth, controller batteries, profiles, recent notifications and power. Holding Guide goes straight Home (swap press and hold in *Settings > Controller*). In Desktop Mode the same guide comes up over the desktop, with *Return to Tessera*; it steps aside while Steam is running, since Steam takes the button for itself.
-- A first-run setup: who's playing (a profile), pick a look with the whole launcher previewing behind it, and an optional PIN.
-- An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN.
-- The Browser tab is a real page, full screen, no Tessera bar over it. The right stick moves an on-screen cursor and the left stick scrolls, both faster the further you push; RT clicks and LT right-clicks (swap the sticks or change their speed in *Settings > Controller*). Y types an address or search, X jumps to the next link or field, A activates it, the D-pad steps through the page, and LB / RB or B leave it. Esc+Left / Esc+Right on a keyboard switch tabs too, even from inside a page. Coming back resumes the page where you left it, with an entrance and exit animation you can pick (slide, zoom, fade, rise, flip, doors or none) in *Theme Settings > Motion*. Button roles are positional: Nintendo's printed face-button letters differ.
+- **The guide**: press Guide from anywhere, even in the middle of a game, for:
+  - what's running (resume or close it);
+  - volume, Wi-Fi and Bluetooth;
+  - controller batteries and profiles;
+  - recent notifications and power;
+  - *Take the tour*.
 
-**Make it yours**
-- Ten factory themes: *Tessera Bright*, *Tessera Dark*, *Tessera Mosaic*, *Tessera Mosaic Dark*, *Arcade Marquee*, and five homages to console home screens — *Cartridge Pop* (a row of big square tiles over round buttons), *Nova Black* (the selection's art fills the screen), *Dashboard Steel* (text pivots over flat square tiles), *Indigo Cube* (chunky glossy menu under a turning cube) and *Channel White* (a wall of wide channels over a curved clock bar). They echo layout, color and motion only; no console maker's logos, artwork or sounds are used. Every setting is yours to change: screen area, text size, colors, corners, borders, background picture or effect, widget style and more.
-- Theme Settings includes **Shell arrangement**, a structural preset rather than a colour swap: **Classic**, **Bottom dock**, **Crossbar**, **Dashboard**, **Home row**, **Spotlight**, **Pivot**, **Cube** and **Channels**. Each factory theme picks its own, and any theme can use any of them. Under **Layout parts** you can also pick each piece on its own (menu position, tab look, clock, selection frame, where the name goes, tile shape and size, how rows move, tile look, the selection's art behind everything, an emblem, and where the button hints sit), so a theme can mix, say, round icon buttons and a curved clock bar with spotlight art. Every part offers Auto, which follows the arrangement.
-- Themes aren't locked to the four factory ones. Drop a `theme.json` in `~/Tessera/Themes/<your-theme-id>/` and it shows up alongside them — a theme is values only (colors, approved shell/layout presets, grid density, icon style and more), never code, so nothing it ships can do more than Settings itself already allows. Add `"shellLayout"` (`"classic"`, `"dock"`, `"crossbar"`, `"dashboard"`, `"switch"`, `"hero"`, `"pivot"`, `"cube"` or `"channel"`) and `"browserAnim"` under `defaults` to choose them in a custom theme.
-- Theme Settings can also save, rename, overwrite and delete the themes you make right there in the console — no file editing needed. The factory themes stay read-only. Deleting or renaming a theme someone else is relying on asks for the PIN first, then falls them back to *Tessera Bright*.
-- Profiles (Settings > Profiles): name more than one person who uses this Tessera and, optionally, give each their own theme — or leave it following whatever's active. This is the foundation piece, not yet a full switch-user experience with its own library or controls.
-- Three tile layouts: **Rails** (sideways rows), **Grid** and **Flow**. Grid and Flow come in ready-made sizes, or set your own (up to 12 columns). Shell arrangements are a first structural step, not a freeform layout editor: they reposition only the launcher’s tested chrome and content regions, and never move or rewrite Home widget positions.
-- Display calibration for the launcher and, optionally, for games.
-- Controller settings, with Button mapping inside them: dead zones, rumble, button mapping, browser cursor and scroll, automatic button glyphs (Xbox, PlayStation, Nintendo).
+  Holding Guide goes straight Home (swap press and hold in *Settings › Controller*). In Desktop Mode the same guide comes up over the desktop with *Return to Tessera*. It steps aside while Steam is running, since Steam takes the button for itself.
+- **First-run setup**: who's playing (a profile), pick a look with the whole launcher previewing behind it, an optional PIN, and an optional **guided tour** that lights up each part of the screen in turn.
+- An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN. With a real keyboard you just type.
 - Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
-- A mouse works too: the pointer appears in the theme's colors when you move it, click opens, right-click goes back.
 
 **Settings that don't need a keyboard**
 
 | Group | What's inside |
 |---|---|
 | Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
-| Controllers | Controller: settings, Guide button, button mapping, browser cursor and scroll |
+| Controllers | **Controller**: live test, Guide button, button mapping, dead zones, rumble, button labels, browser cursor and scroll. **Keyboard & mouse**: key layouts, every key rebindable, hint style, pointer and scroll wheel |
 | Appearance | Theme settings, profiles, display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Desktop Mode |
 
-Every Settings tile shows its status (free space, version, theme, PIN, controller) under a full-bleed icon that colors the whole tile edge to edge. In *Theme Settings > Settings page* you can put small groups side by side, and turn the icons, their motion and the status lines off.
-
-**Family friendly**: an optional PIN guards Settings, deleting things and the browser.
-
-![Tessera's three layouts: Rails, Grid and Flow](docs/screenshots/layouts.jpg)
-
-![The four factory themes](docs/screenshots/themes.jpg)
-
 ![Settings, in groups](docs/screenshots/settings.jpg)
 
 ![Sound, Bluetooth, Wi-Fi and Update software](docs/screenshots/screens.jpg)
+
+## Make it yours
+
+- **Theme Settings** changes everything from the couch: screen area, text size, colors, corners, borders, background picture or effect, widget style, motion, and the browser's entrance animation (slide, zoom, fade, rise, flip, doors or none).
+- **Shell arrangement** is a layout preset rather than a color swap: **Classic**, **Bottom dock**, **Crossbar**, **Dashboard**, **Home row**, **Spotlight**, **Pivot**, **Cube** and **Channels**.
+- **Layout parts** let you pick each piece on its own, every one with an *Auto* option that follows the arrangement:
+  - menu position and tab look;
+  - clock and selection frame;
+  - where the name goes;
+  - tile shape, size and look;
+  - how rows move;
+  - the selection's art behind everything;
+  - an emblem;
+  - where the button hints sit.
+
+  So round icon buttons and a curved clock bar can sit over spotlight art.
+- **Three tile layouts**: **Rails** (sideways rows), **Grid** and **Flow**, in ready-made sizes or your own (up to 12 columns).
+- **Your own themes**: *Save current as a new theme…* writes a `theme.json` you can rename, overwrite, share or hand-edit. Factory themes stay read-only. A theme is values only, never code, so nothing it ships can do more than Settings itself already allows.
+- **Profiles**: each person can have their own theme.
+- Display calibration for the launcher and, optionally, for games.
+
+📘 **[The theming guide](docs/theming.md)** covers every setting a `theme.json` can hold, how the layout parts combine, worked examples, and a checker that tells you what Tessera will accept before you copy a theme over.
+
+![Tessera's three layouts: Rails, Grid and Flow](docs/screenshots/layouts.jpg)
 
 ## Install
 
@@ -93,6 +159,12 @@ After the restart the machine signs in to Tessera by itself.
 - **Browser permissions:** the embedded browser is isolated from the launcher and currently denies camera, microphone, location, notifications and other permission requests. A controller-friendly website-permission prompt is not built yet. Typing into a page's own text fields with the on-screen keyboard is not built yet (the address bar works).
 - **Not yet:** Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
 
+## Roadmap
+
+- A freeform, drag-and-drop layout editor, and a separate theme creator app.
+- Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
+- Full profile switching: each person with their own library and controls.
+
 ## How it's built
 
 - `Containerfile`: starts from `ghcr.io/ublue-os/bazzite:stable` and adds Tessera.
@@ -100,6 +172,8 @@ After the restart the machine signs in to Tessera by itself.
 - `build_files/build.sh`: the image build steps.
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
+
+**Theme checker**: `node tools/check-theme.cjs path/to/theme.json` (see [the theming guide](docs/theming.md)).
 
 **Launcher checks** (Node.js required):
 

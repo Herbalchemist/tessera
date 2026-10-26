@@ -1,0 +1,39 @@
+{
+  "name": "Quiet Paper",
+  "author": "Tessera examples",
+  "defaults": {
+    "bg": "#f6f3ec",
+    "panel": "#fbf9f4",
+    "card": "#ffffff",
+    "text": "#24211c",
+    "muted": "#6f685c",
+    "accent": "#2f6f5e",
+    "border": "#d8d2c4",
+    "confirm": "#2f6f5e",
+    "cancel": "#b3412f",
+    "borderW": "2px",
+    "radius": "10px",
+    "shadow": 20,
+    "tabShadow": 0,
+    "selectRing": "3px",
+    "backdrop": "none",
+    "fontScale": 110,
+    "shellLayout": "pivot",
+    "partFrame": "framed",
+    "layout": "grid",
+    "gridPreset": "custom",
+    "gridCols": 5,
+    "gridRows": 2,
+    "tileGap": 140,
+    "setPack": true,
+    "setIcons": "still",
+    "widgetStyle": "outline",
+    "motion": false,
+    "browserAnim": "fade"
+  },
+  "settings": [
+    { "id": "radius", "group": "Shape", "label": "Corner roundness", "type": "choice", "var": "--radius",
+      "default": "10px",
+      "options": [ { "label": "Square", "value": "2px" }, { "label": "Soft", "value": "10px" } ] }
+  ]
+}
