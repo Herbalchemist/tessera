@@ -666,8 +666,9 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const IMG_EXT = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const MAX_IMAGE = 12 * 1024 * 1024;
 const STOCK_VARS = ['--use', '--font-scale', '--radius', '--border-w', '--accent', '--border', '--card', '--panel', '--bg', '--text', '--muted', '--bg-image', '--bg-dim', '--danger', '--ok', '--motion', '--wg-tint', '--wg-blur', '--wg-color', '--wg-sheen', '--wg-clear', '--shadow', '--ring', '--tab-shadow'];
-// Four themes ship with Tessera. They share one list of settings and differ
-// only in their defaults. ("stock" stays the id of Bright so saved choices carry over.)
+// Seven themes ship with Tessera. They share one list of settings and differ
+// only in their defaults, including a safe structural shell preset. ("stock"
+// stays the id of Bright so saved choices carry over.)
 // The two Mosaic themes turn on "selColor: pastel" (Theme Settings > Selector glow):
 // the glow around whatever the selector lands on takes a new random pastel every
 // move. The tile, tab, menu row or key itself keeps its own colour.
@@ -677,7 +678,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#f4f1fa', card: '#ffffff', panel: '#ffffff', text: '#2b2640', muted: '#6a6586', accent: '#6a58d8',
       border: '#2b2640', borderW: '0px', shadow: 60, radius: '20px', cancel: '#e5484d', confirm: '#12a37f',
-      backdrop: 'glow', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'glow', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 30, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
   },
@@ -686,7 +687,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#0a0714', card: '#1a1230', panel: '#150e29', text: '#e9defc', muted: '#9a8bc0', accent: '#9d7bff',
       border: '#3b2a6b', borderW: '2px', radius: '14px', cancel: '#ff5d8f', confirm: '#3ee0b0',
-      backdrop: 'mystic', layout: 'rails', gridPreset: 'c5r3',
+      backdrop: 'mystic', shellLayout: 'classic', layout: 'rails', gridPreset: 'c5r3',
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1a1230',
     },
   },
@@ -695,7 +696,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#f8f5ef', card: '#ffffff', panel: '#ffffff', text: '#2a2638', muted: '#6d6882', accent: '#6063d8',
       border: '#2a2638', borderW: '0px', shadow: 55, radius: '20px', cancel: '#e5546b', confirm: '#1fa67a',
-      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'tiles', selColor: 'pastel', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 22, widgetClear: 60, widgetColor: '#ffffff',
     },
   },
@@ -704,7 +705,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#121018', card: '#1f1c2b', panel: '#1a1724', text: '#ece8f5', muted: '#9a94b0', accent: '#b4a7ff',
       border: '#3a3450', borderW: '0px', shadow: 70, radius: '20px', cancel: '#ff6b8b', confirm: '#4fe0b0',
-      backdrop: 'tiles', selColor: 'pastel', layout: 'grid', gridPreset: 'c5r3',
+      backdrop: 'tiles', selColor: 'pastel', shellLayout: 'classic', layout: 'grid', gridPreset: 'c5r3',
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1f1c2b',
     },
   },
@@ -714,7 +715,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#fff6e6', card: '#ffffff', panel: '#fff1d8', text: '#2b1d0e', muted: '#8a7556', accent: '#ff8a2b',
       border: '#2b1d0e', borderW: '0px', radius: '40px', shadow: 70, tabShadow: 80, selectRing: '3px',
-      confirm: '#1fa67a', cancel: '#e5484d', backdrop: 'tiles', selColor: 'pastel', layout: 'flow', gridPreset: 'c4r2',
+      confirm: '#1fa67a', cancel: '#e5484d', backdrop: 'tiles', selColor: 'pastel', shellLayout: 'dock', layout: 'rails', gridPreset: 'c4r2',
       setPack: false, setNotes: true, setIcons: 'animated',
       widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 18, widgetClear: 60, widgetColor: '#ffffff', widgetSheen: true,
       motion: true,
@@ -725,7 +726,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#120a1a', card: '#1e1130', panel: '#180d28', text: '#fbeaff', muted: '#b79bd6', accent: '#ff4fd8',
       border: '#ff4fd8', borderW: '2px', radius: '28px', shadow: 100, tabShadow: 100, selectRing: '5px',
-      confirm: '#3ee6c7', cancel: '#ff5d6c', backdrop: 'glow', selColor: 'accent', layout: 'rails', gridPreset: 'c5r3',
+      confirm: '#3ee6c7', cancel: '#ff5d6c', backdrop: 'glow', selColor: 'accent', shellLayout: 'crossbar', layout: 'grid', gridPreset: 'c5r3',
       setPack: false, setNotes: true, setIcons: 'animated',
       widgetStyle: 'glass', widgetTint: 45, widgetBlur: 20, widgetClear: 55, widgetColor: '#1e1130', widgetSheen: true,
       motion: true,
@@ -736,7 +737,7 @@ const BUILTIN_THEMES = [
     defaults: {
       bg: '#0c1118', card: '#17202c', panel: '#121922', text: '#e6edf5', muted: '#8fa0b3', accent: '#4fc3ff',
       border: '#2c3b4d', borderW: '2px', radius: '10px', shadow: 60, tabShadow: 70, selectRing: '3px',
-      confirm: '#3ee0b0', cancel: '#ff6b6b', backdrop: 'none', selColor: 'accent', layout: 'grid', gridPreset: 'c6r3',
+      confirm: '#3ee0b0', cancel: '#ff6b6b', backdrop: 'none', selColor: 'accent', shellLayout: 'dashboard', layout: 'grid', gridPreset: 'c6r3',
       setPack: true, setNotes: true, setIcons: 'still',
       widgetStyle: 'outline', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#17202c', widgetSheen: false,
       motion: true,
@@ -773,6 +774,13 @@ const STOCK_THEME = {
       options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }, { label: 'Mosaic tiles', value: 'tiles' }] },
     { id: 'confirm', group: 'Buttons', label: 'Done / Yes button color', type: 'color', default: '#3ddc97', var: '--ok' },
     { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
+    { id: 'shellLayout', group: 'Layout', label: 'Shell arrangement', type: 'choice', default: 'classic', hint: 'A structural preset for navigation and page framing. It does not edit your Home widgets or create arbitrary layouts.',
+      options: [
+        { label: 'Classic (top navigation)', value: 'classic' },
+        { label: 'Bottom dock / card strip', value: 'dock' },
+        { label: 'Crossbar (top categories)', value: 'crossbar' },
+        { label: 'Dashboard (left sidebar)', value: 'dashboard' },
+      ] },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
       options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
     { id: 'gridPreset', group: 'Layout', label: 'Grid size (default for every page)', type: 'choice', default: 'c5r3',
@@ -1949,6 +1957,9 @@ Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
 or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
+Shell arrangement: "shellLayout" is "classic", "dock", "crossbar" or "dashboard".
+This repositions approved navigation/content regions; it is not a freeform layout editor.
+Home widget coordinates are preserved when switching shell arrangements.
 Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
 Selector glow: "selColor": "pastel" gives the glow around the selected tile, tab, menu row
 or key a new random pastel every time the selector moves (fills keep their own colors;
@@ -3213,13 +3224,20 @@ const devices = require('./devices');
 
 // Nintendo Switch controllers, read straight from the kernel (Chromium leaves them out; see pads.js).
 // While the browser has the screen, LB / RB on them close it, like on any other controller.
+const browserGamepad = require('./browser-gamepad');
+const browserNavigation = require('./browser-navigation');
 let browserShoulder = null;
 const padBits = new Map();
-const browserStickDir = new Map();
-const browserRightStickDir = new Map();
+const browserPadNavigation = new Map();
 const padsCtl = require('./pads').create({
   prefs: () => ({ joycons: settings.pad.joycons }),
-  onList: (p) => send('pads', { type: 'list', ...p }),
+  onList: (p) => {
+    const ids = new Set((p.pads || []).map(pad => pad.id));
+    for (const id of padBits.keys()) {
+      if (!ids.has(id)) { padBits.delete(id); clearBrowserPadNavigation(id); }
+    }
+    send('pads', { type: 'list', ...p });
+  },
   onMotion: (m) => send('pads', { type: 'motion', ...m }),
   onFrame: (f) => {
     const before = padBits.get(f.id) || 0;
@@ -3234,60 +3252,44 @@ const padsCtl = require('./pads').create({
 
     if (browserShoulder || browserViewActive) {
       const down = f.b & ~before;
-
-      // Preserve the existing shoulder-button browser-close behavior.
-      if (browserShoulder && (down & (1 << 4))) {
-        browserShoulder(-1);
-        return;
-      }
-      if (browserShoulder && (down & (1 << 5))) {
-        browserShoulder(1);
-        return;
-      }
-
       const pressKey = browserViewActive ? sendBrowserViewKey : sendExternalBrowserKey;
       const axes = Array.isArray(f.a) ? f.a : [];
-      // D-pad: up, down, left, right.
-      for (const [bit, key] of [[12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']]) {
-        if (down & (1 << bit)) pressKey(key);
-      }
-      // Nintendo face buttons: A activates; B dismisses/backtracks.
-      if (down & (1 << 1)) pressKey('ENTER');
-      if (down & (1 << 0)) pressKey('ESC');
 
+      if (browserViewActive) {
+        // BrowserView receives page-navigation input directly. Browser controls which
+        // operate Tessera itself go to the hidden launcher through a narrow IPC event.
+        const actions = browserGamepad.standardButtonActions(down);
+        actions.browserActions.forEach(sendBrowserAction);
+        actions.keys.forEach(pressKey);
+      } else {
+        // Preserve the existing external-browser shoulder-button close behavior.
+        if (browserShoulder && (down & (1 << 4))) { browserShoulder(-1); return; }
+        if (browserShoulder && (down & (1 << 5))) { browserShoulder(1); return; }
+        if (down & (1 << 0)) pressKey('ENTER');
+        if (down & (1 << 1)) pressKey('ESC');
+        if (down & (1 << 2)) pressKey('TAB');
+      }
+
+      const navigation = browserPadDirectionRepeater(f.id);
+      for (const [bit, key] of [[12, 'UP'], [13, 'DOWN'], [14, 'LEFT'], [15, 'RIGHT']]) {
+        navigation.set('dpad:' + bit, f.b & (1 << bit) ? key : '');
+      }
       const lx = Number(axes[0]) || 0;
       const ly = Number(axes[1]) || 0;
       const rx = Number(axes[2]) || 0;
       const ry = Number(axes[3]) || 0;
-      const dir = Math.abs(lx) > Math.abs(ly)
+      const left = Math.abs(lx) > Math.abs(ly)
         ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
         : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
-      if (!browserStickDir.has(f.id)) browserStickDir.set(f.id, '');
-      if (dir && dir !== browserStickDir.get(f.id)) pressKey(dir);
-      browserStickDir.set(f.id, dir);
-
-      // The embedded view can scroll directly. External browsers use page keys instead.
-      if (browserViewActive && (Math.abs(rx) > 0.2 || Math.abs(ry) > 0.2)) {
-        try {
-          view.webContents.sendInputEvent({
-            type: 'mouseWheel',
-            x: Math.floor(mainWindow.getContentBounds().width / 2),
-            y: Math.floor(mainWindow.getContentBounds().height / 2),
-            deltaX: Math.round(rx * 80),
-            deltaY: Math.round(ry * 80),
-            canScroll: true
-          });
-        } catch {}
-      } else if (!browserViewActive && Math.abs(ry) > 0.65) {
-        const rightDir = ry < 0 ? 'PAGEUP' : 'PAGEDOWN';
-        if (browserRightStickDir.get(f.id) !== rightDir) pressKey(rightDir);
-        browserRightStickDir.set(f.id, rightDir);
-      } else {
-        browserRightStickDir.set(f.id, '');
-      }
+      const right = Math.abs(rx) > Math.abs(ry)
+        ? (Math.abs(rx) > 0.65 ? (rx < 0 ? 'LEFT' : 'RIGHT') : '')
+        : (Math.abs(ry) > 0.65 ? (ry < 0 ? 'PAGEUP' : 'PAGEDOWN') : '');
+      navigation.set('left-stick', left);
+      navigation.set('right-stick', right);
       return; // Keep browser input away from the hidden launcher UI.
     }
 
+    clearBrowserPadNavigation(f.id);
     send('pads', { type: 'frame', ...f });
   },
 });
@@ -3716,17 +3718,15 @@ function resolveBrowser() {
 // Generic Linux joystick input for browser navigation. The joydev interface is non-exclusive:
 // native Gamepad API consumers and games still receive their original controller input. Nintendo
 // controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
-const browserGamepad = require('./browser-gamepad');
-function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
+function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null, dir = '/dev/input') {
   const devices = new Map();
   let directoryWatch = null;
   const sysRoot = '/sys/class/input';
   const read = (file) => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return ''; } };
   const real = (file) => { try { return fs.realpathSync(file); } catch { return ''; } };
-  const bitsHave = (hex, code) => {
-    try { return (BigInt('0x' + hex) & (1n << BigInt(code))) !== 0n; } catch { return false; }
-  };
+  const bitsHave = browserGamepad.capabilityHas;
   const stopDevice = (entry) => {
+    if (entry.mapper) entry.mapper.dispose();
     for (const proc of [entry.jsProc, entry.eventProc]) {
       if (proc) { try { proc.kill(); } catch { /* gone */ } }
     }
@@ -3734,8 +3734,8 @@ function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
   const scan = () => {
     let names = [];
     try { names = fs.readdirSync(dir); } catch { names = []; }
-    const jsNames = names.filter((n) => /^js\\d+$/.test(n));
-    const eventNames = names.filter((n) => /^event\\d+$/.test(n));
+    const jsNames = names.filter(browserGamepad.isJoystickNodeName);
+    const eventNames = names.filter(browserGamepad.isEventNodeName);
     const eventByDevice = new Map();
     for (const eventName of eventNames) {
       const sysDevice = path.join(sysRoot, eventName, 'device');
@@ -3761,8 +3761,9 @@ function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
       if (old) { devices.delete(jsName); stopDevice(old); }
 
       const axisCodes = browserGamepad.axisCodesFromSysfs(read(path.join(sysDevice, 'capabilities/abs')));
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction });
-      const entry = { eventName, devicePath, jsProc: null, eventProc: null };
+      const entry = { eventName, devicePath, jsProc: null, eventProc: null, mapper: null };
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction });
+      entry.mapper = mapper;
       const startReader = (node, eventSize, consume) => {
         const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
         let pending = Buffer.alloc(0);
@@ -3812,7 +3813,7 @@ function watchJoysticks(onShoulder, onAction = () => {}, dir = '/dev/input') {
 }
 const BROWSER_KEYSYMS = {
   UP: 'Up', DOWN: 'Down', LEFT: 'Left', RIGHT: 'Right',
-  ENTER: 'Return', ESC: 'Escape', PAGEUP: 'Page_Up', PAGEDOWN: 'Page_Down',
+  ENTER: 'Return', ESC: 'Escape', TAB: 'Tab', PAGEUP: 'Page_Up', PAGEDOWN: 'Page_Down',
 };
 function sendExternalBrowserKey(key) {
   const keysym = BROWSER_KEYSYMS[key];
@@ -3824,16 +3825,44 @@ function sendBrowserViewKey(key) {
   const view = browserView;
   if (!view || !mainWindow || mainWindow.isDestroyed() ||
       !browserViewAttached || view.webContents.isDestroyed()) return;
-  const keyCode = ({ PAGEUP: 'PAGEUP', PAGEDOWN: 'PAGEDOWN' })[key] || key;
   try {
-    view.webContents.sendInputEvent({ type: 'keyDown', keyCode });
-    view.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+    for (const event of browserNavigation.keyEvents(key)) view.webContents.sendInputEvent(event);
   } catch {}
+}
+function sendBrowserAction(action) {
+  if (action !== 'b' && action !== 'lb' && action !== 'rb' && action !== 'y') return;
+  send('browser-action', action);
+}
+function browserNavigationKey(key) {
+  const view = browserView;
+  const embeddedActive = Boolean(
+    view && mainWindow && !mainWindow.isDestroyed() && browserViewAttached && !view.webContents.isDestroyed()
+  );
+  if (embeddedActive) sendBrowserViewKey(key);
+  else if (browserShoulder) sendExternalBrowserKey(key);
+}
+function browserPadDirectionRepeater(id) {
+  let navigation = browserPadNavigation.get(id);
+  if (!navigation) {
+    navigation = browserGamepad.createDirectionRepeater({ onAction: browserNavigationKey });
+    browserPadNavigation.set(id, navigation);
+  }
+  return navigation;
+}
+function clearBrowserPadNavigation(id) {
+  if (id !== undefined) {
+    const navigation = browserPadNavigation.get(id);
+    if (navigation) navigation.dispose();
+    browserPadNavigation.delete(id);
+    return;
+  }
+  for (const navigation of browserPadNavigation.values()) navigation.dispose();
+  browserPadNavigation.clear();
 }
 let browserViewJoystickStop = null;
 function startBrowserViewJoystickWatch() {
   if (browserViewJoystickStop) return;
-  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey);
+  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey, sendBrowserAction);
 }
 function stopBrowserViewJoystickWatch() {
   if (!browserViewJoystickStop) return;
@@ -3862,6 +3891,7 @@ function runChild(file, args, cwd, label, logName) {
     running = false;
     if (stopWatching) stopWatching();
     browserShoulder = null;
+    clearBrowserPadNavigation();
     padsCtl.resume();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
@@ -3956,17 +3986,41 @@ function leaveTessera() {
 // WebContentsView is the supported Electron 44 API; the browser remains inside Tessera.
 let browserView = null;
 let browserViewAttached = false;
+let browserSessionOpen = false;
+const BROWSER_PARTITION = 'persist:tessera-browser';
+function isLauncherMainFrame(event) {
+  return Boolean(
+    event && mainWindow && !mainWindow.isDestroyed() &&
+    event.sender === mainWindow.webContents &&
+    event.senderFrame && event.senderFrame === mainWindow.webContents.mainFrame
+  );
+}
 function ensureBrowserView() {
   if (browserView) return browserView;
   browserView = new WebContentsView({
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: {
+      partition: BROWSER_PARTITION,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+    },
   });
+  // The remote browser has no preload bridge. Its dedicated session is denied
+  // all permissions until Tessera has a controller-friendly consent flow.
+  const browserSession = browserView.webContents.session;
+  browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  browserSession.setPermissionCheckHandler(() => false);
   browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   browserView.webContents.on('will-navigate', (event, target) => {
-    try {
-      const scheme = new URL(target).protocol;
-      if (scheme !== 'http:' && scheme !== 'https:') event.preventDefault();
-    } catch { event.preventDefault(); }
+    if (!browserNavigation.isHttpUrl(target)) event.preventDefault();
+  });
+  browserView.webContents.on('did-finish-load', () => {
+    if (browserViewAttached && !browserView.webContents.isDestroyed()) {
+      try { browserView.webContents.focus(); } catch { /* browser closed while loading */ }
+    }
   });
   return browserView;
 }
@@ -3974,32 +4028,35 @@ function attachBrowserView() {
   if (!browserView || !mainWindow || mainWindow.isDestroyed() || browserViewAttached) return;
   mainWindow.contentView.addChildView(browserView);
   browserViewAttached = true;
+  try { browserView.webContents.focus(); } catch { /* browser closed while attaching */ }
 }
 function detachBrowserView() {
   if (!browserView || !mainWindow || mainWindow.isDestroyed() || !browserViewAttached) return;
+  clearBrowserPadNavigation();
   mainWindow.contentView.removeChildView(browserView);
   browserViewAttached = false;
+  try { mainWindow.focus(); } catch { /* window is closing */ }
 }
 function fitBrowserView() {
   if (!browserView || !mainWindow || mainWindow.isDestroyed()) return;
   const { width, height } = mainWindow.getContentBounds();
   browserView.setBounds({ x: 0, y: 0, width, height });
 }
-// The renderer already runs its own interactive PIN check (requirePin()) before ever
-// calling 'open' here, same as it always has for the browser — nothing to re-check.
-ipcMain.handle('browser', (_e, op, payload) => {
+// The renderer provides the interactive PIN prompt, but the privileged navigation
+// entry point verifies it too so a compromised renderer cannot bypass browser policy.
+ipcMain.handle('browser', (event, op, payload) => {
+  if (!isLauncherMainFrame(event)) return { ok: false, error: 'Unauthorized browser request.' };
   if (op === 'open' || op === 'go') {
     const url = payload && typeof payload.url === 'string' ? payload.url : null;
-    if (!url) return { ok: false, error: 'No address given.' };
-    try {
-      const scheme = new URL(url).protocol;
-      if (scheme !== 'http:' && scheme !== 'https:') return { ok: false, error: 'Only web addresses are allowed.' };
-    } catch { return { ok: false, error: 'That web address is invalid.' }; }
+    if (settings.pinBrowser !== false && !pinOk()) return NEED_PIN;
+    const checked = browserNavigation.validateHttpUrl(url);
+    if (!checked.ok) return checked;
     const view = ensureBrowserView();
+    browserSessionOpen = true;
     attachBrowserView();
     startBrowserViewJoystickWatch();
     fitBrowserView();
-    view.webContents.loadURL(url).catch(() => {});
+    view.webContents.loadURL(checked.url).catch(() => {});
     return { ok: true };
   }
   if (op === 'hide') {
@@ -4008,10 +4065,13 @@ ipcMain.handle('browser', (_e, op, payload) => {
     return { ok: true };
   }
   if (op === 'show') {
+    if (settings.pinBrowser !== false && !pinOk()) return NEED_PIN;
+    if (!browserSessionOpen) return { ok: false, error: 'Open the browser first.' };
     if (browserView) { attachBrowserView(); startBrowserViewJoystickWatch(); fitBrowserView(); }
     return { ok: true };
   }
   if (op === 'close') {
+    browserSessionOpen = false;
     detachBrowserView();
     stopBrowserViewJoystickWatch();
     return { ok: true };

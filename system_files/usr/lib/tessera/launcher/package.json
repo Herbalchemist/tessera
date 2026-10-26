@@ -4,5 +4,9 @@
   "private": true,
   "description": "Controller-first launcher for Tessera",
   "license": "GPL-3.0-or-later",
-  "main": "main.js"
+  "main": "main.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "for file in *.js test/*.js; do node --check \"$file\" || exit; done"
+  }
 }
