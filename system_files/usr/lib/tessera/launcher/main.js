@@ -1113,7 +1113,7 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ pad: { ...settings.pad }, kb: kbPayload(), calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload(), profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
+const prefsPayload = () => ({ live: INSTALLER, pad: { ...settings.pad }, kb: kbPayload(), calib: settings.calib, pageGrid: settings.pageGrid, pin: pinInfo(), vault: display(VAULT_DIR), storage: { low: lowSpace() }, calibration: calPayload(), theme: themePayload(), profiles: settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
 
 
 // ------------------------------------------------------- display calibration
@@ -2481,7 +2481,7 @@ if (!app.requestSingleInstanceLock()) {
     padsCtl.start();
     if (GUIDE_ONLY) padsCtl.pause(); // Nintendo pads are read only while the guide is up
     guideWatch = watchGuideButtons();
-    if (!GUIDE_ONLY) setTimeout(() => { graphicsCheck().catch(() => {}); }, GRAPHICS_CHECK_DELAY_MS);
+    if (!GUIDE_ONLY && !INSTALLER) setTimeout(() => { graphicsCheck().catch(() => {}); }, GRAPHICS_CHECK_DELAY_MS);
   });
 }
 
@@ -3282,6 +3282,78 @@ async function updateInfo() {
   if (!st.ok) return { ok: true, launcher: LAUNCHER_VERSION, supported: false, job: null, problem: UPDATE_PROBLEM[st.why] || UPDATE_PROBLEM.unreadable, detail: st.detail };
   return { ok: true, launcher: LAUNCHER_VERSION, supported: true, job: null, booted: st.booted, staged: st.staged, rollback: st.rollback, rollbackQueued: st.rollbackQueued || rolledBackNow, graphics: await graphicsFor(st) };
 }
+
+// ------------------------------------------------------------ installing from the live USB
+// On the Tessera USB (see the tessera-mortar repo) the launcher starts into Install Tessera. The real
+// work is done by a root helper on the USB (/usr/libexec/tessera/live-install, allowed through sudo
+// for the live user only), which checks every choice against what it offered; this only relays.
+const INSTALLER = process.env.TESSERA_INSTALLER === '1' || fs.existsSync(process.env.TESSERA_LIVE_MARKER || '/etc/tessera/live-installer');
+const LIVE_INSTALL = process.env.TESSERA_LIVE_INSTALL || '/usr/libexec/tessera/live-install';
+const LIVE_SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n'];
+const INSTALL_STATE = path.join(process.env.TESSERA_INSTALL_STATE || '/run/tessera-install', 'state.json');
+let installChild = null;
+function liveHelper(args, input) {
+  const cmd = [...LIVE_SUDO, LIVE_INSTALL, ...args];
+  return new Promise((resolve) => {
+    const child = spawn(cmd[0], cmd.slice(1), { stdio: ['pipe', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { err += d; });
+    child.on('error', () => resolve({ ok: false, out, err: 'missing' }));
+    child.on('close', (code) => resolve({ ok: code === 0, out, err }));
+    child.stdin.end(input || '');
+  });
+}
+async function installerOp(op, p) {
+  if (!INSTALLER) return { ok: false, error: 'Not on a Tessera USB.' };
+  if (op === 'probe') {
+    const r = await liveHelper(['probe']);
+    let j = null;
+    try { j = JSON.parse(r.out); } catch { /* below */ }
+    if (!j || !j.ok) return { ok: false, error: "Couldn't look at this computer's disks and graphics." };
+    const gpus = await nameGpus(Array.isArray(j.gpus) ? j.gpus : []);
+    const need = gpuMatch.needFor(gpus);
+    const avail = (Array.isArray(j.images) ? j.images : []).map((n) => gpuMatch.variantOfRef(n)).filter(Boolean);
+    return {
+      ok: true,
+      disks: Array.isArray(j.disks) ? j.disks : [],
+      cards: gpuMatch.describe(gpus),
+      need: need.variant, why: need.why,
+      available: avail,
+      recommended: avail.includes(need.variant) ? need.variant : avail[0] || null,
+      names: gpuMatch.VARIANT_NAMES,
+      secureBoot: j.secureBoot || { efi: false, state: 'unknown' },
+      timezones: Array.isArray(j.timezones) ? j.timezones : ['UTC'],
+    };
+  }
+  if (op === 'start') {
+    if (installChild) return { ok: true };
+    const c = p && typeof p.choices === 'object' ? p.choices : null;
+    if (!c) return { ok: false, error: 'Nothing to install.' };
+    const pick = (k, n) => (typeof c[k] === 'string' ? c[k].slice(0, n) : '');
+    const choices = { disk: pick('disk', 64), variant: pick('variant', 20), user: pick('user', 32), fullName: pick('fullName', 60), password: pick('password', 200), timezone: pick('timezone', 64), secureBoot: pick('secureBoot', 10) };
+    try { fs.rmSync(INSTALL_STATE, { force: true }); } catch { /* the helper starts it afresh anyway */ }
+    const cmd = [...LIVE_SUDO, LIVE_INSTALL, 'run'];
+    installChild = spawn(cmd[0], cmd.slice(1), { stdio: ['pipe', 'ignore', 'ignore'], detached: true });
+    installChild.on('error', () => { installChild = null; });
+    installChild.on('exit', () => { installChild = null; });
+    installChild.stdin.end(JSON.stringify(choices));
+    return { ok: true };
+  }
+  if (op === 'poll') {
+    let st = null;
+    try { st = JSON.parse(fs.readFileSync(INSTALL_STATE, 'utf8')); } catch { /* not started yet */ }
+    if (!st) return { ok: true, phase: installChild ? 'starting' : 'idle' };
+    return { ok: true, phase: String(st.phase || ''), percent: Number(st.percent) || 0, stage: shortText(st.stage, 60), line: shortText(st.line, 160), error: shortText(st.error, 200), enrolled: st.enrolled === true, secureBoot: shortText(st.secureBoot, 10) };
+  }
+  if (op === 'reboot') {
+    const r = await sysctl(['reboot'], 15000);
+    return r.ok ? { ok: true } : { ok: false, error: "Couldn't restart. Hold the power button." };
+  }
+  return { ok: false, error: 'Unknown action.' };
+}
+ipcMain.handle('installer', (_e, op, p) => installerOp(typeof op === 'string' ? op : '', p && typeof p === 'object' ? p : {}).catch(() => ({ ok: false, error: 'Something went wrong.' })));
 
 // ---- graphics builds
 // Tessera comes in a build per graphics family (see gpu-match.js). After a card swap the running build

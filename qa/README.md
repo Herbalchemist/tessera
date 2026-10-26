@@ -19,13 +19,14 @@ The harness uses the QA-installed, pinned Electron executable. Set `TESSERA_ELEC
 
 The suite checks four shell arrangements at 1920×1080 and 1280×720, selected-card and controller-hint visibility, Home/Settings content preservation, saved structural-theme values, invalid shell rejection, a virtual D-pad movement, browser Tab/Enter activation, isolated browser configuration, address-keyboard cancellation, browser exit actions, and main-process PIN checks. It currently records 35 checks, covering every factory theme.
 
-Five more checks drive the embedded browser with stand-in controller input (fed through a `TESSERA_DEV=1` hook in place of a physical pad), and one takes screenshots of the factory themes with a fictional library:
+Six more checks drive the embedded browser with stand-in controller input (fed through a `TESSERA_DEV=1` hook in place of a physical pad), and one takes screenshots of the factory themes with a fictional library:
 
 ```bash
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-pointer.cjs      # cursor, analog scroll, trigger clicks, stick swap
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-transitions.cjs  # every entrance/exit animation, resume, Esc+arrow chord
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/guide.cjs                # the guide (launcher, over a game, over the browser), first-run setup, desktop helper
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/keyboard.cjs             # keyboard & mouse: input-aware hints, key layouts, rebinding, the guided tour
+xvfb-run -a -s "-screen 0 1280x720x24" node qa/installer.cjs            # Install Tessera from the USB (with a stand-in for the USB's root helper)
 xvfb-run -a -s "-screen 0 1280x720x24" node qa/graphics.cjs             # a graphics card swap: noticed at start, matching build offered and switched to
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs
 ```
