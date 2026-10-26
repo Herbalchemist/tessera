@@ -17,8 +17,14 @@ const BTN_DPAD_LEFT = 0x222;
 const BTN_DPAD_RIGHT = 0x223;
 const ABS_X = 0x00;
 const ABS_Y = 0x01;
+const ABS_Z = 0x02;
 const ABS_RX = 0x03;
 const ABS_RY = 0x04;
+const ABS_RZ = 0x05;
+const ABS_GAS = 0x09;
+const ABS_BRAKE = 0x0a;
+const BTN_TL2 = 0x138;
+const BTN_TR2 = 0x139;
 const ABS_HAT0X = 0x10;
 const ABS_HAT0Y = 0x11;
 
@@ -159,9 +165,17 @@ function createMapper({
   repeatInterval,
   setTimeoutFn,
   clearTimeoutFn,
+  // When set, sticks and triggers are reported as raw values for the browser pointer
+  // instead of being turned into arrow/page keys: onAnalog('lx'|'ly'|'rx'|'ry', -1..1)
+  // and onAnalog('lt'|'rt', 0..1).
+  onAnalog = null,
+  // Most pads put the right stick on ABS_RX/RY and the triggers on ABS_Z/RZ. Generic
+  // DirectInput-style pads without ABS_RX/RY put the right stick on ABS_Z/RZ instead.
+  hasRightStick = true,
 } = {}) {
   if (typeof onShoulder !== 'function') onShoulder = () => {};
   if (typeof onBrowserAction !== 'function') onBrowserAction = null;
+  if (typeof onAnalog !== 'function') onAnalog = null;
   const axes = new Map();
   const pressed = new Set();
   const directions = createDirectionRepeater({ onAction, initialDelay, repeatInterval, setTimeoutFn, clearTimeoutFn });
@@ -176,7 +190,20 @@ function createMapper({
   };
 
   function handleAxis(code, value) {
-    axes.set(code, Math.max(-1, Math.min(1, value / 32767)));
+    const v = Math.max(-1, Math.min(1, value / 32767));
+    axes.set(code, v);
+    if (onAnalog) {
+      // joydev stretches every axis to -32767..32767, so a trigger at rest reads -1.
+      const trigger = (x) => Math.max(0, Math.min(1, (x + 1) / 2));
+      if (code === ABS_X) return onAnalog('lx', v);
+      if (code === ABS_Y) return onAnalog('ly', v);
+      if (code === ABS_RX) return onAnalog('rx', v);
+      if (code === ABS_RY) return onAnalog('ry', v);
+      if (code === ABS_Z) return hasRightStick ? onAnalog('lt', trigger(v)) : onAnalog('rx', v);
+      if (code === ABS_RZ) return hasRightStick ? onAnalog('rt', trigger(v)) : onAnalog('ry', v);
+      if (code === ABS_BRAKE) return onAnalog('lt', trigger(v));
+      if (code === ABS_GAS) return onAnalog('rt', trigger(v));
+    }
     if (code === ABS_X || code === ABS_Y) setDirection('left-stick', dir(ABS_X, ABS_Y, 0.65));
     if (code === ABS_HAT0X || code === ABS_HAT0Y) {
       const hx = get(ABS_HAT0X), hy = get(ABS_HAT0Y);
@@ -205,6 +232,11 @@ function createMapper({
         setDirection('dpad:' + code, dpad[code]);
       }
       return;
+    }
+    // Digital triggers (no analog axis) click the browser pointer too.
+    if (onAnalog && (code === BTN_TL2 || code === BTN_TR2)) {
+      if (value === 2) return; // key repeat
+      return onAnalog(code === BTN_TL2 ? 'lt' : 'rt', value ? 1 : 0);
     }
     if (value === 0) { pressed.delete(code); return; }
     if (value !== 1 || pressed.has(code)) return; // Ignore key repeat.

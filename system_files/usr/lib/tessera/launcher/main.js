@@ -512,14 +512,19 @@ const SETTINGS_VERSION = 2;
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 
 // Controller preferences. Deadzone and trigger threshold are percentages.
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together' };
+const PAD_DEFAULTS = {
+  deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together',
+  // The browser pointer: which stick moves the cursor (the other one scrolls), and how fast.
+  browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,
+};
 const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
   style: ['split', 'both', 'pulse'],
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
   joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
+  browserCursor: ['right', 'left'],
 };
-const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50] };
+const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50], cursorSpeed: [10, 100], scrollSpeed: [10, 100] };
 
 let settings = {
   scanRoots: [],
@@ -709,19 +714,70 @@ const BUILTIN_THEMES = [
       widgetStyle: 'glass', widgetTint: 40, widgetBlur: 18, widgetClear: 55, widgetColor: '#1f1c2b',
     },
   },
-  // Three console-inspired factory themes.
+  // Console homages: each takes a home screen's layout, colors and motion, never its artwork,
+  // logos or sounds. Cartridge Pop and Dashboard Steel keep their ids so saved choices survive.
   {
+    // A row of big square game tiles under a selection frame, round buttons below, clock up top.
     id: 'cartridge-pop', name: 'Cartridge Pop', author: 'Tessera',
     defaults: {
-      bg: '#fff6e6', card: '#ffffff', panel: '#fff1d8', text: '#2b1d0e', muted: '#8a7556', accent: '#ff8a2b',
-      border: '#2b1d0e', borderW: '0px', radius: '40px', shadow: 70, tabShadow: 80, selectRing: '3px',
-      confirm: '#1fa67a', cancel: '#e5484d', backdrop: 'tiles', selColor: 'pastel', shellLayout: 'dock', layout: 'rails', gridPreset: 'c4r2',
-      setPack: false, setNotes: true, setIcons: 'animated',
-      widgetStyle: 'frosted', widgetTint: 35, widgetBlur: 18, widgetClear: 60, widgetColor: '#ffffff', widgetSheen: true,
-      motion: true,
+      bg: '#ebebeb', card: '#ffffff', panel: '#f6f6f6', text: '#2d2d2d', muted: '#7d7d7d', accent: '#00b4e6',
+      border: '#d4d4d4', borderW: '0px', radius: '4px', shadow: 30, tabShadow: 40, selectRing: '5px',
+      confirm: '#00b4e6', cancel: '#e60012', backdrop: 'none', selColor: 'accent', shellLayout: 'switch', layout: 'rails', gridPreset: 'c6r3',
+      setPack: false, setNotes: true, setIcons: 'still',
+      widgetStyle: 'solid', widgetTint: 35, widgetBlur: 18, widgetClear: 60, widgetColor: '#ffffff', widgetSheen: false,
+      motion: true, browserAnim: 'zoom',
     },
   },
   {
+    // Near-black glass, a row of small tiles that grows the one you're on, its art behind everything.
+    id: 'nova-black', name: 'Nova Black', author: 'Tessera',
+    defaults: {
+      bg: '#06070d', card: '#1a1d2a', panel: '#11131c', text: '#ffffff', muted: '#9aa0b4', accent: '#ffffff',
+      border: '#2b3042', borderW: '0px', radius: '10px', shadow: 80, tabShadow: 0, selectRing: '3px',
+      confirm: '#3c7cff', cancel: '#ff5a6e', backdrop: 'none', selColor: 'accent', shellLayout: 'hero', layout: 'rails', gridPreset: 'c6r3',
+      setPack: false, setNotes: true, setIcons: 'still',
+      widgetStyle: 'glass', widgetTint: 30, widgetBlur: 24, widgetClear: 70, widgetColor: '#1a1d2a', widgetSheen: false,
+      motion: true, browserAnim: 'fade',
+    },
+  },
+  {
+    // Flat square tiles, text pivots along the top, green highlights, a white focus frame.
+    id: 'dashboard-steel', name: 'Dashboard Steel', author: 'Tessera',
+    defaults: {
+      bg: '#171717', card: '#2b2b2b', panel: '#1f1f1f', text: '#ffffff', muted: '#a0a0a0', accent: '#107c10',
+      border: '#3a3a3a', borderW: '0px', radius: '4px', shadow: 20, tabShadow: 0, selectRing: '3px',
+      confirm: '#107c10', cancel: '#d13438', backdrop: 'none', selColor: 'accent', shellLayout: 'pivot', layout: 'grid', gridPreset: 'c6r3', tileGap: 40,
+      setPack: true, setNotes: true, setIcons: 'still',
+      widgetStyle: 'solid', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#2b2b2b', widgetSheen: false,
+      motion: true, browserAnim: 'slide',
+    },
+  },
+  {
+    // Deep indigo, chunky glossy menu buttons down the left, a turning cube, drifting cube outlines.
+    id: 'indigo-cube', name: 'Indigo Cube', author: 'Tessera',
+    defaults: {
+      bg: '#120b38', card: '#2c2178', panel: '#1c1352', text: '#f4f0ff', muted: '#a99fdc', accent: '#9fd8ff',
+      border: '#5a4bc6', borderW: '2px', radius: '20px', shadow: 90, tabShadow: 90, selectRing: '3px',
+      confirm: '#3fd38a', cancel: '#ff5c7a', backdrop: 'cubes', selColor: 'accent', shellLayout: 'cube', layout: 'grid', gridPreset: 'c4r2',
+      setPack: false, setNotes: true, setIcons: 'animated',
+      widgetStyle: 'glass', widgetTint: 45, widgetBlur: 20, widgetClear: 55, widgetColor: '#2c2178', widgetSheen: true,
+      motion: true, browserAnim: 'flip',
+    },
+  },
+  {
+    // A white pinstriped wall of wide rounded channels, blue glow, a curved bar with the clock.
+    id: 'channel-white', name: 'Channel White', author: 'Tessera',
+    defaults: {
+      bg: '#f3f3f3', card: '#ffffff', panel: '#e9e9e9', text: '#4a4a4a', muted: '#9b9b9b', accent: '#34beed',
+      border: '#cdcdcd', borderW: '2px', radius: '20px', shadow: 25, tabShadow: 30, selectRing: '5px',
+      confirm: '#34beed', cancel: '#e5484d', backdrop: 'stripes', selColor: 'accent', shellLayout: 'channel', layout: 'grid', gridPreset: 'custom', gridCols: 4, gridRows: 3, tileGap: 70,
+      setPack: false, setNotes: false, setIcons: 'still',
+      widgetStyle: 'solid', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#ffffff', widgetSheen: true,
+      motion: true, browserAnim: 'zoom',
+    },
+  },
+  {
+    // Not a console: an arcade cabinet's marquee glow.
     id: 'arcade-marquee', name: 'Arcade Marquee', author: 'Tessera',
     defaults: {
       bg: '#120a1a', card: '#1e1130', panel: '#180d28', text: '#fbeaff', muted: '#b79bd6', accent: '#ff4fd8',
@@ -729,17 +785,6 @@ const BUILTIN_THEMES = [
       confirm: '#3ee6c7', cancel: '#ff5d6c', backdrop: 'glow', selColor: 'accent', shellLayout: 'crossbar', layout: 'grid', gridPreset: 'c5r3',
       setPack: false, setNotes: true, setIcons: 'animated',
       widgetStyle: 'glass', widgetTint: 45, widgetBlur: 20, widgetClear: 55, widgetColor: '#1e1130', widgetSheen: true,
-      motion: true,
-    },
-  },
-  {
-    id: 'dashboard-steel', name: 'Dashboard Steel', author: 'Tessera',
-    defaults: {
-      bg: '#0c1118', card: '#17202c', panel: '#121922', text: '#e6edf5', muted: '#8fa0b3', accent: '#4fc3ff',
-      border: '#2c3b4d', borderW: '2px', radius: '10px', shadow: 60, tabShadow: 70, selectRing: '3px',
-      confirm: '#3ee0b0', cancel: '#ff6b6b', backdrop: 'none', selColor: 'accent', shellLayout: 'dashboard', layout: 'grid', gridPreset: 'c6r3',
-      setPack: true, setNotes: true, setIcons: 'still',
-      widgetStyle: 'outline', widgetTint: 40, widgetBlur: 10, widgetClear: 70, widgetColor: '#17202c', widgetSheen: false,
       motion: true,
     },
   },
@@ -771,7 +816,7 @@ const STOCK_THEME = {
     { id: 'background', group: 'Background', label: 'Background picture', type: 'image', default: '', var: '--bg-image' },
     { id: 'bgDim', group: 'Background', label: 'Picture dimming', type: 'range', min: 0, max: 90, step: 10, unit: '%', default: 50, var: '--bg-dim', scale: 0.01 },
     { id: 'backdrop', group: 'Background', label: 'Backdrop effect', type: 'choice', default: 'none',
-      options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }, { label: 'Mosaic tiles', value: 'tiles' }] },
+      options: [{ label: 'None', value: 'none' }, { label: 'Glow', value: 'glow' }, { label: 'Mystic', value: 'mystic' }, { label: 'Mosaic tiles', value: 'tiles' }, { label: 'Drifting cubes', value: 'cubes' }, { label: 'Pinstripes', value: 'stripes' }] },
     { id: 'confirm', group: 'Buttons', label: 'Done / Yes button color', type: 'color', default: '#3ddc97', var: '--ok' },
     { id: 'cancel', group: 'Buttons', label: 'Cancel / Close button color', type: 'color', default: '#ff6b6b', var: '--danger' },
     { id: 'shellLayout', group: 'Layout', label: 'Shell arrangement', type: 'choice', default: 'classic', hint: 'A structural preset for navigation and page framing. It does not edit your Home widgets or create arbitrary layouts.',
@@ -780,6 +825,11 @@ const STOCK_THEME = {
         { label: 'Bottom dock / card strip', value: 'dock' },
         { label: 'Crossbar (top categories)', value: 'crossbar' },
         { label: 'Dashboard (left sidebar)', value: 'dashboard' },
+        { label: 'Home row (square tiles over round buttons)', value: 'switch' },
+        { label: 'Spotlight (the selection fills the screen)', value: 'hero' },
+        { label: 'Pivot (text headers over flat tiles)', value: 'pivot' },
+        { label: 'Cube (chunky menu down the left)', value: 'cube' },
+        { label: 'Channels (wide tiles over a curved clock bar)', value: 'channel' },
       ] },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
       options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
@@ -804,6 +854,16 @@ const STOCK_THEME = {
     { id: 'widgetColor', group: 'Widgets', label: 'Solid color: fill', type: 'color', default: '#ffffff', var: '--wg-color' },
     { id: 'widgetSheen', group: 'Widgets', label: 'Glass: shine', type: 'toggle', default: true, var: '--wg-sheen', on: '1', off: '0' },
     { id: 'motion', group: 'Motion', label: 'Animations', type: 'toggle', default: true, var: '--motion', on: '1', off: '0', hint: 'Turn off if movement makes you dizzy' },
+    { id: 'browserAnim', group: 'Motion', label: 'Browser transition', type: 'choice', default: 'slide', hint: 'How the browser comes in and goes away',
+      options: [
+        { label: 'Slide (from the side you came from)', value: 'slide' },
+        { label: 'Zoom (grows out of the Browser tab)', value: 'zoom' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Rise (comes up like a sheet)', value: 'rise' },
+        { label: 'Flip (turns like a card)', value: 'flip' },
+        { label: 'Doors (opens from the middle)', value: 'doors' },
+        { label: 'None (instant)', value: 'none' },
+      ] },
   ],
 };
 const clip = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : '');
@@ -1957,7 +2017,7 @@ Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
 or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
-Shell arrangement: "shellLayout" is "classic", "dock", "crossbar" or "dashboard".
+Shell arrangement: "shellLayout" is "classic", "dock", "crossbar", "dashboard", "switch", "hero", "pivot", "cube" or "channel".
 This repositions approved navigation/content regions; it is not a freeform layout editor.
 Home widget coordinates are preserved when switching shell arrangements.
 Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).
@@ -3278,6 +3338,15 @@ const padsCtl = require('./pads').create({
       const ly = Number(axes[1]) || 0;
       const rx = Number(axes[2]) || 0;
       const ry = Number(axes[3]) || 0;
+      if (browserViewActive) {
+        // The embedded page gets a real pointer: cursor, analog scrolling, trigger clicks.
+        const src = 'pad:' + f.id;
+        browserAnalog(src, 'lx', lx); browserAnalog(src, 'ly', ly);
+        browserAnalog(src, 'rx', rx); browserAnalog(src, 'ry', ry);
+        browserAnalog(src, 'lt', f.b & (1 << 6) ? 1 : 0);
+        browserAnalog(src, 'rt', f.b & (1 << 7) ? 1 : 0);
+        return; // Keep browser input away from the hidden launcher UI.
+      }
       const left = Math.abs(lx) > Math.abs(ly)
         ? (Math.abs(lx) > 0.65 ? (lx < 0 ? 'LEFT' : 'RIGHT') : '')
         : (Math.abs(ly) > 0.65 ? (ly < 0 ? 'UP' : 'DOWN') : '');
@@ -3718,7 +3787,7 @@ function resolveBrowser() {
 // Generic Linux joystick input for browser navigation. The joydev interface is non-exclusive:
 // native Gamepad API consumers and games still receive their original controller input. Nintendo
 // controllers are handled by pads.js, whose Joy-Con button mapping is controller-specific.
-function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null, dir = '/dev/input') {
+function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null, dir = '/dev/input', onAnalog = null) {
   const devices = new Map();
   let directoryWatch = null;
   const sysRoot = '/sys/class/input';
@@ -3762,7 +3831,9 @@ function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null,
 
       const axisCodes = browserGamepad.axisCodesFromSysfs(read(path.join(sysDevice, 'capabilities/abs')));
       const entry = { eventName, devicePath, jsProc: null, eventProc: null, mapper: null };
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction });
+      const hasRightStick = axisCodes.includes(0x03) && axisCodes.includes(0x04);
+      const analog = onAnalog ? (name, value) => onAnalog(jsName, name, value) : null;
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick });
       entry.mapper = mapper;
       const startReader = (node, eventSize, consume) => {
         const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
@@ -3794,7 +3865,7 @@ function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null,
       devices.set(jsName, entry);
     }
     for (const [name, entry] of devices) {
-      if (!seen.has(name)) { devices.delete(name); stopDevice(entry); }
+      if (!seen.has(name)) { devices.delete(name); stopDevice(entry); if (onAnalog) onAnalog(name, 'gone', 0); }
     }
   };
   scan();
@@ -3829,6 +3900,98 @@ function sendBrowserViewKey(key) {
     for (const event of browserNavigation.keyEvents(key)) view.webContents.sendInputEvent(event);
   } catch {}
 }
+// ---- the browser pointer: a cursor on one stick, scrolling on the other, clicks on the triggers.
+// A small transparent view floats above the page to draw the cursor, since synthetic mouse
+// events don't move a real pointer. It hides itself after a few seconds without use.
+const browserPointerLib = require('./browser-pointer');
+const CURSOR_W = 40;
+const CURSOR_H = 51;
+const CURSOR_HTML = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:transparent;overflow:hidden}' +
+  'svg{display:block;transform-origin:4px 3px;transition:transform .08s ease-out;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}' +
+  'body.down svg{transform:scale(.82)}</style><body><svg width="40" height="51" viewBox="0 0 30 38">' +
+  '<path d="M3 2 L3 30 L10 23.5 L15 35 L20.5 32.8 L15.5 21.5 L25 21.5 Z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/></svg></body>';
+let browserCursorView = null;
+let browserCursorVisible = false;
+let browserCursorHideTimer = null;
+let browserPointerTimer = null;
+let browserPointerLast = 0;
+function embeddedBrowserView() {
+  const view = browserView;
+  return view && mainWindow && !mainWindow.isDestroyed() && browserViewAttached && !view.webContents.isDestroyed() ? view : null;
+}
+function sendPointerEvent(event) {
+  const view = embeddedBrowserView();
+  if (!view) return;
+  try { view.webContents.sendInputEvent(event); } catch { /* page went away */ }
+}
+function ensureBrowserCursorView() {
+  if (browserCursorView && !browserCursorView.webContents.isDestroyed()) return browserCursorView;
+  browserCursorView = new WebContentsView({
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  browserCursorView.setBackgroundColor('#00000000');
+  browserCursorView.setVisible(false);
+  browserCursorView.webContents.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(CURSOR_HTML)).catch(() => {});
+  return browserCursorView;
+}
+function showBrowserCursor(x, y, pressed) {
+  if (!embeddedBrowserView()) return;
+  const cursor = ensureBrowserCursorView();
+  cursor.setBounds({ x: Math.round(x) - 4, y: Math.round(y) - 3, width: CURSOR_W, height: CURSOR_H });
+  if (!browserCursorVisible) { cursor.setVisible(true); browserCursorVisible = true; }
+  if (pressed !== undefined) {
+    cursor.webContents.executeJavaScript(`document.body.classList.toggle('down', ${pressed ? 'true' : 'false'})`).catch(() => {});
+  }
+  if (browserCursorHideTimer) clearTimeout(browserCursorHideTimer);
+  browserCursorHideTimer = setTimeout(hideBrowserCursor, 5000);
+}
+function hideBrowserCursor() {
+  if (browserCursorHideTimer) { clearTimeout(browserCursorHideTimer); browserCursorHideTimer = null; }
+  if (browserCursorView && browserCursorVisible) { try { browserCursorView.setVisible(false); } catch { /* closing */ } }
+  browserCursorVisible = false;
+}
+const browserPointer = browserPointerLib.createPointer({
+  bounds: () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return { width: 1280, height: 720 };
+    const { width, height } = mainWindow.getContentBounds();
+    return { width, height };
+  },
+  settings: () => settings.pad,
+  onMove: (x, y) => { sendPointerEvent({ type: 'mouseMove', x, y }); showBrowserCursor(x, y); },
+  onWheel: (x, y, deltaX, deltaY) => sendPointerEvent({ type: 'mouseWheel', x, y, deltaX, deltaY, canScroll: true }),
+  onButton: (side, down, x, y) => {
+    const view = embeddedBrowserView();
+    if (!view) return;
+    // Chromium only delivers synthetic clicks to the focused page.
+    if (down) { try { view.webContents.focus(); } catch { /* closing */ } sendPointerEvent({ type: 'mouseMove', x, y }); }
+    sendPointerEvent({ type: down ? 'mouseDown' : 'mouseUp', x, y, button: side, clickCount: 1 });
+    showBrowserCursor(x, y, down);
+  },
+});
+// Stick and trigger values from any adapter: evdev pads ('js:…') and Nintendo pads ('pad:…').
+function browserAnalog(source, name, value) {
+  const key = String(source).includes(':') ? String(source) : 'js:' + source;
+  if (name === 'gone') return browserPointer.removeSource(key);
+  if (name === 'lt' || name === 'rt') return browserPointer.setTrigger(key, name === 'lt' ? 'left' : 'right', value);
+  return browserPointer.setAxis(key, name, value);
+}
+// Integration tests (TESSERA_DEV=1 only) feed stick/trigger values here, standing in for a real pad.
+if (DEV) globalThis.__tesseraBrowserAnalog = browserAnalog;
+function startBrowserPointer() {
+  if (browserPointerTimer) return;
+  browserPointerLast = Date.now();
+  browserPointerTimer = setInterval(() => {
+    const now = Date.now();
+    const dt = now - browserPointerLast;
+    browserPointerLast = now;
+    if (embeddedBrowserView()) browserPointer.tick(dt);
+  }, 16);
+}
+function stopBrowserPointer() {
+  if (browserPointerTimer) { clearInterval(browserPointerTimer); browserPointerTimer = null; }
+  browserPointer.reset();
+  hideBrowserCursor();
+}
 function sendBrowserAction(action) {
   if (action !== 'b' && action !== 'lb' && action !== 'rb' && action !== 'y') return;
   send('browser-action', action);
@@ -3850,6 +4013,7 @@ function browserPadDirectionRepeater(id) {
   return navigation;
 }
 function clearBrowserPadNavigation(id) {
+  if (id !== undefined) browserPointer.removeSource('pad:' + id);
   if (id !== undefined) {
     const navigation = browserPadNavigation.get(id);
     if (navigation) navigation.dispose();
@@ -3862,7 +4026,7 @@ function clearBrowserPadNavigation(id) {
 let browserViewJoystickStop = null;
 function startBrowserViewJoystickWatch() {
   if (browserViewJoystickStop) return;
-  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey, sendBrowserAction);
+  browserViewJoystickStop = watchJoysticks(null, sendBrowserViewKey, sendBrowserAction, '/dev/input', browserAnalog);
 }
 function stopBrowserViewJoystickWatch() {
   if (!browserViewJoystickStop) return;
@@ -4017,6 +4181,16 @@ function ensureBrowserView() {
   browserView.webContents.on('will-navigate', (event, target) => {
     if (!browserNavigation.isHttpUrl(target)) event.preventDefault();
   });
+  // Esc+Left / Esc+Right switch tabs from inside the page too (the page has the keyboard
+  // focus, so the launcher never sees these keys). Esc on its own still reaches the page.
+  let escapeHeld = false;
+  browserView.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'Escape') { escapeHeld = input.type === 'keyDown'; return; }
+    if (escapeHeld && input.type === 'keyDown' && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')) {
+      event.preventDefault();
+      sendBrowserAction(input.key === 'ArrowLeft' ? 'lb' : 'rb');
+    }
+  });
   browserView.webContents.on('did-finish-load', () => {
     if (browserViewAttached && !browserView.webContents.isDestroyed()) {
       try { browserView.webContents.focus(); } catch { /* browser closed while loading */ }
@@ -4028,11 +4202,16 @@ function attachBrowserView() {
   if (!browserView || !mainWindow || mainWindow.isDestroyed() || browserViewAttached) return;
   mainWindow.contentView.addChildView(browserView);
   browserViewAttached = true;
+  // The cursor view goes on after the page so it draws above it.
+  mainWindow.contentView.addChildView(ensureBrowserCursorView());
+  startBrowserPointer();
   try { browserView.webContents.focus(); } catch { /* browser closed while attaching */ }
 }
 function detachBrowserView() {
   if (!browserView || !mainWindow || mainWindow.isDestroyed() || !browserViewAttached) return;
   clearBrowserPadNavigation();
+  stopBrowserPointer();
+  if (browserCursorView) { try { mainWindow.contentView.removeChildView(browserCursorView); } catch { /* not attached */ } }
   mainWindow.contentView.removeChildView(browserView);
   browserViewAttached = false;
   try { mainWindow.focus(); } catch { /* window is closing */ }
@@ -4044,20 +4223,37 @@ function fitBrowserView() {
 }
 // The renderer provides the interactive PIN prompt, but the privileged navigation
 // entry point verifies it too so a compromised renderer cannot bypass browser policy.
-ipcMain.handle('browser', (event, op, payload) => {
+ipcMain.handle('browser', async (event, op, payload) => {
   if (!isLauncherMainFrame(event)) return { ok: false, error: 'Unauthorized browser request.' };
   if (op === 'open' || op === 'go') {
     const url = payload && typeof payload.url === 'string' ? payload.url : null;
     if (settings.pinBrowser !== false && !pinOk()) return NEED_PIN;
     const checked = browserNavigation.validateHttpUrl(url);
     if (!checked.ok) return checked;
+    const fresh = !browserView;
     const view = ensureBrowserView();
     browserSessionOpen = true;
     attachBrowserView();
     startBrowserViewJoystickWatch();
     fitBrowserView();
-    view.webContents.loadURL(checked.url).catch(() => {});
-    return { ok: true };
+    // Coming back to the Browser tab resumes the page where it was, like any other tab.
+    // 'go' (an address typed in) and the very first open load the address.
+    const current = view.webContents.getURL();
+    if (op === 'go' || fresh || !current || current === 'about:blank') view.webContents.loadURL(checked.url).catch(() => {});
+    return { ok: true, url: current || checked.url };
+  }
+  // A picture of the page as it is now, for the launcher to animate in place of the live
+  // view (a native view can't be moved, faded or scaled by CSS).
+  if (op === 'snapshot') {
+    const view = embeddedBrowserView();
+    if (!view) return { ok: false };
+    try {
+      const image = await view.webContents.capturePage();
+      if (image.isEmpty()) return { ok: false };
+      return { ok: true, image: 'data:image/jpeg;base64,' + image.toJPEG(82).toString('base64') };
+    } catch {
+      return { ok: false };
+    }
   }
   if (op === 'hide') {
     detachBrowserView();

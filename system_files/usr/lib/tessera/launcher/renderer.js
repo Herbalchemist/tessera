@@ -140,7 +140,7 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50 };
 let prefs = { pad: { ...PAD_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 function detectFamily(id) {
@@ -439,7 +439,6 @@ const SETTINGS_ROWS = [
     cat: true,
     tiles: [
       { id: '_pad', title: 'Controller', kind: 'action', icon: 'pad' },
-      { id: '_controls', title: 'Button mapping', kind: 'action', icon: 'controls' },
     ],
   },
   {
@@ -676,14 +675,80 @@ function cur() {
   return (cursor[k] = cursor[k] || { row: 0, cols: {} });
 }
 
+// Line icons for the tabs. Most shells show only the names; shells built around round
+// buttons (Home row, Channels) show these instead, with the name under the focused one.
+const TAB_ICONS = {
+  browser: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.6 5.2 3.6 8.5s-1 6.1-3.6 8.5M12 3.5c-2.6 2.4-3.6 5.2-3.6 8.5s1 6.1 3.6 8.5"/>',
+  home: '<path d="M4 11l8-6.5 8 6.5"/><path d="M6.5 9.5V19h11V9.5"/><path d="M10.5 19v-5h3v5"/>',
+  library: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  apps: '<circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="7" r="2.3"/><circle cx="7" cy="17" r="2.3"/><circle cx="17" cy="17" r="2.3"/>',
+  settings: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4L18 18M18 6l-1.6 1.6M7.6 16.4L6 18"/>',
+  new: '<path d="M12 5v14M5 12h14"/>',
+  mosaic: '<rect x="4" y="4" width="9" height="9" rx="1.5"/><rect x="15" y="4" width="5" height="5" rx="1"/><rect x="15" y="11" width="5" height="9" rx="1"/><rect x="4" y="15" width="9" height="5" rx="1"/>',
+};
+function tabKind(id) { return id.startsWith('m:') ? 'mosaic' : id; }
 function drawTabs() {
   tabsEl.replaceChildren();
   tabList().forEach((id) => {
     const el = document.createElement('span');
     el.className = 'tab';
-    el.textContent = tabName(id);
+    el.dataset.tab = tabKind(id);
+    const ico = document.createElement('i');
+    ico.className = 'tab-ico';
+    ico.setAttribute('aria-hidden', 'true');
+    ico.innerHTML = `<svg viewBox="0 0 24 24">${TAB_ICONS[tabKind(id)] || TAB_ICONS.mosaic}</svg>`;
+    const name = document.createElement('span');
+    name.className = 'tab-name';
+    name.textContent = tabName(id);
+    el.append(ico, name);
     tabsEl.appendChild(el);
   });
+}
+
+// ---- a status clock, shown by the shells that have one (top corner, or the curved bar).
+function clockBar() {
+  let bar = document.getElementById('clockbar');
+  if (bar) return bar;
+  bar = document.createElement('div');
+  bar.id = 'clockbar';
+  bar.innerHTML = '<span class="cb-who" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4.5 20c1.4-3.6 4.2-5.2 7.5-5.2s6.1 1.6 7.5 5.2"/></svg></span><span class="cb-time"></span><span class="cb-date"></span>';
+  document.body.insertBefore(bar, document.body.firstChild);
+  return bar;
+}
+function tickClock() {
+  const bar = clockBar();
+  const now = new Date();
+  bar.querySelector('.cb-time').textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  bar.querySelector('.cb-date').textContent = now.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' });
+}
+tickClock();
+setInterval(tickClock, 10000);
+// Decorations a shell can show: a picture layer for Spotlight, a turning cube for Cube.
+(function decorations() {
+  const spot = document.createElement('div');
+  spot.id = 'spotlight';
+  spot.setAttribute('aria-hidden', 'true');
+  const cube = document.createElement('div');
+  cube.id = 'cube-emblem';
+  cube.setAttribute('aria-hidden', 'true');
+  const spin = document.createElement('div');
+  spin.className = 'spin';
+  for (const face of ['f', 'b', 'l', 'r', 't', 'u']) {
+    const el = document.createElement('i');
+    el.className = face;
+    spin.appendChild(el);
+  }
+  cube.appendChild(spin);
+  document.body.append(spot, cube);
+})();
+// The Spotlight shell paints the selected tile's art across the whole screen.
+function syncSpotlight() {
+  if (document.body.dataset.shellLayout !== 'hero') return;
+  const card = rowsEl.querySelector('.card.active');
+  if (!card) return; // on the tab bar: keep the last picture
+  const art = card.style.backgroundImage || (card._art ? `url("${card._art}")` : '');
+  const next = art && art !== 'none' ? art : 'none';
+  if (document.body.style.getPropertyValue('--hero') !== next) document.body.style.setProperty('--hero', next);
 }
 
 function fillInlay(card, t) {
@@ -954,10 +1019,20 @@ function sizeGrid() {
   const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.2 * gapPct / 100; // the same space between columns and between rows
   const w = Math.max(200, vp.clientWidth - gap * 2 - 24);
   const h = Math.max(160, vp.clientHeight);
-  const cw = (w - (cols - 1) * gap) / cols;
+  let cw = (w - (cols - 1) * gap) / cols;
   const padv = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.1; // a little room above the first row for the selected tile's grow and outline
   const titleH = rowsEl.classList.contains('cats') ? parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.7 : 0; // a group title takes a little room too
-  const ch = Math.max(90, Math.min(cw * 1.5, (h - padv - titleH - rows * gap) / rows));
+  const fitH = (h - padv - titleH - rows * gap) / rows;
+  // A shell can ask for a fixed tile shape (height / width), e.g. wide channels or square tiles.
+  // Then the tiles keep that shape and get narrower instead of squashed when height runs out.
+  const aspect = parseFloat(getComputedStyle(document.body).getPropertyValue('--tile-aspect'));
+  let ch;
+  if (aspect > 0) {
+    ch = Math.max(90, Math.min(cw * aspect, fitH));
+    cw = Math.min(cw, ch / aspect);
+  } else {
+    ch = Math.max(90, Math.min(cw * 1.5, fitH));
+  }
   rowsEl.style.setProperty('--cols', String(cols));
   rowsEl.style.setProperty('--padv', padv.toFixed(1) + 'px');
   rowsEl.style.setProperty('--card-w', cw.toFixed(1) + 'px');
@@ -1025,9 +1100,13 @@ function update() {
       if (gt) gt.style.transform = rail.style.transform;
     } else if (card) {
       const w = rail.parentElement.clientWidth;
-      rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
+      // Spotlight keeps the selection at the start of its row, like the console it honors;
+      // every other shell keeps it in the middle.
+      if (lmode === 'rails' && layoutCfg().shell === 'hero') rail.style.transform = `translateX(${-card.offsetLeft}px)`;
+      else rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
     }
   });
+  syncSpotlight();
   const activeRow = rowsEl.querySelectorAll('.row')[c.row];
   if (activeRow) {
     const h = rowsEl.parentElement.clientHeight;
@@ -1158,40 +1237,160 @@ function normalizeUrl(v) {
   if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return 'https://' + s; // looks like a bare address
   return 'https://duckduckgo.com/?q=' + encodeURIComponent(s); // treat it as a search
 }
-async function launchBrowser() {
-  if (browserOpen) return;
-  if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
-  const result = await api.browser('open', { url: browserUrl });
-  if (!result || !result.ok) {
-    setStatus((result && result.error) || "Couldn't open the browser.", true);
-    return;
-  }
-  browserOpen = true;
-  document.body.classList.add('browser-open');
-  setStatus('');
+// ---- getting into and out of the browser. The page is a native view drawn over this
+// window, which CSS can't move or fade, so the animation plays on a picture of it (the
+// "curtain"): on the way out the picture replaces the live page before it is removed, on
+// the way in the picture from last time comes in and the live page takes over under it.
+let browserMoving = false;  // an entrance or exit is playing; input waits for it
+let browserShot = '';       // how the page looked when you last left it
+const BROWSER_ANIMS = ['slide', 'zoom', 'fade', 'rise', 'flip', 'doors', 'none'];
+const BROWSER_ANIM_MS = 340;
+function browserAnimStyle() {
+  const get = (id) => { const s = prefs.theme && prefs.theme.settings.find((x) => x.id === id); return s ? s.value : undefined; };
+  if (get('motion') === false) return 'none';
+  const v = get('browserAnim');
+  return BROWSER_ANIMS.includes(v) ? v : 'slide';
 }
-async function closeBrowser() {
-  if (!browserOpen) return;
-  browserOpen = false;
-  document.body.classList.remove('browser-open');
-  await api.browser('close');
+function browserCurtain() {
+  let c = document.getElementById('browser-curtain');
+  if (c) return c;
+  c = document.createElement('div');
+  c.id = 'browser-curtain';
+  c.hidden = true;
+  for (const side of ['l', 'r']) {
+    const half = document.createElement('div');
+    half.className = 'half ' + side;
+    c.appendChild(half);
+  }
+  const ph = document.createElement('div');
+  ph.className = 'ph';
+  ph.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19"/><path d="M5 24h38M24 5c6 6 8 12 8 19s-2 13-8 19M24 5c-6 6-8 12-8 19s2 13 8 19"/></svg><b>Browser</b>';
+  c.appendChild(ph);
+  document.body.appendChild(c);
+  return c;
+}
+function paintCurtain(c, shot) {
+  for (const a of c.getAnimations({ subtree: true })) a.cancel();
+  c.style.transformOrigin = '';
+  c.classList.toggle('empty', !shot);
+  c.classList.remove('dim');
+  for (const half of c.querySelectorAll('.half')) half.style.backgroundImage = shot ? `url("${shot}")` : '';
+}
+async function decodeShot(shot) {
+  if (!shot) return;
+  const img = new Image();
+  img.src = shot;
+  try { await img.decode(); } catch { /* shown as soon as it can be */ }
+}
+// dir: +1 when you travelled right to get here (RB), -1 when left (LB).
+function playCurtain(c, style, phase, dir) {
+  if (style === 'none') return Promise.resolve();
+  const enter = phase === 'in';
+  const timing = { duration: BROWSER_ANIM_MS, easing: enter ? 'cubic-bezier(.2,.8,.25,1)' : 'cubic-bezier(.55,0,.8,.3)', fill: 'forwards' };
+  const both = (from, to) => (enter ? [from, to] : [to, from]);
+  const rest = { transform: 'none', opacity: 1 };
+  const runs = [];
+  if (style === 'doors') {
+    const [l, r] = c.querySelectorAll('.half');
+    runs.push(l.animate(both({ transform: 'translateX(-101%)' }, { transform: 'none' }), timing));
+    runs.push(r.animate(both({ transform: 'translateX(101%)' }, { transform: 'none' }), timing));
+    if (c.classList.contains('empty')) runs.push(c.animate(both({ opacity: 0 }, { opacity: 1 }), timing));
+  } else if (style === 'slide') {
+    // In: arrives from the side you were heading toward. Out: leaves the way you came.
+    const off = enter ? dir * 100 : -dir * 100;
+    runs.push(c.animate([enter ? { transform: `translateX(${off}%)` } : rest, enter ? rest : { transform: `translateX(${off}%)` }], timing));
+  } else if (style === 'zoom') {
+    const tab = tabsEl.children[tabList().indexOf('browser')];
+    const r = tab ? tab.getBoundingClientRect() : null;
+    c.style.transformOrigin = r ? `${Math.round(r.left + r.width / 2)}px ${Math.round(r.top + r.height / 2)}px` : '50% 0';
+    runs.push(c.animate(both({ transform: 'scale(.06)', opacity: 0, borderRadius: '48px' }, { transform: 'none', opacity: 1, borderRadius: '0px' }), timing));
+  } else if (style === 'fade') {
+    runs.push(c.animate(both({ opacity: 0 }, { opacity: 1 }), { ...timing, easing: 'ease-in-out' }));
+  } else if (style === 'rise') {
+    runs.push(c.animate(both({ transform: 'translateY(100%) scale(.94)', opacity: 0.4 }, rest), timing));
+  } else if (style === 'flip') {
+    const turned = { transform: `perspective(1800px) rotateY(${enter ? -84 : 84}deg) scale(.92)`, opacity: 0 };
+    runs.push(c.animate(enter ? [turned, rest] : [rest, turned], timing));
+  }
+  return Promise.all(runs.map((a) => a.finished.catch(() => {})));
+}
+async function launchBrowser(dir = 1) {
+  if (browserOpen || browserMoving) return;
+  if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
+  browserMoving = true;
+  const c = browserCurtain();
+  try {
+    const style = browserAnimStyle();
+    paintCurtain(c, browserShot);
+    if (style !== 'none') {
+      await decodeShot(browserShot);
+      c.hidden = false;
+      await playCurtain(c, style, 'in', dir);
+    }
+    const result = await api.browser('open', { url: browserUrl });
+    if (!result || !result.ok) {
+      c.hidden = true;
+      setStatus((result && result.error) || "Couldn't open the browser.", true);
+      return;
+    }
+    browserOpen = true;
+    document.body.classList.add('browser-open');
+    setStatus('');
+    // The live page is now on top of the curtain; take the curtain away once it has painted.
+    setTimeout(() => { if (browserOpen && !urlBarOpening) c.hidden = true; }, 300);
+  } finally {
+    browserMoving = false;
+  }
+}
+async function closeBrowser(dir = -1) {
+  if (!browserOpen || browserMoving) return;
+  browserMoving = true;
+  const c = browserCurtain();
+  try {
+    const style = browserAnimStyle();
+    const snap = await api.browser('snapshot');
+    if (snap && snap.ok) browserShot = snap.image;
+    if (style !== 'none') {
+      paintCurtain(c, browserShot);
+      await decodeShot(browserShot);
+      c.hidden = false; // under the live page for now, identical to it
+    }
+    browserOpen = false;
+    await api.browser('close');
+    document.body.classList.remove('browser-open');
+    await playCurtain(c, style, 'out', dir);
+    c.hidden = true;
+  } finally {
+    browserMoving = false;
+  }
 }
 async function openUrlBar() {
-  if (!browserOpen || modal || urlBarOpening) return;
+  if (!browserOpen || modal || urlBarOpening || browserMoving) return;
   urlBarOpening = true;
-  // The BrowserView draws on top of this whole window, so the on-screen keyboard
-  // underneath would be invisible unless the view steps aside for it first.
+  // The page draws on top of this whole window, so the on-screen keyboard underneath would
+  // be invisible unless the page steps aside for it first. A dimmed picture of the page
+  // stays behind the keyboard so you can see what you are leaving.
+  const c = browserCurtain();
   try {
+    const snap = await api.browser('snapshot');
+    if (snap && snap.ok) browserShot = snap.image;
+    paintCurtain(c, browserShot);
+    await decodeShot(browserShot);
+    c.hidden = false;
+    c.classList.add('dim');
     await api.browser('hide');
     const v = await ask('Go to', browserUrl, { max: 300 });
     const u = v === null ? null : normalizeUrl(v);
     const result = u ? await api.browser('go', { url: u }) : await api.browser('show');
     if (!result || !result.ok) {
+      urlBarOpening = false;
       await closeBrowser();
       setStatus((result && result.error) || "Couldn't open that address.", true);
     } else if (u) browserUrl = u;
   } finally {
     urlBarOpening = false;
+    c.classList.remove('dim');
+    setTimeout(() => { if (browserOpen) c.hidden = true; }, 300);
   }
 }
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
@@ -3486,6 +3685,7 @@ const PAD_LABELS = {
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
   joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
+  browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function padSet(key, value) {
@@ -3547,6 +3747,7 @@ async function flowPadMenu() {
     const calibrated = prefs.calib[(activePad() || { id: '' }).id.slice(0, 80)];
     const items = [
       { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
+      { label: 'Button mapping', sub: Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed', op: 'mapping' },
       { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
       { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
       { label: 'Calibrate sticks', sub: calibrated ? 'calibrated' : 'not calibrated', op: 'calib' },
@@ -3559,11 +3760,21 @@ async function flowPadMenu() {
       { label: 'Joy-Con', header: true },
       { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
       { label: 'A left and a right Joy-Con', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.together, op: 'joycons' },
+      { label: 'Browser', header: true, fold: 'pad.browser', open: true },
+      { label: 'Cursor stick', sub: prefs.pad.browserCursor === 'left' ? 'Left stick (right stick scrolls)' : 'Right stick (left stick scrolls)', op: 'browserCursor' },
+      { label: 'Cursor speed', sub: prefs.pad.cursorSpeed + '%', op: 'cursorSpeed' },
+      { label: 'Scroll speed', sub: prefs.pad.scrollSpeed + '%', op: 'scrollSpeed' },
+      { label: 'Clicks', sub: `${buttonName(7)} clicks, ${buttonName(6)} right-clicks`, plain: true, info: true },
     ];
     const it = await pick('Controller', items, index);
     if (!it) return;
     index = items.indexOf(it);
+    if (it.info) continue;
     if (it.op === 'test') await flowPad();
+    else if (it.op === 'mapping') await flowControls();
+    else if (it.op === 'browserCursor') await pickChoice('In the browser, which stick moves the cursor?', 'browserCursor');
+    else if (it.op === 'cursorSpeed') await pickNumber('Cursor speed · how fast the browser cursor moves', 'cursorSpeed', 10, 100, 10);
+    else if (it.op === 'scrollSpeed') await pickNumber('Scroll speed · how fast pages scroll at full tilt', 'scrollSpeed', 10, 100, 10);
     else if (it.op === 'deadzone') await pickNumber('Stick deadzone · ignore small movements', 'deadzone', 0, 40, 5);
     else if (it.op === 'trigger') await pickNumber('Trigger sensitivity · how far to pull before it counts', 'trigger', 0, 50, 5);
     else if (it.op === 'calib') await calibratePad();
@@ -4049,10 +4260,10 @@ async function reorderPress(act) {
 }
 
 function press(act) {
-  if (suspended || busy) return;
+  if (suspended || busy || browserMoving) return;
   if (browserOpen && !modal) {
-    if (act === 'lb' || act === 'rb') { closeBrowser(); moveTabs(act === 'lb' ? -1 : 1); }
-    else if (act === 'b') closeBrowser(); // same as backing out of anything else
+    if (act === 'lb' || act === 'rb') { const d = act === 'lb' ? -1 : 1; closeBrowser(d); moveTabs(d); }
+    else if (act === 'b') closeBrowser(-1); // same as backing out of anything else
     return; // everything else in the page itself goes through the mouse pointer, not Tessera nav
   }
   if (modal) return modalPress(act);
@@ -4060,7 +4271,7 @@ function press(act) {
   if (place) return placePress(act);
   if (act === 'lb' || act === 'rb') {
     moveTabs(act === 'lb' ? -1 : 1);
-    if (hoverId === 'browser') launchBrowser(); // arriving on it with a bumper opens it
+    if (hoverId === 'browser') launchBrowser(act === 'lb' ? -1 : 1); // arriving on it with a bumper opens it
     return;
   }
   if (focus === 'tabs') {
@@ -4440,7 +4651,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (escHeld && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     escChordUsed = true;
-    moveTabs(e.key === 'ArrowRight' ? 1 : -1);
+    press(e.key === 'ArrowRight' ? 'rb' : 'lb');
     return e.preventDefault();
   }
   const map = {
