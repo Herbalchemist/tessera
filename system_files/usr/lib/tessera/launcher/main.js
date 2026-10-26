@@ -831,6 +831,30 @@ const STOCK_THEME = {
         { label: 'Cube (chunky menu down the left)', value: 'cube' },
         { label: 'Channels (wide tiles over a curved clock bar)', value: 'channel' },
       ] },
+    { id: 'partNav', group: 'Layout parts', label: 'Menu position', type: 'choice', default: 'auto', hint: 'Each part can come from a different arrangement. Auto keeps what the Shell arrangement above uses.',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Top, centered', value: 'top' }, { label: 'Top left', value: 'top-left' }, { label: 'Bottom', value: 'bottom' }, { label: 'Bottom dock', value: 'bottom-dock' }, { label: 'Curved bottom bar', value: 'bottom-bar' }, { label: 'Left sidebar', value: 'left' }] },
+    { id: 'partTabs', group: 'Layout parts', label: 'Tab look', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Pills', value: 'pills' }, { label: 'Plain text', value: 'text' }, { label: 'Large text pivots', value: 'pivots' }, { label: 'Round icon buttons', value: 'round' }, { label: 'Chunky glossy buttons', value: 'chunky' }, { label: 'Full-width segments', value: 'segments' }] },
+    { id: 'partClock', group: 'Layout parts', label: 'Clock', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Off', value: 'off' }, { label: 'Top corner', value: 'corner' }, { label: 'Across the top, with a profile icon', value: 'topbar' }, { label: 'In the curved bottom bar', value: 'bar' }] },
+    { id: 'partFrame', group: 'Layout parts', label: 'Selection frame', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Glow', value: 'glow' }, { label: 'Frame with a gap', value: 'framed' }, { label: 'White outline', value: 'white' }, { label: 'Soft halo', value: 'halo' }] },
+    { id: 'partTitle', group: 'Layout parts', label: 'Name of the selection', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Under the tiles', value: 'below' }, { label: 'Above the tiles', value: 'above' }, { label: 'Big, on the left', value: 'big' }] },
+    { id: 'partTile', group: 'Layout parts', label: 'Tile shape', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Tall (box art)', value: 'portrait' }, { label: 'Square', value: 'square' }, { label: 'Wide', value: 'wide' }] },
+    { id: 'partSize', group: 'Layout parts', label: 'Tile size (rows)', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Small', value: 'small' }, { label: 'Medium', value: 'medium' }, { label: 'Large', value: 'large' }] },
+    { id: 'partRow', group: 'Layout parts', label: 'Row movement', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Selection stays in the middle', value: 'center' }, { label: 'Middle, other rows faded', value: 'focus' }, { label: 'Selection at the front, and it grows', value: 'start' }] },
+    { id: 'partCard', group: 'Layout parts', label: 'Tile look', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Standard', value: 'standard' }, { label: 'Picture only', value: 'flat' }, { label: 'Flat with color', value: 'metro' }, { label: 'Glossy', value: 'glossy' }, { label: 'Rounded bezel', value: 'bezel' }] },
+    { id: 'partSpot', group: 'Layout parts', label: 'Selection art behind everything', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Off', value: 'off' }, { label: 'On', value: 'on' }] },
+    { id: 'partEmblem', group: 'Layout parts', label: 'Emblem over the menu', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'None', value: 'none' }, { label: 'Turning cube', value: 'cube' }] },
+    { id: 'partHints', group: 'Layout parts', label: 'Button hints', type: 'choice', default: 'auto',
+      options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Centered', value: 'center' }, { label: 'Left', value: 'left' }, { label: 'Right', value: 'right' }] },
     { id: 'layout', group: 'Layout', label: 'Tile layout', type: 'choice', default: 'rails',
       options: [{ label: 'Rails (sideways, like a console)', value: 'rails' }, { label: 'Grid', value: 'grid' }, { label: 'Flow grid (scrolls up and down)', value: 'flow' }] },
     { id: 'gridPreset', group: 'Layout', label: 'Grid size (default for every page)', type: 'choice', default: 'c5r3',
@@ -2017,7 +2041,7 @@ Widget panes: set "widgetStyle" in defaults to "frosted", "glass", "outline"
 or "solid", plus "widgetTint" (frosted opacity, 0-100), "widgetBlur" (0-40),
 "widgetClear" (glass transparency, 0-100) and "widgetColor".
 Tile layout: "layout" is "rails", "grid" or "flow"; "gridPreset" is like "c5r3".
-Shell arrangement: "shellLayout" is "classic", "dock", "crossbar", "dashboard", "switch", "hero", "pivot", "cube" or "channel".
+Shell arrangement: "shellLayout" is "classic", "dock", "crossbar", "dashboard", "switch", "hero", "pivot", "cube" or "channel". Single parts can be set too: "partNav", "partTabs", "partClock", "partFrame", "partTitle", "partTile", "partSize", "partRow", "partCard", "partSpot", "partEmblem", "partHints" (each "auto" or one of its listed values).
 This repositions approved navigation/content regions; it is not a freeform layout editor.
 Home widget coordinates are preserved when switching shell arrangements.
 Backdrop: "backdrop" is "none", "glow", "mystic" or "tiles" (the Mosaic tile field).

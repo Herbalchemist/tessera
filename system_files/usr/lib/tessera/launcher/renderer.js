@@ -183,9 +183,26 @@ function shellLayoutOf(theme) {
   const helper = window.TesseraShellLayout;
   return helper ? helper.normalize(setting && setting.value) : 'classic';
 }
+// The layout parts in effect: the arrangement's own, with any part picked on its own on top.
+const PART_SETTING = { nav: 'partNav', tabs: 'partTabs', clock: 'partClock', frame: 'partFrame', title: 'partTitle', tile: 'partTile', size: 'partSize', row: 'partRow', card: 'partCard', spot: 'partSpot', emblem: 'partEmblem', hints: 'partHints' };
+function layoutPartsOf(theme) {
+  const helper = window.TesseraShellLayout;
+  const picks = {};
+  for (const [part, id] of Object.entries(PART_SETTING)) {
+    const s = theme && Array.isArray(theme.settings) && theme.settings.find((x) => x.id === id);
+    if (s) picks[part] = s.value;
+  }
+  return helper ? helper.resolveParts(shellLayoutOf(theme), picks) : { nav: 'top', tabs: 'pills', clock: 'off', frame: 'glow', title: 'below', tile: 'portrait', size: 'medium', row: 'center', card: 'standard', spot: 'off', emblem: 'none', hints: 'center' };
+}
+function applyLayoutParts(theme) {
+  const parts = layoutPartsOf(theme);
+  for (const [k, v] of Object.entries(parts)) document.body.dataset[k === 'nav' ? 'nav' : 'part' + k[0].toUpperCase() + k.slice(1)] = v;
+  return parts;
+}
 function shellLayoutInfo() {
   const helper = window.TesseraShellLayout;
-  return helper ? helper.describe(shellLayoutOf(prefs.theme)) : { id: 'classic', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' };
+  const nav = layoutPartsOf(prefs.theme).nav;
+  return helper ? { id: shellLayoutOf(prefs.theme), ...helper.handoffs(nav) } : { id: 'classic', navigation: 'horizontal', contentEntry: 'down', contentExit: 'up' };
 }
 // How bright a color is, 0 (black) to 1 (white).
 function lumOf(hex) {
@@ -301,6 +318,7 @@ function applyTheme(t) {
   if (!t || !Array.isArray(t.settings)) return;
   prefs.theme = t;
   document.body.dataset.shellLayout = shellLayoutOf(t);
+  applyLayoutParts(t);
   const fx = t.settings.find((s) => s.id === 'backdrop');
   document.body.dataset.fx = fx ? fx.value : 'none';
   const bgs = t.settings.find((s) => s.id === 'bg');
@@ -626,7 +644,7 @@ function layoutCfg() {
   if (own) { cols = own.cols; rows = own.rows; }
   const gapPct = Math.max(20, Math.min(240, Number(get('tileGap')) || 100));
   const icons = ['animated', 'still', 'off'].includes(get('setIcons')) ? get('setIcons') : 'animated';
-  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons, shell: shellLayoutOf(prefs.theme) };
+  return { mode, cols: Math.max(2, Math.min(12, cols)), rows: Math.max(1, Math.min(8, rows)), gapPct, pack: get('setPack') === true, notes: get('setNotes') !== false, icons, shell: shellLayoutOf(prefs.theme), parts: layoutPartsOf(prefs.theme) };
 }
 function currentRows() {
   const base = baseRows();
@@ -743,7 +761,7 @@ setInterval(tickClock, 10000);
 })();
 // The Spotlight shell paints the selected tile's art across the whole screen.
 function syncSpotlight() {
-  if (document.body.dataset.shellLayout !== 'hero') return;
+  if (document.body.dataset.partSpot !== 'on') return;
   const card = rowsEl.querySelector('.card.active');
   if (!card) return; // on the tab bar: keep the last picture
   const art = card.style.backgroundImage || (card._art ? `url("${card._art}")` : '');
@@ -928,6 +946,7 @@ function render() {
   rowsEl.replaceChildren();
   const lc = layoutCfg();
   document.body.dataset.shellLayout = lc.shell;
+  applyLayoutParts(prefs.theme);
   rowsEl.className = 'rows shell-' + lc.shell + (lc.mode === 'rails' ? '' : ' ' + lc.mode) + (page === 'settings' && !stack.length ? ' cats' : '') + (lc.icons === 'animated' ? ' icons-anim' : '');
   rowsEl.parentElement.classList.toggle('flowmask', lc.mode === 'flow');
   const pageKey = page + '/' + stack.map((s) => s.id).join('/');
@@ -1102,7 +1121,7 @@ function update() {
       const w = rail.parentElement.clientWidth;
       // Spotlight keeps the selection at the start of its row, like the console it honors;
       // every other shell keeps it in the middle.
-      if (lmode === 'rails' && layoutCfg().shell === 'hero') rail.style.transform = `translateX(${-card.offsetLeft}px)`;
+      if (lmode === 'rails' && layoutCfg().parts.row === 'start') rail.style.transform = `translateX(${-card.offsetLeft}px)`;
       else rail.style.transform = `translateX(${w / 2 - (card.offsetLeft + card.offsetWidth / 2)}px)`;
     }
   });
