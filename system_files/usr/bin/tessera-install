@@ -1,0 +1,13 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Install Tessera from the Tessera USB, as a window on the desktop. The USB normally starts straight
+# into Tessera's own Install screens; this is the way in when the desktop came up instead (for example
+# on graphics the console session can't start on). Only does anything on the USB's live system.
+APP=/usr/lib/tessera/launcher
+ELECTRON="$APP/node_modules/electron/dist/electron"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
+[ -x "$ELECTRON" ] || { echo "Tessera's launcher isn't installed here." >&2; exit 1; }
+[ -e /etc/tessera/live-installer ] || { echo "This isn't the Tessera USB, so there's nothing to install from." >&2; exit 1; }
+mkdir -p "$STATE"
+export TESSERA_INSTALLER=1
+exec "$ELECTRON" "$APP" >>"$STATE/install.log" 2>&1

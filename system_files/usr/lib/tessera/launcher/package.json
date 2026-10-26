@@ -1,6 +1,6 @@
 {
   "name": "tessera-launcher",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "description": "Controller-first launcher for Tessera",
   "license": "GPL-3.0-or-later",
