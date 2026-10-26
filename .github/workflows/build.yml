@@ -22,8 +22,21 @@ concurrency:
 
 jobs:
   build_push:
-    name: Build and push image
+    name: Build and push image (tessera${{ matrix.suffix }})
     runs-on: ubuntu-26.04
+    # One image per graphics family. A failing NVIDIA build never blocks the standard one.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suffix: ""
+            base: ghcr.io/ublue-os/bazzite:stable
+          - suffix: "-nvidia"
+            base: ghcr.io/ublue-os/bazzite-nvidia:stable
+          - suffix: "-nvidia-open"
+            base: ghcr.io/ublue-os/bazzite-nvidia-open:stable
+    env:
+      BASE_IMAGE: ${{ matrix.base }}
 
     permissions:
       contents: read
@@ -55,7 +68,7 @@ jobs:
       - name: Image Name
         id: image-name
         run: |
-          IMAGE_NAME=$(just image_name)
+          IMAGE_NAME="$(just image_name)${{ matrix.suffix }}"
 
           echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
