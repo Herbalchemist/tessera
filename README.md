@@ -126,13 +126,21 @@ Tessera is an image of Bazzite with the Tessera session on top, so you start fro
 
 **You need**
 - A PC running the current **Bazzite** (install it from [bazzite.gg](https://bazzite.gg); the [Bazzite docs](https://docs.bazzite.gg) cover that part).
-- **AMD or Intel graphics, for now.** Bazzite itself supports NVIDIA cards, but through separate images (`bazzite-nvidia-open` for GTX 16 / RTX cards, `bazzite-nvidia` for older ones) that come with NVIDIA's driver. Tessera is currently built only from the standard `bazzite` image, which doesn't include that driver. An NVIDIA build of Tessera is planned.
-  - **On an NVIDIA Bazzite install, don't switch to Tessera yet.** You'd lose the NVIDIA driver until you switch back.
+- **AMD or Intel graphics** use the standard image below.
+- **NVIDIA: experimental, not yet tested on real hardware.** Bazzite supports NVIDIA through separate images that include NVIDIA's driver, and Tessera now builds a matching image for each. Only switch if you're happy to help test, and keep your previous version to go back to.
+
+  | Your card | Bazzite image | Tessera image |
+  |---|---|---|
+  | AMD or Intel | `bazzite` | `ghcr.io/herbalchemist/tessera:latest` |
+  | NVIDIA GTX 16-series or any RTX (Turing and newer) | `bazzite-nvidia-open` | `ghcr.io/herbalchemist/tessera-nvidia-open:latest` |
+  | NVIDIA GTX 900 / 1000-series (Maxwell, Pascal, Volta) | `bazzite-nvidia` | `ghcr.io/herbalchemist/tessera-nvidia:latest` |
+
+  Never switch an NVIDIA machine to the standard `tessera` image: it has no NVIDIA driver.
 
 **Switch to Tessera**
 
 ```bash
-sudo bootc switch ghcr.io/herbalchemist/tessera:latest
+sudo bootc switch ghcr.io/herbalchemist/tessera:latest   # or tessera-nvidia-open / tessera-nvidia, from the table above
 systemctl reboot
 ```
 
@@ -143,7 +151,7 @@ After the restart the machine signs in to Tessera by itself.
 **Go back**
 - In Tessera: *Settings > Update software > Go back to the previous version*, then restart. Right after your first switch, the previous version is your Bazzite.
 - Or pick the previous entry in the boot menu.
-- Or return to stock Bazzite for good: `sudo bootc switch ghcr.io/ublue-os/bazzite:stable`, then restart.
+- Or return to stock Bazzite for good: `sudo bootc switch ghcr.io/ublue-os/bazzite:stable` (on NVIDIA, `bazzite-nvidia-open:stable` or `bazzite-nvidia:stable`), then restart.
 
 **Desktop Mode**
 - In Tessera: *Settings > Power > Desktop Mode*. You land on the login screen, so you need your account password; choose the desktop session there.
@@ -165,7 +173,7 @@ After the restart the machine signs in to Tessera by itself.
 - A freeform, drag-and-drop layout editor, and a separate theme creator app.
 - Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
 - Full profile switching: each person with their own library and controls.
-- An NVIDIA build (on Bazzite's `-nvidia-open` image).
+- NVIDIA builds: test on real hardware and drop the *experimental* label.
 
 ## How it's built
 

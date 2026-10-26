@@ -1,10 +1,16 @@
+# Which Bazzite to build on. The CI builds three variants from the same files:
+#   tessera              ghcr.io/ublue-os/bazzite:stable             (AMD / Intel)
+#   tessera-nvidia       ghcr.io/ublue-os/bazzite-nvidia:stable      (NVIDIA GTX 900/1000, Maxwell–Volta)
+#   tessera-nvidia-open  ghcr.io/ublue-os/bazzite-nvidia-open:stable (NVIDIA GTX 16 / RTX, Turing and newer)
+ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite:stable
+FROM ${BASE_IMAGE}
 ## Other possible base images include:
 # FROM ghcr.io/ublue-os/bazzite:testing
 # FROM ghcr.io/ublue-os/aurora:stable
