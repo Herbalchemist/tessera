@@ -6,3 +6,4 @@ _build-*/**
 *_rpm-ostree_*
 node_modules/
 qa-output/
+__pycache__/
