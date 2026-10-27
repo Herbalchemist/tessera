@@ -83,7 +83,7 @@ Anything else in the file is ignored.
 
 ## Check your theme before you copy it over
 
-The repo has a checker that uses the launcher's own loading rules, read straight from `main.js`, so it always matches what Tessera does:
+The repo has a checker that uses the launcher's own loading rules, read straight from `main/theming.js`, so it always matches what Tessera does:
 
 ```bash
 node tools/check-theme.cjs ~/Tessera/Themes/my-theme/theme.json
@@ -140,7 +140,7 @@ Arrangements only move Tessera's own menus and tile areas. Your Home widgets kee
 
 ## Every setting
 
-Generated from the launcher's schema (`STOCK_THEME` in `main.js`). The id is what goes in `defaults`.
+Generated from the launcher's schema (`STOCK_THEME` in `main/theming.js`). The id is what goes in `defaults`.
 ### Screen
 
 | id | What it changes | Type | Values | Default |
@@ -260,7 +260,7 @@ Generated from the launcher's schema (`STOCK_THEME` in `main.js`). The id is wha
 | Channel White | `channel-white` | `channel` | `zoom` | `stripes` |
 | Arcade Marquee | `arcade-marquee` | `crossbar` | `slide` | `glow` |
 
-To read the rest of a factory theme's values, look for `BUILTIN_THEMES` in `system_files/usr/lib/tessera/launcher/main.js`. Or pick it in Theme Settings, choose **Save current as a new theme…**, and read the file it writes.
+To read the rest of a factory theme's values, look for `BUILTIN_THEMES` in `system_files/usr/lib/tessera/launcher/main/theming.js`. Or pick it in Theme Settings, choose **Save current as a new theme…**, and read the file it writes.
 
 ## Settings of your own
 
