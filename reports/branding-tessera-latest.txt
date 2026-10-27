@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-6b671658122ecat: /etc/machine-info: No such file or directory
+3b5e84c9659ccat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -949,117 +949,117 @@ summer_1am
 ublue.png
 
 ===== icons with bazzite/ublue in name =====
-/usr/share/icons/AdwaitaLegacy/32x32/places/start-here.png
-/usr/share/icons/AdwaitaLegacy/48x48/places/start-here.png
-/usr/share/icons/AdwaitaLegacy/22x22/places/start-here.png
-/usr/share/icons/AdwaitaLegacy/16x16/places/start-here.png
-/usr/share/icons/AdwaitaLegacy/24x24/places/start-here.png
+/usr/share/icons/breeze/places/96/start-here-kde.svg
+/usr/share/icons/breeze/places/96/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/24/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/24/start-here-kde.svg
+/usr/share/icons/breeze/places/24/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/24/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/64/start-here-kde.svg
+/usr/share/icons/breeze/places/64/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/22/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/22/start-here-kde.svg
+/usr/share/icons/breeze/places/22/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/22/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/32/start-here-kde.svg
+/usr/share/icons/breeze/places/16/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-kde.svg
+/usr/share/icons/breeze/places/16/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/96/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/96/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/64/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/64/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/32/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma.svg
 /usr/share/icons/Adwaita/symbolic/places/start-here-symbolic.svg
+/usr/share/icons/oxygen/base/32x32/places/start-here.png
+/usr/share/icons/oxygen/base/32x32/places/start-here-kde.png
+/usr/share/icons/oxygen/base/128x128/places/start-here.png
+/usr/share/icons/oxygen/base/128x128/places/start-here-kde.png
+/usr/share/icons/oxygen/base/48x48/places/start-here.png
+/usr/share/icons/oxygen/base/48x48/places/start-here-kde.png
+/usr/share/icons/oxygen/base/256x256/places/start-here.png
+/usr/share/icons/oxygen/base/256x256/places/start-here-kde.png
+/usr/share/icons/oxygen/base/16x16/places/start-here.png
+/usr/share/icons/oxygen/base/16x16/places/start-here-kde.png
+/usr/share/icons/oxygen/base/22x22/places/start-here.png
+/usr/share/icons/oxygen/base/22x22/places/start-here-kde.png
+/usr/share/icons/oxygen/base/64x64/places/start-here.png
+/usr/share/icons/oxygen/base/64x64/places/start-here-kde.png
+/usr/share/icons/oxygen/32x32/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/96x96/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/24x24/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/48x48/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/256x256/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/16x16/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/22x22/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/36x36/places/start-here-kde-fedora.png
 /usr/share/icons/hicolor/32x32/places/start-here.png
 /usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png
 /usr/share/icons/hicolor/32x32/bazzite-logo-icon.png
-/usr/share/icons/hicolor/96x96/places/start-here.png
-/usr/share/icons/hicolor/96x96/apps/fedora-logo-icon.png
-/usr/share/icons/hicolor/96x96/bazzite-logo-icon.png
-/usr/share/icons/hicolor/scalable/places/bazzite-logo.svg
-/usr/share/icons/hicolor/scalable/places/bazzite-logo-white.svg
 /usr/share/icons/hicolor/scalable/places/bazzite-logo-le.svg
-/usr/share/icons/hicolor/scalable/places/distributor-logo.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-white.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo.svg
 /usr/share/icons/hicolor/scalable/places/distributor-logo-white.svg
+/usr/share/icons/hicolor/scalable/places/distributor-logo.svg
 /usr/share/icons/hicolor/scalable/places/distributor-logo-steamdeck.svg
 /usr/share/icons/hicolor/scalable/places/start-here.svg
 /usr/share/icons/hicolor/scalable/apps/io.github.rfrench3.bazzite-updater.svg
 /usr/share/icons/hicolor/scalable/apps/io.github.ublue_os.yafti_gtk.svg
 /usr/share/icons/hicolor/scalable/apps/start-here.svg
+/usr/share/icons/hicolor/96x96/places/start-here.png
+/usr/share/icons/hicolor/96x96/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/96x96/bazzite-logo-icon.png
+/usr/share/icons/hicolor/24x24/places/start-here.png
+/usr/share/icons/hicolor/24x24/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/24x24/bazzite-logo-icon.png
 /usr/share/icons/hicolor/48x48/places/start-here.png
 /usr/share/icons/hicolor/48x48/apps/fedora-logo-icon.png
 /usr/share/icons/hicolor/48x48/bazzite-logo-icon.png
 /usr/share/icons/hicolor/256x256/places/start-here.png
 /usr/share/icons/hicolor/256x256/apps/fedora-logo-icon.png
 /usr/share/icons/hicolor/256x256/bazzite-logo-icon.png
-/usr/share/icons/hicolor/36x36/places/start-here.png
-/usr/share/icons/hicolor/36x36/apps/fedora-logo-icon.png
-/usr/share/icons/hicolor/36x36/bazzite-logo-icon.png
-/usr/share/icons/hicolor/22x22/places/start-here.png
-/usr/share/icons/hicolor/22x22/apps/fedora-logo-icon.png
-/usr/share/icons/hicolor/22x22/bazzite-logo-icon.png
 /usr/share/icons/hicolor/16x16/places/start-here.png
 /usr/share/icons/hicolor/16x16/apps/fedora-logo-icon.png
 /usr/share/icons/hicolor/16x16/bazzite-logo-icon.png
-/usr/share/icons/hicolor/24x24/places/start-here.png
-/usr/share/icons/hicolor/24x24/apps/fedora-logo-icon.png
-/usr/share/icons/hicolor/24x24/bazzite-logo-icon.png
+/usr/share/icons/hicolor/22x22/places/start-here.png
+/usr/share/icons/hicolor/22x22/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/22x22/bazzite-logo-icon.png
+/usr/share/icons/hicolor/36x36/places/start-here.png
+/usr/share/icons/hicolor/36x36/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/36x36/bazzite-logo-icon.png
 /usr/share/icons/Bluecurve/32x32/apps/start-here.png
 /usr/share/icons/Bluecurve/96x96/apps/start-here.png
+/usr/share/icons/Bluecurve/24x24/apps/start-here.png
 /usr/share/icons/Bluecurve/48x48/apps/start-here.png
 /usr/share/icons/Bluecurve/256x256/apps/start-here.png
-/usr/share/icons/Bluecurve/36x36/apps/start-here.png
-/usr/share/icons/Bluecurve/22x22/apps/start-here.png
 /usr/share/icons/Bluecurve/16x16/apps/start-here.png
-/usr/share/icons/Bluecurve/24x24/apps/start-here.png
-/usr/share/icons/breeze-dark/places/16/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze-dark/places/16/start-here-kde-symbolic.svg
-/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma.svg
-/usr/share/icons/breeze-dark/places/16/start-here-symbolic.svg
-/usr/share/icons/breeze-dark/places/64/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/64/start-here-kde-plasma.svg
-/usr/share/icons/breeze-dark/places/22/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze-dark/places/22/start-here-kde-symbolic.svg
-/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma.svg
-/usr/share/icons/breeze-dark/places/32/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/24/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze-dark/places/24/start-here-kde-symbolic.svg
-/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma.svg
-/usr/share/icons/breeze-dark/places/96/start-here-kde.svg
-/usr/share/icons/breeze-dark/places/96/start-here-kde-plasma.svg
-/usr/share/icons/breeze/places/16/start-here-kde.svg
-/usr/share/icons/breeze/places/16/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze/places/16/start-here-kde-symbolic.svg
-/usr/share/icons/breeze/places/16/start-here-kde-plasma.svg
-/usr/share/icons/breeze/places/16/start-here-symbolic.svg
-/usr/share/icons/breeze/places/64/start-here-kde.svg
-/usr/share/icons/breeze/places/64/start-here-kde-plasma.svg
-/usr/share/icons/breeze/places/22/start-here-kde.svg
-/usr/share/icons/breeze/places/22/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze/places/22/start-here-kde-symbolic.svg
-/usr/share/icons/breeze/places/22/start-here-kde-plasma.svg
-/usr/share/icons/breeze/places/32/start-here-kde.svg
-/usr/share/icons/breeze/places/24/start-here-kde.svg
-/usr/share/icons/breeze/places/24/start-here-kde-plasma-symbolic.svg
-/usr/share/icons/breeze/places/24/start-here-kde-symbolic.svg
-/usr/share/icons/breeze/places/24/start-here-kde-plasma.svg
-/usr/share/icons/breeze/places/96/start-here-kde.svg
-/usr/share/icons/breeze/places/96/start-here-kde-plasma.svg
-/usr/share/icons/oxygen/base/32x32/places/start-here-kde.png
-/usr/share/icons/oxygen/base/32x32/places/start-here.png
-/usr/share/icons/oxygen/base/48x48/places/start-here-kde.png
-/usr/share/icons/oxygen/base/48x48/places/start-here.png
-/usr/share/icons/oxygen/base/128x128/places/start-here-kde.png
-/usr/share/icons/oxygen/base/128x128/places/start-here.png
-/usr/share/icons/oxygen/base/256x256/places/start-here-kde.png
-/usr/share/icons/oxygen/base/256x256/places/start-here.png
-/usr/share/icons/oxygen/base/22x22/places/start-here-kde.png
-/usr/share/icons/oxygen/base/22x22/places/start-here.png
-/usr/share/icons/oxygen/base/64x64/places/start-here-kde.png
-/usr/share/icons/oxygen/base/64x64/places/start-here.png
-/usr/share/icons/oxygen/base/16x16/places/start-here-kde.png
-/usr/share/icons/oxygen/base/16x16/places/start-here.png
-/usr/share/icons/oxygen/32x32/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/96x96/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/48x48/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/256x256/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/36x36/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/22x22/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/16x16/places/start-here-kde-fedora.png
-/usr/share/icons/oxygen/24x24/places/start-here-kde-fedora.png
+/usr/share/icons/Bluecurve/22x22/apps/start-here.png
+/usr/share/icons/Bluecurve/36x36/apps/start-here.png
+/usr/share/icons/AdwaitaLegacy/32x32/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/24x24/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/48x48/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/16x16/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/22x22/places/start-here.png
 /usr/share/pixmaps/fedora-logo.ico
-/usr/share/pixmaps/fedora-logo.png
-/usr/share/pixmaps/fedora-logo-sprite.png
 /usr/share/pixmaps/fedora-logo-sprite.svg
+/usr/share/pixmaps/fedora-logo.png
 /usr/share/pixmaps/fedora-logo-small.png
+/usr/share/pixmaps/fedora-logo-sprite.png
 
 ===== logo links =====
 total 192
@@ -1110,16 +1110,16 @@ drwxr-xr-x 1 root root  4096 Jan  1  1970 signing
 -rw-r--r-- 2 root root   321 Jan  1  1970 topgrade.toml
 drwxr-xr-x 1 root root  4096 Jan  1  1970 udev-rules
 drwxr-xr-x 3 root root  4096 Jan  1  1970 update-services
-/usr/bin/fastfetch
-/usr/libexec/bazzite-bling-fastfetch
-/usr/share/man/man1/fastfetch.1.gz
-/usr/share/fish/vendor_completions.d/fastfetch.fish
-/usr/share/bash-completion/completions/fastfetch
-/usr/share/zsh/site-functions/_fastfetch
-/usr/share/ublue-os/bazzite/fastfetch.jsonc
 /usr/share/licenses/fastfetch
-/usr/share/fastfetch
+/usr/share/zsh/site-functions/_fastfetch
+/usr/share/bash-completion/completions/fastfetch
 /usr/share/doc/fastfetch
+/usr/share/fish/vendor_completions.d/fastfetch.fish
+/usr/share/fastfetch
+/usr/share/man/man1/fastfetch.1.gz
+/usr/share/ublue-os/bazzite/fastfetch.jsonc
+/usr/libexec/bazzite-bling-fastfetch
+/usr/bin/fastfetch
 
 ===== desktop entries naming Bazzite =====
 --- /usr/share/applications/bazzite-documentation.desktop
@@ -1174,27 +1174,27 @@ Exec=/usr/libexec/bazzite-announcement
 
 ===== motd / profile / ujust banners =====
 /etc/profile.d/bazzite-neofetch.sh
-/usr/share/ublue-os/motd/tips/sv/10-ublue.md
 /usr/share/ublue-os/motd/tips/sv/20-bazzite.md
-/usr/share/ublue-os/motd/tips/10-ublue.md
+/usr/share/ublue-os/motd/tips/sv/10-ublue.md
 /usr/share/ublue-os/motd/tips/30-kde.md
 /usr/share/ublue-os/motd/tips/20-bazzite.md
-/usr/share/ublue-os/motd/template.md
+/usr/share/ublue-os/motd/tips/10-ublue.md
 /usr/share/ublue-os/motd/template.sv.md
-/usr/share/ublue-os/just/82-bazzite-sunshine.just
-/usr/share/ublue-os/just/82-bazzite-apps.just
-/usr/share/ublue-os/just/81-bazzite-fixes.just
-/usr/share/ublue-os/just/90-bazzite-de.just
-/usr/share/ublue-os/just/91-bazzite-decky.just
+/usr/share/ublue-os/motd/template.md
 /usr/share/ublue-os/just/83-bazzite-audio.just
-/usr/share/ublue-os/just/80-bazzite.just
+/usr/share/ublue-os/just/91-bazzite-decky.just
 /usr/share/ublue-os/just/93-bazzite-update.just
 /usr/share/ublue-os/just/84-bazzite-virt.just
-/usr/share/ublue-os/just/88-bazzite-webapps.just
-/usr/share/ublue-os/just/82-bazzite-waydroid.just
+/usr/share/ublue-os/just/90-bazzite-de.just
+/usr/share/ublue-os/just/82-bazzite-apps.just
+/usr/share/ublue-os/just/80-bazzite.just
+/usr/share/ublue-os/just/81-bazzite-fixes.just
 /usr/share/ublue-os/just/90-bazzite-picker.just
-/usr/share/ublue-os/just/30-distrobox.just
+/usr/share/ublue-os/just/82-bazzite-waydroid.just
+/usr/share/ublue-os/just/82-bazzite-sunshine.just
+/usr/share/ublue-os/just/88-bazzite-webapps.just
 /usr/share/ublue-os/just/10-update.just
+/usr/share/ublue-os/just/30-distrobox.just
 
 ===== gamescope / steam session names =====
 
@@ -1289,20 +1289,20 @@ lrwxrwxrwx 4 root root   37 Jan  1  1970 3940x2160.jxl -> /usr/share/wallpapers/
 ===== DETAIL vapor look-and-feel =====
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/images
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/icons
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/icons/deck_icon.png
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/previews
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/previews/preview.png
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/images
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.systemtray.js
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.folder.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.systemtray.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/defaults
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.json
 /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.desktop
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.json
 [kdeglobals][KDE]
 widgetStyle=Breeze
 
@@ -1474,18 +1474,18 @@ for (let i = 0; i < allPanels.length; ++i) {
 }
 
 ===== DETAIL plasma layouts and kickoff icon =====
-/usr/share/plasma/plasmoids/org.kde.plasma.kickerdash/metadata.json
 /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-here-2.js
-/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
-/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
-/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
-/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
-/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/plasmoids/org.kde.plasma.kickerdash/metadata.json
 /usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
 /usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
-/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
 /usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
 /usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
 /usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
 00-start-here-2.js
 bazzite-pins.js
@@ -1928,7 +1928,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Oct 27 22:32 ..
+drwxr-xr-x 1 root root 4096 Oct 27 23:02 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1950,7 +1950,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Oct 27 22:32 ..
+dr-xr-xr-x 1 root root 4096 Oct 27 23:02 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2030,3 +2030,189 @@ import "/usr/share/ublue-os/just/80-bazzite.just"
 import "/usr/share/ublue-os/just/81-bazzite-fixes.just"
 
 ===== DETAIL end =====
+
+===== DETAIL2 who sets the wallpaper =====
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.folder.js:1:applet.wallpaperPlugin = 'org.kde.image'
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.folder.js:2:applet.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"]
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.folder.js:3:applet.writeConfig("Image", "/usr/share/wallpapers/convergence.jxl")
+/etc/xdg/kscreenlockerrc:1:[Greeter][Wallpaper][org.kde.image][General]
+/etc/xdg/kscreenlockerrc:2:Image=/usr/share/wallpapers/convergence.jxl
+/etc/xdg/kscreenlockerrc:3:PreviewImage=/usr/share/wallpapers/convergence.jxl
+[Desktop]
+Containment=org.kde.plasma.folder
+ToolBox=
+RuntimePlatform=Desktop
+
+[Desktop][ContainmentActions]
+RightButton;NoModifier=org.kde.contextmenu
+MiddleButton;NoModifier=org.kde.paste
+
+[Panel]
+Containment=org.kde.panel
+ToolBox=org.kde.paneltoolbox
+[Panel][ContainmentActions]
+RightButton;NoModifier=org.kde.contextmenu
+/usr/share/wallpapers/F44:
+total 16
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 contents
+-rw-r--r-- 2 root root  276 Jan  1  1970 metadata.json
+
+/usr/share/wallpapers/F44/contents:
+total 16
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 images
+drwxr-xr-x 1 root root 4096 Jan  1  1970 images_dark
+
+/usr/share/wallpapers/F44/contents/images:
+total 8
+drwxr-xr-x  1 root root 4096 Jan  1  1970 .
+drwxr-xr-x  1 root root 4096 Jan  1  1970 ..
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1024x600.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1024x768.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1080x1920.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1152x720.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1152x864.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1200x900.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1280x1024.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1280x720.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1280x768.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1280x800.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1280x960.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+lrwxrwxrwx 37 root root   50 Jan  1  1970 1366x768.jxl -> ../../../../backgrounds/f44/default/f44-01-day.jxl
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "kde@lists.fedoraproject.org",
+                "Name": "Fedora KDE SIG"
+            }
+        ],
+        "Id": "F44",
+        "Name": "Fedora Forty-Four",
+        "License": "CC-BY-SA-4.0"
+    }
+}
+
+===== DETAIL2 start-here / distributor svg =====
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape
+<svg width="600" height="600" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M50 150C50 94.7715 94.7715 50 150 50H300C438.071 50 550 161.929 550 300V300C550 438.071 438.071 550 300 550V550C161.929 550 50 438.071 50 300V150Z" fill="url(#paint0_linear_1016_105)"/>
+<path
+-rw-r--r-- 4 root root  547 Jan  1  1970 /usr/share/icons/hicolor/16x16/places/start-here.png
+-rw-r--r-- 4 root root  767 Jan  1  1970 /usr/share/icons/hicolor/22x22/places/start-here.png
+-rw-r--r-- 4 root root  787 Jan  1  1970 /usr/share/icons/hicolor/24x24/places/start-here.png
+-rw-r--r-- 4 root root 8479 Jan  1  1970 /usr/share/icons/hicolor/256x256/places/start-here.png
+-rw-r--r-- 4 root root 1100 Jan  1  1970 /usr/share/icons/hicolor/32x32/places/start-here.png
+-rw-r--r-- 4 root root 1312 Jan  1  1970 /usr/share/icons/hicolor/36x36/places/start-here.png
+-rw-r--r-- 4 root root 1704 Jan  1  1970 /usr/share/icons/hicolor/48x48/places/start-here.png
+-rw-r--r-- 4 root root 3031 Jan  1  1970 /usr/share/icons/hicolor/96x96/places/start-here.png
+-rw-r--r-- 2 root root 3708 Jan  1  1970 /usr/share/icons/hicolor/scalable/apps/start-here.svg
+lrwxrwxrwx 2 root root   22 Jan  1  1970 /usr/share/icons/hicolor/scalable/places/start-here.svg -> ../apps/start-here.svg
+fedora-logos-42.0.1-3.fc44.noarch
+file /usr/share/icons/hicolor/scalable/places/distributor-logo.svg is not owned by any package
+fedora-logos-42.0.1-3.fc44.noarch
+fedora-logos-42.0.1-3.fc44.noarch
+
+===== DETAIL2 kickoff icon config =====
+applet.currentConfigGroup = ["General"]
+applet.writeConfig("icon", "distributor-logo-steamdeck")
+applet.reloadConfig()
+/*
+   00-start-here-kde-fedora.js - Set launcher icon to start-here-kde-fedora
+   Copyright (C) 2010 Kevin Kofler <kevin.kofler@chello.at>
+   Copyright (C) 2010 Rex Dieter <rdieter@fedoraproject.org>
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+   Portions lifted from 01-kubuntu-10.04.js:
+   Harald Sitter, apachelogger@ubuntu.com 2010-04-02
+   Jonathan Riddell, jriddell@ubuntu.com 2010-02-18
+   Copyright Canonical Ltd, may be copied under the GNU GPL 2 or later
+*/
+
+launcherFound = false;
+
+pids = panelIds;
+for (i = 0; i < pids.length; ++i) {
+  p = panelById(pids[i]);
+  if (!p) continue;
+
+===== DETAIL2 hardware-setup hostname context =====
+265-
+266-  systemctl enable --now acpid.service
+267-fi
+268-
+269-# HOSTNAME FIX
+270-# If the hostname is too long Distrobox will fail during setup
+271-# Let's check the length and reset it to something sensible if that happens.
+272-if (( $(hostname | wc -m) > 20 )); then
+273:  hostnamectl set-hostname bazzite
+274-fi
+275-
+276-# Fix missing hostname file breaking distrobox
+277-if [ ! -f /etc/hostname ]; then
+278-  touch /etc/hostname
+279-fi
+
+===== DETAIL2 plymouth watermarks =====
+-rw-r--r-- 2 root root  7767 Jan  1  1970 watermark.png
+[Plymouth Theme]
+Name[be]=BGRT
+Name[cs]=BGRT
+Name[da]=BGRT
+Name[de]=BGRT
+Name[eo]=BGRT
+Name[es]=BGRT
+Name[eu]=BGRT
+Name[fr]=BGRT
+Name[fur]=BGRT
+Name[hi]=BGRT (सिस्टम का लोगो)
+Name[hr]=BGRT
+Name[hu]=BGRT
+Name[id]=BGRT
+Name[it]=BGRT
+Name[lt]=BGRT
+Name[ka]=BGRT
+Name[nl]=BGRT
+Name[pa]=BGRT
+Name[pl]=BGRT
+Name[pt_BR]=BGRT
+Name[ro]=BGRT
+Name[ru]=BGRT
+Name[sr]=BGRT
+Name[sv]=BGRT
+Name[uk]=BGRT
+Name[zh_CN]=BGRT
+Name[ms]=BGRT
+Name[he]=BGRT
+Name[fa]=BGRT
+
+===== DETAIL2 sddm / login screen =====
+ls: cannot access '/usr/share/sddm': No such file or directory
+ls: cannot access '/etc/sddm*': No such file or directory
+graphical.target
+lrwxrwxrwx 2 root root 43 Jan  1  1970 /etc/systemd/system/display-manager.service -> /usr/lib/systemd/system/plasmalogin.service
+
+===== DETAIL2 end =====
