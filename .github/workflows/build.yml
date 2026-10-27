@@ -180,3 +180,19 @@ jobs:
           # use old bundle format, so we can use newer cosign 3.X.X instead of 2.X.X
           cosign sign -y --new-bundle-format=false --use-signing-config=false --key env://COSIGN_PRIVATE_KEY ${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}
 
+
+      # The installed system checks this signature with /etc/containers/policy.json and
+      # /etc/pki/containers/tessera.pub (see build.sh). Prove the image just pushed passes that exact
+      # policy, so turning enforcement on can never lock installs out of their updates.
+      - name: Check the signature the way an installed Tessera will
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          DIGEST: ${{ steps.push-image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config/containers/registries.d
+          cp system_files/etc/containers/registries.d/tessera.yaml ~/.config/containers/registries.d/
+          jq -n --arg key "$PWD/system_files/etc/pki/containers/tessera.pub" \
+            '{default: [{type: "reject"}], transports: {docker: {"ghcr.io/herbalchemist": [{type: "sigstoreSigned", keyPath: $key, signedIdentity: {type: "matchRepository"}}]}}}' > /tmp/tessera-policy.json
+          podman pull --signature-policy /tmp/tessera-policy.json "${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+          echo "${IMAGE_NAME}@${DIGEST}: the signature checks out with the policy Tessera ships."

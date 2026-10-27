@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Tessera's images are signed with cosign when GitHub builds them (see .github/workflows/build.yml);
+# the signatures sit next to the images in the registry. The key that checks them is
+# /etc/pki/containers/tessera.pub, and /etc/containers/policy.json requires it for these images.
+docker:
+  ghcr.io/herbalchemist:
+    use-sigstore-attachments: true
