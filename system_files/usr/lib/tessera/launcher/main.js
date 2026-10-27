@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Tessera's launcher, main process. The work is split into parts in main/, one per area; they
 // load in this order, which is the order the original single file ran in.
+// Anything that slips through is written to the log instead of ending the launcher (and, with no
+// handler, Electron would put a dialog on the TV that a controller can't close).
+process.on('uncaughtException', (e) => {
+  console.error('Tessera: unexpected error:', e);
+  try {
+    const fs = require('fs'), path = require('path'), os = require('os');
+    const dir = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'tessera', 'logs');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'launcher-errors.log'), `${new Date().toISOString()} ${(e && e.stack) || e}\n`);
+  } catch { /* nowhere to write it */ }
+});
 require('./main/config'); // Where Tessera keeps its files, built-in widget presets, and limits used everywhere.
 require('./main/library'); // The library: games, apps, pages (mosaics) and where entries sit on the grid.
 require('./main/prefs'); // Settings: loading, cleaning and saving settings.json.

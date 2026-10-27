@@ -32,6 +32,8 @@ xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/addons.cjs              
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
 ```
 
+Under Xvfb, now and then Electron loses its X connection and exits ("X connection error received" in its output), most often in `installer.cjs`. It happens with older launcher code too and isn't Tessera's doing; run that check again.
+
 The harness passes `--no-sandbox` because the containerized test environment does not permit normal Chromium sandbox startup. That is a **test-only launch flag**; production launcher code still configures context isolation, Node disabled, and renderer sandboxing. These tests verify the configuration and bridge isolation, not the operating system's enforcement of Chromium sandboxing. Do not use the QA launch flags for your normal browser session.
 
 Physical-controller testing, controller device permissions and hotplug under Gamescope, OS image boot, suspend/resume, system services, and update/rollback behavior still need target-machine or VM validation. The deterministic tests run separately:
