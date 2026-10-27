@@ -49,3 +49,13 @@ sec "DETAIL grub / bls titles"; ls -la /boot /usr/lib/bootupd/grub2-static 2>&1 
 sec "DETAIL gamescope session + steam"; ls /usr/share/wayland-sessions /usr/share/xsessions 2>&1; grep -rn -i -e 'Name=' /usr/share/wayland-sessions/*.desktop 2>/dev/null | head
 sec "DETAIL ujust banner"; head -40 /usr/share/ublue-os/just/80-bazzite.just; head -20 /usr/share/ublue-os/justfile
 sec "DETAIL end"
+
+sec "DETAIL2 who sets the wallpaper"; grep -rn -i -e 'wallpaper' -e 'convergence' -e 'plasma-apply' /usr/libexec/bazzite-* /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/*.js /usr/share/plasma/look-and-feel/com.valve.vapor.desktop /etc/xdg 2>/dev/null | grep -v '\.svgz' | head -40
+grep -rn -i 'Image=' /usr/share/plasma/wallpapers/*/contents/config/main.xml /usr/share/plasma/shells/org.kde.plasma.desktop/contents/defaults 2>/dev/null | head; cat /usr/share/plasma/shells/org.kde.plasma.desktop/contents/defaults 2>/dev/null | head -30
+ls -la /usr/share/wallpapers/F44 /usr/share/wallpapers/F44/contents /usr/share/wallpapers/F44/contents/images 2>&1 | head -30; cat /usr/share/wallpapers/F44/metadata.json 2>/dev/null | head -20
+sec "DETAIL2 start-here / distributor svg"; head -c 400 /usr/share/icons/hicolor/scalable/apps/start-here.svg; echo; head -c 300 /usr/share/icons/hicolor/scalable/places/distributor-logo.svg; echo; ls -la /usr/share/icons/hicolor/*/apps/start-here* /usr/share/icons/hicolor/*/places/start-here* 2>/dev/null | head -20; rpm -qf /usr/share/icons/hicolor/scalable/apps/start-here.svg /usr/share/icons/hicolor/scalable/places/distributor-logo.svg /usr/share/pixmaps/system-logo-white.png /usr/share/pixmaps/bootloader/bootlogo_128.png 2>&1
+sec "DETAIL2 kickoff icon config"; cat /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js 2>&1 | head -20; cat /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-here-2.js | head -30
+sec "DETAIL2 hardware-setup hostname context"; grep -n -B8 -A6 'set-hostname' /usr/libexec/bazzite-hardware-setup
+sec "DETAIL2 plymouth watermarks"; ls -la /usr/share/plymouth/themes/spinner/ /usr/share/plymouth/themes/bgrt/ | grep -i -e water -e logo; cat /usr/share/plymouth/themes/bgrt/bgrt.plymouth | head -30
+sec "DETAIL2 sddm / login screen"; ls /usr/share/sddm 2>&1; ls /etc/sddm* 2>&1; systemctl get-default 2>&1; ls -la /etc/systemd/system/display-manager.service 2>&1
+sec "DETAIL2 end"
