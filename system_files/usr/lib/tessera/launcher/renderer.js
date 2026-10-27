@@ -3027,6 +3027,23 @@ async function flowInstaller() {
   if (!probe.disks.length) return void (await pick("Can't install", [{ label: 'OK', plain: true }], 0, { body: 'No disk here is big enough. Tessera needs a disk of 64 GB or more (the USB itself is never used).' }));
   if (!probe.available.length) return void (await pick("Can't install", [{ label: 'OK', plain: true }], 0, { body: "This USB doesn't have the Tessera builds on it. Make it again with Mortar." }));
   const names = probe.names || {};
+  const online = probe.source === 'online';
+  if (online && !probe.online) { // this USB downloads Tessera while installing: get the PC online first
+    for (;;) {
+      const it = await pick('Connect to the internet', [
+        { label: 'Wi-Fi…', sub: 'pick a network', op: 'wifi', ok: true },
+        { label: 'Check again', sub: 'after plugging in a cable', op: 'check', plain: true },
+        { label: 'Cancel', op: 'cancel', plain: true },
+      ], 0, { body: 'This USB is the online installer: it downloads Tessera (about 5 to 6 GB) while it installs. Plug in a network cable, or join Wi-Fi.' });
+      if (!it || it.op === 'cancel') return;
+      if (it.op === 'wifi' && window.flowWifi) await window.flowWifi();
+      setStatus('Checking the connection…');
+      const r = await api.installer('online', {});
+      setStatus('');
+      if (r && r.online) break;
+      if (it.op === 'check') await pick('Still offline', [{ label: 'OK', plain: true }], 0, { body: "Tessera's download server can't be reached yet. Check the cable or the Wi-Fi, then try again." });
+    }
+  }
   const c = { secureBoot: 'auto', timezone: probe.timezones.includes('UTC') ? 'UTC' : probe.timezones[0] };
   let step = 0;
   for (;;) {
@@ -3045,7 +3062,7 @@ async function flowInstaller() {
       const it = await pick('Graphics', order.map((v) => ({ label: names[v] || v, sub: !missing && v === probe.recommended ? 'Recommended for this computer' : missing ? 'the build on this USB' : '', v })), Math.max(0, order.indexOf(c.variant || probe.recommended)), {
         body: missing
           ? `This computer has ${cards}, which works best with the ${names[probe.need] || probe.need} build, but this USB was made with only the ${probe.available.map((v) => names[v] || v).join(' and ')} build. You can install it anyway and switch builds later in Settings > Update software once the computer is online, or make a Quick install USB with Mortar, which carries every build.`
-          : `This computer has ${cards}. Tessera comes in a build for each kind of graphics card; the recommended one is picked for you. Settings can switch builds later if the card changes.`,
+          : `This computer has ${cards}. Tessera comes in a build for each kind of graphics card; the recommended one is picked for you.${online ? ' It downloads during the install.' : ''} Settings can switch builds later if the card changes.`,
       });
       if (!it) { step--; continue; }
       c.variant = it.v; step++; continue;
@@ -3100,7 +3117,7 @@ async function flowInstaller() {
       const it = await pick('Ready to install', [
         { label: 'Erase and install', sub: c.diskLabel, op: 'go', danger: true },
         { label: 'Go back', op: 'back', plain: true },
-      ], 1, { body: `Disk: ${c.diskLabel}, erased completely\nGraphics: ${names[c.variant] || c.variant}\nAccount: ${c.user}\nTime zone: ${c.timezone.replace(/_/g, ' ')}\nSecure Boot: ${c.secureBoot === 'auto' ? 'set up for me' : 'I\'ll handle it'}` });
+      ], 1, { body: `Disk: ${c.diskLabel}, erased completely\nGraphics: ${names[c.variant] || c.variant}\nAccount: ${c.user}\nTime zone: ${c.timezone.replace(/_/g, ' ')}\nSecure Boot: ${c.secureBoot === 'auto' ? 'set up for me' : 'I\'ll handle it'}${online ? '\nDownload: about 5 to 6 GB, during the install' : ''}` });
       if (!it || it.op !== 'go') { step--; continue; }
       break;
     }
