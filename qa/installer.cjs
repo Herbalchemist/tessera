@@ -32,6 +32,7 @@ fs.writeFileSync(helper, `#!/bin/bash
 S=${JSON.stringify(stateDir)}; T=${JSON.stringify(temp)}
 case "$1" in
   probe) cat "$T/probe.json";;
+  online) if [ -f "$T/net" ]; then echo '{"online":true}'; else touch "$T/net"; echo '{"online":false}'; fi;;
   run)
     mkdir -p "$S"; cat > "$T/choices.json"
     for p in 10 40 70 95; do printf '{"phase":"running","percent":%s,"stage":"Copying Tessera onto the disk","line":"step %s"}' $p $p > "$S/state.json"; sleep 0.6; done
@@ -145,6 +146,38 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     await page.screenshot({ path: path.join(output, 'install-8-one-build-usb.png') });
     checks.push('A one-build USB on a PC that needs another build explains it and still offers what it has');
   } finally { await app.close(); }
+
+  // The online installer (Mortar's "Online install"): no builds on the USB, the PC is offline at first.
+  fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify({ ...probe, images: ['tessera', 'tessera-nvidia', 'tessera-nvidia-open'], source: 'online', online: false }));
+  fs.rmSync(path.join(temp, 'net'), { force: true });
+  const home2 = fs.mkdtempSync(path.join(os.tmpdir(), 'tessera-inst2-'));
+  const app2 = await electron.launch({
+    executablePath,
+    args: ['--no-sandbox', '--disable-gpu', path.join(launcher, 'main.js')],
+    env: { ...process.env, HOME: home2, TESSERA_DATA_DIR: path.join(home2, 'data'), TESSERA_DEV: '1', TESSERA_INSTALLER: '1', TESSERA_LIVE_INSTALL: helper,
+      TESSERA_LIVE_INSTALL_NOSUDO: '1', TESSERA_INSTALL_STATE: path.join(home2, 'run'), XDG_CONFIG_HOME: path.join(home2, 'config'), XDG_STATE_HOME: path.join(home2, 'state') },
+  });
+  try {
+    const page = await app2.firstWindow();
+    page.on('pageerror', (e) => errors.push(String(e)));
+    const title = (t) => page.waitForFunction((x) => modal && modal.title === x, t, { timeout: 10000, polling: 200 });
+    const choose = async (t, fn) => {
+      await title(t);
+      await page.evaluate((src) => { const f = new Function('x', 'return (' + src + ')(x)'); modal.index = modal.items.findIndex((x) => f(x)); modalPress('a'); }, fn.toString());
+      await page.waitForTimeout(250);
+    };
+    await choose('Welcome to Tessera', (x) => x.op === 'install');
+    await title('Connect to the internet');
+    await page.screenshot({ path: path.join(output, 'install-online-connect.png') });
+    await choose('Connect to the internet', (x) => x.op === 'check');
+    await choose('Still offline', () => true);
+    await choose('Connect to the internet', (x) => x.op === 'check');
+    await title('Where should Tessera go?');
+    await choose('Where should Tessera go?', (x) => x.disk);
+    await title('Graphics');
+    assert.match(await page.evaluate(() => modal.body), /downloads during the install/);
+    checks.push('Online installer: asks to connect first (Wi-Fi or cable, checks again), then the usual steps, noting the download');
+  } finally { await app2.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);
   console.log(`installer: ${checks.length} checks passed`);

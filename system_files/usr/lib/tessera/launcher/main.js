@@ -3325,7 +3325,13 @@ async function installerOp(op, p) {
       names: gpuMatch.VARIANT_NAMES,
       secureBoot: j.secureBoot || { efi: false, state: 'unknown' },
       timezones: Array.isArray(j.timezones) ? j.timezones : ['UTC'],
+      source: j.source === 'online' ? 'online' : 'usb', // "online": the USB has no builds on it; it downloads one while installing
+      online: j.online === true,
     };
+  }
+  if (op === 'online') {
+    const r = await liveHelper(['online']);
+    try { return { ok: true, online: JSON.parse(r.out).online === true }; } catch { return { ok: true, online: false }; }
   }
   if (op === 'start') {
     if (installChild) return { ok: true };
