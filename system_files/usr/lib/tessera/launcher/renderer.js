@@ -3040,7 +3040,13 @@ async function flowInstaller() {
     if (step === 1) { // the graphics build
       const order = [probe.recommended, ...['standard', 'nvidia', 'nvidia-open'].filter((v) => v !== probe.recommended)].filter((v) => v && probe.available.includes(v));
       const cards = probe.cards.length ? probe.cards.join(' + ') : 'no graphics card was found';
-      const it = await pick('Graphics', order.map((v) => ({ label: names[v] || v, sub: v === probe.recommended ? 'Recommended for this computer' : '', v })), Math.max(0, order.indexOf(c.variant || probe.recommended)), { body: `This computer has ${cards}. Tessera comes in a build for each kind of graphics card; the recommended one is picked for you. Settings can switch builds later if the card changes.` });
+      // A USB made for one PC (Mortar's "Create media for this PC") carries one build; say so if it's the wrong one here.
+      const missing = probe.need && !probe.available.includes(probe.need);
+      const it = await pick('Graphics', order.map((v) => ({ label: names[v] || v, sub: !missing && v === probe.recommended ? 'Recommended for this computer' : missing ? 'the build on this USB' : '', v })), Math.max(0, order.indexOf(c.variant || probe.recommended)), {
+        body: missing
+          ? `This computer has ${cards}, which works best with the ${names[probe.need] || probe.need} build, but this USB was made with only the ${probe.available.map((v) => names[v] || v).join(' and ')} build. You can install it anyway and switch builds later in Settings > Update software once the computer is online, or make a Quick install USB with Mortar, which carries every build.`
+          : `This computer has ${cards}. Tessera comes in a build for each kind of graphics card; the recommended one is picked for you. Settings can switch builds later if the card changes.`,
+      });
       if (!it) { step--; continue; }
       c.variant = it.v; step++; continue;
     }
