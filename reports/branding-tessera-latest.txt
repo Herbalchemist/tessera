@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Tessera"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-7ed50825624fcat: /etc/machine-info: No such file or directory
+f66a362c6782cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="tessera"
 /etc/os-release:12:DEFAULT_HOSTNAME="tessera"
 
