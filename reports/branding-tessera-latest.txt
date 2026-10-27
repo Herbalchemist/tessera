@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-3b5e84c9659ccat: /etc/machine-info: No such file or directory
+8de1dd7f463bcat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -1928,7 +1928,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Oct 27 23:02 ..
+drwxr-xr-x 1 root root 4096 Oct 27 23:14 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1950,7 +1950,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Oct 27 23:02 ..
+dr-xr-xr-x 1 root root 4096 Oct 27 23:14 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
