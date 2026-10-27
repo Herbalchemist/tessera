@@ -1,0 +1,45 @@
+---
+# Lists every place the base image (and Tessera's own image) shows the Bazzite name or logo, and
+# pushes the report to the "reports" branch (reports/branding-*.txt).
+name: Branding inventory
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image to look inside
+        default: ghcr.io/ublue-os/bazzite:stable
+  push:
+    branches: [main]
+    paths: [tools/branding-inventory.sh, .github/workflows/branding-inventory.yml]
+permissions:
+  contents: write
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["${{ inputs.image || 'ghcr.io/ublue-os/bazzite:stable' }}", ghcr.io/herbalchemist/tessera:latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+      - name: Look inside
+        run: |
+          podman pull -q "${{ matrix.image }}"
+          name=$(echo "${{ matrix.image }}" | sed 's#.*/##; s#:#-#')
+          echo "NAME=$name" >> $GITHUB_ENV
+          podman run --rm -v "$PWD/tools:/t:ro" "${{ matrix.image }}" bash /t/branding-inventory.sh > "/tmp/branding-$name.txt" 2>&1 || true
+          wc -l "/tmp/branding-$name.txt"
+      - name: Publish to the reports branch
+        run: |
+          git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
+          for i in 1 2 3 4 5; do
+            git fetch -q origin reports 2>/dev/null && git checkout -q -B reports origin/reports || git checkout -q --orphan reports
+            git rm -rq --cached . >/dev/null 2>&1 || true
+            mkdir -p reports && cp "/tmp/branding-$NAME.txt" reports/
+            git add reports/"branding-$NAME.txt" && git commit -qm "branding inventory: $NAME" || exit 0
+            git push -q origin reports && exit 0
+            sleep $((RANDOM % 10 + 3))
+          done
+          exit 1
