@@ -263,6 +263,7 @@ async function install(id) {
   const { buf, finalUrl } = await fetchBytes(a.url, addonPackage.LIMITS.packageBytes);
   if (!packageUrlAllowed(finalUrl)) return { ok: false, error: "That add-on's download went somewhere Tessera doesn't trust." };
   const wasRunning = a.kind === 'shard' && running.has(id);
+  const wasOfficial = wasRunning && running.get(id).official;
   const r = addonPackage.installPackage(buf, a, kindDir(a.kind));
   addons.scanAddons();
   theming.scanThemes();
@@ -270,7 +271,13 @@ async function install(id) {
   if (a.kind === 'shard') {
     const v = verifyAddon(r.dir);
     note = v.official ? ' It is Official (signed by Tessera).' : ' It is unverified (not signed by Tessera).';
-    if (wasRunning) {
+    if (wasRunning && wasOfficial && !v.official) {
+      // It was signed by Tessera and this version isn't: don't run it just because it was on.
+      stopShard(id);
+      const list = enabledIds();
+      if (list.includes(id)) { list.splice(list.indexOf(id), 1); prefs.saveSettings(); }
+      note += ' The version it replaced was Official, so it was turned off: turn it on again in Add-ons > Shards if you trust it.';
+    } else if (wasRunning) {
       stopShard(id);
       const s = startShard(id);
       note += s.ok ? ' Restarted with the new version.' : ` It didn't start again: ${s.error}`;

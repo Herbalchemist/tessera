@@ -102,6 +102,13 @@ if [ -f "$f" ]; then
 else
   printf '[Greeter][Wallpaper][org.kde.image][General]\nImage=%s\nPreviewImage=%s\n' "$WP" "$WP" > "$f"; note "$f (new)"
 fi
+# The desktop's wallpaper is set by the Plasma look-and-feel setup scripts (Vapor's points at
+# convergence.jxl, Bazzite's picture): every Plasma file naming it gets Tessera's instead.
+found=0
+while IFS= read -r f; do
+  sed -i "s|/usr/share/wallpapers/convergence\.jxl|$WP|g" "$f"; found=1; note "$f: wallpaper"
+done < <(grep -rl 'wallpapers/convergence\.jxl' /usr/share/plasma /etc/xdg 2>/dev/null)
+[ "$found" = 1 ] || missing "the Plasma script that sets convergence.jxl"
 # Bazzite's own wallpaper package: its picture becomes Tessera's, so a desktop set to it shows Tessera.
 for d in /usr/share/wallpapers/bazzite/*/contents/images; do
   [ -d "$d" ] || continue
