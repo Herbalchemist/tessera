@@ -128,7 +128,7 @@ There are two ways to get Tessera.
 
 A bootable USB that installs Tessera with **no internet needed**, on any PC Bazzite supports. You don't need Bazzite first, or to pick the right version for your graphics card: the USB carries every build and picks the one for the machine it's installing to.
 
-1. Get the newest test image from [tessera-mortar's Releases](https://github.com/Herbalchemist/tessera-mortar/releases). It comes in parts; [its README](https://github.com/Herbalchemist/tessera-mortar#try-the-test-usb-for-testers) shows how to join them and write the USB (32 GB or more).
+1. Make the USB with **[Tessera Mortar](https://github.com/Herbalchemist/tessera-mortar#make-a-tessera-usb-with-mortar)**, a small app for Windows and Linux. Pick a USB drive of 32 GB or more; Mortar downloads the newest Tessera USB image, checks it, writes it and checks the drive.
 2. Boot the PC from the USB. It starts into **Install Tessera**, which works with a controller, a keyboard or a mouse:
    - Choose **Try it first** to look around, or **Install Tessera** to go ahead.
    - Pick the disk. It's erased completely, and the USB itself is never offered.
@@ -138,7 +138,7 @@ A bootable USB that installs Tessera with **no internet needed**, on any PC Bazz
 3. After the install, restart and take the USB out. If you chose Secure Boot setup, a blue screen asks once to confirm the key: choose *Enroll MOK*, then *Continue*, then *Yes*, type `universalblue` and choose *Reboot*. The install screen walks you through it.
 4. Tessera starts with its first-run setup and an optional tour. Updates come through *Settings > Update software* as usual.
 
-> The USB has passed a full install in a virtual machine and is now being tested on real hardware. Use a spare disk until it's out of testing. Mortar, a one-click USB maker for Windows and Linux, is coming.
+> The USB has passed a full install in a virtual machine and is now being tested on real hardware. Use a spare disk until it's out of testing.
 
 ### Option B: switch an existing Bazzite install
 
