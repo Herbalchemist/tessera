@@ -33,13 +33,12 @@ jobs:
           wc -l "/tmp/branding-$name.txt"
       - name: Publish to the reports branch
         run: |
-          git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
+          git config --global user.name github-actions; git config --global user.email github-actions@users.noreply.github.com
           for i in 1 2 3 4 5; do
-            git fetch -q origin reports 2>/dev/null && git checkout -q -B reports origin/reports || git checkout -q --orphan reports
-            git rm -rq --cached . >/dev/null 2>&1 || true
-            mkdir -p reports && cp "/tmp/branding-$NAME.txt" reports/
-            git add reports/"branding-$NAME.txt" && git commit -qm "branding inventory: $NAME" || exit 0
-            git push -q origin reports && exit 0
+            rm -rf /tmp/rep; git worktree prune
+            if git fetch -q origin reports; then git worktree add -q --detach /tmp/rep FETCH_HEAD; else git worktree add -q --orphan -b reports-new /tmp/rep; fi
+            mkdir -p /tmp/rep/reports && cp "/tmp/branding-$NAME.txt" /tmp/rep/reports/
+            (cd /tmp/rep && git add reports && git commit -qm "branding inventory: $NAME" && git push -q origin HEAD:refs/heads/reports) && exit 0
             sleep $((RANDOM % 10 + 3))
           done
           exit 1

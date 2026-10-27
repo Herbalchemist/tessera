@@ -29,3 +29,23 @@ sec "systemd units named bazzite/ublue"; ls /usr/lib/systemd/system /usr/lib/sys
 sec "rpm packages with bazzite/ublue in name"; rpm -qa 2>/dev/null | grep -i -e bazzite -e ublue -e branding -e logos -e plymouth-theme | sort
 sec "flatpak remotes and preinstalls"; ls /etc/flatpak/remotes.d 2>&1; ls /usr/share/ublue-os/ 2>/dev/null
 sec "done"
+
+# ---- details: exactly what each branded piece contains, so the overrides match it
+sec "DETAIL wallpapers"; ls -laR /usr/share/wallpapers/Default /usr/share/wallpapers/bazzite 2>&1 | head -60; ls -la /usr/share/wallpapers/convergence* /usr/share/wallpapers/*.png 2>&1
+sec "DETAIL vapor look-and-feel"; find /usr/share/plasma/look-and-feel/com.valve.vapor.desktop -maxdepth 3 | head -60; cat /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/defaults 2>&1; cat /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.json 2>&1 | head -30
+sec "DETAIL vapor splash"; cat /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml 2>&1 | head -120
+sec "DETAIL bazzite-pins.js"; cat /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/bazzite-pins.js 2>&1 | head -80
+sec "DETAIL plasma layouts and kickoff icon"; grep -rn -i -e icon -e wallpaper -e image /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/layouts 2>/dev/null | head -40; grep -rln -e 'start-here' -e 'distributor-logo' -e 'bazzite-logo' /usr/share/plasma /etc/xdg 2>/dev/null | head -30
+grep -rn -e 'icon' /usr/share/plasma/plasmoids/org.kde.plasma.kickoff/contents/config/main.xml 2>/dev/null | head; ls /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/ 2>&1; ls /usr/share/plasma/layout-templates 2>&1
+sec "DETAIL distributor/start-here links"; ls -la /usr/share/icons/hicolor/scalable/places/ /usr/share/icons/hicolor/48x48/places/ 2>&1 | head -40; ls -la /usr/share/pixmaps/system-logo* /usr/share/pixmaps/bootloader 2>&1
+sec "DETAIL fastfetch"; cat /usr/share/ublue-os/bazzite/fastfetch.jsonc 2>&1 | head -80; cat /etc/profile.d/bazzite-neofetch.sh; cat /usr/libexec/bazzite-bling-fastfetch 2>&1 | head -40; ls -la /usr/share/ublue-os/bazzite/
+sec "DETAIL motd"; cat /usr/libexec/ublue-motd 2>&1 | head -60; cat /usr/share/ublue-os/motd/template.md 2>&1; ls /etc/profile.d/ | head -40
+sec "DETAIL image-info"; cat /usr/share/ublue-os/image-info.json
+sec "DETAIL autostart"; ls -la /etc/xdg/autostart /etc/skel/.config/autostart 2>&1; cat /etc/skel/.config/autostart/bazzite-portal.desktop /etc/xdg/autostart/bazzite-announcement.desktop 2>&1; cat /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop | head -20
+sec "DETAIL user setup (what runs at first login)"; head -80 /usr/libexec/bazzite-user-setup
+sec "DETAIL hostname setters"; grep -rn -e hostnamectl -e '/etc/hostname' /usr/libexec/bazzite-* /usr/bin/bazzite-* 2>/dev/null | head -20
+sec "DETAIL kde about + skel kde"; ls -la /etc/skel /etc/skel/.config 2>&1 | head -40; cat /etc/skel/.config/kdeglobals 2>&1 | head -20; cat /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc 2>&1 | head -60
+sec "DETAIL grub / bls titles"; ls -la /boot /usr/lib/bootupd/grub2-static 2>&1 | head; grep -rn -i -e bazzite -e PRETTY /usr/lib/bootupd 2>/dev/null | head
+sec "DETAIL gamescope session + steam"; ls /usr/share/wayland-sessions /usr/share/xsessions 2>&1; grep -rn -i -e 'Name=' /usr/share/wayland-sessions/*.desktop 2>/dev/null | head
+sec "DETAIL ujust banner"; head -40 /usr/share/ublue-os/just/80-bazzite.just; head -20 /usr/share/ublue-os/justfile
+sec "DETAIL end"
