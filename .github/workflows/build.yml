@@ -61,8 +61,7 @@ jobs:
 
       - name: Controller input regression tests
         run: |
-          node --check system_files/usr/lib/tessera/launcher/main.js
-          node --check system_files/usr/lib/tessera/launcher/browser-gamepad.js
+          npm --prefix system_files/usr/lib/tessera/launcher run check
           node --test system_files/usr/lib/tessera/launcher/test/*.test.js
 
       - name: Image Name

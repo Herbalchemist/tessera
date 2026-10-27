@@ -5,19 +5,19 @@
 //
 //   node tools/check-theme.cjs ~/Tessera/Themes/my-theme/theme.json [more theme.json files]
 //
-// The rules are read straight out of the launcher's main.js (the same functions that load
+// The rules are read straight out of the launcher's main/theming.js (the same functions that load
 // themes), so this never drifts from what Tessera actually does. Needs Node.js 18 or newer.
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
 
-const MAIN = process.env.TESSERA_MAIN || path.resolve(__dirname, '../system_files/usr/lib/tessera/launcher/main.js');
+const MAIN = process.env.TESSERA_MAIN || path.resolve(__dirname, '../system_files/usr/lib/tessera/launcher/main/theming.js');
 const src = fs.readFileSync(MAIN, 'utf8');
 
-// Pull a balanced {...} or [...] literal, or a whole function, out of main.js.
+// Pull a balanced {...} or [...] literal, or a whole function, out of main/theming.js.
 function literal(start) {
   const i = src.indexOf(start);
-  if (i < 0) throw new Error(`main.js has no "${start}"`);
+  if (i < 0) throw new Error(`main/theming.js has no "${start}"`);
   const open = src.indexOf(start.trimEnd().endsWith('[') ? '[' : '{', i);
   let depth = 0;
   for (let k = open; k < src.length; k++) {
@@ -28,7 +28,7 @@ function literal(start) {
 }
 function func(name) {
   const i = src.indexOf(`function ${name}(`);
-  if (i < 0) throw new Error(`main.js has no function ${name}`);
+  if (i < 0) throw new Error(`main/theming.js has no function ${name}`);
   let depth = 0;
   for (let k = src.indexOf('{', i); k < src.length; k++) {
     if (src[k] === '{') depth++;
@@ -38,7 +38,7 @@ function func(name) {
 }
 const line = (name) => {
   const l = src.split('\n').find((x) => x.startsWith(`const ${name} `));
-  if (!l) throw new Error(`main.js has no const ${name}`);
+  if (!l) throw new Error(`main/theming.js has no const ${name}`);
   return l;
 };
 const rules = new Function('path', [

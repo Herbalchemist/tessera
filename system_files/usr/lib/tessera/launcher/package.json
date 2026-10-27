@@ -7,6 +7,6 @@
   "main": "main.js",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "check": "for file in *.js test/*.js; do node --check \"$file\" || exit; done"
+    "check": "for file in *.js main/*.js renderer/*.js test/*.js; do node --check \"$file\" || exit; done"
   }
 }

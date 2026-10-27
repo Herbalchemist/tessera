@@ -160,6 +160,9 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
   try {
     const page = await app2.firstWindow();
     page.on('pageerror', (e) => errors.push(String(e)));
+    // Like the first launch: out of fullscreen at once (fullscreen with no window manager on Xvfb
+    // now and then ends Chromium with an X error).
+    await app2.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setFullScreen(false); w.setContentSize(1280, 720); w.setPosition(0, 0); });
     const title = (t) => page.waitForFunction((x) => modal && modal.title === x, t, { timeout: 10000, polling: 200 });
     const choose = async (t, fn) => {
       await title(t);

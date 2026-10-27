@@ -22,13 +22,14 @@ The suite checks four shell arrangements at 1920×1080 and 1280×720, selected-c
 Six more checks drive the embedded browser with stand-in controller input (fed through a `TESSERA_DEV=1` hook in place of a physical pad), and one takes screenshots of the factory themes with a fictional library:
 
 ```bash
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-pointer.cjs      # cursor, analog scroll, trigger clicks, stick swap
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/browser-transitions.cjs  # every entrance/exit animation, resume, Esc+arrow chord
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/guide.cjs                # the guide (launcher, over a game, over the browser), first-run setup, desktop helper
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/keyboard.cjs             # keyboard & mouse: input-aware hints, key layouts, rebinding, the guided tour
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/installer.cjs            # Install Tessera from the USB (with a stand-in for the USB's root helper)
-xvfb-run -a -s "-screen 0 1280x720x24" node qa/graphics.cjs             # a graphics card swap: noticed at start, matching build offered and switched to
-ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/browser-pointer.cjs      # cursor, analog scroll, trigger clicks, stick swap
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/browser-transitions.cjs  # every entrance/exit animation, resume, Esc+arrow chord
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/guide.cjs                # the guide (launcher, over a game, over the browser), first-run setup, desktop helper
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/keyboard.cjs             # keyboard & mouse: input-aware hints, key layouts, rebinding, the guided tour
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/installer.cjs            # Install Tessera from the USB (with a stand-in for the USB's root helper)
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/graphics.cjs             # a graphics card swap: noticed at start, matching build offered and switched to
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/addons.cjs               # Get add-ons (a stand-in list), shards turned on/off, their pages and library sources, Shard safety
+ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
 ```
 
 The harness passes `--no-sandbox` because the containerized test environment does not permit normal Chromium sandbox startup. That is a **test-only launch flag**; production launcher code still configures context isolation, Node disabled, and renderer sandboxing. These tests verify the configuration and bridge isolation, not the operating system's enforcement of Chromium sandboxing. Do not use the QA launch flags for your normal browser session.
