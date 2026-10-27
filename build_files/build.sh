@@ -71,3 +71,12 @@ fi
 ### Tessera's name and look over Bazzite's (boot menu, About, logos, splash, wallpaper, terminal,
 ### the computer's name). See branding.sh for what changes and what stays Bazzite's.
 bash /ctx/branding.sh
+
+### Tessera's images must carry Tessera's signature: /etc/containers/policy.json requires
+### /etc/pki/containers/tessera.pub for ghcr.io/herbalchemist (registries.d/tessera.yaml says where
+### the signatures are). Bazzite's own entries in the file are kept.
+POLICY=/etc/containers/policy.json
+[ -f "$POLICY" ] || echo '{"default":[{"type":"insecureAcceptAnything"}],"transports":{"docker":{}}}' > "$POLICY"
+jq '.transports.docker["ghcr.io/herbalchemist"] = [{"type":"sigstoreSigned","keyPath":"/etc/pki/containers/tessera.pub","signedIdentity":{"type":"matchRepository"}}]' "$POLICY" > "$POLICY.new"
+mv "$POLICY.new" "$POLICY"
+jq -e '.transports.docker["ghcr.io/herbalchemist"][0].keyPath' "$POLICY"

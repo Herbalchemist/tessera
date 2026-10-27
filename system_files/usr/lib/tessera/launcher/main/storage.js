@@ -457,6 +457,10 @@ function restoreBackup(src) {
     for (const f of [config.LIBRARY_FILE, config.SETTINGS_FILE]) { try { fs.copyFileSync(f, path.join(keep, path.basename(f))); } catch { /* none yet */ } }
     set.pin = prefs.settings.pin || undefined; // keep this install's PIN
     if (!set.pin) delete set.pin;
+    // ...and its safety settings: a backup (maybe someone else's) never turns off "Official shards
+    // only" or the PIN for the browser, or turns shards on.
+    set.codeAddons = prefs.settings.codeAddons;
+    set.pinBrowser = prefs.settings.pinBrowser;
     set.firstRunDone = true;
     fs.mkdirSync(config.DATA_DIR, { recursive: true });
     fs.writeFileSync(config.LIBRARY_FILE, JSON.stringify(lib, null, 2));

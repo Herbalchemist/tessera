@@ -52,7 +52,11 @@ function pinTry(pin) {
     return { ok: true };
   }
   pinFails++;
-  if (pinFails >= 5) { pinLockedUntil = now + Math.min(300, 30 * 2 ** Math.floor((pinFails - 5) / 5)) * 1000; return { ok: false, wait: 30, error: 'Too many tries. Wait a little and try again.' }; }
+  if (pinFails >= 5) {
+    const wait = Math.min(300, 30 * 2 ** Math.floor((pinFails - 5) / 5));
+    pinLockedUntil = now + wait * 1000;
+    return { ok: false, wait, error: `Too many tries. Wait ${wait} seconds and try again.` };
+  }
   return { ok: false, error: `That isn't the PIN. ${5 - pinFails} ${5 - pinFails === 1 ? 'try' : 'tries'} left.` };
 }
 const NEED_PIN = { ok: false, needPin: true, error: 'Enter the PIN first.' };

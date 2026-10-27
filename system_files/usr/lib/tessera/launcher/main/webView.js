@@ -9,9 +9,12 @@ module.exports = {
   get fitBrowserView() { return fitBrowserView; },
 };
 
+const fs = require('fs');
+const path = require('path');
 const { app, WebContentsView, ipcMain } = require('electron');
 const browserNavigation = require('../browser-navigation');
 const config = require('./config');
+const addons = require('./addons');
 const prefs = require('./prefs');
 const pinLock = require('./pinLock');
 const web = require('./web');
@@ -29,6 +32,19 @@ function isLauncherMainFrame(event) {
     event.sender === config.mainWindow.webContents &&
     event.senderFrame && event.senderFrame === config.mainWindow.webContents.mainFrame
   );
+}
+// Downloads go straight to ~/Tessera/Downloads (no save dialog: a controller can't work one),
+// under a cleaned-up name that never replaces a file already there.
+const downloadSessions = new WeakSet();
+function downloadPath(name) {
+  const dir = addons.vaultFolder('downloads');
+  fs.mkdirSync(dir, { recursive: true });
+  const base = String(name || '').replace(/[^\w.()+ -]/g, '_').replace(/^[.\s]+/, '').slice(0, 120) || 'download';
+  const ext = path.extname(base);
+  const stem = base.slice(0, base.length - ext.length);
+  let p = path.join(dir, base);
+  for (let n = 1; fs.existsSync(p) && n < 1000; n++) p = path.join(dir, `${stem} (${n})${ext}`);
+  return p;
 }
 function ensureBrowserView() {
   if (browserView) return browserView;
@@ -49,6 +65,10 @@ function ensureBrowserView() {
   browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   browserSession.setPermissionCheckHandler(() => false);
   browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  if (!downloadSessions.has(browserSession)) {
+    downloadSessions.add(browserSession);
+    browserSession.on('will-download', (_event, item) => item.setSavePath(downloadPath(item.getFilename())));
+  }
   browserView.webContents.on('will-navigate', (event, target) => {
     if (!browserNavigation.isHttpUrl(target)) event.preventDefault();
   });

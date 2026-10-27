@@ -61,9 +61,11 @@ test('unknown key, someone else\'s key, no signature, junk signature: not Offici
   assert.match(V.verifyAddon(d).reason, /shape/);
 });
 
-test('a link inside is never followed (so it can\'t pull outside files into what is signed)', () => {
+test('a link anywhere inside means not Official (code could load through it)', () => {
   const d = shard();
   sign(d);
-  fs.symlinkSync('/etc/hostname', path.join(d, 'lib', 'link'));
-  assert.strictEqual(V.verifyAddon(d).official, true, 'the link is ignored, not hashed');
+  fs.symlinkSync(path.join(d, 'lib', 'a.js'), path.join(d, 'lib', 'a')); // require('./lib/a') would find this first
+  const v = V.verifyAddon(d);
+  assert.strictEqual(v.official, false);
+  assert.match(v.reason, /link in it \(lib\/a\)/);
 });
