@@ -1,0 +1,1254 @@
+
+===== os-release =====
+NAME="Bazzite"
+VERSION="44.20261026.0 (Kinoite)"
+RELEASE_TYPE=stable
+ID=bazzite
+ID_LIKE="fedora"
+VERSION_ID=44
+VERSION_CODENAME="Kinoite"
+PRETTY_NAME="Bazzite"
+ANSI_COLOR="0;38;2;138;43;226"
+LOGO=bazzite-logo
+CPE_NAME="cpe:/o:universal-blue:bazzite:44"
+DEFAULT_HOSTNAME="bazzite"
+HOME_URL="https://bazzite.gg"
+DOCUMENTATION_URL="https://docs.bazzite.gg"
+SUPPORT_URL="https://discord.bazzite.gg"
+BUG_REPORT_URL="https://github.com/ublue-os/bazzite/issues/"
+SUPPORT_END=2027-05-19
+VARIANT="Kinoite"
+VARIANT_ID=bazzite
+OSTREE_VERSION='44.20261026.0'
+BUILD_ID="Stable (F44.20261026)"
+BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
+IMAGE_ID="bazzite-44.20261026"
+
+===== hostname / machine-info =====
+cd3b3276ecfdcat: /etc/machine-info: No such file or directory
+/usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
+/etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
+
+===== files named like bazzite/ublue/universal blue =====
+/etc/bazzite-updater
+/etc/containers/registries.d/ublue-os.yaml
+/etc/pki/akmods/certs/akmods-ublue.der
+/etc/pki/containers/ublue-os-backup.pub
+/etc/pki/containers/ublue-os.pub
+/etc/profile.d/bazzite-neofetch.sh
+/etc/selinux/targeted/active/modules/200/ublue_os_composefs_execmem
+/etc/skel/.config/autostart/bazzite-portal.desktop
+/etc/systemd/system/multi-user.target.wants/bazzite-flatpak-manager.service
+/etc/systemd/system/multi-user.target.wants/bazzite-hardware-setup.service
+/etc/systemd/system/multi-user.target.wants/bazzite-iwd-migration.service
+/etc/systemd/system/multi-user.target.wants/ublue-os-media-automount.service
+/etc/systemd/user/default.target.wants/bazzite-dynamic-fixes.service
+/etc/systemd/user/default.target.wants/bazzite-user-setup.service
+/etc/ublue-os
+/etc/xdg/autostart/bazzite-announcement.desktop
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:bazzite-multilib.repo
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:bazzite.repo
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:packages.repo
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:staging.repo
+/etc/yum.repos.d/_copr_ublue-os-akmods.repo
+/usr/bin/bazzite-rollback-helper
+/usr/bin/bazzite-steam
+/usr/bin/bazzite-steam-bpm
+/usr/bin/bazzite-steam-firstrun
+/usr/bin/bazzite-updater
+/usr/lib/dracut/dracut.conf.d/90-ublue-luks.conf
+/usr/lib/systemd/system/bazzite-flatpak-manager.service
+/usr/lib/systemd/system/bazzite-hardware-setup.service
+/usr/lib/systemd/system/bazzite-iwd-migration.service
+/usr/lib/systemd/system/bazzite-libvirtd-setup.service
+/usr/lib/systemd/system/ublue-os-media-automount.service
+/usr/lib/systemd/user/bazzite-dynamic-fixes.service
+/usr/lib/systemd/user/bazzite-user-setup.service
+/usr/lib/tmpfiles.d/bazzite-libvirt.conf
+/usr/lib/tmpfiles.d/ublue-os-media-automount.conf
+/usr/lib/tuned/profiles/balanced-battery-bazzite
+/usr/lib/tuned/profiles/balanced-bazzite
+/usr/lib/tuned/profiles/powersave-battery-bazzite
+/usr/lib/tuned/profiles/powersave-bazzite
+/usr/lib/tuned/profiles/throughput-performance-bazzite
+/usr/lib/udev/rules.d/60-sunshine-ublue.rules
+/usr/libexec/bazzite-announcement
+/usr/libexec/bazzite-bling-fastfetch
+/usr/libexec/bazzite-boot-remount
+/usr/libexec/bazzite-detect-nvidia-support-status
+/usr/libexec/bazzite-dynamic-fixes
+/usr/libexec/bazzite-enable-hibernation
+/usr/libexec/bazzite-fetch-image
+/usr/libexec/bazzite-flatpak-manager
+/usr/libexec/bazzite-hardware-setup
+/usr/libexec/bazzite-iwd-migration
+/usr/libexec/bazzite-powersave
+/usr/libexec/bazzite-privileged-user-setup
+/usr/libexec/bazzite-snapper-config
+/usr/libexec/bazzite-user-setup
+/usr/libexec/ublue-motd
+/usr/libexec/ublue-os-media-automount.py
+/usr/share/applications/bazzite-documentation.desktop
+/usr/share/applications/bazzite-steam-bpm.desktop
+/usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
+/usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+/usr/share/bazzite-cli
+/usr/share/doc/bazzite-portal
+/usr/share/doc/bazzite-updater
+/usr/share/fish/vendor_conf.d/bazzite-neofetch.fish
+/usr/share/fish/vendor_conf.d/ublue-brew.fish
+/usr/share/icons/hicolor/16x16/bazzite-logo-icon.png
+/usr/share/icons/hicolor/22x22/bazzite-logo-icon.png
+/usr/share/icons/hicolor/24x24/bazzite-logo-icon.png
+/usr/share/icons/hicolor/256x256/bazzite-logo-icon.png
+/usr/share/icons/hicolor/32x32/bazzite-logo-icon.png
+/usr/share/icons/hicolor/36x36/bazzite-logo-icon.png
+/usr/share/icons/hicolor/48x48/bazzite-logo-icon.png
+/usr/share/icons/hicolor/96x96/bazzite-logo-icon.png
+/usr/share/icons/hicolor/scalable/apps/io.github.rfrench3.bazzite-updater.svg
+/usr/share/icons/hicolor/scalable/apps/io.github.ublue_os.yafti_gtk.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-le.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-white.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo.svg
+/usr/share/licenses/bazzite-portal
+/usr/share/licenses/bazzite-updater
+/usr/share/locale/fr_FR/LC_MESSAGES/bazzite-updater.mo
+/usr/share/locale/uk_UA/LC_MESSAGES/bazzite-updater.mo
+/usr/share/metainfo/io.github.rfrench3.bazzite-updater.metainfo.xml
+/usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/images/bazzite_logo.svgz
+/usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/splash/images/bazzite_logo.svgz
+/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/bazzite-pins.js
+/usr/share/polkit-1/actions/org.bazzite.privileged.user.setup.policy
+/usr/share/polkit-1/actions/org.bazzite.waydroid.policy
+/usr/share/selinux/packages/ublue_os_composefs_execmem.pp
+/usr/share/ublue-os
+/usr/share/ublue-os/announcements/bazzite-deck-44.msg.json
+/usr/share/ublue-os/bazzite
+/usr/share/ublue-os/bazzite-flatpak-eol
+/usr/share/ublue-os/bazzite/bazzite-oled.webm
+/usr/share/ublue-os/bazzite/bazzite-suspend-oled.webm
+/usr/share/ublue-os/bazzite/bazzite-suspend.webm
+/usr/share/ublue-os/bazzite/bazzite.webm
+/usr/share/ublue-os/docs/html/Advanced/bazzite-cli
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck
+/usr/share/ublue-os/docs/html/General/uninstalling-bazzite
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Bazzite_Portal
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Advanced/bazzite-cli.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Advanced/bazzite-cli.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/uninstalling-bazzite.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/uninstalling-bazzite.fr.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/uninstalling-bazzite.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/General/uninstalling-bazzite.zh_HK.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Installing_and_Managing_Software/Bazzite_Portal.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper.cs.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper.png
+/usr/share/ublue-os/docs/html/assets/images/bazzite-social/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater.png
+/usr/share/ublue-os/docs/html/cs/Advanced/bazzite-cli
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck
+/usr/share/ublue-os/docs/html/cs/General/uninstalling-bazzite
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Bazzite_Portal
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater
+/usr/share/ublue-os/docs/html/fr/Advanced/bazzite-cli
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck
+/usr/share/ublue-os/docs/html/fr/General/uninstalling-bazzite
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Bazzite_Portal
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater
+/usr/share/ublue-os/docs/html/img/Bazzite_Portal.png
+/usr/share/ublue-os/docs/html/img/Bazzite_Portal_Categories.png
+/usr/share/ublue-os/docs/html/img/Bazzite_Portal_Decky_Loader.png
+/usr/share/ublue-os/docs/html/img/Bazzite_Portal_iwd.png
+/usr/share/ublue-os/docs/html/img/Bazzite_Rollback_Helper_Command.png
+/usr/share/ublue-os/docs/html/img/Bazzite_Tagline_Light_BG.png
+/usr/share/ublue-os/docs/html/img/Framework_bazzite.jpeg
+/usr/share/ublue-os/docs/html/img/bazzite-cli.png
+/usr/share/ublue-os/docs/html/img/bazzite-updater-add-to-steam.png
+/usr/share/ublue-os/docs/html/img/bazzite-updater-changelogs.png
+/usr/share/ublue-os/docs/html/img/bazzite-updater-utilities.png
+/usr/share/ublue-os/docs/html/img/bazzite-updater.png
+/usr/share/ublue-os/docs/html/img/sunshine-bazzite-portal-menu.png
+/usr/share/ublue-os/docs/html/img/sunshine-bazzite-portal-submenu.png
+/usr/share/ublue-os/docs/html/stylesheets/bazzite.css
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/bazzite-cli
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck
+/usr/share/ublue-os/docs/html/zh_HK/General/uninstalling-bazzite
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Bazzite_Portal
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater
+/usr/share/ublue-os/etc/pki/akmods/certs/akmods-ublue.der
+/usr/share/ublue-os/etc/yum.repos.d/_copr_ublue-os-akmods.repo
+/usr/share/ublue-os/firefox-config/01-bazzite-global.js
+/usr/share/ublue-os/homebrew/bazzite-cli.Brewfile
+/usr/share/ublue-os/just/80-bazzite.just
+/usr/share/ublue-os/just/81-bazzite-fixes.just
+/usr/share/ublue-os/just/82-bazzite-apps.just
+/usr/share/ublue-os/just/82-bazzite-beesd.just
+/usr/share/ublue-os/just/82-bazzite-cockpit.just
+/usr/share/ublue-os/just/82-bazzite-sunshine.just
+/usr/share/ublue-os/just/82-bazzite-waydroid.just
+/usr/share/ublue-os/just/83-bazzite-audio.just
+/usr/share/ublue-os/just/84-bazzite-virt.just
+/usr/share/ublue-os/just/85-bazzite-image.just
+/usr/share/ublue-os/just/86-bazzite-windows.just
+/usr/share/ublue-os/just/87-bazzite-framegen.just
+/usr/share/ublue-os/just/88-bazzite-webapps.just
+/usr/share/ublue-os/just/89-bazzite-mesa-git.just
+/usr/share/ublue-os/just/90-bazzite-de.just
+/usr/share/ublue-os/just/90-bazzite-picker.just
+/usr/share/ublue-os/just/91-bazzite-decky.just
+/usr/share/ublue-os/just/92-bazzite-verify.just
+/usr/share/ublue-os/just/93-bazzite-update.just
+/usr/share/ublue-os/just/94-bazzite-protonplus.just
+/usr/share/ublue-os/just/95-bazzite-deck-session.just
+/usr/share/ublue-os/motd/tips/10-ublue.md
+/usr/share/ublue-os/motd/tips/15-ublue-config.md
+/usr/share/ublue-os/motd/tips/20-bazzite.md
+/usr/share/ublue-os/motd/tips/sv/10-ublue.md
+/usr/share/ublue-os/motd/tips/sv/20-bazzite.md
+/usr/share/ublue-os/signing/etc/containers/registries.d/ublue-os.yaml
+/usr/share/ublue-os/signing/etc/pki/containers/ublue-os-backup.pub
+/usr/share/ublue-os/signing/etc/pki/containers/ublue-os.pub
+/usr/share/ublue-os/udev-rules/60-sunshine-ublue.rules
+/usr/share/wallpapers/bazzite
+/usr/share/wallpapers/bazzite-blue.png
+/usr/share/wallpapers/bazzite-glass.png
+/usr/share/wallpapers/ublue.png
+
+===== text files mentioning Bazzite (per folder counts) =====
+456
+/etc/bazzite-updater/KAboutData_OS.json
+/etc/bazzite-updater/config.ini
+/etc/bazzite-updater/rebase-targets.json
+/etc/dnf/repos.override.d/99-config_manager.repo
+/etc/dnf/versionlock.toml
+/etc/profile.d/bazzite-neofetch.sh
+/etc/skel/.config/autostart/bazzite-portal.desktop
+/etc/skel/.config/autostart/steam.desktop
+/etc/tuned/ppd.conf
+/etc/xdg/autostart/bazzite-announcement.desktop
+/etc/xdg/kcm-about-distrorc
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:bazzite-multilib.repo
+/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:ublue-os:bazzite.repo
+/usr/bin/bazzite-rollback-helper
+/usr/bin/bazzite-steam
+/usr/bin/bazzite-steam-bpm
+/usr/bin/bruh
+/usr/bin/custom-resolution-helper
+/usr/bin/dnf
+/usr/bin/switcherooctl
+/usr/bin/tessera-fix-graphics
+/usr/bin/waydroid-launcher
+/usr/bin/yafti_gtk.py
+/usr/lib/fedora-release
+/usr/lib/os-release
+/usr/lib/sysimage/libdnf5/nevras.toml
+/usr/lib/sysimage/libdnf5/packages.toml
+/usr/lib/systemd/system/bazzite-flatpak-manager.service
+/usr/lib/systemd/system/bazzite-hardware-setup.service
+/usr/lib/systemd/system/bazzite-iwd-migration.service
+/usr/lib/systemd/user/bazzite-dynamic-fixes.service
+/usr/lib/systemd/user/bazzite-user-setup.service
+/usr/lib/tessera/launcher/gpu-match.js
+/usr/lib/tessera/launcher/main.js
+/usr/lib/tuned/profiles/balanced-battery-bazzite/tuned.conf
+/usr/lib/tuned/profiles/balanced-bazzite/tuned.conf
+/usr/lib/tuned/profiles/powersave-battery-bazzite/tuned.conf
+/usr/lib/tuned/profiles/throughput-performance-bazzite/tuned.conf
+/usr/libexec/bazzite-announcement
+/usr/libexec/bazzite-enable-hibernation
+/usr/libexec/bazzite-flatpak-manager
+/usr/libexec/bazzite-hardware-setup
+/usr/libexec/bazzite-iwd-migration
+/usr/libexec/bazzite-user-setup
+/usr/libexec/ntfs-exfat-monitor-script
+/usr/libexec/sunshine-start-vmon
+/usr/libexec/sunshine-stop-vmon
+/usr/share/applications/bazzite-documentation.desktop
+/usr/share/applications/bazzite-steam-bpm.desktop
+/usr/share/applications/discourse.desktop
+/usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
+/usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+/usr/share/applications/steam.desktop
+/usr/share/dict/linux.words
+/usr/share/dnf/plugins/copr.vendor.conf
+/usr/share/fish/vendor_conf.d/bazzite-neofetch.fish
+/usr/share/gamescope/scripts/00-gamescope/displays/ayaneo.3.oled.lua
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-le.svg
+/usr/share/metainfo/io.github.rfrench3.bazzite-updater.metainfo.xml
+/usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml
+/usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/splash/Splash.qml
+/usr/share/polkit-1/actions/org.bazzite.privileged.user.setup.policy
+/usr/share/polkit-1/actions/org.bazzite.waydroid.policy
+/usr/share/polkit-1/rules.d/20-privileged-ruser.rules
+/usr/share/polkit-1/rules.d/30-waydroid.rules
+/usr/share/ublue-os/announcements/bazzite-deck-44.msg.json
+/usr/share/ublue-os/announcements/example.msg.json
+/usr/share/ublue-os/announcements/sunshine-brew.msg.json
+/usr/share/ublue-os/bazaar/hooks.py
+/usr/share/ublue-os/bazaar/main.yaml
+/usr/share/ublue-os/bazzite/fastfetch.jsonc
+/usr/share/ublue-os/docs/html/404.html
+/usr/share/ublue-os/docs/html/Advanced/Auto-Mounting_Secondary_Drives/index.html
+/usr/share/ublue-os/docs/html/Advanced/Best_Shell_Practices/index.html
+/usr/share/ublue-os/docs/html/Advanced/Reset_Forgotten_User_Password/index.html
+/usr/share/ublue-os/docs/html/Advanced/add-user-to-group/index.html
+/usr/share/ublue-os/docs/html/Advanced/arctis-manager/index.html
+/usr/share/ublue-os/docs/html/Advanced/bazzite-cli/index.html
+/usr/share/ublue-os/docs/html/Advanced/cardwire/index.html
+/usr/share/ublue-os/docs/html/Advanced/couchside/index.html
+/usr/share/ublue-os/docs/html/Advanced/creating_custom_image/index.html
+/usr/share/ublue-os/docs/html/Advanced/custom_resolution/index.html
+/usr/share/ublue-os/docs/html/Advanced/dracut-and-initramfs/index.html
+/usr/share/ublue-os/docs/html/Advanced/index.html
+/usr/share/ublue-os/docs/html/Advanced/looking-glass/index.html
+/usr/share/ublue-os/docs/html/Advanced/plymouth_init/index.html
+/usr/share/ublue-os/docs/html/Advanced/rescue-and-emergency-mode/index.html
+/usr/share/ublue-os/docs/html/Advanced/scopebuddy/index.html
+/usr/share/ublue-os/docs/html/Advanced/sunshine/index.html
+/usr/share/ublue-os/docs/html/Advanced/swapfile/index.html
+/usr/share/ublue-os/docs/html/Advanced/trim-on-luks/index.html
+/usr/share/ublue-os/docs/html/Gaming/Common_gaming_issues/index.html
+/usr/share/ublue-os/docs/html/Gaming/Game_Launchers/index.html
+/usr/share/ublue-os/docs/html/Gaming/Hardware_compatibility_for_gaming/index.html
+/usr/share/ublue-os/docs/html/Gaming/Managing_and_modding_games/index.html
+/usr/share/ublue-os/docs/html/Gaming/gaming-intro/index.html
+/usr/share/ublue-os/docs/html/Gaming/index.html
+/usr/share/ublue-os/docs/html/Gaming/launch-options-env-variables/index.html
+/usr/share/ublue-os/docs/html/General/Desktop_Environment_Tweaks/index.html
+/usr/share/ublue-os/docs/html/General/FAQ/index.html
+/usr/share/ublue-os/docs/html/General/Fedora_Atomic_Comparison/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/alternate-install-guide/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/dual_boot_setup_guide/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/install-guide/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/legacy-install/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/manual_partitioning/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/post-installation/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/secure_boot/index.html
+/usr/share/ublue-os/docs/html/General/Installation_Guide/troubleshoot_guide/index.html
+/usr/share/ublue-os/docs/html/General/SteamOS_Comparison/index.html
+/usr/share/ublue-os/docs/html/General/VPN/index.html
+/usr/share/ublue-os/docs/html/General/community-links/index.html
+/usr/share/ublue-os/docs/html/General/index.html
+/usr/share/ublue-os/docs/html/General/issues_and_resolutions/index.html
+/usr/share/ublue-os/docs/html/General/reporting_bugs/index.html
+/usr/share/ublue-os/docs/html/General/terms/index.html
+/usr/share/ublue-os/docs/html/General/uninstalling-bazzite/index.html
+/usr/share/ublue-os/docs/html/General/zerotier/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/ASUS_ROG_Ally/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/Ayaneo_Handhelds/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/Ayn_Handhelds/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/GPD_Handhelds/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/Lenovo_Legion_Go/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/OneXPlayer_Handhelds/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/Other_Handhelds/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Handheld_Wiki/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/Steam_Gaming_Mode/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/index.html
+/usr/share/ublue-os/docs/html/Handheld_and_HTPC_edition/quirks/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/AppImage/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Bazzite_Portal/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Containers/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Distrobox/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Flatpak/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Homebrew/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Quadlet/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rebase_guide/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rolling_back_system_updates/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/updating_guide/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/Waydroid_Setup_Guide/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/rpm-ostree/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/software-intro/index.html
+/usr/share/ublue-os/docs/html/Installing_and_Managing_Software/ujust/index.html
+/usr/share/ublue-os/docs/html/assets/javascripts/bundle.83f73b43.min.js
+/usr/share/ublue-os/docs/html/community/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/Auto-Mounting_Secondary_Drives/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/Best_Shell_Practices/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/Reset_Forgotten_User_Password/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/add-user-to-group/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/arctis-manager/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/bazzite-cli/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/cardwire/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/couchside/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/creating_custom_image/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/custom_resolution/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/dracut-and-initramfs/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/looking-glass/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/plymouth_init/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/rescue-and-emergency-mode/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/scopebuddy/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/sunshine/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/swapfile/index.html
+/usr/share/ublue-os/docs/html/cs/Advanced/trim-on-luks/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/Common_gaming_issues/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/Game_Launchers/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/Hardware_compatibility_for_gaming/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/Managing_and_modding_games/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/gaming-intro/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/index.html
+/usr/share/ublue-os/docs/html/cs/Gaming/launch-options-env-variables/index.html
+/usr/share/ublue-os/docs/html/cs/General/Desktop_Environment_Tweaks/index.html
+/usr/share/ublue-os/docs/html/cs/General/FAQ/index.html
+/usr/share/ublue-os/docs/html/cs/General/Fedora_Atomic_Comparison/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/alternate-install-guide/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/dual_boot_setup_guide/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/install-guide/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/legacy-install/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/manual_partitioning/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/post-installation/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/secure_boot/index.html
+/usr/share/ublue-os/docs/html/cs/General/Installation_Guide/troubleshoot_guide/index.html
+/usr/share/ublue-os/docs/html/cs/General/SteamOS_Comparison/index.html
+/usr/share/ublue-os/docs/html/cs/General/VPN/index.html
+/usr/share/ublue-os/docs/html/cs/General/community-links/index.html
+/usr/share/ublue-os/docs/html/cs/General/index.html
+/usr/share/ublue-os/docs/html/cs/General/issues_and_resolutions/index.html
+/usr/share/ublue-os/docs/html/cs/General/reporting_bugs/index.html
+/usr/share/ublue-os/docs/html/cs/General/terms/index.html
+/usr/share/ublue-os/docs/html/cs/General/uninstalling-bazzite/index.html
+/usr/share/ublue-os/docs/html/cs/General/zerotier/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/ASUS_ROG_Ally/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/Ayaneo_Handhelds/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/Ayn_Handhelds/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/GPD_Handhelds/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/Lenovo_Legion_Go/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/OneXPlayer_Handhelds/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/Other_Handhelds/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Handheld_Wiki/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/Steam_Gaming_Mode/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/index.html
+/usr/share/ublue-os/docs/html/cs/Handheld_and_HTPC_edition/quirks/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/AppImage/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Bazzite_Portal/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Containers/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Distrobox/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Flatpak/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Homebrew/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Quadlet/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rebase_guide/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rolling_back_system_updates/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/updating_guide/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/Waydroid_Setup_Guide/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/rpm-ostree/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/software-intro/index.html
+/usr/share/ublue-os/docs/html/cs/Installing_and_Managing_Software/ujust/index.html
+/usr/share/ublue-os/docs/html/cs/community/index.html
+/usr/share/ublue-os/docs/html/cs/donations/index.html
+/usr/share/ublue-os/docs/html/cs/index.html
+/usr/share/ublue-os/docs/html/cs/sb/index.html
+/usr/share/ublue-os/docs/html/cs/tags/index.html
+/usr/share/ublue-os/docs/html/donations/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/Auto-Mounting_Secondary_Drives/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/Best_Shell_Practices/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/Reset_Forgotten_User_Password/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/add-user-to-group/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/arctis-manager/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/bazzite-cli/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/cardwire/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/couchside/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/creating_custom_image/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/custom_resolution/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/dracut-and-initramfs/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/looking-glass/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/plymouth_init/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/rescue-and-emergency-mode/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/scopebuddy/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/sunshine/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/swapfile/index.html
+/usr/share/ublue-os/docs/html/fr/Advanced/trim-on-luks/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/Common_gaming_issues/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/Game_Launchers/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/Hardware_compatibility_for_gaming/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/Managing_and_modding_games/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/gaming-intro/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/index.html
+/usr/share/ublue-os/docs/html/fr/Gaming/launch-options-env-variables/index.html
+/usr/share/ublue-os/docs/html/fr/General/Desktop_Environment_Tweaks/index.html
+/usr/share/ublue-os/docs/html/fr/General/FAQ/index.html
+/usr/share/ublue-os/docs/html/fr/General/Fedora_Atomic_Comparison/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/alternate-install-guide/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/dual_boot_setup_guide/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/install-guide/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/legacy-install/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/manual_partitioning/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/post-installation/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/secure_boot/index.html
+/usr/share/ublue-os/docs/html/fr/General/Installation_Guide/troubleshoot_guide/index.html
+/usr/share/ublue-os/docs/html/fr/General/SteamOS_Comparison/index.html
+/usr/share/ublue-os/docs/html/fr/General/VPN/index.html
+/usr/share/ublue-os/docs/html/fr/General/community-links/index.html
+/usr/share/ublue-os/docs/html/fr/General/index.html
+/usr/share/ublue-os/docs/html/fr/General/issues_and_resolutions/index.html
+/usr/share/ublue-os/docs/html/fr/General/reporting_bugs/index.html
+/usr/share/ublue-os/docs/html/fr/General/terms/index.html
+/usr/share/ublue-os/docs/html/fr/General/uninstalling-bazzite/index.html
+/usr/share/ublue-os/docs/html/fr/General/zerotier/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/ASUS_ROG_Ally/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/Ayaneo_Handhelds/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/Ayn_Handhelds/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/GPD_Handhelds/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/Lenovo_Legion_Go/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/OneXPlayer_Handhelds/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/Other_Handhelds/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Handheld_Wiki/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/Steam_Gaming_Mode/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/index.html
+/usr/share/ublue-os/docs/html/fr/Handheld_and_HTPC_edition/quirks/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/AppImage/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Bazzite_Portal/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Containers/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Distrobox/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Flatpak/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Homebrew/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Quadlet/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rebase_guide/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rolling_back_system_updates/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/updating_guide/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/Waydroid_Setup_Guide/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/rpm-ostree/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/software-intro/index.html
+/usr/share/ublue-os/docs/html/fr/Installing_and_Managing_Software/ujust/index.html
+/usr/share/ublue-os/docs/html/fr/community/index.html
+/usr/share/ublue-os/docs/html/fr/donations/index.html
+/usr/share/ublue-os/docs/html/fr/index.html
+/usr/share/ublue-os/docs/html/fr/sb/index.html
+/usr/share/ublue-os/docs/html/fr/tags/index.html
+/usr/share/ublue-os/docs/html/img/software-install-decision-tree-dark.svg
+/usr/share/ublue-os/docs/html/img/software-install-decision-tree-light.svg
+/usr/share/ublue-os/docs/html/index.html
+/usr/share/ublue-os/docs/html/robots.txt
+/usr/share/ublue-os/docs/html/sb/index.html
+/usr/share/ublue-os/docs/html/search/search_index.json
+/usr/share/ublue-os/docs/html/sitemap.xml
+/usr/share/ublue-os/docs/html/tags/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/Auto-Mounting_Secondary_Drives/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/Best_Shell_Practices/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/Reset_Forgotten_User_Password/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/add-user-to-group/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/arctis-manager/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/bazzite-cli/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/cardwire/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/couchside/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/creating_custom_image/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/custom_resolution/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/dracut-and-initramfs/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/looking-glass/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/plymouth_init/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/rescue-and-emergency-mode/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/scopebuddy/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/sunshine/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/swapfile/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Advanced/trim-on-luks/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/Common_gaming_issues/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/Game_Launchers/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/Hardware_compatibility_for_gaming/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/Managing_and_modding_games/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/gaming-intro/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Gaming/launch-options-env-variables/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Desktop_Environment_Tweaks/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/FAQ/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Fedora_Atomic_Comparison/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_Framework_Laptop_13/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Desktop_or_Laptop_Hardware/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Framework_Laptop_16/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_HTPC_Setups/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Handheld_PCs/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/Installing_Bazzite_for_Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/alternate-install-guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/dual_boot_setup_guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/install-guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/legacy-install/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/manual_partitioning/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/post-installation/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/secure_boot/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/Installation_Guide/troubleshoot_guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/SteamOS_Comparison/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/VPN/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/community-links/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/issues_and_resolutions/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/reporting_bugs/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/terms/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/uninstalling-bazzite/index.html
+/usr/share/ublue-os/docs/html/zh_HK/General/zerotier/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/ASUS_ROG_Ally/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/Ayaneo_Handhelds/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/Ayn_Handhelds/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/GPD_Handhelds/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/Lenovo_Legion_Go/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/OneXPlayer_Handhelds/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/Other_Handhelds/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/Steam_Deck/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Handheld_Wiki/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/Steam_Gaming_Mode/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Handheld_and_HTPC_edition/quirks/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/AppImage/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Bazzite_Portal/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Containers/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Distrobox/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Flatpak/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Homebrew/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Quadlet/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_rollback_helper/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/bazzite_updater/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rebase_guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/rolling_back_system_updates/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Updates_Rollbacks_and_Rebasing/updating_guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/Waydroid_Setup_Guide/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/rpm-ostree/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/software-intro/index.html
+/usr/share/ublue-os/docs/html/zh_HK/Installing_and_Managing_Software/ujust/index.html
+/usr/share/ublue-os/docs/html/zh_HK/community/index.html
+/usr/share/ublue-os/docs/html/zh_HK/donations/index.html
+/usr/share/ublue-os/docs/html/zh_HK/index.html
+/usr/share/ublue-os/docs/html/zh_HK/sb/index.html
+/usr/share/ublue-os/docs/html/zh_HK/tags/index.html
+/usr/share/ublue-os/firefox-config/01-bazzite-global.js
+/usr/share/ublue-os/image-info.json
+/usr/share/ublue-os/just/10-update.just
+/usr/share/ublue-os/just/30-distrobox.just
+/usr/share/ublue-os/just/80-bazzite.just
+/usr/share/ublue-os/just/81-bazzite-fixes.just
+/usr/share/ublue-os/just/82-bazzite-apps.just
+/usr/share/ublue-os/just/82-bazzite-sunshine.just
+/usr/share/ublue-os/just/82-bazzite-waydroid.just
+/usr/share/ublue-os/just/83-bazzite-audio.just
+/usr/share/ublue-os/just/84-bazzite-virt.just
+/usr/share/ublue-os/just/88-bazzite-webapps.just
+/usr/share/ublue-os/just/90-bazzite-de.just
+/usr/share/ublue-os/just/90-bazzite-picker.just
+/usr/share/ublue-os/just/91-bazzite-decky.just
+/usr/share/ublue-os/just/93-bazzite-update.just
+/usr/share/ublue-os/justfile
+/usr/share/ublue-os/motd/template.md
+/usr/share/ublue-os/motd/template.sv.md
+/usr/share/ublue-os/motd/tips/10-ublue.md
+/usr/share/ublue-os/motd/tips/20-bazzite.md
+/usr/share/ublue-os/motd/tips/30-kde.md
+/usr/share/ublue-os/motd/tips/sv/10-ublue.md
+/usr/share/ublue-os/motd/tips/sv/20-bazzite.md
+/usr/share/yafti/yafti.yml
+
+===== plymouth =====
+# Administrator customizations go in this file
+#[Daemon]
+#Theme=fade-in
+# Distribution defaults. Changes to this file will get overwritten during
+# upgrades.
+[Daemon]
+Theme=bgrt
+ShowDelay=0
+DeviceTimeout=8
+UseSimpledrmNoLuks=1
+total 32
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 bgrt
+drwxr-xr-x 1 root root 4096 Jan  1  1970 charge
+drwxr-xr-x 1 root root 4096 Jan  1  1970 details
+drwxr-xr-x 1 root root 4096 Jan  1  1970 spinner
+drwxr-xr-x 1 root root 4096 Jan  1  1970 text
+drwxr-xr-x 1 root root 4096 Jan  1  1970 tribar
+/usr/share/plymouth/themes/bgrt/:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root 2013 Jan  1  1970 bgrt.plymouth
+
+/usr/share/plymouth/themes/charge/:
+total 284
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root   341 Jan  1  1970 progress-00.png
+-rw-r--r-- 2 root root   356 Jan  1  1970 progress-01.png
+-rw-r--r-- 2 root root   370 Jan  1  1970 progress-02.png
+-rw-r--r-- 2 root root   382 Jan  1  1970 progress-03.png
+-rw-r--r-- 2 root root   389 Jan  1  1970 progress-04.png
+-rw-r--r-- 2 root root   400 Jan  1  1970 progress-05.png
+-rw-r--r-- 2 root root   417 Jan  1  1970 progress-06.png
+-rw-r--r-- 2 root root   417 Jan  1  1970 progress-07.png
+-rw-r--r-- 2 root root   423 Jan  1  1970 progress-08.png
+-rw-r--r-- 2 root root   422 Jan  1  1970 progress-09.png
+-rw-r--r-- 2 root root   416 Jan  1  1970 progress-10.png
+-rw-r--r-- 2 root root   411 Jan  1  1970 progress-11.png
+-rw-r--r-- 2 root root   403 Jan  1  1970 progress-12.png
+-rw-r--r-- 2 root root   398 Jan  1  1970 progress-13.png
+-rw-r--r-- 2 root root   393 Jan  1  1970 progress-14.png
+-rw-r--r-- 2 root root   388 Jan  1  1970 progress-15.png
+-rw-r--r-- 2 root root   522 Jan  1  1970 progress-16.png
+-rw-r--r-- 2 root root   487 Jan  1  1970 progress-17.png
+-rw-r--r-- 2 root root   431 Jan  1  1970 progress-18.png
+-rw-r--r-- 2 root root  1082 Jan  1  1970 throbber-00.png
+-rw-r--r-- 2 root root  2257 Jan  1  1970 throbber-01.png
+-rw-r--r-- 2 root root  3836 Jan  1  1970 throbber-02.png
+-rw-r--r-- 2 root root  5989 Jan  1  1970 throbber-03.png
+-rw-r--r-- 2 root root 15527 Jan  1  1970 throbber-04.png
+-rw-r--r-- 2 root root 16852 Jan  1  1970 throbber-05.png
+-rw-r--r-- 2 root root 18268 Jan  1  1970 throbber-06.png
+-rw-r--r-- 2 root root 18421 Jan  1  1970 throbber-07.png
+-rw-r--r-- 2 root root 18696 Jan  1  1970 throbber-08.png
+-rw-r--r-- 2 root root 19087 Jan  1  1970 throbber-09.png
+-rw-r--r-- 2 root root 19335 Jan  1  1970 throbber-10.png
+-rw-r--r-- 2 root root 17146 Jan  1  1970 throbber-11.png
+-rw-r--r-- 2 root root 11788 Jan  1  1970 throbber-12.png
+-rw-r--r-- 2 root root  3839 Jan  1  1970 throbber-13.png
+-rw-r--r-- 2 root root  3587 Jan  1  1970 throbber-14.png
+-rw-r--r-- 2 root root  1962 Jan  1  1970 throbber-15.png
+
+/usr/share/plymouth/themes/details/:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root   84 Jan  1  1970 details.plymouth
+
+/usr/share/plymouth/themes/spinner/:
+total 384
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  1651 Jan  1  1970 animation-0001.png
+-rw-r--r-- 2 root root  1826 Jan  1  1970 animation-0002.png
+-rw-r--r-- 2 root root  1830 Jan  1  1970 animation-0003.png
+-rw-r--r-- 2 root root  1833 Jan  1  1970 animation-0004.png
+
+===== sddm =====
+ls: cannot access '/etc/sddm.conf.d': No such file or directory
+ls: cannot access '/usr/share/sddm/themes': No such file or directory
+
+===== kde about / defaults =====
+--- /etc/xdg/kcm-about-distrorc
+[General]
+LogoPath=/usr/share/pixmaps/system-logo-white.png
+Name=Bazzite
+Website=https://bazzite.gg
+Variant=Desktop Edition--- /etc/xdg/kdeglobals
+[KDE]
+LookAndFeelPackage=com.valve.vapor.desktop
+SingleClick=false
+
+[KDE Control Module Restrictions][$i]
+kcm_updates=false
+
+[General]
+fixed=Fira Code,10,-1,5,50,0,0,0,0,0
+font=Noto Sans,10,-1,5,50,0,0,0,0,0
+menuFont=Noto Sans,10,-1,5,50,0,0,0,0,0
+smallestReadableFont=Noto Sans,8,-1,5,50,0,0,0,0,0
+toolBarFont=Noto Sans,9,-1,5,50,0,0,0,0,0
+
+# This is a konsole specific setting belonging to /etc/xdg/konsolerc
+# However we cannot ship this file anymore since upstream konsole ships now this file
+# https://gitlab.steamos.cloud/jupiter/tasks/-/issues/854
+[Desktop Entry]
+DefaultProfile=Vapor.profile
+--- /etc/xdg/plasma-org.kde.plasma.desktop-appletsrc
+cat: /etc/xdg/plasma-org.kde.plasma.desktop-appletsrc: No such file or directory
+--- /etc/xdg/ksplashrc
+cat: /etc/xdg/ksplashrc: No such file or directory
+--- /etc/xdg/plasmarc
+cat: /etc/xdg/plasmarc: No such file or directory
+--- /etc/xdg/kscreenlockerrc
+[Greeter][Wallpaper][org.kde.image][General]
+Image=/usr/share/wallpapers/convergence.jxl
+PreviewImage=/usr/share/wallpapers/convergence.jxl
+--- /etc/xdg/kwinrc
+cat: /etc/xdg/kwinrc: No such file or directory
+com.valve.vapor.desktop
+com.valve.vgui.desktop
+org.fedoraproject.fedora.desktop
+org.fedoraproject.fedoradark.desktop
+org.fedoraproject.fedoralight.desktop
+org.kde.air
+org.kde.breeze.desktop
+org.kde.breezedark.desktop
+org.kde.breezetwilight.desktop
+org.kde.oxygen
+org.kde.oxygenlight
+Vapor
+air
+breeze-dark
+breeze-light
+default
+oxygen
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/defaults:14:Image=Fedora
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/defaults:14:Image=Fedora
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/defaults:14:Image=Fedora
+/usr/share/plasma/look-and-feel/org.kde.air/contents/defaults:19:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.air/contents/defaults:20:Image=Air
+/usr/share/plasma/look-and-feel/org.kde.breeze.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.breeze.desktop/contents/defaults:14:Image=Next
+/usr/share/plasma/look-and-feel/org.kde.breezedark.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.breezedark.desktop/contents/defaults:14:Image=Next
+/usr/share/plasma/look-and-feel/org.kde.breezetwilight.desktop/contents/defaults:13:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.breezetwilight.desktop/contents/defaults:14:Image=Next
+/usr/share/plasma/look-and-feel/org.kde.oxygen/contents/defaults:19:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.oxygen/contents/defaults:20:Image=Horos
+/usr/share/plasma/look-and-feel/org.kde.oxygenlight/contents/defaults:22:[Wallpaper]
+/usr/share/plasma/look-and-feel/org.kde.oxygenlight/contents/defaults:23:Image=Horos
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/images/bazzite_logo.svgz
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml
+/usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/splash/images/bazzite_logo.svgz
+/usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/splash/Splash.qml
+
+===== wallpapers =====
+/usr/share/backgrounds:
+default-dark.jxl
+default.jxl
+f44
+fedora-workstation
+
+/usr/share/wallpapers:
+Air
+Altai
+Autumn
+BytheWater
+Canopee
+Cascade
+Cluster
+Coast
+ColdRipple
+ColorfulCups
+DarkestHour
+Default
+Elarun
+EveningGlow
+F44
+FallenLeaf
+Fedora
+Flow
+FlyingKonqui
+Grey
+Honeywave
+Horos
+IceCold
+Kay
+Kite
+Kokkini
+MilkyWay
+Mountain
+Next
+Nexus
+Nuvole
+OneStandsOut
+Opal
+Orionids
+PastelHills
+Patak
+Path
+SafeLanding
+ScarletTree
+Shell
+Steam Deck Logo 1.jpg
+Steam Deck Logo 10.jpg
+Steam Deck Logo 11.jpg
+Steam Deck Logo 12.jpg
+Steam Deck Logo 13.jpg
+Steam Deck Logo 2.jpg
+Steam Deck Logo 3.jpg
+Steam Deck Logo 4.jpg
+Steam Deck Logo 5.jpg
+Steam Deck Logo 6.jpg
+Steam Deck Logo 7.jpg
+Steam Deck Logo 8.jpg
+Steam Deck Logo 9.jpg
+Steam Deck Logo Default.jpg
+Sub-Arctic
+Troll.jpg
+VGUI2.jpg
+Volna
+bazzite
+bazzite-blue.png
+bazzite-glass.png
+convergence.jxl
+convergence.png
+giants.jxl
+summer_1am
+ublue.png
+
+===== icons with bazzite/ublue in name =====
+/usr/share/icons/breeze/places/96/start-here-kde.svg
+/usr/share/icons/breeze/places/96/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/24/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/24/start-here-kde.svg
+/usr/share/icons/breeze/places/24/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/24/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/64/start-here-kde.svg
+/usr/share/icons/breeze/places/64/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/22/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/22/start-here-kde.svg
+/usr/share/icons/breeze/places/22/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/22/start-here-kde-plasma.svg
+/usr/share/icons/breeze/places/32/start-here-kde.svg
+/usr/share/icons/breeze/places/16/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-kde.svg
+/usr/share/icons/breeze/places/16/start-here-kde-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-symbolic.svg
+/usr/share/icons/breeze/places/16/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/96/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/96/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/24/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/64/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/64/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/22/start-here-kde-plasma.svg
+/usr/share/icons/breeze-dark/places/32/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-symbolic.svg
+/usr/share/icons/breeze-dark/places/16/start-here-kde-plasma.svg
+/usr/share/icons/Adwaita/symbolic/places/start-here-symbolic.svg
+/usr/share/icons/oxygen/base/32x32/places/start-here.png
+/usr/share/icons/oxygen/base/32x32/places/start-here-kde.png
+/usr/share/icons/oxygen/base/128x128/places/start-here.png
+/usr/share/icons/oxygen/base/128x128/places/start-here-kde.png
+/usr/share/icons/oxygen/base/48x48/places/start-here.png
+/usr/share/icons/oxygen/base/48x48/places/start-here-kde.png
+/usr/share/icons/oxygen/base/256x256/places/start-here.png
+/usr/share/icons/oxygen/base/256x256/places/start-here-kde.png
+/usr/share/icons/oxygen/base/16x16/places/start-here.png
+/usr/share/icons/oxygen/base/16x16/places/start-here-kde.png
+/usr/share/icons/oxygen/base/22x22/places/start-here.png
+/usr/share/icons/oxygen/base/22x22/places/start-here-kde.png
+/usr/share/icons/oxygen/base/64x64/places/start-here.png
+/usr/share/icons/oxygen/base/64x64/places/start-here-kde.png
+/usr/share/icons/oxygen/32x32/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/96x96/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/24x24/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/48x48/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/256x256/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/16x16/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/22x22/places/start-here-kde-fedora.png
+/usr/share/icons/oxygen/36x36/places/start-here-kde-fedora.png
+/usr/share/icons/hicolor/32x32/places/start-here.png
+/usr/share/icons/hicolor/32x32/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/32x32/bazzite-logo-icon.png
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-le.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo-white.svg
+/usr/share/icons/hicolor/scalable/places/bazzite-logo.svg
+/usr/share/icons/hicolor/scalable/places/distributor-logo-white.svg
+/usr/share/icons/hicolor/scalable/places/distributor-logo.svg
+/usr/share/icons/hicolor/scalable/places/distributor-logo-steamdeck.svg
+/usr/share/icons/hicolor/scalable/places/start-here.svg
+/usr/share/icons/hicolor/scalable/apps/io.github.rfrench3.bazzite-updater.svg
+/usr/share/icons/hicolor/scalable/apps/io.github.ublue_os.yafti_gtk.svg
+/usr/share/icons/hicolor/scalable/apps/start-here.svg
+/usr/share/icons/hicolor/96x96/places/start-here.png
+/usr/share/icons/hicolor/96x96/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/96x96/bazzite-logo-icon.png
+/usr/share/icons/hicolor/24x24/places/start-here.png
+/usr/share/icons/hicolor/24x24/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/24x24/bazzite-logo-icon.png
+/usr/share/icons/hicolor/48x48/places/start-here.png
+/usr/share/icons/hicolor/48x48/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/48x48/bazzite-logo-icon.png
+/usr/share/icons/hicolor/256x256/places/start-here.png
+/usr/share/icons/hicolor/256x256/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/256x256/bazzite-logo-icon.png
+/usr/share/icons/hicolor/16x16/places/start-here.png
+/usr/share/icons/hicolor/16x16/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/16x16/bazzite-logo-icon.png
+/usr/share/icons/hicolor/22x22/places/start-here.png
+/usr/share/icons/hicolor/22x22/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/22x22/bazzite-logo-icon.png
+/usr/share/icons/hicolor/36x36/places/start-here.png
+/usr/share/icons/hicolor/36x36/apps/fedora-logo-icon.png
+/usr/share/icons/hicolor/36x36/bazzite-logo-icon.png
+/usr/share/icons/Bluecurve/32x32/apps/start-here.png
+/usr/share/icons/Bluecurve/96x96/apps/start-here.png
+/usr/share/icons/Bluecurve/24x24/apps/start-here.png
+/usr/share/icons/Bluecurve/48x48/apps/start-here.png
+/usr/share/icons/Bluecurve/256x256/apps/start-here.png
+/usr/share/icons/Bluecurve/16x16/apps/start-here.png
+/usr/share/icons/Bluecurve/22x22/apps/start-here.png
+/usr/share/icons/Bluecurve/36x36/apps/start-here.png
+/usr/share/icons/AdwaitaLegacy/32x32/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/24x24/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/48x48/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/16x16/places/start-here.png
+/usr/share/icons/AdwaitaLegacy/22x22/places/start-here.png
+/usr/share/pixmaps/fedora-logo.ico
+/usr/share/pixmaps/fedora-logo-sprite.svg
+/usr/share/pixmaps/fedora-logo.png
+/usr/share/pixmaps/fedora-logo-small.png
+/usr/share/pixmaps/fedora-logo-sprite.png
+
+===== logo links =====
+total 192
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root  4096 Jan  1  1970 bootloader
+-rw-r--r-- 3 root root  3137 Jan  1  1970 com.intel.media_driver.svg
+-rw-r--r-- 3 root root  3137 Jan  1  1970 com.intel.vaapi_driver.svg
+-rw-r--r-- 2 root root  2129 Jan  1  1970 cupsprinter.png
+drwxr-xr-x 1 root root  4096 Jan  1  1970 faces
+-rw-r--r-- 2 root root  7766 Jan  1  1970 fedora-gdm-logo.png
+-rw-r--r-- 2 root root  8539 Jan  1  1970 fedora-logo-small.png
+-rw-r--r-- 2 root root  6849 Jan  1  1970 fedora-logo-sprite.png
+-rw-r--r-- 2 root root  3479 Jan  1  1970 fedora-logo-sprite.svg
+-rw-r--r-- 2 root root  8420 Jan  1  1970 fedora-logo.ico
+-rw-r--r-- 2 root root 19575 Jan  1  1970 fedora-logo.png
+-rw-r--r-- 2 root root 12375 Jan  1  1970 fedora_logo_med.png
+-rw-r--r-- 2 root root 13248 Jan  1  1970 fedora_whitelogo.svg
+-rw-r--r-- 2 root root 11153 Jan  1  1970 fedora_whitelogo_med.png
+-rw-r--r-- 2 root root  2473 Jan  1  1970 kasumi.png
+-rw-r--r-- 2 root root 16216 Jan  1  1970 msedit.ico
+-rw-r--r-- 3 root root  1835 Jan  1  1970 pinentry.png
+-rw-r--r-- 2 root root  2587 Jan  1  1970 sane.png
+-rw-r--r-- 3 root root  2697 Jan  1  1970 steam.png
+-rw-r--r-- 2 root root  5405 Jan  1  1970 steam_tray_mono.png
+-rw-r--r-- 2 root root 14589 Jan  1  1970 system-logo-white.png
+
+===== fastfetch =====
+total 148
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root  4096 Jan  1  1970 announcements
+drwxr-xr-x 1 root root  4096 Jan  1  1970 bazaar
+drwxr-xr-x 1 root root  4096 Jan  1  1970 bazzite
+-rw-r--r-- 2 root root  6928 Jan  1  1970 bazzite-flatpak-eol
+-rw-r--r-- 2 root root 64547 Jan  1  1970 bbrew.png
+drwxr-xr-x 1 root root  4096 Jan  1  1970 docs
+drwxr-xr-x 1 root root  4096 Jan  1  1970 etc
+drwxr-xr-x 1 root root  4096 Jan  1  1970 firefox-config
+-rw-r--r-- 2 root root    56 Jan  1  1970 flatpak-blocklist
+drwxr-xr-x 1 root root  4096 Jan  1  1970 game-devices-udev
+drwxr-xr-x 1 root root  4096 Jan  1  1970 homebrew
+-rw-r--r-- 2 root root   316 Jan  1  1970 image-info.json
+drwxr-xr-x 1 root root  4096 Jan  1  1970 just
+-rw-r--r-- 2 root root  1991 Jan  1  1970 justfile
+drwxr-xr-x 1 root root  4096 Jan  1  1970 motd
+drwxr-xr-x 1 root root  4096 Jan  1  1970 signing
+-rw-r--r-- 2 root root   321 Jan  1  1970 topgrade.toml
+drwxr-xr-x 1 root root  4096 Jan  1  1970 udev-rules
+drwxr-xr-x 3 root root  4096 Jan  1  1970 update-services
+/usr/share/licenses/fastfetch
+/usr/share/zsh/site-functions/_fastfetch
+/usr/share/bash-completion/completions/fastfetch
+/usr/share/doc/fastfetch
+/usr/share/fish/vendor_completions.d/fastfetch.fish
+/usr/share/fastfetch
+/usr/share/man/man1/fastfetch.1.gz
+/usr/share/ublue-os/bazzite/fastfetch.jsonc
+/usr/libexec/bazzite-bling-fastfetch
+/usr/bin/fastfetch
+
+===== desktop entries naming Bazzite =====
+--- /usr/share/applications/bazzite-documentation.desktop
+Exec=/usr/share/ublue-os/docs/serve.sh
+Icon=/usr/share/ublue-os/bazzite/docs.svg
+Name=Documentation
+Name[sv]=Dokumentation
+Name[cs]=Dokumentace
+Name[el]=Τεκμηρίωση
+Name[ru]=Документация
+Name[uk]=Довідник
+--- /usr/share/applications/bazzite-steam-bpm.desktop
+Name=Steam Big Picture Mode
+Name[sv]=Steam Big Picture-läge
+Name[cs]=Režim Steam Big Picture
+Name[fr]=Mode Big Picture
+Name[el]=Λειτουργία Steam Big Picture
+Name[ru]=Режим Steam Big Picture
+Name[uk]=Режим Steam Big Picture
+Exec=/usr/bin/bazzite-steam-bpm %U
+--- /usr/share/applications/discourse.desktop
+Exec=xdg-open https://universal-blue.discourse.group/c/bazzite/
+Icon=/usr/share/ublue-os/bazzite/discourse.svg
+Name=Discourse
+--- /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
+Name=Bazzite Updater
+Name[uk]=Центр оновлень Bazzite
+Exec=bazzite-updater
+Icon=io.github.rfrench3.bazzite-updater
+--- /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+Name=Bazzite Portal
+Name[cs]=Portál Bazzite
+Name[de]=Bazzite Portal
+Name[el]=Πύλη Bazzite
+Name[es]=Portal Bazzite
+Name[fr]=Portail Bazzite
+Name[it]=Portale Bazzite
+Name[ru]=Bazzite Портал
+--- /usr/share/applications/steam.desktop
+Name=Steam
+Exec=/usr/bin/bazzite-steam %U
+Icon=steam
+Name=Store
+Name[pt_BR]=Loja
+Name[bg]=Магазин
+Name[cs]=Obchod
+Name[da]=Butik
+--- /etc/xdg/autostart/bazzite-announcement.desktop
+Name=Bazzite Announcements
+Name[sv]=Bazzite-meddelanden
+Exec=/usr/libexec/bazzite-announcement
+
+===== motd / profile / ujust banners =====
+/etc/profile.d/bazzite-neofetch.sh
+/usr/share/ublue-os/motd/tips/sv/20-bazzite.md
+/usr/share/ublue-os/motd/tips/sv/10-ublue.md
+/usr/share/ublue-os/motd/tips/30-kde.md
+/usr/share/ublue-os/motd/tips/20-bazzite.md
+/usr/share/ublue-os/motd/tips/10-ublue.md
+/usr/share/ublue-os/motd/template.sv.md
+/usr/share/ublue-os/motd/template.md
+/usr/share/ublue-os/just/83-bazzite-audio.just
+/usr/share/ublue-os/just/91-bazzite-decky.just
+/usr/share/ublue-os/just/93-bazzite-update.just
+/usr/share/ublue-os/just/84-bazzite-virt.just
+/usr/share/ublue-os/just/90-bazzite-de.just
+/usr/share/ublue-os/just/82-bazzite-apps.just
+/usr/share/ublue-os/just/80-bazzite.just
+/usr/share/ublue-os/just/81-bazzite-fixes.just
+/usr/share/ublue-os/just/90-bazzite-picker.just
+/usr/share/ublue-os/just/82-bazzite-waydroid.just
+/usr/share/ublue-os/just/82-bazzite-sunshine.just
+/usr/share/ublue-os/just/88-bazzite-webapps.just
+/usr/share/ublue-os/just/10-update.just
+/usr/share/ublue-os/just/30-distrobox.just
+
+===== gamescope / steam session names =====
+
+===== grub / bootloader =====
+grub2-static
+updates
+
+===== systemd units named bazzite/ublue =====
+bazzite-flatpak-manager.service
+bazzite-hardware-setup.service
+bazzite-iwd-migration.service
+bazzite-libvirtd-setup.service
+ublue-os-media-automount.service
+bazzite-dynamic-fixes.service
+bazzite-user-setup.service
+
+===== rpm packages with bazzite/ublue in name =====
+bazzite-portal-0.2.6-1.fc44.noarch
+bazzite-updater-0.10.3-1.fc44.x86_64
+bluez-5.87-2.fc44.bazzite.0.0.git.7950.32d2ebd9.dirty.3sl9q6.x86_64
+bluez-cups-5.87-2.fc44.bazzite.0.0.git.7950.32d2ebd9.dirty.3sl9q6.x86_64
+bluez-libs-5.87-2.fc44.bazzite.0.0.git.7950.32d2ebd9.dirty.3sl9q6.i686
+bluez-libs-5.87-2.fc44.bazzite.0.0.git.7950.32d2ebd9.dirty.3sl9q6.x86_64
+bluez-obexd-5.87-2.fc44.bazzite.0.0.git.7950.32d2ebd9.dirty.3sl9q6.x86_64
+fedora-logos-42.0.1-3.fc44.noarch
+plymouth-theme-spinner-24.004.60-24.fc44.x86_64
+ublue-os-akmods-addons-0.8-1.fc44.noarch
+ublue-os-just-0.57-3.fc44.noarch
+ublue-os-luks-0.3-1.fc44.noarch
+ublue-os-media-automount-udev-0.20-1.fc44.noarch
+ublue-os-selinux-workarounds-0.1-1.fc44.noarch
+ublue-os-signing-0.5-1.fc44.noarch
+ublue-os-udev-rules-0.10-1.fc44.noarch
+
+===== flatpak remotes and preinstalls =====
+flathub.flatpakrepo
+announcements
+bazaar
+bazzite
+bazzite-flatpak-eol
+bbrew.png
+docs
+etc
+firefox-config
+flatpak-blocklist
+game-devices-udev
+homebrew
+image-info.json
+just
+justfile
+motd
+signing
+topgrade.toml
+udev-rules
+update-services
+
+===== done =====
