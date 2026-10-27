@@ -130,6 +130,20 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     assert.match(done, /US keyboard/);
     await page.screenshot({ path: path.join(output, 'install-7-done.png') });
     checks.push('The helper gets exactly the choices (password over stdin), progress shows, and the end walks through the Secure Boot screen');
+
+    // A USB made for one PC (only the AMD / Intel build) on this NVIDIA machine says so.
+    fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify({ ...probe, images: ['tessera'] }));
+    await page.evaluate(() => { const i = modal && modal.items.findIndex((x) => !x.ok); if (modal) { modal.index = i; modalPress('a'); } });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { installerShown = false; flowInstaller(); });
+    await choose('Welcome to Tessera', (x) => x.op === 'install');
+    await choose('Where should Tessera go?', (x) => x.disk);
+    await title('Graphics');
+    const g2 = await page.evaluate(() => ({ body: modal.body, items: modal.items.map((i) => i.label) }));
+    assert.match(g2.body, /made with only the AMD \/ Intel build/);
+    assert.deepEqual(g2.items, ['AMD / Intel']);
+    await page.screenshot({ path: path.join(output, 'install-8-one-build-usb.png') });
+    checks.push('A one-build USB on a PC that needs another build explains it and still offers what it has');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);
