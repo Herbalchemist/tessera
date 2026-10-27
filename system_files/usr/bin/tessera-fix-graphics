@@ -83,14 +83,20 @@ def need(cs):
     return "standard"
 
 
-def booted_ref():
+def booted_image():
+    """(image reference, whether its signature is checked) for the running system."""
     r = subprocess.run(["bootc", "status", "--format=json"], capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         sys.exit("Couldn't read the installed system (bootc status failed). Is this a Tessera install?")
     try:
-        return json.loads(r.stdout)["status"]["booted"]["image"]["image"]["image"]
+        img = json.loads(r.stdout)["status"]["booted"]["image"]["image"]
+        ref = img["image"]
     except (ValueError, KeyError, TypeError):
         sys.exit("Couldn't read which image is installed.")
+    sig = img.get("signature") if isinstance(img, dict) else None
+    signed = sig == "containerPolicy" or (isinstance(sig, dict) and "containerPolicy" in sig)
+    return ref, signed
+
 
 
 REF_RE = re.compile(r"^(.*/)?([a-z0-9._-]+?)(-nvidia-open|-nvidia)?(:[A-Za-z0-9._-]+|@sha256:[0-9a-f]{64})?$")
@@ -116,7 +122,7 @@ def main():
         print(__doc__.strip())
         return 2
 
-    ref = booted_ref()
+    ref, signed = booted_image()
     parts = split(ref)
     if not parts:
         sys.exit(f"The installed image ({ref}) doesn't look like a Tessera build.")
@@ -156,7 +162,8 @@ def main():
         return 0
     target = f"{prefix}{name}{SUFFIX[to]}{tag}"
     print(f"Switching to {target}", flush=True)
-    r = subprocess.run(["bootc", "switch", target])
+    # A system whose updates are signature-checked stays that way on the new build.
+    r = subprocess.run(["bootc", "switch", *(["--enforce-container-sigpolicy"] if signed else []), target])
     if r.returncode != 0:
         return r.returncode
     print("Done. Restart to start the new build.", flush=True)
