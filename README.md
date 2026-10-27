@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.24.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.25.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -120,6 +120,15 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 
 ![Tessera's three layouts: Rails, Grid and Flow](docs/screenshots/layouts.jpg)
 
+## Add-ons
+
+**Settings › Add-ons › Get add-ons** lists optional extras from [tessera-addons](https://github.com/Herbalchemist/tessera-addons), installed with one press. Nothing there is forced on anyone.
+
+- **Shards** are add-ons that are code. Installing one never turns it on: in **Add-ons › Shards**, pick it and choose **Turn on**. A shard adds a page of its own under Shards, and it can add games to **Find games**.
+- **Official** means the Tessera project signed that shard's exact files. Tessera checks the signature every time the shard starts. **Shard safety** decides whether unverified shards may run at all, and whether turning shards on or off needs the PIN.
+- The first shard is **Xbox and Game Pass**. It shows which ways of playing Xbox games this machine can really do (Xodus Nexus on Linux, Xbox Cloud Gaming, streaming, a Windows VM with its own graphics chip, or Windows on its own drive) and what each still needs. It only looks, and changes nothing.
+- Games other launchers add to Steam (Steam's "non-Steam games", which is where Xodus Nexus puts its own) now show up in **Find games** too.
+
 ## Install
 
 There are two ways to get Tessera.
@@ -186,7 +195,7 @@ After the restart the machine signs in to Tessera by itself.
 ## Good to know
 
 - **Steam never starts by itself.** Tessera starts programs only when you pick them, and it doesn't wrap games in a sandbox.
-- **No telemetry.** The launcher makes no network requests of its own (its content-security policy forbids them). Updates are fetched by the system's own `bootc` tool.
+- **No telemetry.** The launcher makes no network requests of its own: its pages can't (their content-security policy forbids it), and the only thing it fetches is the add-on list and packages, when you open Get add-ons. Updates are fetched by the system's own `bootc` tool. GitHub signs every Tessera image, and the system carries the key that checks those signatures.
 - **Browser permissions:** the embedded browser is isolated from the launcher and currently denies camera, microphone, location, notifications and other permission requests. A controller-friendly website-permission prompt is not built yet. Typing into a page's own text fields with the on-screen keyboard is not built yet (the address bar works).
 - **Not yet:** Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
 
@@ -200,8 +209,8 @@ After the restart the machine signs in to Tessera by itself.
 ## How it's built
 
 - `Containerfile`: starts from `ghcr.io/ublue-os/bazzite:stable` and adds Tessera.
-- `system_files/`: files copied into the image. The launcher is plain Electron + HTML/CSS/JavaScript in `system_files/usr/lib/tessera/launcher`, run inside [Gamescope](https://github.com/ValveSoftware/gamescope) by `tessera-session`.
-- `build_files/build.sh`: the image build steps.
+- `system_files/`: files copied into the image. The launcher is plain Electron + HTML/CSS/JavaScript in `system_files/usr/lib/tessera/launcher`, run inside [Gamescope](https://github.com/ValveSoftware/gamescope) by `tessera-session`. Its main process is split into parts in `main/` (library, settings, themes, add-ons, shards, updates, the browser and so on; `main.js` lists them in load order), and the page into `renderer/` (`index.html` loads them in order).
+- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools.
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
 
@@ -222,4 +231,4 @@ Bug reports and ideas are welcome as GitHub issues.
 
 Tessera is free software, licensed under the **GNU General Public License v3.0** (see `LICENSE`).
 
-It stands on the shoulders of [Bazzite](https://bazzite.gg), [Universal Blue](https://universal-blue.org), Fedora, [Gamescope](https://github.com/ValveSoftware/gamescope) and [Electron](https://www.electronjs.org). Tessera is an independent project and is not affiliated with or endorsed by any of them. Product and brand names are the property of their owners.
+Tessera is built on Bazzite and shows its own name and logo; *About this system* says "Built on Bazzite". It stands on the shoulders of [Bazzite](https://bazzite.gg), [Universal Blue](https://universal-blue.org), Fedora, [Gamescope](https://github.com/ValveSoftware/gamescope) and [Electron](https://www.electronjs.org). Tessera is an independent project and is not affiliated with or endorsed by any of them. Product and brand names are the property of their owners.
