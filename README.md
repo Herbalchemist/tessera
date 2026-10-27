@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.23.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.23.1-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -122,7 +122,27 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 
 ## Install
 
-Tessera is an image of Bazzite with the Tessera session on top, so you start from a Bazzite install and switch to Tessera with one command. Your games, saves and settings stay where they are.
+There are two ways to get Tessera.
+
+### Option A: the Tessera USB (new, in testing)
+
+A bootable USB that installs Tessera with **no internet needed**, on any PC Bazzite supports. You don't need Bazzite first, or to pick the right version for your graphics card: the USB carries every build and picks the one for the machine it's installing to.
+
+1. Get the newest test image from [tessera-mortar's Releases](https://github.com/Herbalchemist/tessera-mortar/releases). It comes in parts; [its README](https://github.com/Herbalchemist/tessera-mortar#try-the-test-usb-for-testers) shows how to join them and write the USB (32 GB or more).
+2. Boot the PC from the USB. It starts into **Install Tessera**, which works with a controller, a keyboard or a mouse:
+   - Choose **Try it first** to look around, or **Install Tessera** to go ahead.
+   - Pick the disk. It's erased completely, and the USB itself is never offered.
+   - The graphics build is already picked for this PC.
+   - Set your name and password, and your time zone.
+   - Choose **Set it up for me** for Secure Boot, or **I'll handle it**.
+3. After the install, restart and take the USB out. If you chose Secure Boot setup, a blue screen asks once to confirm the key: choose *Enroll MOK*, then *Continue*, then *Yes*, type `universalblue` and choose *Reboot*. The install screen walks you through it.
+4. Tessera starts with its first-run setup and an optional tour. Updates come through *Settings > Update software* as usual.
+
+> The USB has passed a full install in a virtual machine and is now being tested on real hardware. Use a spare disk until it's out of testing. Mortar, a one-click USB maker for Windows and Linux, is coming.
+
+### Option B: switch an existing Bazzite install
+
+Tessera is an image of Bazzite with the Tessera session on top, so you can start from a Bazzite install and switch to Tessera with one command. Your games, saves and settings stay where they are.
 
 **You need**
 - A PC running the current **Bazzite** (install it from [bazzite.gg](https://bazzite.gg); the [Bazzite docs](https://docs.bazzite.gg) cover that part).

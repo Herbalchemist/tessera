@@ -2976,9 +2976,23 @@ const fmtSize = (b) => (b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : `${Math.roun
 function installWatch() {
   return new Promise((resolve) => {
     let st = { percent: 0, stage: 'Starting', line: '' };
+    const t0 = Date.now();
+    // Copying the system takes several minutes and Anaconda says nothing meanwhile, so the bar creeps
+    // forward on its own through that stage (never past 80%) instead of looking stuck.
+    let shown = 0;
+    let copyFrom = 0;
+    const pct = () => {
+      let p = st.percent || 0;
+      if (/^Copying/.test(st.stage || '')) {
+        if (!copyFrom) copyFrom = Date.now();
+        p = Math.max(p, Math.min(80, p + (Date.now() - copyFrom) / 1000 * 0.13));
+      }
+      shown = Math.max(shown, Math.round(p));
+      return shown;
+    };
     const bar = (pc) => { const n = Math.round(pc / 5); return '▰'.repeat(n) + '▱'.repeat(20 - n); };
-    const body = () => [`${st.stage || 'Installing'} · ${st.percent || 0}%`, bar(st.percent || 0), 'Keep the computer on and the USB plugged in.', st.line ? `\n${st.line}` : ''].filter(Boolean).join('\n');
-    const row = () => [{ label: st.stage || 'Installing', sub: `${st.percent || 0}%`, info: true, plain: true }];
+    const body = () => { const p = pct(); return [`${st.stage || 'Installing'} · ${p}% · ${fmtClock(Math.round((Date.now() - t0) / 1000))}`, bar(p), 'Usually 5 to 15 minutes. Keep the computer on and the USB plugged in.', st.line ? `\n${st.line}` : ''].filter(Boolean).join('\n'); };
+    const row = () => [{ label: st.stage || 'Installing', sub: `${shown}%`, info: true, plain: true }];
     openList({ title: 'Installing Tessera', items: row(), index: 0, body: body(), onChoose: () => {}, onBack: () => {} });
     const m = modal;
     let lost = 0;
