@@ -5,6 +5,6 @@ SUBSYSTEM=="input", ATTRS{name}=="*Xbox*Controller*", ENV{ID_INPUT_JOYSTICK}="1"
 
 # Nintendo controllers: Tessera reads them itself (Chromium leaves them out), and the Switch ones
 # report their motion sensors (gyro, accelerometer) as a separate input device named "... (IMU)".
-# Let the person at the console read all of them, like any other joystick. Read access only, and only
-# for whoever is signed in at the screen (that is what "uaccess" means).
+# Let the person at the console use all of them, like any other joystick: only whoever is signed in
+# at the screen gets access (that is what "uaccess" means; it covers reading and rumble).
 SUBSYSTEM=="input", KERNEL=="event*", ATTRS{id/vendor}=="057e", TAG+="uaccess"

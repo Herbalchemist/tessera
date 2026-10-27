@@ -13,6 +13,7 @@ module.exports = {
 const { ipcMain } = require('electron');
 const crypto = require('crypto');
 const fs = require('fs');
+const config = require('./config');
 const keyboardMap = require('../keyboard-map');
 const library = require('./library');
 const prefs = require('./prefs');
@@ -29,6 +30,25 @@ const system = require('./system');
 let pinUnlockedUntil = 0;
 let pinFails = 0;
 let pinLockedUntil = 0;
+// Misses and the lockout are kept on disk, so restarting Tessera (or the machine, or using the
+// desktop helper) doesn't hand out fresh guesses. Cleared by the right PIN.
+const PIN_TRIES_FILE = require('path').join(config.LOG_DIR, '..', 'pin-tries.json');
+let pinTriesLoaded = false;
+function loadPinTries() {
+  if (pinTriesLoaded) return;
+  pinTriesLoaded = true;
+  try {
+    const d = JSON.parse(fs.readFileSync(PIN_TRIES_FILE, 'utf8'));
+    if (Number.isInteger(d.fails) && d.fails >= 0 && d.fails < 1e6) pinFails = d.fails;
+    if (Number.isFinite(d.lockedUntil)) pinLockedUntil = Math.min(d.lockedUntil, Date.now() + 300 * 1000);
+  } catch { /* none yet */ }
+}
+function savePinTries() {
+  try {
+    fs.mkdirSync(require('path').dirname(PIN_TRIES_FILE), { recursive: true });
+    fs.writeFileSync(PIN_TRIES_FILE, JSON.stringify({ fails: pinFails, lockedUntil: pinLockedUntil }), { mode: 0o600 });
+  } catch { /* read-only: the in-memory count still applies */ }
+}
 const PIN_RE = /^\d{4,8}$/;
 const pinIsSet = () => Boolean(prefs.settings.pin);
 const pinOk = () => !pinIsSet() || Date.now() < pinUnlockedUntil;
@@ -44,17 +64,23 @@ function pinInfo() {
 }
 // Checks a PIN with a short lockout after repeated misses.
 function pinTry(pin) {
+  loadPinTries();
+  pinTriesLoaded = false; // read again next time: the desktop helper may have counted misses too
   const now = Date.now();
   if (now < pinLockedUntil) return { ok: false, wait: Math.ceil((pinLockedUntil - now) / 1000), error: `Too many tries. Wait ${Math.ceil((pinLockedUntil - now) / 1000)} seconds.` };
   if (pinMatches(pin)) {
     pinFails = 0;
+    pinLockedUntil = 0;
+    savePinTries();
     pinUnlockedUntil = now + 5 * 60 * 1000;
     return { ok: true };
   }
   pinFails++;
+  savePinTries();
   if (pinFails >= 5) {
     const wait = Math.min(300, 30 * 2 ** Math.floor((pinFails - 5) / 5));
     pinLockedUntil = now + wait * 1000;
+    savePinTries();
     return { ok: false, wait, error: `Too many tries. Wait ${wait} seconds and try again.` };
   }
   return { ok: false, error: `That isn't the PIN. ${5 - pinFails} ${5 - pinFails === 1 ? 'try' : 'tries'} left.` };

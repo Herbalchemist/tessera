@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings > Update software, and "Return to Tessera" on the desktop: whoever is sitting at the
-// console may start and stop these five jobs (plus the graphics-build switch below) without a
+// Settings > Update software, and "Return to Tessera" on the desktop: the administrator sitting at
+// the console may start and stop these five jobs (plus the graphics-build switch below) without a
 // password, and nothing else. What each job
 // runs is fixed in its unit file (bootc status, bootc upgrade --check, bootc upgrade, bootc rollback,
 // and switch-to-tessera, which only ever restarts the login manager after the desktop session has
@@ -13,7 +13,9 @@ polkit.addRule(function (action, subject) {
   if (action.id !== "org.freedesktop.systemd1.manage-units") {
     return polkit.Result.NOT_HANDLED;
   }
-  if (!subject.local || !subject.active) {
+  // Only an administrator's account (the one Tessera's installer creates is one), at the console.
+  // Anyone else, or a remote session, gets the normal password prompt.
+  if (!subject.local || !subject.active || !subject.isInGroup("wheel")) {
     return polkit.Result.NOT_HANDLED;
   }
   var jobs = [

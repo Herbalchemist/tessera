@@ -392,7 +392,8 @@ function runChild(file, args, cwd, label, logName, title) {
   if (logName) {
     try {
       fs.mkdirSync(config.LOG_DIR, { recursive: true });
-      logFile = path.join(config.LOG_DIR, logName + '.log');
+      // The name comes from a library id: keep it to one plain file name inside the log folder.
+      logFile = path.join(config.LOG_DIR, String(logName).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '').slice(0, 80) + '.log');
       const fd = fs.openSync(logFile, 'w');
       out = fd;
     } catch { logFile = null; }
