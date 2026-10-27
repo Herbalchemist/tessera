@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-74e1afc56f11cat: /etc/machine-info: No such file or directory
+c50be05fc978cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -1249,3 +1249,778 @@ udev-rules
 update-services
 
 ===== done =====
+
+===== DETAIL wallpapers =====
+lrwxrwxrwx 2 root root    3 Jan  1  1970 /usr/share/wallpapers/Default -> F44
+
+/usr/share/wallpapers/bazzite:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 convergence
+
+/usr/share/wallpapers/bazzite/convergence:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 contents
+
+/usr/share/wallpapers/bazzite/convergence/contents:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 images
+
+/usr/share/wallpapers/bazzite/convergence/contents/images:
+total 8
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+lrwxrwxrwx 4 root root   37 Jan  1  1970 3940x2160.jxl -> /usr/share/wallpapers/convergence.jxl
+-rw-r--r-- 2 root root 5247051 Jan  1  1970 /usr/share/wallpapers/bazzite-blue.png
+-rw-r--r-- 2 root root 8567241 Jan  1  1970 /usr/share/wallpapers/bazzite-glass.png
+-rw-r--r-- 2 root root 4714302 Jan  1  1970 /usr/share/wallpapers/convergence.jxl
+-rw-r--r-- 2 root root 5445447 Jan  1  1970 /usr/share/wallpapers/convergence.png
+-rw-r--r-- 2 root root 5445447 Jan  1  1970 /usr/share/wallpapers/convergence.png
+-rw-r--r-- 2 root root 2275514 Jan  1  1970 /usr/share/wallpapers/ublue.png
+
+===== DETAIL vapor look-and-feel =====
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/icons
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/icons/deck_icon.png
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/previews
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/previews/preview.png
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/images
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/splash/Splash.qml
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.systemtray.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.folder.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/defaults
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.json
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/metadata.desktop
+[kdeglobals][KDE]
+widgetStyle=Breeze
+
+[kdeglobals][General]
+ColorScheme=Vapor
+
+[kdeglobals][Icons]
+Theme=breeze-dark
+
+[plasmarc][Theme]
+name=Vapor
+
+[kcminputrc][Mouse]
+cursorTheme=breeze_cursors
+
+[kwinrc][WindowSwitcher]
+LayoutName=org.kde.breeze.desktop
+
+[kwinrc][DesktopSwitcher]
+LayoutName=org.kde.breeze.desktop
+
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.breeze
+
+[KSplash]
+Theme=com.valve.vapor
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "",
+                "Name": "Valve"
+            }
+        ],
+        "Category": "",
+        "Description": "The stock SteamOS theme",
+        "Id": "com.valve.vapor.desktop",
+        "License": "GPLv2+",
+        "Name": "Vapor",
+        "ServiceTypes": [
+            "Plasma/LookAndFeel"
+        ],
+        "Version": "0.01",
+        "Website": "https://steampowered.com/"
+    },
+    "X-KDE-ParentApp": "",
+    "X-Plasma-MainScript": "defaults"
+}
+
+===== DETAIL vapor splash =====
+/*
+    SPDX-FileCopyrightText: 2014 Marco Martin <mart@kde.org>
+
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
+
+import QtQuick
+import org.kde.kirigami 2 as Kirigami
+
+Rectangle {
+    id: root
+    color: "black"
+
+    property int stage
+
+    onStageChanged: {
+        if (stage == 2) {
+            introAnimation.running = true;
+        } else if (stage == 5) {
+            introAnimation.target = busyIndicator;
+            introAnimation.from = 1;
+            introAnimation.to = 0;
+            introAnimation.running = true;
+        }
+    }
+
+    width: 1280
+    height: 800
+
+    Component.onCompleted: stage = 2
+
+    Item {
+        id: content
+        anchors.fill: parent
+        opacity: 0
+
+        Image {
+            id: logo
+            //match SDDM/lockscreen avatar positioning
+            readonly property real size: Kirigami.Units.gridUnit * 8
+
+            anchors.centerIn: parent
+
+            asynchronous: true
+            source: "images/bazzite_logo.svgz"
+
+            sourceSize.width: size
+            sourceSize.height: size
+        }
+
+        // TODO: port to PlasmaComponents3.BusyIndicator
+        Image {
+            id: busyIndicator
+            //in the middle of the remaining space
+            y: parent.height - (parent.height - logo.y) / 2 - height/2
+            anchors.horizontalCenter: parent.horizontalCenter
+            asynchronous: true
+            source: "images/busywidget.svgz"
+            sourceSize.height: Kirigami.Units.gridUnit * 2
+            sourceSize.width: Kirigami.Units.gridUnit * 2
+            RotationAnimator on rotation {
+                id: rotationAnimator
+                from: 0
+                to: 360
+                // Not using a standard duration value because we don't want the
+                // animation to spin faster or slower based on the user's animation
+                // scaling preferences; it doesn't make sense in this context
+                duration: 2000
+                loops: Animation.Infinite
+                // Don't want it to animate at all if the user has disabled animations
+                running: Kirigami.Units.longDuration > 1
+            }
+        }
+    }
+
+    OpacityAnimator {
+        id: introAnimation
+        running: false
+        target: content
+        from: 0
+        to: 1
+        duration: Kirigami.Units.veryLongDuration * 2
+        easing.type: Easing.InOutQuad
+    }
+}
+
+===== DETAIL bazzite-pins.js =====
+const allPanels = panels();
+
+for (let i = 0; i < allPanels.length; ++i) {
+    const panel = allPanels[i];
+    const widgets = panel.widgets();
+
+    for (let j = 0; j < widgets.length; ++j) {
+        const widget = widgets[j];
+
+        if (widget.type === "org.kde.plasma.icontasks") {
+            widget.currentConfigGroup = ["General"];
+
+            // Read the current launchers value
+            const currentLaunchers = widget.readConfig("launchers", "");
+
+            // Only set our default if launchers is empty
+            if (!currentLaunchers || currentLaunchers.trim() === "") {
+                widget.writeConfig("launchers", [
+                    "preferred://browser",
+                    "applications:steam.desktop",
+                    "applications:net.lutris.Lutris.desktop",
+                    "applications:org.kde.konsole.desktop",
+                    "applications:io.github.kolunmi.Bazaar.desktop",
+                    "applications:io.github.ublue_os.yafti_gtk.desktop",
+                    "preferred://filemanager"
+                ]);
+                widget.reloadConfig();
+            }
+        }
+    }
+}
+
+===== DETAIL plasma layouts and kickoff icon =====
+/usr/share/plasma/plasmoids/org.kde.plasma.kickerdash/metadata.json
+/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-here-2.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedora.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
+/usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoradark.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kicker.js
+/usr/share/plasma/look-and-feel/org.fedoraproject.fedoralight.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickerdash.js
+/usr/share/plasma/look-and-feel/com.valve.vgui.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js
+00-start-here-2.js
+bazzite-pins.js
+containmentactions_middlebutton.js
+digitalclock_migrate_font_settings.js
+digitalclock_migrate_showseconds_setting.js
+digitalclock_rename_timezonedisplay_key.js
+folderview_fix_recursive_screenmapping.js
+keyboardlayout_migrateiconsetting.js
+keyboardlayout_remove_shortcut.js
+klipper_clear_config.js
+maintain_existing_desktop_icon_sizes.js
+mediaframe_migrate_useBackground_setting.js
+migrate_font_weights.js
+move_desktop_layout_config.js
+no_middle_click_paste_on_panels.js
+systemloadviewer_systemmonitor.js
+taskmanager_configUpdate_wheelEnabled.js
+unlock_widgets.js
+org.kde.plasma.desktop.appmenubar
+org.kde.plasma.desktop.defaultPanel
+org.kde.plasma.desktop.emptyPanel
+
+===== DETAIL distributor/start-here links =====
+/usr/share/icons/hicolor/48x48/places/:
+total 12
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 4 root root 1704 Jan  1  1970 start-here.png
+
+/usr/share/icons/hicolor/scalable/places/:
+total 36
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root 3494 Jan  1  1970 bazzite-logo-le.svg
+lrwxrwxrwx 2 root root   26 Jan  1  1970 bazzite-logo-white.svg -> distributor-logo-white.svg
+lrwxrwxrwx 3 root root   20 Jan  1  1970 bazzite-logo.svg -> distributor-logo.svg
+lrwxrwxrwx 3 root root   20 Jan  1  1970 distributor-logo-steamdeck.svg -> distributor-logo.svg
+-rw-r--r-- 2 root root 1593 Jan  1  1970 distributor-logo-white.svg
+-rw-r--r-- 2 root root 2093 Jan  1  1970 distributor-logo.svg
+lrwxrwxrwx 2 root root   22 Jan  1  1970 start-here.svg -> ../apps/start-here.svg
+-rw-r--r-- 2 root root 1829 Jan  1  1970 steamdeck-le.svg
+-rw-r--r-- 2 root root 1020 Jan  1  1970 steamdeck.svg
+-rw-r--r-- 2 root root 2556 Jan  1  1970 xapp-user-favorites-symbolic.svg
+-rw-r--r-- 3 root root 2862 Jan  1  1970 xapp-user-favorites.svg
+-rw-r--r-- 2 root root 14589 Jan  1  1970 /usr/share/pixmaps/system-logo-white.png
+
+/usr/share/pixmaps/bootloader:
+total 120
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root 17231 Jan  1  1970 bootlogo_128.png
+-rw-r--r-- 2 root root 36987 Jan  1  1970 bootlogo_256.png
+-rw-r--r-- 2 root root   953 Jan  1  1970 fedora-media.vol
+-rw-r--r-- 2 root root 41674 Jan  1  1970 fedora.icns
+-rw-r--r-- 2 root root   557 Jan  1  1970 fedora.vol
+
+===== DETAIL fastfetch =====
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "file",
+        "source": "/usr/share/ublue-os/bazzite/logo.txt",
+        "color": {
+            "1": "94",
+            "2": "47",
+            "3": "95",
+            "4": "0",
+            "5": "8",
+            "6": "55"
+        }
+    },
+    "display": {
+        "separator": "  ",
+        "color": {
+            "keys": "light_blue"
+        },
+    },
+    "modules": [
+        {
+            "type": "title",
+            "key": " ",
+            "color": {
+                "user": "light_blue",
+                "at": "white",
+                "host": "magenta"
+            }
+        },
+        "break",
+        {
+            "type": "command",
+            "key": " 󱋩",
+            "text": "/usr/libexec/bazzite-fetch-image"
+        },
+        {
+            "type": "os",
+            "key": " 󰣛",
+            "format": "{pretty-name}"
+        },
+        {
+            "type": "kernel",
+            "key": " ",
+            "format": "{1} {2}"
+        },
+        {
+            "type": "uptime",
+            "key": " 󰅐"
+        },
+        "break",
+        {
+            "type": "host",
+            "key": " 󰾰"
+        },
+        {
+            "type": "cpu",
+            "key": " 󰻠"
+        },
+        {
+            "type": "gpu",
+            "key": " 󰍛"
+        },
+        {
+            "type": "memory",
+            "key": " "
+        },
+        {
+            "type": "disk",
+            "key": " ",
+            "hideFS": "overlay"
+        },
+        {
+            "type": "display",
+            "key": " 󰍹"
+        },
+        {
+            "type": "battery",
+            "key": " "
+        },
+alias neofetch='/usr/bin/fastfetch --color $(/usr/libexec/bazzite-bling-fastfetch) -c /usr/share/ublue-os/bazzite/fastfetch.jsonc'
+alias neowofetch='/usr/bin/fastfetch --color $(/usr/libexec/bazzite-bling-fastfetch) -c /usr/share/ublue-os/bazzite/fastfetch.jsonc'
+alias fastfetch='/usr/bin/fastfetch --color $(/usr/libexec/bazzite-bling-fastfetch) -c /usr/share/ublue-os/bazzite/fastfetch.jsonc'
+#!/usr/bin/env bash
+
+THEME=$(gsettings get org.gnome.desktop.interface accent-color || echo "'purple'")
+THEME=${THEME//\'/}
+
+case $THEME in
+  "blue")
+    FASTFETCH_COLOR_SET="38;2;53;132;228"
+    ;;
+  "green")
+    FASTFETCH_COLOR_SET="38;2;58;148;74"
+    ;;
+  "orange")
+    FASTFETCH_COLOR_SET="38;2;237;91;0"
+    ;;
+  "pink")
+    FASTFETCH_COLOR_SET="38;2;213;97;153"
+    ;;
+  "purple")
+    FASTFETCH_COLOR_SET="38;2;139;62;165"
+    ;;
+  "red")
+    FASTFETCH_COLOR_SET="38;2;230;45;66"
+    ;;
+  "slate")
+    FASTFETCH_COLOR_SET="38;2;111;131;150"
+    ;;
+  "teal")
+    FASTFETCH_COLOR_SET="38;2;33;144;164"
+    ;;
+  "yellow")
+    FASTFETCH_COLOR_SET="38;2;200;136;0"
+    ;;
+  *)
+    # Purple!
+    FASTFETCH_COLOR_SET="38;2;139;62;165"
+    ;;
+esac
+
+echo $FASTFETCH_COLOR_SET
+total 2784
+drwxr-xr-x  1 root root    4096 Jan  1  1970 .
+drwxr-xr-x  1 root root    4096 Jan  1  1970 ..
+-rw-r--r--  2 root root 1203845 Jan  1  1970 bazzite-oled.webm
+-rw-r--r--  2 root root  112987 Jan  1  1970 bazzite-suspend-oled.webm
+-rw-r--r--  2 root root  111564 Jan  1  1970 bazzite-suspend.webm
+-rw-r--r--  2 root root 1263059 Jan  1  1970 bazzite.webm
+-rw-r--r--  2 root root    9961 Jan  1  1970 discourse.svg
+-rw-r--r-- 41 root root   35149 Jan  1  1970 docs.license
+-rw-r--r--  2 root root    5743 Jan  1  1970 docs.svg
+-rw-r--r--  2 root root    2362 Jan  1  1970 fastfetch.jsonc
+drwxr-xr-x  1 root root    4096 Jan  1  1970 flatpak
+-rw-r--r--  2 root root    2535 Jan  1  1970 logo.svg
+-rw-r--r--  2 root root     966 Jan  1  1970 logo.txt
+-rw-r--r--  2 root root    7427 Jan  1  1970 portal.license
+-rw-r--r--  3 root root    6241 Jan  1  1970 portal.svg
+-rw-r--r--  3 root root    6459 Jan  1  1970 update.svg
+-rw-r--r--  2 root root   42957 Jan  1  1970 updatelogo.png
+
+===== DETAIL motd =====
+#!/usr/bin/env sh
+
+. "${MOTD_ENV_SCRIPT:-/usr/share/ublue-os/motd/env.sh}"
+MOTD_TEMPLATE_FILE="${MOTD_TEMPLATE_FILE:-/usr/share/ublue-os/motd/template.md}"
+
+if command -v tput >/dev/null 2>&1 && [ -t 1 ]; then
+  cols=$(tput cols 2>/dev/null)
+  envsubst < "${MOTD_TEMPLATE_FILE}" | glow -w $cols -
+else
+  envsubst < "${MOTD_TEMPLATE_FILE}" | glow -
+fi
+# Welcome to Bazzite 󰊴
+󱋩 `${MOTD_IMAGE_NAME}:${MOTD_IMAGE_BRANCH}`
+󰟀 `${MOTD_GREENBOOT}`
+
+|  Command | Description |
+| ------- | ----------- |
+| `ujust --choose`  | List all available commands |
+| `ujust toggle-user-motd` | Toggle this banner on/off |
+| `fastfetch` | View system information |
+| `brew help` | Manage command line packages |
+
+${MOTD_TIP}
+- **** [Report an issue](https://issues.bazzite.gg/)
+- **󰈙** [Documentation](https://docs.bazzite.gg/)
+- **󰙯** [Discord](https://discord.bazzite.gg/)
+- **** [Bluesky](https://bluesky.bazzite.gg/)
+70-systemd-shell-extra.sh
+80-systemd-osc-context.sh
+askpass.sh
+bash-color-prompt.sh
+bash_completion.sh
+bazzite-neofetch.sh
+brew-bash-completion.sh
+brew.sh
+colorgrep.csh
+colorgrep.sh
+colorls.csh
+colorls.sh
+colorxzgrep.csh
+colorxzgrep.sh
+colorzgrep.csh
+colorzgrep.sh
+csh.local
+debuginfod.csh
+debuginfod.sh
+dnf-dummy.sh
+flatpak.csh
+flatpak.sh
+gawk.csh
+gawk.sh
+gmpopenh264.sh
+gnome-ssh-askpass.csh
+gnome-ssh-askpass.sh
+gnupg2.csh
+gnupg2.sh
+kde-openssh-askpass.csh
+kde-openssh-askpass.sh
+kde.csh
+kde.sh
+keyring.csh
+lang.csh
+lang.sh
+less.csh
+less.sh
+makemkv.csh
+makemkv.sh
+
+===== DETAIL image-info =====
+{
+  "image-name": "bazzite",
+  "image-vendor": "ublue-os",
+  "image-ref": "ostree-image-signed:docker://ghcr.io/ublue-os/bazzite",
+  "image-tag": "stable",
+  "image-branch": "stable",
+  "base-image-name": "kinoite",
+  "fedora-version": "44",
+  "version": "44.20261026",
+  "version-pretty": "Stable (F44.20261026)"
+}
+
+===== DETAIL autostart =====
+/etc/skel/.config/autostart:
+total 20
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  210 Jan  1  1970 bazzite-portal.desktop
+-rw-r--r-- 2 root root 7672 Jan  1  1970 steam.desktop
+
+/etc/xdg/autostart:
+total 120
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  316 Jan  1  1970 at-spi-dbus-bus.desktop
+-rw-r--r-- 2 root root 2418 Jan  1  1970 baloo_file.desktop
+-rw-r--r-- 2 root root  194 Jan  1  1970 bazzite-announcement.desktop
+-rw-r--r-- 2 root root  549 Jan  1  1970 geoclue-demo-agent.desktop
+-rw-r--r-- 2 root root 1881 Jan  1  1970 gmenudbusmenuproxy.desktop
+-rw-r--r-- 2 root root  269 Jan  1  1970 input-remapper-autoload.desktop
+-rw-r--r-- 2 root root 3002 Jan  1  1970 kaccess.desktop
+-rw-r--r-- 2 root root 1677 Jan  1  1970 kglobalacceld.desktop
+-rw-r--r-- 2 root root 2486 Jan  1  1970 orca-autostart.desktop
+-rw-r--r-- 2 root root  203 Jan  1  1970 org.gnome.SettingsDaemon.DiskUtilityNotify.desktop
+-rw-r--r-- 2 root root  979 Jan  1  1970 org.kde.foreground-booster.desktop
+-rw-r--r-- 2 root root 1621 Jan  1  1970 org.kde.kdeconnect.daemon.desktop
+-rw-r--r-- 2 root root 3721 Jan  1  1970 org.kde.kunifiedpush-distributor.desktop
+-rw-r--r-- 2 root root 2316 Jan  1  1970 org.kde.plasma-fallback-session-restore.desktop
+-rw-r--r-- 2 root root 1060 Jan  1  1970 org.kde.plasmashell.desktop
+-rw-r--r-- 2 root root 3437 Jan  1  1970 org.kde.xwaylandvideobridge.desktop
+-rw-r--r-- 2 root root 5710 Jan  1  1970 pam_kwallet_init.desktop
+-rw-r--r-- 2 root root 5987 Jan  1  1970 polkit-kde-authentication-agent-1.desktop
+-rw-r--r-- 2 root root 7228 Jan  1  1970 powerdevil.desktop
+-rw-r--r-- 2 root root  211 Jan  1  1970 spice-vdagent.desktop
+-rw-r--r-- 2 root root  392 Jan  1  1970 vboxclient.desktop
+-rw-r--r-- 2 root root  135 Jan  1  1970 vmware-user.desktop
+-rw-r--r-- 2 root root  212 Jan  1  1970 xapp-sn-watcher.desktop
+-rw-r--r-- 2 root root  232 Jan  1  1970 xdg-user-dirs.desktop
+-rw-r--r-- 2 root root 1774 Jan  1  1970 xembedsniproxy.desktop
+[Desktop Entry]
+Name=Bazzite Portal
+Comment=Helps you setup Bazzite
+Exec=yafti_gtk.py /usr/share/yafti/yafti.yml
+Icon=io.github.ublue_os.yafti_gtk
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true
+[Desktop Entry]
+Type=Application
+Name=Bazzite Announcements
+Name[sv]=Bazzite-meddelanden
+Exec=/usr/libexec/bazzite-announcement
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2025 Robert French <frenchrobertm@outlook.com>
+[Desktop Entry]
+Name=Bazzite Updater
+Name[uk]=Центр оновлень Bazzite
+Comment=Update your system
+Comment[uk]=Оновлює Вашу систему
+Exec=bazzite-updater
+Icon=io.github.rfrench3.bazzite-updater
+Type=Application
+Terminal=false
+Categories=Qt;KDE;System;
+Keywords=update;system;
+Keywords[uk]=update;оновити;
+
+===== DETAIL user setup (what runs at first login) =====
+#!/usr/bin/bash
+
+if [ "${EUID:-$(id -u)}" -lt 1000 ]; then
+  echo "Bazzite user setup ran as unsupported user. Exiting."
+  exit 0
+fi
+
+IMAGE_INFO="/usr/share/ublue-os/image-info.json"
+IMAGE_NAME=$(jq -r '."image-name"' < $IMAGE_INFO)
+BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
+FEDORA_VERSION=$(jq -r '."fedora-version"' < $IMAGE_INFO)
+
+SYS_ID="$(/usr/libexec/hwsupport/sysid)"
+VEN_ID="$(cat /sys/devices/virtual/dmi/id/chassis_vendor)"
+
+# INIT
+BAZZITE_CONFIG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bazzite"
+mkdir -p "$BAZZITE_CONFIG_DIR"
+
+# SCRIPT VERSION
+USER_SETUP_VER=57
+USER_SETUP_VER_FILE="$BAZZITE_CONFIG_DIR/version"
+USER_SETUP_FEDORA_VER_FILE="$BAZZITE_CONFIG_DIR/fedora_version"
+USER_SETUP_IMAGE_VER_FILE=$BAZZITE_CONFIG_DIR/image_name""
+
+if [[ -f "$HOME/.bazzite-configured" ]]; then
+  mv -f "$HOME/.bazzite-configured" "$USER_SETUP_VER_FILE"
+fi
+
+if [[ -f "$HOME/.bazzite-configured-fedora-version" ]]; then
+  mv -f "$HOME/.bazzite-configured-fedora-version" "$USER_SETUP_FEDORA_VER_FILE"
+fi
+
+# Run script if updated
+if [[ -f $USER_SETUP_VER_FILE && -f $USER_SETUP_FEDORA_VER_FILE && -f $USER_SETUP_IMAGE_VER_FILE ]]; then
+  USER_SETUP_VER_RAN=$(cat $USER_SETUP_VER_FILE)
+  USER_SETUP_FEDORA_VER_RAN=$(cat $USER_SETUP_FEDORA_VER_FILE)
+  USER_SETUP_IMAGE_VER_RAN=$(cat $USER_SETUP_IMAGE_VER_FILE)
+
+  if [[ $USER_SETUP_VER = "$USER_SETUP_VER_RAN" && $FEDORA_VERSION = "$USER_SETUP_FEDORA_VER_RAN" && $BASE_IMAGE_NAME = "$USER_SETUP_IMAGE_VER_RAN" ]]; then
+    echo "User setup v$USER_SETUP_VER has already run. Exiting..."
+    exit 0
+  fi
+fi
+
+# Handle privileged tasks
+pkexec /usr/libexec/bazzite-privileged-user-setup "$USER"
+
+if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
+  echo 'Running setup for Kinoite'
+
+  if [[ $IMAGE_NAME =~ "deck" ]]; then
+    echo 'Running setup for Kinoite on Steam Deck'
+    if [[ ! -f "$HOME/Desktop/Return.desktop" ]]; then
+      echo 'Re-creating return to gamemode shortcut'
+      mkdir -p $HOME/Desktop/
+      cp "/etc/skel/Desktop/Return.desktop" "$HOME/Desktop/Return.desktop"
+    else
+      sed -i 's|Exec=.*|Exec=/usr/bin/return-to-gamemode|' "$HOME/Desktop/Return.desktop"
+    fi
+  fi
+
+  if [[ ":Framework:" =~ ":$VEN_ID:" ]]; then
+    if [[ ! -f "$BAZZITE_CONFIG_DIR/framework-initialized" ]]; then
+      CONFIG="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+      if [[ -f "$CONFIG" ]]; then
+        # Find kickoff/application launcher applet sections
+        APPLET_SECTIONS=$(grep -n '\[Containments\]\[[0-9]*\]\[Applets\]\[[0-9]*\]' "$CONFIG")
+
+        # For each applet section, check if it's a launcher and update it
+        while IFS=: read -r line_num line_content; do
+          SECTION_NUM=$(echo "$line_content" | sed -E 's/\[Containments\]\[([0-9]+)\]\[Applets\]\[([0-9]+)\]/\1:\2/')
+          CONT_NUM=$(echo "$SECTION_NUM" | cut -d: -f1)
+          APP_NUM=$(echo "$SECTION_NUM" | cut -d: -f2)
+
+          # Check if this is a launcher applet
+          IS_LAUNCHER=$(grep -A 5 "\[Containments\]\[$CONT_NUM\]\[Applets\]\[$APP_NUM\]" "$CONFIG" | grep -i "kickoff\|launcher")
+
+          if [[ -n "$IS_LAUNCHER" ]]; then
+
+===== DETAIL hostname setters =====
+/usr/libexec/bazzite-hardware-setup:273:  hostnamectl set-hostname bazzite
+/usr/libexec/bazzite-hardware-setup:277:if [ ! -f /etc/hostname ]; then
+/usr/libexec/bazzite-hardware-setup:278:  touch /etc/hostname
+
+===== DETAIL kde about + skel kde =====
+/etc/skel:
+total 28
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Oct 27 22:32 ..
+-rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
+-rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
+-rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .config
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .var
+
+/etc/skel/.config:
+total 24
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 autostart
+drwxr-xr-x 1 root root 4096 Jan  1  1970 gtk-4.0
+drwxr-xr-x 4 root root 4096 Jan  1  1970 mozilla
+drwxr-xr-x 1 root root 4096 Jan  1  1970 user-tmpfiles.d
+cat: /etc/skel/.config/kdeglobals: No such file or directory
+cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or directory
+
+===== DETAIL grub / bls titles =====
+/boot:
+total 8
+drwxr-xr-x 2 root root 4096 Jan  1  1970 .
+dr-xr-xr-x 1 root root 4096 Oct 27 22:32 ..
+
+/usr/lib/bootupd/grub2-static:
+total 20
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 configs.d
+
+===== DETAIL gamescope session + steam =====
+/usr/share/wayland-sessions:
+plasma.desktop
+
+/usr/share/xsessions:
+5:Name=Plasma
+
+===== DETAIL ujust banner =====
+# vim: set ft=make :
+
+# Disable NTFS/exFAT monitor and notification service
+_disable-ntfs-service:
+    #!/usr/bin/bash
+    systemctl disable --now --user ntfs-nag.service
+    systemctl mask --now --user ntfs-nag.service
+
+# Install System Flatpaks (Support for Rebasing)
+_install-system-flatpaks:
+    #!/usr/bin/bash
+    IMAGE_INFO="/usr/share/ublue-os/image-info.json"
+    BASE_IMAGE_NAME=$(jq -r '."base-image-name"' < $IMAGE_INFO)
+    if [[ ${BASE_IMAGE_NAME} == 'silverblue' ]]; then
+        FLATPAKS="gnome_flatpaks/flatpaks"
+    else
+        FLATPAKS="kde_flatpaks/flatpaks"
+    fi
+    FLATPAK_LIST="$(curl https://raw.githubusercontent.com/ublue-os/bazzite/main/installer/${FLATPAKS} | tr '\n' ' ')"
+    flatpak --system -y install --reinstall --or-update ${FLATPAK_LIST}
+
+alias toggle-ssh := ssh
+
+# Manage SSH availability. Options: status | enable | disable | start
+[group("network")]
+ssh ACTION="":
+    #!/usr/bin/bash
+    source /usr/lib/ujust/ujust.sh
+    SSH_STATE="$(systemctl is-enabled sshd 2>/dev/null || true)"
+    get_status_token() {
+      if [[ -z "$SSH_STATE" ]]; then
+        return 1
+      elif [[ "$SSH_STATE" == *enabled* ]]; then
+        echo "enable"
+      elif systemctl is-active --quiet sshd; then
+        echo "start"
+      else
+        echo "disable"
+      fi
+    }
+set allow-duplicate-recipes := true
+set ignore-comments := true
+
+_default:
+    #!/usr/bin/bash
+    source /usr/lib/ujust/libformatting.sh
+    echo "$(Urllink "https://docs.projectbluefin.io/administration#community-aliases-and-workarounds" "Click here to view the Universal Blue just documentation")"
+    /usr/bin/ujust --list --list-heading $'Available commands:\n' --list-prefix $' - '
+
+# Imports
+import "/usr/share/ublue-os/just/00-default.just"
+import "/usr/share/ublue-os/just/10-update.just"
+import "/usr/share/ublue-os/just/15-luks.just"
+import "/usr/share/ublue-os/just/20-clean.just"
+import "/usr/share/ublue-os/just/30-distrobox.just"
+import "/usr/share/ublue-os/just/40-nvidia.just"
+import "/usr/share/ublue-os/just/50-akmods.just"
+import? "/usr/share/ublue-os/just/60-custom.just"
+import "/usr/share/ublue-os/just/80-bazzite.just"
+import "/usr/share/ublue-os/just/81-bazzite-fixes.just"
+
+===== DETAIL end =====
