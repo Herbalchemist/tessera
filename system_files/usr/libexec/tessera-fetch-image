@@ -1,0 +1,13 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# One line for fastfetch: which Tessera this is (version and build), e.g. "Tessera 0.25.0 (AMD / Intel)".
+v=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' /usr/lib/tessera/launcher/package.json 2>/dev/null | head -1)
+build=$(. /usr/lib/os-release 2>/dev/null; echo "${BUILD_ID:-}")
+img=$(bootc status --format=json 2>/dev/null | sed -n 's/.*"image": *"\([^"]*tessera[^"]*\)".*/\1/p' | head -1)
+case "$img" in
+  *-nvidia-open*) kind="NVIDIA, GTX 16 / RTX" ;;
+  *-nvidia*) kind="NVIDIA, GTX 900-1000" ;;
+  *tessera*) kind="AMD / Intel" ;;
+  *) kind="" ;;
+esac
+echo "Tessera ${v:-}${kind:+ ($kind)}${build:+, $build}"

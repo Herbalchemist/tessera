@@ -37,7 +37,11 @@ function run(cmd, args, { timeout = 8000, input, onChild } = {}) {
       });
     });
     if (onChild) onChild(child);
-    if (input !== undefined && child.stdin) { try { child.stdin.end(input); } catch { /* it exited already */ } }
+    if (input !== undefined && child.stdin) {
+      // If it exits without reading, the write fails later as an event (EPIPE), not here: listen for it.
+      child.stdin.on('error', () => { /* it exited already */ });
+      try { child.stdin.end(input); } catch { /* it exited already */ }
+    }
   });
 }
 

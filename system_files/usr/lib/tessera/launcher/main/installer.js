@@ -37,6 +37,9 @@ function liveHelper(args, input) {
     child.stderr.on('data', (d) => { err += d; });
     child.on('error', () => resolve({ ok: false, out, err: 'missing' }));
     child.on('close', (code) => resolve({ ok: code === 0, out, err }));
+    // A helper that answers without reading its input closes the pipe first; writing to it then
+    // fails later (EPIPE) as an event, which would end the whole launcher if nothing listened.
+    child.stdin.on('error', () => { /* it didn't need its input */ });
     child.stdin.end(input || '');
   });
 }
@@ -79,6 +82,7 @@ async function installerOp(op, p) {
     installChild = spawn(cmd[0], cmd.slice(1), { stdio: ['pipe', 'ignore', 'ignore'], detached: true });
     installChild.on('error', () => { installChild = null; });
     installChild.on('exit', () => { installChild = null; });
+    installChild.stdin.on('error', () => { /* it stopped before reading: its state file says why */ });
     installChild.stdin.end(JSON.stringify(choices));
     return { ok: true };
   }

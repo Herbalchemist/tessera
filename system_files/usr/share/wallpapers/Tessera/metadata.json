@@ -1,0 +1,8 @@
+{
+    "KPlugin": {
+        "Authors": [ { "Name": "Tessera" } ],
+        "Id": "Tessera",
+        "License": "GPL-3.0-or-later",
+        "Name": "Tessera"
+    }
+}

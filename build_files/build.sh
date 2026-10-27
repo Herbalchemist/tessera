@@ -67,3 +67,7 @@ rm -rf "$NPM_HOME"
 if [ -d /usr/lib/tessera/launcher/node_modules/electron/dist/locales ]; then
   find /usr/lib/tessera/launcher/node_modules/electron/dist/locales -type f ! -name 'en-US.pak' -delete
 fi
+
+### Tessera's name and look over Bazzite's (boot menu, About, logos, splash, wallpaper, terminal,
+### the computer's name). See branding.sh for what changes and what stays Bazzite's.
+bash /ctx/branding.sh

@@ -282,6 +282,7 @@ async function flowShard(id) {
 // A page a shard draws: its text, and rows that can each run one of its actions.
 async function flowShardPanel(id, panel, title) {
   let r = await shardsCall('panel', { id, panel });
+  let inner = false; // showing a page an action opened (B goes back to the shard's own page)
   for (;;) {
     if (!r) return;
     if (!r.ok) { setStatus(r.error, true); return; }
@@ -290,9 +291,15 @@ async function flowShardPanel(id, panel, title) {
     if (v.openUrl) { browserUrl = v.openUrl; await launchBrowser(1); return; }
     const items = v.items.length ? v.items.map((x) => (x.action ? { label: x.label, sub: x.sub, act: x.action } : { label: x.label, sub: x.sub, info: true })) : [{ label: 'Nothing to show', info: true }];
     const it = await pick(title, items, Math.max(0, items.findIndex((x) => x.act)), { body: v.body });
-    if (!it) return;
+    if (!it) {
+      if (!inner) return;
+      inner = false;
+      r = await shardsCall('panel', { id, panel });
+      continue;
+    }
     if (!it.act) continue;
     r = await shardsCall('action', { id, panel, action: it.act });
+    if (r && r.ok && (r.view.items.length || r.view.body)) inner = true;
     if (r && r.ok && !r.view.items.length && !r.view.body && !r.view.openUrl) { // only a message: show it and stay on this page
       if (r.view.message) setStatus(r.view.message);
       r = await shardsCall('panel', { id, panel });
