@@ -38,19 +38,56 @@ function familyOf(id) {
 // Whether this controller's face buttons trade places under this setting.
 const swaps = (family, confirm) => family === 'nintendo' && confirm === 'label';
 
-// The physical button that does `role`'s job (and the other way round: the swap is its own inverse).
-function physicalFor(role, swap) {
-  return swap && Object.prototype.hasOwnProperty.call(NINTENDO_LABEL_SWAP, role) ? NINTENDO_LABEL_SWAP[role] : role;
+// Settings > Button mapping can also rearrange the four face buttons and the two bumpers, per
+// controller family. A remap is a list: entry n is the role physical button n does. It is always
+// a rearrangement of 0-5 (every job on exactly one button), so confirm and back can't be lost.
+const REMAP_BUTTONS = 6;
+const FAMILIES = ['xbox', 'playstation', 'nintendo'];
+const IDENTITY = [0, 1, 2, 3, 4, 5];
+function validRemap(m) {
+  return Array.isArray(m) && m.length === REMAP_BUTTONS && m.every((r) => Number.isInteger(r) && r >= 0 && r < REMAP_BUTTONS) && new Set(m).size === REMAP_BUTTONS;
 }
-const roleOf = physicalFor;
+
+// A "map" says how a controller's buttons are read: false (by position), true (Nintendo letters,
+// the "A confirms" setting) or a remap list. pad: the controller settings ({ confirm, remap:
+// { family: list } }); a family's remap wins over "confirm".
+function mapFor(family, pad) {
+  const r = pad && pad.remap && pad.remap[family];
+  if (validRemap(r)) return r;
+  return swaps(family, pad && pad.confirm);
+}
+
+// The role physical button n does.
+function roleOf(physical, map) {
+  if (Array.isArray(map)) return physical >= 0 && physical < map.length ? map[physical] : physical;
+  return map && Object.prototype.hasOwnProperty.call(NINTENDO_LABEL_SWAP, physical) ? NINTENDO_LABEL_SWAP[physical] : physical;
+}
+// The physical button that does `role`'s job.
+function physicalFor(role, map) {
+  if (Array.isArray(map)) { const i = map.indexOf(role); return role >= 0 && role < map.length && i >= 0 ? i : role; }
+  return roleOf(role, map); // the Nintendo swap is its own inverse
+}
 
 // A pressed-buttons bit mask (bit n = physical button n), as roles.
-function roleBits(bits, swap) {
-  if (!swap) return bits;
-  let out = bits & ~0xf;
-  for (const [from, to] of Object.entries(NINTENDO_LABEL_SWAP)) if (bits & (1 << Number(from))) out |= 1 << to;
+function roleBits(bits, map) {
+  if (!map) return bits;
+  const n = Array.isArray(map) ? REMAP_BUTTONS : 4;
+  let out = bits & ~((1 << n) - 1);
+  for (let k = 0; k < n; k++) if (bits & (1 << k)) out |= 1 << roleOf(k, map);
   return out;
 }
+
+// A map written out as a remap list (to start a new remap from what's in use now).
+const asRemap = (map) => IDENTITY.map((n) => roleOf(n, map));
+// Give `role` to physical button `physical`; what that button did moves to the button that had `role`.
+function assign(map, role, physical) {
+  const m = asRemap(map);
+  if (!(role >= 0 && role < REMAP_BUTTONS && physical >= 0 && physical < REMAP_BUTTONS)) return m;
+  const had = m.indexOf(role);
+  [m[had], m[physical]] = [m[physical], m[had]];
+  return m;
+}
+const isIdentity = (m) => IDENTITY.every((n) => m[n] === n);
 
 // The action a physical button does, or null.
 const actionFor = (physical, swap) => ACTION_OF_ROLE[roleOf(physical, swap)] || null;
@@ -140,7 +177,7 @@ const repeatTiming = (speed, where) => {
   return { initialDelay: t[0], repeatInterval: t[1] };
 };
 
-const inputActions = { ACTIONS, ACTION_OF_ROLE, ROLE_OF_ACTION, CONFIRM_CHOICES, familyOf, swaps, physicalFor, roleOf, roleBits, actionFor, buttonFor, createDirectionRepeater, REPEAT_SPEEDS, REPEAT_CHOICES, repeatTiming };
+const inputActions = { ACTIONS, ACTION_OF_ROLE, ROLE_OF_ACTION, CONFIRM_CHOICES, REMAP_BUTTONS, FAMILIES, familyOf, swaps, validRemap, mapFor, asRemap, assign, isIdentity, physicalFor, roleOf, roleBits, actionFor, buttonFor, createDirectionRepeater, REPEAT_SPEEDS, REPEAT_CHOICES, repeatTiming };
 if (typeof module !== 'undefined' && module.exports) module.exports = inputActions;
 if (typeof window !== 'undefined') window.TesseraInputActions = inputActions;
 })();

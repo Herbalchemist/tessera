@@ -21,17 +21,18 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', remap: {} };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 // What each button means comes from the one input system (input-actions.js).
 const IA = window.TesseraInputActions;
 const detectFamily = (id) => IA.familyOf(id);
-// Whether the controller in use trades its face buttons (Nintendo, with "A confirms" chosen).
+// How the controller in use is read: by position, Nintendo letters ("A confirms"), or its family's
+// remap from Settings > Button mapping (input-actions.js).
 // (Menus can open while the page is still loading, before input.js has defined activePad.)
 const padInUse = () => (typeof activePad === 'function' ? activePad() : null);
-const padSwap = (p = padInUse()) => IA.swaps(detectFamily(p ? p.id : ''), prefs.pad.confirm);
+const padMap = (p = padInUse()) => IA.mapFor(detectFamily(p ? p.id : ''), prefs.pad);
 const glyphSet = () => {
   let g = prefs.pad.glyphs;
   if (g === 'auto') { const p = padInUse(); g = detectFamily(p ? p.id : ''); }
@@ -40,7 +41,7 @@ const glyphSet = () => {
 const glyph = (n) => glyphSet()[n];
 const buttonName = (n) => glyph(n) || `Button ${n}`; // physical button n
 // The label of the button that does role n's job ("press A to open" names the button that opens).
-const roleName = (n) => buttonName(IA.physicalFor(n, padSwap()));
+const roleName = (n) => buttonName(IA.physicalFor(n, padMap()));
 // ---- keyboard & mouse
 // Keys are looked up by KeyboardEvent.code (the key's position), so bindings survive a
 // change of keyboard layout; labels come from the layout when Chromium can tell us.
@@ -443,7 +444,7 @@ function calmNote(id) {
   switch (id) {
     case '_pad': return shortPad(activePad());
     case '_keyboard': return (KBM.PRESET_NAMES[(prefs.kb && prefs.kb.preset) || 'standard'] || '').replace(/ \(.*$/, '') + (prefs.kb && prefs.kb.bindings ? ', changed' : '');
-    case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed';
+    case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) && !Object.keys(prefs.pad.remap || {}).length ? 'Standard' : 'Changed';
     case '_theme': return themeName();
     case '_profiles': return prefs.profiles && prefs.profiles.length ? `${prefs.profiles.length} profile${prefs.profiles.length === 1 ? '' : 's'}` : 'None yet';
     case '_display': return prefs.calibration && prefs.calibration.cal ? (prefs.calibration.cal.enabled === false ? 'Calibrated, off' : 'Calibrated') : 'Not calibrated';

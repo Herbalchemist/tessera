@@ -145,6 +145,54 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     assert.equal(bad.ok, false);
     await setConfirm('position');
     checks.push('The choice is saved, and only its two values are accepted');
+
+    // Settings > Button mapping: Select onto RB, on Xbox controllers only.
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+    page.evaluate(() => { flowControls(); });
+    await page.waitForFunction(() => modal && modal.title === 'Button mapping');
+    assert.ok(await page.evaluate(() => modal.items.some((x) => x.header && x.label === 'Xbox controller buttons')));
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.role === 0); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'capture');
+    await tap(9); // Menu: not one it takes
+    assert.match(await page.evaluate(() => modal.note), /face button/);
+    await tap(5); // RB
+    await page.waitForFunction(() => modal && modal.title === 'Button mapping');
+    assert.deepEqual(await page.evaluate(() => prefs.pad.remap.xbox), [5, 1, 2, 3, 4, 0]);
+    assert.equal(await page.evaluate(() => modal.items.find((x) => x.role === 0).sub), 'RB');
+    assert.equal(await page.evaluate(() => modal.items.find((x) => x.role === 5).sub), 'A', 'the bottom button took over Next tab');
+    await page.evaluate(() => closeModal());
+    await page.waitForTimeout(300);
+    assert.equal(await menuAnswer(5), 'chose', 'RB now selects');
+    assert.equal(await menuAnswer(1), 'left', 'Back is where it was');
+    assert.deepEqual(await menuHints(false), ['RBSelect', 'BBack']);
+    await usePad(NINTENDO);
+    await page.waitForTimeout(200);
+    assert.equal(await menuAnswer(0), 'chose', 'Nintendo controllers keep their own layout');
+    checks.push('Button mapping: Select moved to RB on Xbox controllers (it trades jobs with A); menus and hints follow; Nintendo untouched');
+
+    // Only full rearrangements are taken, and it all goes back.
+    const r1 = await page.evaluate(() => api.settings('padRemap', { family: 'xbox', map: [0, 0, 2, 3, 4, 5] }));
+    assert.equal(r1.ok, false, 'a job on no button is refused');
+    const r2 = await page.evaluate(() => api.settings('padRemap', { family: 'arcade', map: [0, 1, 2, 3, 4, 5] }));
+    assert.equal(r2.ok, false);
+    const r3 = await page.evaluate(() => api.settings('padRemap', { family: 'nintendo', map: [2, 1, 0, 3, 4, 5] }));
+    assert.equal(r3.ok, true);
+    await page.evaluate(() => padSet('confirm', 'label'));
+    assert.equal(await page.evaluate(() => prefs.pad.remap.nintendo), undefined, 'choosing a confirm button replaces a Nintendo remap');
+    await page.evaluate(() => padSet('confirm', 'position'));
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+    page.evaluate(() => { flowControls(); });
+    await page.waitForFunction(() => modal && modal.title === 'Button mapping');
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'padReset'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Button mapping' && !prefs.pad.remap.xbox);
+    await page.evaluate(() => closeModal());
+    await page.waitForTimeout(300);
+    assert.equal(await menuAnswer(0), 'chose');
+    const saved2 = JSON.parse(fs.readFileSync(path.join(temp, 'data', 'settings.json'), 'utf8'));
+    assert.deepEqual(saved2.pad.remap, {});
+    checks.push('Remaps must keep every job on one button; choosing a confirm button or "Put these buttons back" undoes them');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);
