@@ -148,6 +148,7 @@ async function openGuide() {
   // ---- profiles
   items.push({ label: 'Profiles', header: true });
   for (const pr of prof.profiles || []) items.push({ label: pr.name, sub: pr.id === prof.active ? 'playing now' : '', op: 'profile', id: pr.id, plain: true });
+  if ((prof.profiles || []).length) items.push({ label: 'Everyone', sub: prof.active ? '' : 'playing now', op: 'profile', id: null, plain: true });
   if (!GUIDE_ONLY) items.push({ label: (prof.profiles || []).length ? 'Manage profiles…' : 'Add a profile…', op: 'profiles', plain: true });
   // (notifications have their own panel on the right: see guideNotes below)
   if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); }
@@ -295,12 +296,10 @@ async function guideChoose(it) {
     return;
   }
   if (op === 'profile') {
-    const r = await api.profiles('use', { id: it.id });
-    if (r && r.ok) {
-      if (r.theme) applyTheme(r.theme);
+    const r = await switchProfile(it.id, it.label);
+    if (r && modal && guideOpen) {
       for (const x of modal.items) if (x.op === 'profile') x.sub = x.id === it.id ? 'playing now' : '';
       renderModal();
-      setStatus(`Hi, ${it.label}!`);
     }
     return;
   }

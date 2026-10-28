@@ -16,6 +16,10 @@ module.exports = {
   get RESERVED_BUTTONS() { return RESERVED_BUTTONS; },
   get saveSettings() { return saveSettings; },
   get settings() { return settings; },
+  get EVERYONE() { return EVERYONE; },
+  get switchControls() { return switchControls; },
+  get controlsOf() { return controlsOf; },
+  get freshControls() { return freshControls; },
   get SETTINGS_VERSION() { return SETTINGS_VERSION; },
 };
 
@@ -90,6 +94,10 @@ let settings = {
   ignoredDrives: [], // drives the person said "don't ask again" for
   mutedDrives: [], // drives that never trigger that warning
   hiddenDrives: [], // drives left out of Storage altogether
+  profileData: {}, // the controls of everyone not playing right now (see switchControls)
+  activeProfile: null, // who is playing (a profile id), or null: Everyone
+  profileAsk: false, // ask "Who's playing?" when Tessera starts
+  everyoneTheme: null, // the theme Everyone had on when someone else started playing
   profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
   // Shards (~/Tessera/Shards/<id>/) are the one add-on kind with Tessera's own level of system
   // access — unlike themes (values only) or widgets (sandboxed, no network, own files only).
@@ -107,13 +115,7 @@ function loadSettings() {
     const d = JSON.parse(fs.readFileSync(config.SETTINGS_FILE, 'utf8'));
     if (d && Array.isArray(d.scanRoots))
       settings.scanRoots = d.scanRoots.filter((r) => typeof r === 'string' && path.isAbsolute(r));
-    const untouched = d && d.keys && Object.keys(OLD_DEFAULT_KEYS).every((k) => d.keys[k] === OLD_DEFAULT_KEYS[k]);
-    if (d && d.keys && typeof d.keys === 'object' && !untouched) {
-      for (const k of Object.keys(DEFAULT_KEYS)) {
-        const v = d.keys[k];
-        if (Number.isInteger(v) && v >= 0 && v < 32 && !RESERVED_BUTTONS.includes(v)) settings.keys[k] = v;
-      }
-    }
+    if (d) settings.keys = cleanKeys(d.keys);
     if (d && d.theme && typeof d.theme === 'object') {
       if (typeof d.theme.active === 'string' && theming.THEME_ID_RE.test(d.theme.active)) settings.theme.active = d.theme.active;
       const vals = d.theme.values;
@@ -128,29 +130,7 @@ function loadSettings() {
         }
       }
     }
-    if (d && d.pad && typeof d.pad === 'object') {
-      for (const k of Object.keys(PAD_DEFAULTS)) {
-        if (k === 'glyphs' && !(d.v >= 2)) continue; // 0.12 saved "xbox" without the person choosing it
-        const v = d.pad[k];
-        if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(v)) settings.pad[k] = v;
-        else if (PAD_RANGES[k] && Number.isFinite(v) && v >= PAD_RANGES[k][0] && v <= PAD_RANGES[k][1]) settings.pad[k] = Math.round(v);
-      }
-      settings.pad.remap = {};
-      if (d.pad.remap && typeof d.pad.remap === 'object') {
-        for (const fam of inputActions.FAMILIES) {
-          const m = d.pad.remap[fam];
-          if (inputActions.validRemap(m) && !inputActions.isIdentity(m)) settings.pad.remap[fam] = m.slice();
-        }
-      }
-    }
-    if (d && d.kb && typeof d.kb === 'object') {
-      for (const k of Object.keys(KB_CHOICES)) if (KB_CHOICES[k].includes(d.kb[k])) settings.kb[k] = d.kb[k];
-      for (const k of Object.keys(KB_RANGES)) {
-        const v = d.kb[k];
-        if (Number.isFinite(v) && v >= KB_RANGES[k][0] && v <= KB_RANGES[k][1]) settings.kb[k] = Math.round(v);
-      }
-      if (d.kb.bindings && typeof d.kb.bindings === 'object') settings.kb.bindings = keyboardMap.normalize(d.kb.bindings, settings.kb.preset);
-    }
+    if (d) { settings.pad = cleanPad(d.pad, d.v); settings.kb = cleanKb(d.kb); }
     if (d && d.calib && typeof d.calib === 'object') {
       for (const [id, arr] of Object.entries(d.calib).slice(0, 16)) {
         if (id.length < 90 && Array.isArray(arr) && arr.length <= 8 && arr.every((n) => Number.isFinite(n) && Math.abs(n) <= 0.5))
@@ -170,7 +150,8 @@ function loadSettings() {
         if (!name) continue;
         ids.add(pr.id);
         const themeId = typeof pr.themeId === 'string' && theming.THEME_ID_RE.test(pr.themeId) ? pr.themeId : null;
-        loaded.push({ id: pr.id, name, themeId });
+        const color = typeof pr.color === 'string' && /^#[0-9a-f]{6}$/i.test(pr.color) ? pr.color : null;
+        loaded.push({ id: pr.id, name, themeId, color });
       }
       // Replace, don't append: loadSettings() can run again in this same process (restoring a
       // backup, or a window reload), and appending would let stale or duplicate profiles from
@@ -179,6 +160,17 @@ function loadSettings() {
       settings.activeProfile = typeof d.activeProfile === 'string' && loaded.some((pr) => pr.id === d.activeProfile) ? d.activeProfile : null;
     } else if (d) {
       settings.profiles = [];
+    }
+    settings.profileAsk = Boolean(d && d.profileAsk === true && settings.profiles.length);
+    settings.everyoneTheme = d && typeof d.everyoneTheme === 'string' && theming.THEME_ID_RE.test(d.everyoneTheme) ? d.everyoneTheme : null;
+    // Everyone else's controls, kept while someone else is playing (see switchControls).
+    settings.profileData = {};
+    if (d && d.profileData && typeof d.profileData === 'object') {
+      const live = settings.activeProfile || EVERYONE;
+      for (const [key, c] of Object.entries(d.profileData).slice(0, theming.MAX_PROFILES + 1)) {
+        if (key === live || !(key === EVERYONE || settings.profiles.some((pr) => pr.id === key)) || !c || typeof c !== 'object') continue;
+        settings.profileData[key] = { pad: cleanPad(c.pad, 2), kb: cleanKb(c.kb), keys: cleanKeys(c.keys) };
+      }
     }
     // A settings file from before the welcome page existed counts as "already welcomed".
     settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
@@ -209,6 +201,67 @@ function loadSettings() {
     const g = folderBrowser.real(addons.vaultFolder('games'));
     if (g) settings.scanRoots.push(g);
   }
+}
+// ---- each person's controls: the Controller settings (button layout too), keyboard keys and the
+// on-screen keyboard's buttons. The live ones (settings.pad / kb / keys) are always the person
+// playing; the others wait in settings.profileData, under their profile id or EVERYONE (no
+// profile). Everything reads the live ones, so switching is a swap, checked like a fresh load.
+const EVERYONE = '_everyone';
+function cleanKeys(src) {
+  const keys = { ...DEFAULT_KEYS };
+  const untouched = src && Object.keys(OLD_DEFAULT_KEYS).every((k) => src[k] === OLD_DEFAULT_KEYS[k]);
+  if (src && typeof src === 'object' && !untouched) {
+    for (const k of Object.keys(DEFAULT_KEYS)) {
+      const v = src[k];
+      if (Number.isInteger(v) && v >= 0 && v < 32 && !RESERVED_BUTTONS.includes(v)) keys[k] = v;
+    }
+  }
+  return keys;
+}
+function cleanPad(src, v) {
+  const pad = { ...PAD_DEFAULTS, remap: {} };
+  if (!src || typeof src !== 'object') return pad;
+  for (const k of Object.keys(PAD_DEFAULTS)) {
+    if (k === 'glyphs' && !(v >= 2)) continue; // 0.12 saved "xbox" without the person choosing it
+    const x = src[k];
+    if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(x)) pad[k] = x;
+    else if (PAD_RANGES[k] && Number.isFinite(x) && x >= PAD_RANGES[k][0] && x <= PAD_RANGES[k][1]) pad[k] = Math.round(x);
+  }
+  if (src.remap && typeof src.remap === 'object') {
+    for (const fam of inputActions.FAMILIES) {
+      const m = src.remap[fam];
+      if (inputActions.validRemap(m) && !inputActions.isIdentity(m)) pad.remap[fam] = m.slice();
+    }
+  }
+  return pad;
+}
+function cleanKb(src) {
+  const kb = { ...KB_DEFAULTS };
+  if (!src || typeof src !== 'object') return kb;
+  for (const k of Object.keys(KB_CHOICES)) if (KB_CHOICES[k].includes(src[k])) kb[k] = src[k];
+  for (const k of Object.keys(KB_RANGES)) {
+    const x = src[k];
+    if (Number.isFinite(x) && x >= KB_RANGES[k][0] && x <= KB_RANGES[k][1]) kb[k] = Math.round(x);
+  }
+  if (src.bindings && typeof src.bindings === 'object') kb.bindings = keyboardMap.normalize(src.bindings, kb.preset);
+  return kb;
+}
+const controlsNow = () => JSON.parse(JSON.stringify({ pad: settings.pad, kb: settings.kb, keys: settings.keys }));
+const freshControls = () => ({ pad: cleanPad(null), kb: cleanKb(null), keys: { ...DEFAULT_KEYS } });
+// The controls a profile has (or would have), without switching to it.
+function controlsOf(key) {
+  if (key === (settings.activeProfile || EVERYONE)) return controlsNow();
+  const c = settings.profileData[key];
+  return c ? JSON.parse(JSON.stringify(c)) : null;
+}
+// Put `from`'s live controls away and bring out `to`'s (or a fresh set).
+function switchControls(from, to) {
+  settings.profileData[from] = controlsNow();
+  const c = settings.profileData[to] || freshControls();
+  delete settings.profileData[to];
+  settings.pad = cleanPad(c.pad, 2);
+  settings.kb = cleanKb(c.kb);
+  settings.keys = cleanKeys(c.keys);
 }
 // A page's own grid size: key is a page id (or f:<folder id>), cols 2-12, rows 1-8.
 function cleanPageGrid(key, cols, rows) {

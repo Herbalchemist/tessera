@@ -8,11 +8,13 @@ module.exports = {
   get browserViewAttached() { return browserViewAttached; },
   get fitBrowserView() { return fitBrowserView; },
   get browserViewBounds() { return browserViewBounds; },
+  get dropBrowserView() { return dropBrowserView; },
+  get forgetBrowserProfile() { return forgetBrowserProfile; },
 };
 
 const fs = require('fs');
 const path = require('path');
-const { app, WebContentsView, ipcMain } = require('electron');
+const { app, WebContentsView, ipcMain, session } = require('electron');
 const browserNavigation = require('../browser-navigation');
 const config = require('./config');
 const addons = require('./addons');
@@ -27,7 +29,10 @@ const guide = require('./guide');
 let browserView = null;
 let browserViewAttached = false;
 let browserSessionOpen = false;
+// Each profile browses with its own storage (cookies, logins, history); no profile keeps the one
+// Tessera always had.
 const BROWSER_PARTITION = 'persist:tessera-browser';
+const partitionFor = (id) => (id ? `${BROWSER_PARTITION}-${id}` : BROWSER_PARTITION);
 function isLauncherMainFrame(event) {
   return Boolean(
     event && config.mainWindow && !config.mainWindow.isDestroyed() &&
@@ -52,7 +57,7 @@ function ensureBrowserView() {
   if (browserView) return browserView;
   browserView = new WebContentsView({
     webPreferences: {
-      partition: BROWSER_PARTITION,
+      partition: partitionFor(prefs.settings.activeProfile),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -113,6 +118,24 @@ function attachBrowserView() {
   config.mainWindow.contentView.addChildView(web.ensureBrowserCursorView());
   web.startBrowserPointer();
   try { browserView.webContents.focus(); } catch { /* browser closed while attaching */ }
+}
+// Someone else is playing now: close the page; the next open uses their own browser storage.
+function dropBrowserView() {
+  if (!browserView) return;
+  detachBrowserView();
+  web.stopBrowserViewJoystickWatch();
+  try { browserView.webContents.close(); } catch { /* already gone */ }
+  browserView = null;
+  browserSessionOpen = false;
+}
+// A removed profile's browser data goes with it.
+function forgetBrowserProfile(id) {
+  if (!id) return;
+  try {
+    const ses = session.fromPartition(partitionFor(id));
+    ses.clearStorageData().catch(() => {});
+    ses.clearCache().catch(() => {});
+  } catch { /* nothing there */ }
 }
 function detachBrowserView() {
   if (!browserView || !config.mainWindow || config.mainWindow.isDestroyed() || !browserViewAttached) return;

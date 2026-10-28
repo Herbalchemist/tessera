@@ -88,7 +88,7 @@ async function flowWelcome() {
     const who = await pick("Who's playing?", [
       { label: 'Add my name', op: 'name', plain: true },
       { label: 'Skip', sub: 'Profiles can be added later in Settings > Profiles', op: 'skip', plain: true },
-    ], 0, { ...W, body: 'A profile keeps your own theme, and the guide shows who is playing. More people can be added later.' });
+    ], 0, { ...W, body: 'A profile keeps your own controls, Home and mosaics, browser logins and theme, and the guide shows who is playing. More people can be added later.' });
     let profileId = null;
     if (who && who.op === 'name') {
       const name = await ask('Your name', '', { max: 24 });
@@ -96,7 +96,7 @@ async function flowWelcome() {
         const r = await api.profiles('add', { name });
         if (r && r.ok) {
           const mine = (r.profiles || []).find((p) => p.name === name.trim()) || (r.profiles || []).slice(-1)[0];
-          if (mine) { profileId = mine.id; await api.profiles('use', { id: mine.id }); }
+          if (mine) { profileId = mine.id; const u = await api.profiles('use', { id: mine.id }); if (u && u.view) applyView(u.view); }
         } else if (r && r.error) setStatus(r.error, true);
       }
     }
