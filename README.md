@@ -126,7 +126,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 
 - **Shards** are add-ons that are code. Installing one never turns it on: in **Add-ons › Shards**, pick it and choose **Turn on**. A shard adds a page of its own under Shards, and it can add games to **Find games**.
 - **Official** means the Tessera project signed that shard's exact files. Tessera checks the signature every time the shard starts. **Shard safety** decides whether unverified shards may run at all, and whether turning shards on or off needs the PIN.
-- The first shard is **Xbox and Game Pass**. It shows which ways of playing Xbox games this machine can really do (Xodus Nexus on Linux, Xbox Cloud Gaming, streaming, a Windows VM with its own graphics chip, or Windows on its own drive) and what each still needs. It only looks, and changes nothing.
+- The first shard is **Xbox PC Games Setup**. It helps you set up software to play Xbox PC games you own, and shows which ways this machine can really do it (Xodus Nexus on Linux, Xbox Cloud Gaming, streaming, a Windows VM with its own graphics chip, or Windows on its own drive) and what each still needs. It only looks, and changes nothing. You need your own games and accounts; it isn't made by or affiliated with Microsoft.
 - Games other launchers add to Steam (Steam's "non-Steam games", which is where Xodus Nexus puts its own) now show up in **Find games** too.
 
 ## Install
@@ -205,6 +205,7 @@ After the restart the machine signs in to Tessera by itself.
 - Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
 - Full profile switching: each person with their own library and controls.
 - NVIDIA builds: test on real hardware and drop the *experimental* label.
+- Wi-Fi: hand the password to NetworkManager without putting it on `nmcli`'s command line, where other accounts on the machine can briefly see it while it joins. Needs a test on real Wi-Fi before it ships.
 
 ## How it's built
 
