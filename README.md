@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.28.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.29.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -65,6 +65,12 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 **Nintendo controllers:** by default the bottom button confirms on every controller (so on a Switch pad, B opens and A goes back, by position). In **Settings › Controller › Confirm button** you can have Nintendo controllers follow their letters instead: A confirms and B goes back, with X and Y to match. It applies everywhere (menus, the browser, the on-screen keyboard), the hints follow it, and other controllers are never affected.
 
 **Your own button layout:** in **Settings › Button mapping**, the face buttons and bumpers of the kind of controller you're holding (Xbox, PlayStation or Nintendo) can trade jobs: pick a job, press the button you want for it, and that button's old job moves to the one you replaced. Every job always stays on exactly one button, so you can't lose Select or Back, and **Put these buttons back** undoes it. Menus, hints, the on-screen keyboard and the browser all follow it.
+
+**One Joy-Con on its own**, held sideways, works like it does on a Switch: the buttons turn with it (on a right Joy-Con, A at the bottom selects) and the hints use its own labels.
+
+**The guide** (the Guide button) comes in three styles in **Settings › Controller › Guide style**: a panel from the side, a floating card, or compact. Notifications sit in their own panel on its right: **X** hides or shows them, **Y** clears them.
+
+**Bumping through tabs** never stalls on the browser: it only opens if you stay on its tab for a moment, and presses made while it's closing still count.
 
 **Holding a direction** keeps moving, at the same pace in menus and the browser, whether it's the D-pad, the stick or the keyboard. Pick **Slower**, **Standard** or **Faster** in **Settings › Controller › Repeat speed**.
 
@@ -211,7 +217,7 @@ After the restart the machine signs in to Tessera by itself.
 - Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
 - Full profile switching: each person with their own library and controls.
 - NVIDIA builds: test on real hardware and drop the *experimental* label.
-- Controllers on real hardware: a Switch Pro Controller and Joy-Cons with **Confirm button** set to "A confirms" and with a remap (0.28 fixes them being swapped twice in the launcher's menus), and an Xbox and a PlayStation controller remapped in the browser.
+- Controllers on real hardware: a single Joy-Con held sideways (left and right), a Switch Pro Controller and Joy-Cons with **Confirm button** set to "A confirms" and with a remap (0.28 fixes them being swapped twice in the launcher's menus), and an Xbox and a PlayStation controller remapped in the browser.
 - Wi-Fi: hand the password to NetworkManager without putting it on `nmcli`'s command line, where other accounts on the machine can briefly see it while it joins. Needs a test on real Wi-Fi before it ships.
 
 ## How it's built

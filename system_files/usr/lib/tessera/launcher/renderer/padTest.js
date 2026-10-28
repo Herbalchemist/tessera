@@ -273,6 +273,7 @@ const PAD_LABELS = {
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
   guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
   guideDesktop: { auto: 'On, except while Steam is running', on: 'Always on', off: 'Off' },
+  guideStyle: { side: 'A panel from the side', float: 'A floating card in the middle', compact: 'Compact: a narrow panel, smaller text' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 async function padSet(key, value) {
@@ -335,6 +336,7 @@ async function flowPadMenu() {
     const items = [
       { label: 'Test your controller', sub: 'live buttons, sticks and triggers', op: 'test' },
       { label: 'Guide button', sub: PAD_LABELS.guideButton[prefs.pad.guideButton] || PAD_LABELS.guideButton['menu-home'], op: 'guideButton' },
+      { label: 'Guide style', sub: PAD_LABELS.guideStyle[prefs.pad.guideStyle] || PAD_LABELS.guideStyle.side, op: 'guideStyle' },
       { label: 'Guide on the desktop', sub: PAD_LABELS.guideDesktop[prefs.pad.guideDesktop] || PAD_LABELS.guideDesktop.auto, op: 'guideDesktop' },
       { label: 'Button mapping', sub: calmNote('_controls'), op: 'mapping' },
       { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
@@ -364,6 +366,7 @@ async function flowPadMenu() {
     if (it.op === 'test') await flowPad();
     else if (it.op === 'mapping') await flowControls();
     else if (it.op === 'guideButton') await pickChoice('The Guide button (Xbox, PS or Home button)', 'guideButton');
+    else if (it.op === 'guideStyle') await pickChoice('How the guide looks (notifications sit beside it on the right)', 'guideStyle');
     else if (it.op === 'guideDesktop') await pickChoice('The guide in Desktop Mode (Steam takes the button for itself while it runs)', 'guideDesktop');
     else if (it.op === 'browserCursor') await pickChoice('In the browser, which stick moves the cursor?', 'browserCursor');
     else if (it.op === 'cursorSpeed') await pickNumber('Cursor speed · how fast the browser cursor moves', 'cursorSpeed', 10, 100, 10);

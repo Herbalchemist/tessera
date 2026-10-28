@@ -20,8 +20,13 @@ const GLYPH_SETS = {
   xbox: BUTTON_NAMES,
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
+  // One Joy-Con on its own, held sideways (rail up, stick on the left): its buttons turn with it.
+  // Right Joy-Con: A is now at the bottom, X on the right, B on the left, Y on top.
+  jr: { 0: 'A', 1: 'X', 2: 'B', 3: 'Y', 4: 'SL', 5: 'SR', 6: 'R', 7: 'ZR', 9: '+', 10: 'RS', 16: 'Home' },
+  // Left Joy-Con: its arrow buttons are the face buttons, pointing the way they now face.
+  jl: { 0: '▼', 1: '▶', 2: '◀', 3: '▲', 4: 'SL', 5: 'SR', 6: 'L', 7: 'ZL', 9: '−', 10: 'LS', 16: 'Capture' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', remap: {} };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', guideStyle: 'side', remap: {} };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
@@ -32,10 +37,16 @@ const detectFamily = (id) => IA.familyOf(id);
 // remap from Settings > Button mapping (input-actions.js).
 // (Menus can open while the page is still loading, before input.js has defined activePad.)
 const padInUse = () => (typeof activePad === 'function' ? activePad() : null);
-const padMap = (p = padInUse()) => IA.mapFor(detectFamily(p ? p.id : ''), prefs.pad);
+// A Joy-Con held sideways on its own is its own kind: read by position, as the Switch does, so
+// the Nintendo "A confirms" setting and Nintendo remaps leave it alone.
+const sidewaysKind = (p) => (p && p.tessera && p.info && p.info.sideways ? p.info.kind : '');
+const padFamilyOf = (p) => (sidewaysKind(p) ? 'sideways' : detectFamily(p ? p.id : ''));
+const padMap = (p = padInUse()) => IA.mapFor(padFamilyOf(p), prefs.pad);
 const glyphSet = () => {
   let g = prefs.pad.glyphs;
-  if (g === 'auto') { const p = padInUse(); g = detectFamily(p ? p.id : ''); }
+  const p = padInUse();
+  if (g === 'auto' || g === 'nintendo') { const side = sidewaysKind(p); if (side) return GLYPH_SETS[side]; }
+  if (g === 'auto') g = detectFamily(p ? p.id : '');
   return GLYPH_SETS[g] || BUTTON_NAMES;
 };
 const glyph = (n) => glyphSet()[n];

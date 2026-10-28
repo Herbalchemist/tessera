@@ -65,7 +65,7 @@ const visible = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAl
     await page.waitForTimeout(400);
     let s = await state();
     assert.equal(s.open, true, 'a press opens the guide');
-    assert.equal(s.cls, 'guide');
+    assert.match(s.cls, /\bguide\b/);
     for (const want of ['Home', 'Settings', 'Profiles', 'Power', 'Sleep', 'Restart', 'Shut down', 'Desktop Mode']) assert.ok(s.labels.includes(want), 'guide has ' + want + ': ' + s.labels);
     await page.screenshot({ path: path.join(output, 'guide-launcher.png') });
     await page.evaluate(() => onButton(1));
