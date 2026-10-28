@@ -278,6 +278,19 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.evaluate(() => padSet('guideStyle', 'side'));
     checks.push('Guide style: side panel, floating card or compact, each with its own notifications (side panel, tucked card, inline strip)');
 
+    // On-screen keyboard size: docked (default) or wide.
+    const kbClass = async () => { page.evaluate(() => { ask('QA', ''); }); await page.waitForFunction(() => modal && modal.kind === 'keys'); const c = await page.evaluate(() => document.getElementById('modal').className); await page.evaluate(() => finishKeys(false)); return c; };
+    assert.doesNotMatch(await kbClass(), /osk-wide/);
+    await page.evaluate(() => padSet('oskSize', 'wide'));
+    assert.match(await kbClass(), /osk-wide/);
+    page.evaluate(() => { ask('PIN', '', { digits: true }); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    assert.doesNotMatch(await page.evaluate(() => document.getElementById('modal').className), /osk-wide/, 'the PIN pad keeps its own size');
+    await page.evaluate(() => finishKeys(false));
+    assert.equal((await page.evaluate(() => api.settings('padSet', { key: 'oskSize', value: 'huge' }))).ok, false);
+    await page.evaluate(() => padSet('oskSize', 'dock'));
+    checks.push('On-screen keyboard: docked or wide (saved, validated; the PIN pad keeps its size)');
+
     // Bumping past the browser tab doesn't open it; pausing on it does; presses while it closes are kept.
     await page.evaluate(() => { page = 'home'; hoverId = 'home'; focus = 'tabs'; render(); window.__qaOpens = 0; const real = api.browser; api.browser = (op, ...r) => { if (op === 'open') window.__qaOpens++; return real(op, ...r); }; });
     const order = await page.evaluate(() => tabList());

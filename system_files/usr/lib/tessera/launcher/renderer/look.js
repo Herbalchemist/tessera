@@ -26,7 +26,7 @@ const GLYPH_SETS = {
   // Left Joy-Con: its arrow buttons are the face buttons, pointing the way they now face.
   jl: { 0: '▼', 1: '▶', 2: '◀', 3: '▲', 4: 'SL', 5: 'SR', 6: 'L', 7: 'ZL', 9: '−', 10: 'LS', 16: 'Capture' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', guideStyle: 'side', remap: {} };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', guideStyle: 'side', oskSize: 'dock', remap: {} };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).

@@ -231,32 +231,51 @@ async function closeBrowser(dir = -1) {
     setTimeout(drainTabQueue, 0);
   }
 }
-// ---- the address bubble: pulled down out of the address pill in the frame (or out of the top
-// edge, full screen) on a stretchy neck, with the keyboard docked below. It goes back up when done.
+// ---- the address bubble. While you browse, the address is the small pill in the frame's top bar.
+// Y pulls that pill down out of the bar (a stretchy neck stays joined to the slot it came from),
+// then it swells into a big bubble for editing, with the keyboard docked below. Done, it shrinks
+// back and docks in its slot. Full screen, a small pill comes down from the top edge instead.
 function urlBubble() {
   let b = document.getElementById('url-bubble');
   if (!b) {
     b = document.createElement('div');
     b.id = 'url-bubble';
+    b.hidden = true;
     b.innerHTML =
-      '<div class="ub-drop">' +
-        '<svg class="ub-neck" viewBox="0 0 160 30" preserveAspectRatio="none" aria-hidden="true"><path class="skin" d="M52 0 H108 C108 16 128 30 160 30 V33 H0 V30 C32 30 52 16 52 0 Z"/>' +
-          '<path class="edge" d="M52 0 C52 16 32 30 0 30 M108 0 C108 16 128 30 160 30"/></svg>' +
-        '<div class="ub-body">' +
+      '<svg class="ub-neck" viewBox="0 0 160 30" preserveAspectRatio="none" aria-hidden="true"><path class="skin" d="M52 0 H108 C108 16 128 30 160 30 V33 H0 V30 C32 30 52 16 52 0 Z"/>' +
+        '<path class="edge" d="M52 0 C52 16 32 30 0 30 M108 0 C108 16 128 30 160 30"/></svg>' +
+      '<div class="ub-body">' +
+        '<div class="ub-mini"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/></svg><span></span></div>' +
+        '<div class="ub-row">' +
           '<svg class="ub-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
           '<div class="ub-field"><span class="ub-text"></span><span class="caret"></span><span class="ub-ph">Search, or type a web address</span></div>' +
         '</div>' +
-        '<div class="ub-sub"></div>' +
-      '</div>';
+      '</div>' +
+      '<div class="ub-sub"></div>';
     document.body.appendChild(b);
   }
-  // Where it comes out of: under the address pill, or the top of the screen.
-  const pill = browserFramed() && document.querySelector('#browser-frame:not([hidden]) .bf-addr');
-  const r = pill ? pill.getBoundingClientRect() : null;
-  b.style.top = (r ? Math.round(r.bottom) : 0) + 'px';
-  b.classList.toggle('from-pill', Boolean(r));
   return b;
 }
+const motionOn = () => { const s = prefs.theme && prefs.theme.settings.find((x) => x.id === 'motion'); return !(s && s.value === false); };
+// Where the pill is, the bar edge it's pulled across, the moment just after it clears that edge, and
+// where the big bubble ends up.
+function bubbleGeometry() {
+  const pillEl = browserFramed() ? document.querySelector('#browser-frame:not([hidden]) .bf-addr') : null;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const r = pillEl ? pillEl.getBoundingClientRect() : { left: W / 2 - 160, top: -46, width: 320, height: 40, bottom: -6 };
+  const edge = pillEl ? document.querySelector('#browser-frame .bf-top').getBoundingClientRect().bottom : 0;
+  const pill = { left: r.left, top: r.top, width: r.width, height: r.height };
+  const cx = r.left + r.width / 2;
+  const midW = r.width * 0.9;
+  const midH = r.height * 1.12;
+  const mid = { left: cx - midW / 2, top: edge + 6, width: midW, height: midH };
+  const fw = Math.min(820, W * 0.72);
+  const fh = Math.round(Math.max(64, Math.min(86, H * 0.105)));
+  const big = { left: (W - fw) / 2, top: edge + Math.max(26, H * 0.045), width: fw, height: fh };
+  return { pillEl, pill, mid, big, anchor: Math.max(0, r.bottom), cx };
+}
+const px = (g, extra = {}) => ({ left: g.left + 'px', top: g.top + 'px', width: g.width + 'px', height: g.height + 'px', ...extra });
 function paintUrlBubble(text, fresh) {
   const b = document.getElementById('url-bubble');
   if (!b) return;
@@ -269,18 +288,72 @@ function paintUrlBubble(text, fresh) {
   b.querySelector('.ub-sub').textContent = fresh ? 'Type to replace it' : where;
 }
 function pullUrlBubble(b) {
-  b.classList.remove('retract');
+  const g = bubbleGeometry();
+  b._geo = g;
+  const body = b.querySelector('.ub-body');
+  const neck = b.querySelector('.ub-neck');
+  const sub = b.querySelector('.ub-sub');
+  const mini = b.querySelector('.ub-mini');
+  const row = b.querySelector('.ub-row');
+  // The bubble starts as the pill: same words, same lock.
+  if (g.pillEl) {
+    mini.querySelector('span').textContent = g.pillEl.querySelector('.bf-host').textContent;
+    mini.classList.toggle('secure', g.pillEl.classList.contains('secure'));
+    g.pillEl.classList.add('pulled'); // an empty slot stays in the bar
+  } else mini.querySelector('span').textContent = '';
+  for (const a of b.getAnimations({ subtree: true })) a.cancel();
+  b.classList.remove('back');
   b.hidden = false;
-  void b.offsetWidth; // start the pull from the top every time
-  b.classList.add('out');
-  document.querySelector('#browser-frame .bf-addr')?.classList.add('pulling');
+  Object.assign(body.style, px(g.big, { borderRadius: '30px' }));
+  Object.assign(neck.style, { left: g.cx - 100 + 'px', top: g.anchor - 1 + 'px', height: g.big.top - g.anchor + 3 + 'px' });
+  Object.assign(sub.style, { left: g.big.left + 30 + 'px', top: g.big.top + g.big.height + 10 + 'px' });
+  if (!motionOn()) { mini.style.opacity = 0; row.style.opacity = 1; return Promise.resolve(); }
+  const T = 620;
+  const pullEase = 'cubic-bezier(.55,0,.8,.45)'; // tugged out of the slot
+  const growEase = 'cubic-bezier(.2,1.25,.4,1)'; // then it swells, overshooting a touch
+  const runs = [
+    body.animate([
+      { ...px(g.pill), borderRadius: g.pill.height / 2 + 'px', offset: 0, easing: pullEase },
+      { ...px(g.mid), borderRadius: g.mid.height / 2 + 'px', offset: 0.34, easing: growEase },
+      { ...px(g.big), borderRadius: '30px', offset: 1 },
+    ], { duration: T }),
+    neck.animate([
+      { height: '0px', opacity: 0, offset: 0, easing: pullEase },
+      { height: Math.max(0, g.mid.top - g.anchor) * 0.5 + 'px', opacity: 0, offset: 0.2 },
+      { height: Math.max(0, g.mid.top - g.anchor) + 3 + 'px', opacity: 1, offset: 0.34, easing: growEase },
+      { height: g.big.top - g.anchor + 3 + 'px', opacity: 1, offset: 1 },
+    ], { duration: T }),
+    // the small address goes before the full one appears: never both at once
+    mini.animate([{ opacity: 1 }, { opacity: 1, offset: 0.3 }, { opacity: 0, offset: 0.42 }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
+    row.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.8 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
+    sub.animate([{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
+  ];
+  return Promise.all(runs.map((a) => a.finished.catch(() => {})));
 }
-function retractUrlBubble(b) {
-  document.querySelector('#browser-frame .bf-addr')?.classList.remove('pulling');
-  if (!b || b.hidden) return Promise.resolve();
-  b.classList.remove('out');
-  b.classList.add('retract');
-  return new Promise((done) => setTimeout(() => { b.hidden = true; b.classList.remove('retract'); done(); }, 230 * (prefs.theme && prefs.theme.settings.find((x) => x.id === 'motion' && x.value === false) ? 0 : 1)));
+async function retractUrlBubble(b) {
+  if (!b || b.hidden) return;
+  const g = b._geo || bubbleGeometry();
+  const body = b.querySelector('.ub-body');
+  const neck = b.querySelector('.ub-neck');
+  if (motionOn()) {
+    for (const a of b.getAnimations({ subtree: true })) a.cancel();
+    const T = 380;
+    const runs = [
+      body.animate([
+        { ...px(g.big), borderRadius: '30px', easing: 'cubic-bezier(.5,0,.75,.3)' },
+        { ...px(g.mid), borderRadius: g.mid.height / 2 + 'px', offset: 0.62, easing: 'cubic-bezier(.3,.7,.4,1)' },
+        { ...px(g.pill), borderRadius: g.pill.height / 2 + 'px' },
+      ], { duration: T, fill: 'forwards' }),
+      neck.animate([{ height: g.big.top - g.anchor + 3 + 'px', opacity: 1 }, { height: Math.max(0, g.mid.top - g.anchor) + 3 + 'px', opacity: 1, offset: 0.62 }, { height: '0px', opacity: 0, offset: 0.85 }, { height: '0px', opacity: 0 }], { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-row').animate([{ opacity: 1 }, { opacity: 0, offset: 0.3 }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-mini').animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1, offset: 0.75 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-sub').animate([{ opacity: 1 }, { opacity: 0, offset: 0.2 }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
+    ];
+    await Promise.all(runs.map((a) => a.finished.catch(() => {})));
+  }
+  b.hidden = true;
+  for (const a of b.getAnimations({ subtree: true })) a.cancel();
+  if (g.pillEl) g.pillEl.classList.remove('pulled'); // docked back in its slot
 }
 async function openUrlBar() {
   if (!browserOpen || modal || urlBarOpening || browserMoving) return;
@@ -299,7 +372,7 @@ async function openUrlBar() {
     await api.browser('hide');
     bubble = urlBubble();
     paintUrlBubble(browserUrl, true);
-    pullUrlBubble(bubble);
+    pullUrlBubble(bubble); // the keyboard rises while it comes out
     const v = await ask('Go to', browserUrl, { max: 300, url: true, selectAll: true, cls: 'url', doneLabel: 'Go', onText: paintUrlBubble });
     await retractUrlBubble(bubble);
     const u = v === null ? null : normalizeUrl(v);

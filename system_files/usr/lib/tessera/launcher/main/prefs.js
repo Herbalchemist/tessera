@@ -49,6 +49,7 @@ const PAD_DEFAULTS = {
   guideButton: 'menu-home',
   guideDesktop: 'auto', // the guide in Desktop Mode: 'auto' (not while Steam runs), 'on', 'off'
   guideStyle: 'side', // how the guide looks: a panel from the side, a floating card, or compact
+  oskSize: 'dock', // the on-screen keyboard: a docked panel in the middle, or wide (bigger keys, the whole width)
 };
 const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
@@ -61,6 +62,7 @@ const PAD_CHOICES = {
   guideButton: ['menu-home', 'home-menu', 'menu'],
   guideDesktop: ['auto', 'on', 'off'],
   guideStyle: ['side', 'float', 'compact'],
+  oskSize: ['dock', 'wide'],
 };
 const PAD_RANGES = { deadzone: [0, 40], trigger: [0, 50], cursorSpeed: [10, 100], scrollSpeed: [10, 100] };
 // Keyboard & mouse. Bindings are KeyboardEvent.code lists per action (see keyboard-map.js).

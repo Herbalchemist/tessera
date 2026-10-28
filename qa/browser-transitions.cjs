@@ -129,11 +129,21 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     checks.push('Framed: the page sits in a themed frame (exactly in its opening), which shows its title and address');
 
     // The address bubble: out of the pill, the address selected; typing replaces it; Go goes.
+    await page.evaluate(() => { const orig = Element.prototype.animate; window.__qaFirst = null; Element.prototype.animate = function (k, o) { if (!window.__qaFirst && this.classList.contains('ub-body')) window.__qaFirst = k[0]; return orig.call(this, k, o); }; });
+    const pillRect = await page.evaluate(() => { const r = document.querySelector('.bf-addr').getBoundingClientRect(); return { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px' }; });
     const going = page.evaluate(() => openUrlBar());
     await page.waitForFunction(() => modal && modal.kind === 'keys');
     await page.waitForTimeout(500);
-    const bub = await page.evaluate(() => { const b = document.getElementById('url-bubble'); const t = b.querySelector('.ub-text'); return { out: !b.hidden && b.classList.contains('out'), fromPill: b.classList.contains('from-pill'), sel: t.classList.contains('sel'), text: t.textContent, pulling: document.querySelector('.bf-addr').classList.contains('pulling'), go: [...document.querySelectorAll('#modal .key.done')].map((k) => k.textContent)[0] }; });
-    assert.deepEqual(bub, { out: true, fromPill: true, sel: true, text: url, pulling: true, go: 'Go' });
+    const bub = await page.evaluate(() => {
+      const b = document.getElementById('url-bubble');
+      const t = b.querySelector('.ub-text');
+      const pill = document.querySelector('.bf-addr');
+      const body = b.querySelector('.ub-body').getBoundingClientRect();
+      return { shown: !b.hidden, sel: t.classList.contains('sel'), text: t.textContent, slot: pill.classList.contains('pulled'), below: body.top > document.querySelector('.bf-top').getBoundingClientRect().bottom, bigger: body.width > pill.getBoundingClientRect().width, go: [...document.querySelectorAll('#modal .key.done')].map((k) => k.textContent)[0] };
+    });
+    assert.deepEqual(bub, { shown: true, sel: true, text: url, slot: true, below: true, bigger: true, go: 'Go' });
+    const first = await page.evaluate(() => window.__qaFirst);
+    assert.deepEqual({ left: first.left, top: first.top, width: first.width }, pillRect, 'the bubble starts as the pill itself');
     shot('browser-address-bubble.png');
     await page.evaluate((u) => { for (const ch of u + 'two') typeChar(ch); }, url);
     assert.equal(await page.evaluate(() => document.querySelector('#url-bubble .ub-text').textContent), url + 'two', 'the first key replaced the selected address');
@@ -142,8 +152,9 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     await page.waitForTimeout(600);
     assert.equal(await page.evaluate(() => browserUrl), url + 'two');
     assert.equal(await page.evaluate(() => document.getElementById('url-bubble').hidden), true, 'the bubble went back up');
+    assert.equal(await page.evaluate(() => document.querySelector('.bf-addr').classList.contains('pulled')), false, 'and docked in its slot again');
     assert.deepEqual(await state(), { open: true, moving: false, curtain: true });
-    checks.push('Address bubble: pulled out of the pill with the address selected; typing replaces it; Go opens it and the bubble goes back');
+    checks.push('Address bubble: the pill itself is pulled out of the bar (its slot left empty) and grows; typing replaces the selected address; Go opens it and it docks back');
 
     // Full screen (Theme Settings › Browser frame): the page gets the whole window again.
     await page.evaluate(() => closeBrowser(-1));
