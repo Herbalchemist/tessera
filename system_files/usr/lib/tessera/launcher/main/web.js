@@ -32,6 +32,7 @@ const browserNavigation = require('../browser-navigation');
 const config = require('./config');
 const library = require('./library');
 const prefs = require('./prefs');
+const inputActions = require('../input-actions');
 const calibration = require('./calibration');
 const appWindow = require('./appWindow');
 const system = require('./system');
@@ -147,7 +148,7 @@ function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null,
       const entry = { eventName, devicePath, jsProc: null, eventProc: null, mapper: null };
       const hasRightStick = axisCodes.includes(0x03) && axisCodes.includes(0x04);
       const analog = onAnalog ? (name, value) => onAnalog(jsName, name, value) : null;
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick });
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick, ...inputActions.repeatTiming(prefs.settings.pad.repeat, 'browser') });
       entry.mapper = mapper;
       const startReader = (node, eventSize, consume) => {
         const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
@@ -319,9 +320,12 @@ function browserNavigationKey(key) {
   else if (system.browserShoulder) sendExternalBrowserKey(key);
 }
 function browserPadDirectionRepeater(id) {
+  const speed = prefs.settings.pad.repeat;
   let navigation = system.browserPadNavigation.get(id);
+  if (navigation && navigation.speed !== speed) { navigation.dispose(); navigation = null; } // Repeat speed changed
   if (!navigation) {
-    navigation = browserGamepad.createDirectionRepeater({ onAction: browserNavigationKey });
+    navigation = browserGamepad.createDirectionRepeater({ onAction: browserNavigationKey, ...inputActions.repeatTiming(speed, 'browser') });
+    navigation.speed = speed;
     system.browserPadNavigation.set(id, navigation);
   }
   return navigation;

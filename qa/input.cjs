@@ -94,6 +94,50 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     assert.deepEqual(await hints(), ['A', 'B', 'Y']);
     checks.push('The Nintendo setting leaves Xbox controllers as they are');
 
+    // Every menu shows what it takes, under it, named for what's in use.
+    const menuHints = async (extra) => {
+      await page.evaluate((extra) => { pick('Hints menu', [{ label: 'One' }, { label: 'Two' }], 0, extra ? { onY: () => {}, yLabel: 'Rename' } : {}); }, extra);
+      await page.waitForFunction(() => modal && modal.title === 'Hints menu');
+      const t = await page.evaluate(() => [...document.querySelectorAll('#modal .mhints span')].map((s) => s.textContent));
+      await page.evaluate(() => closeModal());
+      return t;
+    };
+    await page.evaluate(() => setInputMode('pad'));
+    assert.deepEqual(await menuHints(true), ['ASelect', 'BBack', 'YRename']);
+    assert.deepEqual(await menuHints(false), ['ASelect', 'BBack']);
+    await page.evaluate(() => setInputMode('keyboard'));
+    assert.deepEqual(await menuHints(true), ['EnterSelect', 'EscBack', 'YRename']);
+    await page.evaluate(() => setInputMode('pad'));
+    await usePad(NINTENDO);
+    await page.waitForTimeout(200);
+    assert.deepEqual(await menuHints(true), ['ASelect', 'BBack', 'YRename'], 'Nintendo with A confirms: A selects, B goes back, Y does Y');
+    await setConfirm('position');
+    assert.deepEqual(await menuHints(false), ['BSelect', 'ABack'], 'Nintendo by position: the bottom button (B) selects');
+    await setConfirm('label');
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+    checks.push('Every menu shows its own hints (Select, Back, and its Y action) for the controller, keyboard or Nintendo setting in use');
+
+    // Holding a direction: one repeater, at the speed chosen; a new direction moves at once.
+    const held = async (ms) => {
+      await page.evaluate(() => { window.__qaHold = null; pick('Long menu', Array.from({ length: 40 }, (_, i) => ({ label: 'Row ' + i }))); });
+      await page.waitForFunction(() => modal && modal.title === 'Long menu');
+      await page.evaluate(() => { __qaPad.buttons[13] = { pressed: true, touched: true, value: 1 }; });
+      await page.waitForTimeout(ms);
+      await page.evaluate(() => { __qaPad.buttons[13] = { pressed: false, touched: false, value: 0 }; });
+      await page.waitForTimeout(150);
+      const moved = await page.evaluate(() => modal.index);
+      await page.evaluate(() => closeModal());
+      return moved;
+    };
+    const std = await held(1300);
+    assert.ok(std >= 4 && std <= 8, `standard: a step every 200 ms (moved ${std} in 1.3 s)`);
+    await page.evaluate(() => padSet('repeat', 'fast'));
+    const fast = await held(1300);
+    assert.ok(fast > std, `faster is faster (${fast} > ${std})`);
+    await page.evaluate(() => padSet('repeat', 'standard'));
+    checks.push(`Holding down repeats at the chosen speed (standard ${std}, faster ${fast} rows in 1.3 s)`);
+
     // The setting is kept, and Settings shows it.
     const saved = JSON.parse(fs.readFileSync(path.join(temp, 'data', 'settings.json'), 'utf8'));
     assert.equal(saved.pad.confirm, 'label');

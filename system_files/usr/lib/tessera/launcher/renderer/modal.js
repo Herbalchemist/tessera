@@ -27,11 +27,11 @@ function visibleFlags(items) {
   });
 }
 const pickable = (items, flags, i) => Boolean(items[i]) && flags[i] && !(items[i].header && !items[i].fold);
-function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, body = '', welcome = false, cls = '', onRender = null }) {
+function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, yLabel = '', body = '', welcome = false, cls = '', onRender = null }) {
   // Never start on a label or on something folded away.
   const flags = visibleFlags(items);
   for (let i = index; i < items.length; i++) if (pickable(items, flags, i)) { index = i; break; }
-  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, body, welcome, cls, onRender };
+  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, yLabel, body, welcome, cls, onRender };
   renderModal();
 }
 // Resolves with the chosen item, or null if the user backs out.
@@ -288,6 +288,30 @@ function updateKeys() {
     (modal.last === null ? '' : `      (last button: ${modal.last})`);
 }
 
+// What a menu takes, shown under it. Built from the menu itself (its selected row, whether it has
+// a Y action), so the hints are always right for this menu, on any controller, keyboard or mouse.
+function listHints(m) {
+  if (m.welcome || !m.items.length) return null;
+  const cur = m.items[m.index];
+  const hints = [];
+  if (cur && cur.adjust) hints.push({ text: '← / →', label: 'Adjust' });
+  if (cur && cur.header && cur.fold) hints.push({ g: '0', label: isOpen(cur) ? 'Close' : 'Open' });
+  else if (cur && !cur.header && !cur.info) hints.push({ g: '0', label: m.multi && 'checked' in cur ? 'Tick' : 'Select' });
+  hints.push({ g: '1', label: 'Back' });
+  if (m.onY) hints.push({ g: '3', label: m.yLabel || 'More' });
+  const row = document.createElement('div');
+  row.className = 'mhints';
+  for (const h of hints) {
+    const span = document.createElement('span');
+    const b = document.createElement('b');
+    if (h.g) b.dataset.g = h.g;
+    b.textContent = h.text || '';
+    span.append(b, h.label);
+    row.appendChild(span);
+  }
+  return row;
+}
+
 function renderModal() {
   if (!modal) return;
   if (modal.kind === 'tour') return renderTour();
@@ -360,7 +384,10 @@ function renderModal() {
     list.appendChild(e);
   }
   box.appendChild(list);
+  const hintRow = listHints(modal);
+  if (hintRow) box.appendChild(hintRow);
   modalEl.appendChild(box);
+  if (hintRow) applyGlyphs(); // names the buttons for what is in use: controller, keyboard or mouse
   const active = list.querySelector('.mitem.active');
   if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
   if (modal.onRender) modal.onRender(box);

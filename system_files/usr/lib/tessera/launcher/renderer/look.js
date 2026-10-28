@@ -21,7 +21,7 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
@@ -29,10 +29,12 @@ let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme
 const IA = window.TesseraInputActions;
 const detectFamily = (id) => IA.familyOf(id);
 // Whether the controller in use trades its face buttons (Nintendo, with "A confirms" chosen).
-const padSwap = (p = activePad()) => IA.swaps(detectFamily(p ? p.id : ''), prefs.pad.confirm);
+// (Menus can open while the page is still loading, before input.js has defined activePad.)
+const padInUse = () => (typeof activePad === 'function' ? activePad() : null);
+const padSwap = (p = padInUse()) => IA.swaps(detectFamily(p ? p.id : ''), prefs.pad.confirm);
 const glyphSet = () => {
   let g = prefs.pad.glyphs;
-  if (g === 'auto') { const p = activePad(); g = detectFamily(p ? p.id : ''); }
+  if (g === 'auto') { const p = padInUse(); g = detectFamily(p ? p.id : ''); }
   return GLYPH_SETS[g] || BUTTON_NAMES;
 };
 const glyph = (n) => glyphSet()[n];

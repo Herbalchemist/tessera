@@ -42,6 +42,7 @@ const PAD_DEFAULTS = {
   // Which face button confirms: 'position' (the bottom one, on every controller) or 'label'
   // (Nintendo controllers follow their printed A/B/X/Y). See input-actions.js.
   confirm: 'position',
+  repeat: 'standard', // how fast a held direction repeats, in the launcher and the browser (input-actions.js)
   // The browser pointer: which stick moves the cursor (the other one scrolls), and how fast.
   browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,
   // The Guide button: what a quick press and a long hold do (see guide-button.js).
@@ -54,6 +55,7 @@ const PAD_CHOICES = {
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
   joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
   confirm: inputActions.CONFIRM_CHOICES,
+  repeat: inputActions.REPEAT_CHOICES,
   browserCursor: ['right', 'left'],
   guideButton: ['menu-home', 'home-menu', 'menu'],
   guideDesktop: ['auto', 'on', 'off'],

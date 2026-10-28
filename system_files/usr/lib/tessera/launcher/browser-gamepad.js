@@ -90,72 +90,9 @@ function axisCodesFromSysfs(hex) {
   return codes;
 }
 
-// Keep keyboard-like navigation moving while a direction is held. Linux gamepad
-// devices do not reliably generate EV_KEY repeats, and sticks report only when
-// their position changes. The most recently engaged input wins; releasing it
-// resumes an older held direction, which makes D-pad/stick handoffs predictable.
-function createDirectionRepeater({
-  onAction = () => {},
-  initialDelay = 350,
-  repeatInterval = 90,
-  setTimeoutFn = setTimeout,
-  clearTimeoutFn = clearTimeout,
-} = {}) {
-  const held = new Map();
-  let sequence = 0;
-  let active = '';
-  let timer = null;
-  let disposed = false;
-
-  const stopTimer = () => {
-    if (timer !== null) clearTimeoutFn(timer);
-    timer = null;
-  };
-  const current = () => {
-    let winner = null;
-    for (const entry of held.values()) {
-      if (!winner || entry.order > winner.order) winner = entry;
-    }
-    return winner ? winner.key : '';
-  };
-  const schedule = (delay) => {
-    if (!active || disposed) return;
-    timer = setTimeoutFn(() => {
-      timer = null;
-      if (!active || disposed) return;
-      onAction(active);
-      schedule(repeatInterval);
-    }, delay);
-    // Unref normal timers so a disconnected controller cannot keep the launcher alive.
-    if (timer && typeof timer.unref === 'function') timer.unref();
-  };
-  const update = (source, key) => {
-    if (disposed || typeof source !== 'string' || !source) return;
-    const old = held.get(source);
-    if (key) {
-      if (old && old.key === key) return;
-      held.set(source, { key, order: ++sequence });
-    } else if (!old) {
-      return;
-    } else {
-      held.delete(source);
-    }
-    const next = current();
-    if (next === active) return;
-    stopTimer();
-    active = next;
-    if (active) {
-      onAction(active);
-      schedule(initialDelay);
-    }
-  };
-
-  return {
-    set: update,
-    clear() { held.clear(); active = ''; stopTimer(); },
-    dispose() { disposed = true; held.clear(); active = ''; stopTimer(); },
-  };
-}
+// The direction repeater is the one input system's (input-actions.js): one hold-to-repeat for the
+// launcher and the browser.
+const { createDirectionRepeater } = require('./input-actions');
 
 function createMapper({
   onShoulder,

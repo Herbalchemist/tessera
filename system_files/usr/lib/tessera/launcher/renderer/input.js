@@ -270,8 +270,30 @@ function activePad() {
   return pads.find((p) => padIdent(p) === currentPad) || pads.find((p) => p.mapping === 'standard') || pads[0] || null;
 }
 
+// Holding a direction: one repeater for the launcher and the browser (input-actions.js), at the
+// speed chosen in Settings > Controller > Repeat speed. A new direction moves at once.
+let padNav = null;
+let padNavSpeed = null;
+let navQuietUntil = 0; // just back from the browser: a stick still held there doesn't move the launcher at once
+function navRepeater() {
+  const speed = prefs.pad.repeat || 'standard';
+  if (padNav && padNavSpeed === speed) return padNav;
+  if (padNav) padNav.dispose();
+  padNavSpeed = speed;
+  padNav = IA.createDirectionRepeater({
+    ...IA.repeatTiming(speed, 'launcher'),
+    onAction: (dir) => {
+      if (suspended || busy || browserOpen || performance.now() < navQuietUntil) return;
+      if (!(modal && modal.kind === 'capture')) press(dir);
+    },
+  });
+  return padNav;
+}
+
 function loop(now) {
   const pad = suspended ? null : choosePad();
+  const nav = navRepeater();
+  if (!pad || suspended) nav.set('pad', '');
   if (pad && mouseShown && padBusy(pad)) hideMouse();
   if (pad) {
     // A fresh press or push on the controller makes the hints show its buttons again. Only a
@@ -286,7 +308,8 @@ function loop(now) {
     // or replay a held button when the address keyboard opens.
     const swap = padSwap(pad);
     for (let n = 0; n < prevBtn.length; n++) { const k = IA.physicalFor(n, swap); prevBtn[n] = Boolean(pad.buttons[k] && pad.buttons[k].pressed); }
-    lastNav = now;
+    nav.set('pad', '');
+    navQuietUntil = now + IA.repeatTiming(prefs.pad.repeat, 'launcher').initialDelay;
   } else if (pad) {
     if (pad.id !== lastPadId) {
       lastPadId = pad.id;
@@ -307,14 +330,14 @@ function loop(now) {
 
     if (patternActive()) {
       // PIN pattern: the D-pad types digits like any other button, and nothing navigates.
+      nav.set('pad', '');
       for (let n = 12; n <= 15; n++) {
         const d = b(n);
         if (d && !prevBtn[n]) onButton(n);
         prevBtn[n] = d;
       }
-    } else if ((left || right || up || down) && now - lastNav > NAV_REPEAT_MS) {
-      if (!(modal && modal.kind === 'capture')) press(left ? 'left' : right ? 'right' : up ? 'up' : 'down');
-      lastNav = now;
+    } else {
+      nav.set('pad', left ? 'left' : right ? 'right' : up ? 'up' : down ? 'down' : '');
     }
     // Every button fires once per press (and once on release).
     const count = Math.min(pad.buttons.length, prevBtn.length);
