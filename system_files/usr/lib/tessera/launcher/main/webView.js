@@ -7,6 +7,7 @@ module.exports = {
   get browserView() { return browserView; },
   get browserViewAttached() { return browserViewAttached; },
   get fitBrowserView() { return fitBrowserView; },
+  get browserViewBounds() { return browserViewBounds; },
 };
 
 const fs = require('fs');
@@ -18,6 +19,7 @@ const addons = require('./addons');
 const prefs = require('./prefs');
 const pinLock = require('./pinLock');
 const web = require('./web');
+const appWindow = require('./appWindow');
 const guide = require('./guide');
 
 // ------------------------------------------------------------- embedded browser view
@@ -82,6 +84,20 @@ function ensureBrowserView() {
       web.sendBrowserAction(input.key === 'ArrowLeft' ? 'lb' : 'rb');
     }
   });
+  // The frame around the page shows its title and address, and a loading line.
+  const sendState = () => {
+    if (!browserView || browserView.webContents.isDestroyed()) return;
+    const wc = browserView.webContents;
+    let url = '';
+    try { url = wc.getURL(); } catch { /* closing */ }
+    appWindow.send('browser-state', {
+      url: String(url).slice(0, 2000),
+      title: String(wc.getTitle() || '').slice(0, 200),
+      loading: wc.isLoading(),
+      canGoBack: Boolean(wc.navigationHistory && wc.navigationHistory.canGoBack()),
+    });
+  };
+  for (const ev of ['did-start-loading', 'did-stop-loading', 'page-title-updated', 'did-navigate', 'did-navigate-in-page']) browserView.webContents.on(ev, sendState);
   browserView.webContents.on('did-finish-load', () => {
     if (browserViewAttached && !browserView.webContents.isDestroyed()) {
       try { browserView.webContents.focus(); } catch { /* browser closed while loading */ }
@@ -107,10 +123,29 @@ function detachBrowserView() {
   browserViewAttached = false;
   try { config.mainWindow.focus(); } catch { /* window is closing */ }
 }
+// Where the page sits: the whole window, or the opening of Tessera's frame around it (the launcher
+// measures the frame and sends it, in window pixels). Kept inside the window, and never tiny.
+let frameRect = null;
+function browserViewBounds() {
+  const win = config.mainWindow && !config.mainWindow.isDestroyed() ? config.mainWindow.getContentBounds() : { width: 1280, height: 720 };
+  const full = { x: 0, y: 0, width: win.width, height: win.height };
+  const r = frameRect;
+  if (!r) return full;
+  const x = Math.max(0, Math.min(r.x, win.width - 200));
+  const y = Math.max(0, Math.min(r.y, win.height - 150));
+  const width = Math.max(200, Math.min(r.width, win.width - x));
+  const height = Math.max(150, Math.min(r.height, win.height - y));
+  return { x, y, width, height };
+}
 function fitBrowserView() {
   if (!browserView || !config.mainWindow || config.mainWindow.isDestroyed()) return;
-  const { width, height } = config.mainWindow.getContentBounds();
-  browserView.setBounds({ x: 0, y: 0, width, height });
+  browserView.setBounds(browserViewBounds());
+}
+function cleanRect(r) {
+  if (!r || typeof r !== 'object') return null;
+  const n = (v) => (Number.isFinite(v) ? Math.round(v) : NaN);
+  const out = { x: n(r.x), y: n(r.y), width: n(r.width), height: n(r.height) };
+  return Object.values(out).every((v) => Number.isFinite(v) && v >= 0 && v <= 20000) ? out : null;
 }
 // The renderer provides the interactive PIN prompt, but the privileged navigation
 // entry point verifies it too so a compromised renderer cannot bypass browser policy.
@@ -145,6 +180,12 @@ ipcMain.handle('browser', async (event, op, payload) => {
     } catch {
       return { ok: false };
     }
+  }
+  // The launcher's frame around the page: { rect } (window pixels) or { rect: null } for full screen.
+  if (op === 'frame') {
+    frameRect = payload && payload.rect ? cleanRect(payload.rect) : null;
+    if (browserView && browserViewAttached) fitBrowserView();
+    return { ok: true, bounds: browserViewBounds() };
   }
   if (op === 'hide') {
     detachBrowserView();

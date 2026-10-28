@@ -260,8 +260,23 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.screenshot({ path: path.join(output, 'input-guide-float.png') });
     await page.evaluate(() => closeGuide());
     await page.waitForTimeout(300);
+    // Each style places notifications its own way.
+    await page.evaluate(() => { setStatus('QA style note'); });
+    const placement = async (st) => {
+      await page.evaluate((st) => padSet('guideStyle', st), st);
+      await page.evaluate(() => { openGuide(); });
+      await page.waitForFunction(() => modal && modal.title === 'Guide' && document.querySelector('#modal .gnotes'));
+      const where = await page.evaluate(() => { const n = document.querySelector('#modal .gnotes'); return { cls: n.className.replace(/\s*hidden/, ''), inBox: Boolean(n.closest('.box')), beforeList: n.nextElementSibling ? n.nextElementSibling.className : '' }; });
+      await page.evaluate(() => closeGuide());
+      await page.waitForTimeout(300);
+      return where;
+    };
+    assert.deepEqual(await placement('side'), { cls: 'gnotes gn-side', inBox: false, beforeList: '' });
+    assert.deepEqual(await placement('float'), { cls: 'gnotes gn-float', inBox: true, beforeList: '' });
+    assert.deepEqual(await placement('compact'), { cls: 'gnotes gn-compact', inBox: true, beforeList: 'mlist' });
+    await page.evaluate(() => { statusLog.length = 0; });
     await page.evaluate(() => padSet('guideStyle', 'side'));
-    checks.push('Guide style: side panel, floating card or compact');
+    checks.push('Guide style: side panel, floating card or compact, each with its own notifications (side panel, tucked card, inline strip)');
 
     // Bumping past the browser tab doesn't open it; pausing on it does; presses while it closes are kept.
     await page.evaluate(() => { page = 'home'; hoverId = 'home'; focus = 'tabs'; render(); window.__qaOpens = 0; const real = api.browser; api.browser = (op, ...r) => { if (op === 'open') window.__qaOpens++; return real(op, ...r); }; });

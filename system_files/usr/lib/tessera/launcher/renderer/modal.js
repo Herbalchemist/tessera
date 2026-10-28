@@ -95,7 +95,9 @@ const SYM_MAP = [
   '\\|;:\'",.<>'.split(''),
   ['/', '?', '', '', '', '', '', '', '', ''],
 ];
-const SPECIAL = { shift: 'Shift', sym: '#+=', show: 'Show', space: 'Space', back: '⌫', cancel: 'Cancel', done: 'Done' };
+// For web addresses: the usual keys, a row of the pieces addresses are made of, then the actions.
+const KEY_ROWS_URL = [...KEY_ROWS.slice(0, 4), ['www.', '.com', '.org', '.net', '/', ':', '?', '='], ['shift', 'sym', 'space', 'back', 'cancel', 'done']];
+const SPECIAL = { shift: '⇧', sym: '#+=', show: 'Show', space: 'space', back: '⌫', cancel: 'Cancel', done: 'Done' };
 
 // Resolves with the text, or null on cancel.
 const rowsOf = () => modal.rows || KEY_ROWS;
@@ -103,8 +105,11 @@ function ask(title, initial = '', opts = {}) {
   return new Promise((resolve) => {
     modal = {
       kind: 'keys', title, text: initial.slice(0, opts.max || MAX_TEXT), shift: false, sym: false, r: opts.rows ? 0 : 1, c: 0, last: null, resolve, dom: null,
-      rows: opts.rows || (opts.secret ? KEY_ROWS_SECRET : opts.symbols ? KEY_ROWS_SYM : null), mask: Boolean(opts.mask || opts.secret), secret: Boolean(opts.secret),
+      rows: opts.rows || (opts.secret ? KEY_ROWS_SECRET : opts.url ? KEY_ROWS_URL : opts.symbols ? KEY_ROWS_SYM : null), mask: Boolean(opts.mask || opts.secret), secret: Boolean(opts.secret),
       max: opts.max || MAX_TEXT, digits: Boolean(opts.digits), patternWanted: Boolean(opts.pattern), peekUntil: 0,
+      // fresh: the starting text is selected, so the first key typed replaces it (like an address bar)
+      fresh: Boolean(opts.selectAll && initial), doneLabel: opts.doneLabel || '', cls: opts.cls || '', onText: opts.onText || null,
+      placeholder: opts.placeholder || '',
     };
     renderModal();
   });
@@ -115,7 +120,8 @@ function finishKeys(accept) {
   resolve(accept ? text : null);
 }
 function typeChar(ch) {
-  if (modal.text.length >= modal.max) return;
+  if (modal.fresh) { modal.text = ''; modal.fresh = false; }
+  if (modal.text.length + ch.length > modal.max) return;
   if (modal.digits && !/^\d$/.test(ch)) return;
   modal.text += modal.shift ? ch.toUpperCase() : ch;
   modal.shift = false;
@@ -133,7 +139,7 @@ function keyAction(k) {
   else if (k === '') return; // an empty spot on the symbol keys
   else if (k === 'shift') modal.shift = !modal.shift;
   else if (k === 'space') typeChar(' ');
-  else if (k === 'back') modal.text = modal.text.slice(0, -1);
+  else if (k === 'back') { modal.text = modal.fresh ? '' : modal.text.slice(0, -1); modal.fresh = false; }
   else if (k === 'cancel') return finishKeys(false);
   else if (k === 'done') return finishKeys(true);
   else return typeChar(k);
@@ -199,7 +205,7 @@ function keysButton(n) {
 // Built once and then updated in place, so the slide-up only plays on open.
 function buildKeys() {
   modalEl.replaceChildren();
-  modalEl.className = 'keys' + (modal.digits ? ' numeric' : '');
+  modalEl.className = 'keys' + (modal.digits ? ' numeric' : '') + (modal.cls ? ' ' + modal.cls : '');
   const centre = document.createElement('div');
   centre.className = 'kbcenter';
   const h = document.createElement('h3');
@@ -208,7 +214,10 @@ function buildKeys() {
   const text = document.createElement('span');
   const caret = document.createElement('span');
   caret.className = 'caret';
-  field.append(text, caret);
+  const ph = document.createElement('span');
+  ph.className = 'kph';
+  ph.textContent = modal.placeholder;
+  field.append(text, caret, ph);
   centre.append(h, field);
 
   const panel = document.createElement('div');
@@ -222,7 +231,7 @@ function buildKeys() {
       const el = document.createElement('div');
       el.dataset.r = rowsOf().indexOf(row);
       el.dataset.c = c;
-      el.className = 'key' + (SPECIAL[k] ? ' wide' : '') + (k === 'cancel' ? ' cancel' : '') + (k === 'done' ? ' done' : '');
+      el.className = 'key' + (SPECIAL[k] ? ' wide k-' + k : '') + (!SPECIAL[k] && k.length > 1 ? ' chip' : '') + (k === 'cancel' ? ' cancel' : '') + (k === 'done' ? ' done' : '');
       line.appendChild(el);
       return el;
     });
@@ -231,16 +240,31 @@ function buildKeys() {
   });
   const hint = document.createElement('p');
   hint.className = 'khint';
-  panel.append(grid, hint);
+  const grip = document.createElement('i');
+  grip.className = 'kgrip';
+  panel.append(grip, grid, hint);
   modalEl.append(centre, panel);
-  modal.dom = { h, text, cells, hint };
+  modal.dom = { h, text, cells, hint, field };
+}
+// The line under the keyboard: what each button does, as key chips.
+function keysHint(hint, pairs) {
+  hint.replaceChildren(...pairs.map(([key, what]) => {
+    const s = document.createElement('span');
+    const b = document.createElement('b');
+    b.textContent = key;
+    s.append(b, what);
+    return s;
+  }));
 }
 function updateKeys() {
   if (!modal.dom) buildKeys();
-  const { h, text, cells, hint } = modal.dom;
+  const { h, text, cells, hint, field } = modal.dom;
   h.textContent = modal.title;
   const peek = modal.mask && modal.secret && modal.text && performance.now() < modal.peekUntil;
   text.textContent = !modal.mask ? modal.text : peek ? '•'.repeat(modal.text.length - 1) + modal.text.slice(-1) : '•'.repeat(modal.text.length);
+  text.classList.toggle('sel', modal.fresh);
+  field.classList.toggle('empty', !modal.text);
+  if (modal.onText) modal.onText(text.textContent, modal.fresh);
   rowsOf().forEach((row, r) =>
     row.forEach((k, c) => {
       const el = cells[r][c];
@@ -265,29 +289,24 @@ function updateKeys() {
       }
       if (k === 'sym') el.textContent = modal.sym ? 'abc' : SPECIAL.sym;
       else if (k === 'show') el.textContent = modal.mask ? 'Show' : 'Hide';
+      else if (k === 'done' && modal.doneLabel) el.textContent = modal.doneLabel;
       else if (modal.sym && !SPECIAL[k] && SYM_MAP[r]) el.textContent = SYM_MAP[r][c] || '';
       else el.textContent = SPECIAL[k] || (modal.shift ? k.toUpperCase() : k);
     })
   );
   paintSelection();
+  const done = (modal.doneLabel || 'done').toLowerCase();
   if (modal.digits && patternActive()) {
     hint.textContent = 'Press the button shown on each number to type it.';
     return;
   }
   if (hintMode() !== 'pad') {
-    hint.textContent = modal.digits
-      ? 'Type the numbers on your keyboard   Backspace delete   Enter done   Esc cancel'
-      : 'Type on your keyboard   Backspace delete   Enter done   Esc cancel';
-    return;
+    return keysHint(hint, [['Type', modal.digits ? 'the numbers' : 'on your keyboard'], ['Backspace', 'delete'], ['Enter', done], ['Esc', 'cancel']]);
   }
   if (modal.digits) {
-    hint.textContent = `${roleName(0)} press   ${roleName(keymap.back)} delete   ${roleName(keymap.done)} done   ${roleName(keymap.cancel)} cancel`;
-    return;
+    return keysHint(hint, [[roleName(0), 'press'], [roleName(keymap.back), 'delete'], [roleName(keymap.done), done], [roleName(keymap.cancel), 'cancel']]);
   }
-  hint.textContent =
-    `${roleName(0)} type   ${roleName(keymap.back)} delete   ${roleName(keymap.space)} space   ` +
-    `${roleName(keymap.shift)} shift   ${roleName(keymap.done)} done` +
-    (modal.last === null ? '' : `      (last button: ${modal.last})`);
+  keysHint(hint, [[roleName(0), 'type'], [roleName(keymap.back), 'delete'], [roleName(keymap.space), 'space'], [roleName(keymap.shift), 'shift'], [roleName(keymap.done), done], [roleName(keymap.cancel), 'cancel']]);
 }
 
 // What a menu takes, shown under it. Built from the menu itself (its selected row, whether it has
