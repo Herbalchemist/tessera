@@ -156,6 +156,23 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     assert.deepEqual(await state(), { open: true, moving: false, curtain: true });
     checks.push('Address bubble: the pill itself is pulled out of the bar (its slot left empty) and grows; typing replaces the selected address; Go opens it and it docks back');
 
+    // Address bubble style: Detached lets go of the tail once it's open, and reconnects to go home.
+    assert.equal((await page.evaluate(() => launcherAPI.settings('themeSet', { id: 'addressBubble', value: 'loose' }))).ok, false, 'only its three styles');
+    await page.evaluate(async () => { const r = await launcherAPI.settings('themeSet', { id: 'addressBubble', value: 'detached' }); applyTheme(r.theme); });
+    const detaching = page.evaluate(() => openUrlBar());
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    await page.waitForFunction(() => document.getElementById('url-bubble')._detached === true, null, { timeout: 4000 });
+    await page.waitForTimeout(400);
+    const neck = await page.evaluate(() => { const n = document.querySelector('#url-bubble .ub-neck'); const cs = getComputedStyle(n); return { opacity: Number(cs.opacity), height: Math.round(parseFloat(cs.height)) }; });
+    assert.deepEqual(neck, { opacity: 0, height: 0 }, 'the tail has let go');
+    shot('browser-address-detached.png');
+    await page.evaluate(() => finishKeys(false));
+    await detaching;
+    await page.waitForTimeout(400);
+    assert.equal(await page.evaluate(() => document.getElementById('url-bubble').hidden && !document.querySelector('.bf-addr').classList.contains('pulled')), true, 'docked again');
+    await page.evaluate(async () => { const r = await launcherAPI.settings('themeSet', { id: 'addressBubble', value: 'wide' }); applyTheme(r.theme); });
+    checks.push('Address bubble style: wide or narrow neck, or detached (the tail lets go once open and reconnects to dock)');
+
     // Full screen (Theme Settings › Browser frame): the page gets the whole window again.
     await page.evaluate(() => closeBrowser(-1));
     await page.waitForTimeout(700);

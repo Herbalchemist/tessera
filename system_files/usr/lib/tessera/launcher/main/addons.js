@@ -193,7 +193,7 @@ Shell arrangement: "shellLayout" is "classic", "dock", "crossbar", "dashboard", 
 This repositions approved navigation/content regions; it is not a freeform layout editor.
 Home widget coordinates are preserved when switching shell arrangements.
 Backdrop: "backdrop" is "none", "glow", "mystic", "tiles" (the Mosaic tile field), "cubes" or "stripes".
-Browser transition: "browserAnim" is "slide", "zoom", "fade", "rise", "flip", "doors" or "none". Browser frame: "browserFrame" is "framed" or "full".
+Browser transition: "browserAnim" is "slide", "zoom", "fade", "rise", "flip", "doors" or "none". Browser frame: "browserFrame" is "framed" or "full". Address bubble: "addressBubble" is "wide", "narrow" or "detached".
 The full guide, with every setting: docs/theming.md in the Tessera repository (github.com/Herbalchemist/tessera).
 Selector glow: "selColor": "pastel" gives the glow around the selected tile, tab, menu row
 or key a new random pastel every time the selector moves (fills keep their own colors;
