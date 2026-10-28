@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.25.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.26.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -61,6 +61,8 @@ Every keyboard action can be rebound in **Settings › Keyboard & mouse**. Bindi
 - **TV remote / media keys**: OK, Back, Home and the channel keys.
 
 You can also keep the hints on controller buttons, or hide the pointer sooner or never.
+
+**Nintendo controllers:** by default the bottom button confirms on every controller (so on a Switch pad, B opens and A goes back, by position). In **Settings › Controller › Confirm button** you can have Nintendo controllers follow their letters instead: A confirms and B goes back, with X and Y to match. It applies everywhere (menus, the browser, the on-screen keyboard), the hints follow it, and other controllers are never affected.
 
 **In the browser:** the right stick moves a cursor and the left stick scrolls, both faster the further you push. RT clicks and LT right-clicks, Y types an address, X jumps to the next link, and LB / RB or B leave the page. Swap the sticks or change their speed in **Settings › Controller**.
 

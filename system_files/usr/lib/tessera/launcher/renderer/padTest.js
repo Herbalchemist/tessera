@@ -268,6 +268,7 @@ const PAD_LABELS = {
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
   joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
+  confirm: { position: 'The bottom button, on every controller', label: 'Nintendo controllers: A (right) confirms, B goes back' },
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
   guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
   guideDesktop: { auto: 'On, except while Steam is running', on: 'Always on', off: 'Off' },
@@ -344,6 +345,7 @@ async function flowPadMenu() {
       { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
       { label: 'Labels', header: true },
       { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
+      { label: 'Confirm button', sub: prefs.pad.confirm === 'label' ? 'Nintendo: A confirms' : 'Bottom button', op: 'confirm' },
       { label: 'Joy-Con', header: true },
       { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
       { label: 'A left and a right Joy-Con', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.together, op: 'joycons' },
@@ -370,6 +372,7 @@ async function flowPadMenu() {
     else if (it.op === 'rumble') await pickChoice('Vibration strength', 'rumble');
     else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
     else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
+    else if (it.op === 'confirm') await pickChoice('Which button confirms? (B, X and Y follow it; the launcher, browser and dialogs all use this)', 'confirm');
     else if (it.op === 'grip') await flowGrip();
     else if (it.op === 'joycons') await pickChoice('When a left and a right Joy-Con are both connected', 'joycons');
   }
@@ -437,7 +440,7 @@ async function flowKeyAction(act) {
   for (;;) {
     const keys = kbBindings()[act];
     const items = [{ label: 'Add a key', sub: `up to ${KBM.MAX_PER_ACTION} keys, the first one shows in hints`, op: 'add' }];
-    keys.forEach((code, i) => items.push({ label: keyLabel(code), sub: i === 0 ? 'shown in hints · A: make another one first, Y: remove' : 'A: show this one in hints · Y: remove', code }));
+    keys.forEach((code, i) => items.push({ label: keyLabel(code), sub: i === 0 ? `shown in hints · ${hintName(0)}: make another one first, ${hintName(3)}: remove` : `${hintName(0)}: show this one in hints · ${hintName(3)}: remove`, code }));
     let removing = null;
     const it = await new Promise((resolve) => {
       openList({

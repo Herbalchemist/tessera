@@ -115,7 +115,7 @@ async function flowAddons() {
       info.rejected.forEach((x) => items.push(inert('⚠  ' + x.id, x.reason)));
       if (!items.length) items.push(inert('No widgets installed yet', info.dirs.widgets));
     } else if (view === 'themes') {
-      title = 'Add-ons · Themes (A to switch)';
+      title = `Add-ons · Themes (${roleName(0)} to switch)`;
       // Every builtin plus anything downloaded — not just stock. (Removal, just below, stays
       // scoped to downloaded themes only; you can't delete a factory one.)
       items = info.allThemes.map((t) => ({
@@ -595,7 +595,7 @@ async function flowDrives() {
     try { r = await api.settings('drives'); } finally { busy = false; }
     const items = r.drives.map((d) => ({ label: d.name, sub: d.tech, key: d.key, custom: d.custom }));
     if (!items.length) items.push({ label: 'No extra drives found', sub: 'Plug one in and open this again', header: true });
-    const it = await pick('Your drives · A to rename', items, index);
+    const it = await pick(`Your drives · ${roleName(0)} to rename`, items, index);
     if (!it) return;
     if (!it.key) continue;
     index = items.indexOf(it);
@@ -608,7 +608,7 @@ async function flowRoots(backTo) {
   let r;
   try { r = await api.settings('get'); } finally { busy = false; }
   const items = [{ label: '+  Add a folder…', op: 'add' }, { label: '✎  Name your drives…', op: 'drives' }];
-  r.roots.forEach((p, i) => items.push({ label: p.name, sub: p.tech || 'A to remove', op: 'rm', i }));
+  r.roots.forEach((p, i) => items.push({ label: p.name, sub: p.tech || `${roleName(0)} to remove`, op: 'rm', i }));
   const it = await pick('Library folders (scanned for games)', items);
   if (!it) return backTo ? backTo() : undefined;
   if (it.op === 'add') return flowBrowse('addRoot', () => flowRoots(backTo));

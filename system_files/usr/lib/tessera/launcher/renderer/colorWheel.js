@@ -82,7 +82,7 @@ function buildColor() {
   bright.appendChild(fill);
   const hint = document.createElement('div');
   hint.className = 'khint colorhint';
-  hint.textContent = `Left stick: move on the wheel\nRight stick or ${buttonName(4)} / ${buttonName(5)}: brightness\n${buttonName(3)}: type a hex code   ${buttonName(2)}: undo\n${buttonName(0)}: apply   ${buttonName(1)}: cancel`;
+  hint.textContent = `Left stick: move on the wheel\nRight stick or ${roleName(4)} / ${roleName(5)}: brightness\n${roleName(3)}: type a hex code   ${roleName(2)}: undo\n${roleName(0)}: apply   ${roleName(1)}: cancel`;
   side.append(sw, hexEl, bright, hint);
   body.append(wrap, side);
   box.append(h, body);

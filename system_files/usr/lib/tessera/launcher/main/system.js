@@ -29,6 +29,7 @@ const devices = require('../devices');
 // Nintendo Switch controllers, read straight from the kernel (Chromium leaves them out; see pads.js).
 // While the browser has the screen, LB / RB on them close it, like on any other controller.
 const browserGamepad = require('../browser-gamepad');
+const inputActions = require('../input-actions');
 let browserShoulder = null;
 const padBits = new Map();
 const browserPadNavigation = new Map();
@@ -43,6 +44,8 @@ const padsCtl = require('../pads').create({
   },
   onMotion: (m) => appWindow.send('pads', { type: 'motion', ...m }),
   onFrame: (f) => {
+    // Every pad here is a Nintendo controller: its buttons by role, under the confirm setting.
+    f = { ...f, b: inputActions.roleBits(f.b | 0, inputActions.swaps('nintendo', prefs.settings.pad.confirm)) };
     const before = padBits.get(f.id) || 0;
     padBits.set(f.id, f.b);
 
