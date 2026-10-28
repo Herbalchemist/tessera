@@ -330,11 +330,32 @@ async function leaveBrowserForSwitch() {
     await api.browser('close');
   } else await closeBrowser(-1);
 }
+// Their PIN (or the admin PIN), asked until it's right, cancelled, or too many tries.
+async function profilePin(name, attempt) {
+  for (let i = 0; i < 5; i++) {
+    const pin = await askPin(`${name}'s PIN`);
+    if (pin === null) return null;
+    busy = true;
+    let r;
+    try { r = await attempt(pin); } finally { busy = false; }
+    if (r && r.ok) return r;
+    setStatus((r && r.error) || "That isn't the PIN.", true);
+    if (!r || r.wait) return null;
+  }
+  return null;
+}
+// The browser of someone whose PIN guards it, when it hasn't been entered for a while.
+async function unlockOwnBrowser() {
+  const need = await api.profiles('browserCheck');
+  if (!need || !need.needProfilePin) return true;
+  return Boolean(await profilePin(need.name, (pin) => api.profiles('unlock', { id: need.id, pin })));
+}
 async function switchProfile(id, name) {
   await leaveBrowserForSwitch();
   busy = true;
   let r;
   try { r = await api.profiles('use', { id }); } finally { busy = false; }
+  if (r && r.needProfilePin) r = await profilePin(r.name || name, (pin) => api.profiles('use', { id, pin }));
   if (!r || !r.ok) { setStatus((r && r.error) || "Couldn't switch.", true); return null; }
   if (r.view) applyView(r.view); // their pages, controls, keys and theme
   else if (r.theme) applyTheme(r.theme);
@@ -346,9 +367,9 @@ async function switchProfile(id, name) {
 async function whoIsPlaying() {
   const pr = await api.profiles('list');
   if (!pr || !pr.profiles || !pr.profiles.length) return;
-  const items = pr.profiles.map((p) => ({ label: p.name, sub: p.id === pr.active ? 'last played' : '', id: p.id, plain: true }));
+  const items = pr.profiles.map((p) => ({ label: p.name, sub: [p.id === pr.active || p.id === pr.lockedOut ? 'last played' : '', p.locked ? 'PIN' : ''].filter(Boolean).join(' · '), id: p.id, plain: true }));
   items.push({ label: 'Everyone', sub: 'the shared setup', id: null, plain: true });
-  const at = Math.max(0, items.findIndex((x) => x.id === pr.active));
+  const at = Math.max(0, items.findIndex((x) => x.id === (pr.lockedOut || pr.active)));
   const it = await pick("Who's playing?", items, at);
   if (it && it.id !== pr.active) await switchProfile(it.id, it.label);
 }
@@ -379,7 +400,7 @@ async function flowProfiles() {
     const list = pr.profiles || [];
     const themeName = (id) => { const x = t.themes.find((th) => th.id === id); return x ? x.name : id; };
     const items = [{ label: "Who's playing", header: true }];
-    list.forEach((p) => items.push({ label: p.name, sub: (p.id === pr.active ? 'Playing now' : 'Switch to them') + (p.themeId ? ` · ${themeName(p.themeId)}` : ''), id: p.id, who: true, plain: true }));
+    list.forEach((p) => items.push({ label: p.name, sub: [p.id === pr.active ? 'Playing now' : 'Switch to them', p.admin ? 'Admin' : '', p.locked ? 'PIN' : '', p.themeId ? themeName(p.themeId) : ''].filter(Boolean).join(' · '), id: p.id, who: true, plain: true }));
     items.push({ label: 'Everyone', sub: (pr.active ? 'Switch to the shared setup' : 'Playing now') + ' · no profile', id: null, who: true, plain: true });
     items.push({ label: 'Add a profile…', op: 'add', plain: true });
     if (list.length) items.push({ label: "Ask who's playing when Tessera starts", sub: pr.ask ? 'On' : 'Off', op: 'ask', plain: true });
@@ -406,13 +427,80 @@ async function flowProfiles() {
   }
 }
 async function flowProfileOptions(id, name) {
-  const it = await pick(name, [
+  const info = await api.profiles('list');
+  const me = (info.profiles || []).find((x) => x.id === id) || {};
+  const items = [
     { label: 'Switch to them', op: 'use', plain: true },
     { label: 'Rename…', op: 'rename', plain: true },
     { label: 'Their theme…', sub: 'what they pick while playing is kept too', op: 'theme', plain: true },
-    { label: 'Remove this profile…', sub: 'their pages, controls and browser logins go with it', op: 'remove', plain: true },
-  ]);
-  if (!it) return;
+    { label: 'PIN', header: true },
+  ];
+  if (me.admin) {
+    items.push({ label: 'Logs in with', sub: me.login === 'own' ? 'A PIN of their own (the admin PIN is asked for admin things)' : 'The admin PIN', op: 'adminLogin', plain: true });
+    if (me.login === 'own') items.push({ label: 'Change their login PIN…', op: 'pin', plain: true });
+  } else {
+    items.push({ label: me.ownPin ? 'Change their PIN…' : 'Give them a PIN…', sub: me.ownPin ? '' : 'to log in as them and open their own things; never admin rights', op: 'pin', plain: true });
+    if (me.ownPin) items.push({ label: 'Remove their PIN', op: 'nopin', plain: true });
+  }
+  if (me.locked) items.push({ label: 'Their PIN also opens their browser', sub: me.browserLock ? 'On: asked again after a few minutes' : 'Off', op: 'browserLock', plain: true });
+  if (info.adminPin) items.push({ label: me.admin ? 'This is the admin profile' : 'Make this the admin profile', sub: me.admin ? '' : 'their login can be the admin PIN', op: 'admin', plain: true, info: me.admin });
+  items.push({ label: 'Remove this profile…', sub: 'their pages, controls and browser logins go with it', op: 'remove', plain: true });
+  const it = await pick(name, items);
+  if (!it || it.info) return;
+  // PIN changes: by them (logged in, PIN fresh) or with the admin PIN.
+  const asOwnerOrAdmin = async (op, payload) => {
+    let r = await api.profiles(op, payload);
+    if (r && r.needPin) { if (!(await requirePin('Enter the admin PIN'))) return null; r = await api.profiles(op, payload); }
+    return r;
+  };
+  const newPin = async (title) => {
+    const a = await askPin(title);
+    if (a === null) return null;
+    if (!/^\d{4,8}$/.test(a)) { setStatus('Use 4 to 8 digits.', true); return null; }
+    const b = await askPin('Enter it again');
+    if (b === null) return null;
+    if (a !== b) { setStatus("Those didn't match.", true); return null; }
+    return a;
+  };
+  if (it.op === 'pin') {
+    const a = await newPin(`A PIN for ${name} (4 to 8 digits)`);
+    if (a === null) return;
+    const r = await asOwnerOrAdmin('setPin', { id, pin: a });
+    if (r) setStatus(r.ok ? `${name} has a PIN now.` : r.error, !r.ok);
+    return;
+  }
+  if (it.op === 'nopin') {
+    const r = await asOwnerOrAdmin('setPin', { id, pin: null });
+    if (r) setStatus(r.ok ? `${name}'s PIN is removed.` : r.error, !r.ok);
+    return;
+  }
+  if (it.op === 'browserLock') {
+    const r = await asOwnerOrAdmin('browserLock', { id, on: !me.browserLock });
+    if (r && !r.ok) setStatus(r.error, true);
+    return;
+  }
+  if (it.op === 'admin') {
+    const r = await asOwnerOrAdmin('setAdmin', { id });
+    if (r) setStatus(r.ok ? `${name} is the admin profile. They log in with the admin PIN.` : r.error, !r.ok);
+    return;
+  }
+  if (it.op === 'adminLogin') {
+    const how = await pick(`${name} logs in with`, [
+      { label: 'The admin PIN', sub: 'one PIN for logging in and for admin things', v: 'admin', plain: true },
+      { label: 'A PIN of their own', sub: 'for logging in and their own things; the admin PIN is asked for admin things', v: 'own', plain: true },
+    ], me.login === 'own' ? 1 : 0);
+    if (!how || how.v === me.login) return;
+    if (how.v === 'own') {
+      const a = await newPin(`${name}'s login PIN (not the admin PIN)`);
+      if (a === null) return;
+      const r = await asOwnerOrAdmin('setPin', { id, pin: a });
+      if (r) setStatus(r.ok ? `${name} logs in with their own PIN now.` : r.error, !r.ok);
+    } else {
+      const r = await asOwnerOrAdmin('adminLogin', { login: 'admin' });
+      if (r) setStatus(r.ok ? `${name} logs in with the admin PIN.` : r.error, !r.ok);
+    }
+    return;
+  }
   if (it.op === 'use') {
     await switchProfile(id, name);
   } else if (it.op === 'rename') {

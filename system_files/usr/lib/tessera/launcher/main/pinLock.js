@@ -8,6 +8,11 @@ module.exports = {
   get pinInfo() { return pinInfo; },
   get pinIsSet() { return pinIsSet; },
   get pinOk() { return pinOk; },
+  get pinTry() { return pinTry; },
+  get pinMiss() { return pinMiss; },
+  get pinMatches() { return pinMatches; },
+  get pinHash() { return pinHash; },
+  get PIN_RE() { return PIN_RE; },
 };
 
 const { ipcMain } = require('electron');
@@ -76,6 +81,12 @@ function pinTry(pin) {
     pinUnlockedUntil = now + 5 * 60 * 1000;
     return { ok: true };
   }
+  return pinMiss(now);
+}
+// A wrong guess that could have been the admin PIN (it is also accepted at every profile's login),
+// counted against the admin PIN's own lockout.
+function pinMiss(now = Date.now()) {
+  loadPinTries();
   pinFails++;
   savePinTries();
   if (pinFails >= 5) {

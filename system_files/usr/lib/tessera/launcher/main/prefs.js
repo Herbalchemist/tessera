@@ -96,6 +96,7 @@ let settings = {
   hiddenDrives: [], // drives left out of Storage altogether
   profileData: {}, // the controls of everyone not playing right now (see switchControls)
   activeProfile: null, // who is playing (a profile id), or null: Everyone
+  adminProfile: null, // the admin's own profile (see profiles.js: profile PINs)
   profileAsk: false, // ask "Who's playing?" when Tessera starts
   everyoneTheme: null, // the theme Everyone had on when someone else started playing
   profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
@@ -151,7 +152,9 @@ function loadSettings() {
         ids.add(pr.id);
         const themeId = typeof pr.themeId === 'string' && theming.THEME_ID_RE.test(pr.themeId) ? pr.themeId : null;
         const color = typeof pr.color === 'string' && /^#[0-9a-f]{6}$/i.test(pr.color) ? pr.color : null;
-        loaded.push({ id: pr.id, name, themeId, color });
+        // their own PIN (a salted hash, like the admin PIN), and whether it guards their browser
+        const pin = pr.pin && /^[0-9a-f]{32}$/.test(pr.pin.salt || '') && /^[0-9a-f]{64}$/.test(pr.pin.hash || '') ? { salt: pr.pin.salt, hash: pr.pin.hash } : null;
+        loaded.push({ id: pr.id, name, themeId, color, pin, browserLock: pr.browserLock !== false, login: pr.login === 'own' ? 'own' : 'admin' });
       }
       // Replace, don't append: loadSettings() can run again in this same process (restoring a
       // backup, or a window reload), and appending would let stale or duplicate profiles from
@@ -162,6 +165,8 @@ function loadSettings() {
       settings.profiles = [];
     }
     settings.profileAsk = Boolean(d && d.profileAsk === true && settings.profiles.length);
+    // The admin's own profile: it can log in with the admin PIN itself, or a PIN of its own.
+    settings.adminProfile = d && typeof d.adminProfile === 'string' && settings.profiles.some((pr) => pr.id === d.adminProfile) ? d.adminProfile : null;
     settings.everyoneTheme = d && typeof d.everyoneTheme === 'string' && theming.THEME_ID_RE.test(d.everyoneTheme) ? d.everyoneTheme : null;
     // Everyone else's controls, kept while someone else is playing (see switchControls).
     settings.profileData = {};
