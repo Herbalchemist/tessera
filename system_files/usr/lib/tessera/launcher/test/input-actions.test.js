@@ -96,3 +96,54 @@ test('the repeater: moves at once, waits, then repeats; the newest direction win
   r.set('pad', 'up');
   assert.strictEqual(out.at(-1), 'down');
 });
+
+test('remaps: a rearrangement of the face buttons and bumpers, per family, winning over "confirm"', () => {
+  assert.ok(I.validRemap([0, 1, 2, 3, 4, 5]));
+  assert.ok(!I.validRemap([0, 0, 2, 3, 4, 5]), 'a job on two buttons would leave another job on none');
+  assert.ok(!I.validRemap([0, 1, 2, 3, 4]));
+  assert.ok(!I.validRemap([0, 1, 2, 3, 4, 6]));
+  assert.ok(!I.validRemap('012345'));
+  const swapAB = [1, 0, 2, 3, 4, 5];
+  const pad = { confirm: 'label', remap: { xbox: swapAB, playstation: [0, 0, 0, 0, 0, 0] } };
+  assert.strictEqual(I.mapFor('xbox', pad), swapAB);
+  assert.strictEqual(I.mapFor('playstation', pad), false, 'a broken remap is ignored');
+  assert.strictEqual(I.mapFor('nintendo', pad), true, 'no remap: the confirm setting');
+  assert.deepStrictEqual(I.mapFor('nintendo', { confirm: 'label', remap: { nintendo: [0, 1, 2, 3, 4, 5] } }), [0, 1, 2, 3, 4, 5], 'a remap wins over confirm');
+  assert.strictEqual(I.actionFor(1, swapAB), 'a');
+  assert.strictEqual(I.buttonFor('b', swapAB), 0);
+  assert.strictEqual(I.physicalFor(12, swapAB), 12, 'the D-pad and the rest are never remapped');
+  assert.strictEqual(I.roleBits((1 << 1) | (1 << 13), swapAB), (1 << 0) | (1 << 13));
+});
+
+test('assigning a job swaps it with the button that had it, so every job stays on one button', () => {
+  // Confirm on RB (5): RB confirms, and the button that confirmed (0) takes RB's job.
+  let m = I.assign(false, 0, 5);
+  assert.deepStrictEqual(m, [5, 1, 2, 3, 4, 0]);
+  assert.ok(I.validRemap(m));
+  // Starting from the Nintendo letters, the list says what's in use now.
+  assert.deepStrictEqual(I.asRemap(true), [1, 0, 3, 2, 4, 5]);
+  m = I.assign(true, 1, 1); // back on the right button again
+  assert.deepStrictEqual(m, [0, 1, 3, 2, 4, 5]);
+  assert.ok(I.isIdentity(I.assign(I.assign(false, 2, 3), 2, 2)));
+  assert.deepStrictEqual(I.assign(false, 9, 0), [0, 1, 2, 3, 4, 5], 'out of range does nothing');
+  for (let r = 0; r < 6; r++) for (let p = 0; p < 6; p++) {
+    const x = I.assign([2, 0, 1, 5, 3, 4], r, p);
+    assert.ok(I.validRemap(x) && I.roleOf(p, x) === r);
+  }
+});
+
+test('in the browser, a remap applies to evdev controllers too, at once', () => {
+  const B = require('../browser-gamepad');
+  const out = [];
+  let map = false;
+  const m = B.createMapper({ onAction: (k) => out.push(k), onBrowserAction: (a) => out.push('act:' + a), roleOf: (n) => I.roleOf(n, map), setTimeoutFn: () => 0, clearTimeoutFn: () => {} });
+  const tap = (code) => { m.handleButton(code, 1); m.handleButton(code, 0); };
+  tap(0x130); tap(0x131);
+  assert.deepStrictEqual(out.splice(0), ['ENTER', 'act:b']);
+  map = I.assign(false, 0, 5); // RB confirms; the bottom button does RB's job
+  tap(0x137); tap(0x130);
+  assert.deepStrictEqual(out.splice(0), ['ENTER', 'act:rb']);
+  m.handleButton(0x137, 1); map = false; m.handleButton(0x137, 0); m.handleButton(0x137, 1);
+  assert.deepStrictEqual(out.splice(0), ['ENTER', 'act:rb'], 'a remap mid-press leaves nothing stuck');
+  m.dispose();
+});

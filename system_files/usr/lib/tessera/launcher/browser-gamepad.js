@@ -11,6 +11,8 @@ const BTN_NORTH = 0x133;
 const BTN_WEST = 0x134;
 const BTN_TL = 0x136;
 const BTN_TR = 0x137;
+// The face buttons and bumpers as standard button numbers 0-5 (bottom, right, left, top, LB, RB).
+const MAPPABLE = [BTN_SOUTH, BTN_EAST, BTN_WEST, BTN_NORTH, BTN_TL, BTN_TR];
 const BTN_DPAD_UP = 0x220;
 const BTN_DPAD_DOWN = 0x221;
 const BTN_DPAD_LEFT = 0x222;
@@ -109,6 +111,9 @@ function createMapper({
   // Most pads put the right stick on ABS_RX/RY and the triggers on ABS_Z/RZ. Generic
   // DirectInput-style pads without ABS_RX/RY put the right stick on ABS_Z/RZ instead.
   hasRightStick = true,
+  // Settings > Button mapping: (standard button number 0-5) -> the role it plays, asked at each
+  // press so a change applies at once. Face buttons and bumpers only.
+  roleOf = null,
 } = {}) {
   if (typeof onShoulder !== 'function') onShoulder = () => {};
   if (typeof onBrowserAction !== 'function') onBrowserAction = null;
@@ -175,9 +180,17 @@ function createMapper({
       if (value === 2) return; // key repeat
       return onAnalog(code === BTN_TL2 ? 'lt' : 'rt', value ? 1 : 0);
     }
-    if (value === 0) { pressed.delete(code); return; }
-    if (value !== 1 || pressed.has(code)) return; // Ignore key repeat.
-    pressed.add(code);
+    const raw = code; // held buttons are tracked as they are, so a remap mid-press can't strand one
+    if (roleOf) {
+      const n = MAPPABLE.indexOf(code);
+      if (n >= 0) {
+        const role = roleOf(n);
+        if (Number.isInteger(role) && role >= 0 && role < MAPPABLE.length) code = MAPPABLE[role];
+      }
+    }
+    if (value === 0) { pressed.delete(raw); return; }
+    if (value !== 1 || pressed.has(raw)) return; // Ignore key repeat.
+    pressed.add(raw);
     if (code === BTN_TL) {
       if (onBrowserAction) return onBrowserAction('lb');
       return onShoulder(-1);

@@ -101,6 +101,13 @@ function onButton(n) {
     if (n === 1) modal.finish(null); // B cancels; other buttons are ignored while waiting for a key
     return;
   }
+  if (modal && modal.kind === 'capture' && modal.only) {
+    if (!modal.only.includes(n)) {
+      modal.note = 'Use a face button (A, B, X, Y) or a bumper.';
+      return renderModal();
+    }
+    return modal.finish(n);
+  }
   if (modal && modal.kind === 'capture') {
     if (RESERVED_BUTTONS.includes(n)) {
       modal.note = `${roleName(n)} can't be used here. Try another button.`;
@@ -306,7 +313,7 @@ function loop(now) {
     // The main-process adapters own browser input. Track held buttons without
     // dispatch so native Gamepad API polling cannot double-fire B/Y/bumper actions
     // or replay a held button when the address keyboard opens.
-    const swap = padSwap(pad);
+    const swap = padMap(pad);
     for (let n = 0; n < prevBtn.length; n++) { const k = IA.physicalFor(n, swap); prevBtn[n] = Boolean(pad.buttons[k] && pad.buttons[k].pressed); }
     nav.set('pad', '');
     navQuietUntil = now + IA.repeatTiming(prefs.pad.repeat, 'launcher').initialDelay;
@@ -318,7 +325,7 @@ function loop(now) {
       setStatus(`Controller: ${pad.id} [${pad.mapping || 'non-standard'}]`);
     }
     // n is a role (0 confirms, 1 goes back...): read the physical button doing that job.
-    const swap = padSwap(pad);
+    const swap = padMap(pad);
     const b = (n) => { const k = IA.physicalFor(n, swap); return Boolean(pad.buttons[k] && pad.buttons[k].pressed); };
     const wheel = modal && modal.kind === 'color'; // on the color wheel the stick moves the cursor smoothly instead
     const sx = wheel ? 0 : axisValue(pad, 0);

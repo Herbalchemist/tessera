@@ -72,7 +72,7 @@ let settings = {
   scanRoots: [],
   keys: { ...DEFAULT_KEYS },
   theme: { active: 'stock', values: {} }, // values[themeId][settingId]
-  pad: { ...PAD_DEFAULTS },
+  pad: { ...PAD_DEFAULTS, remap: {} }, // remap: Settings > Button mapping, per controller family (input-actions.js)
   kb: { ...KB_DEFAULTS },
   calib: {}, // per controller: resting offsets of each axis
   driveNames: {}, // drive key -> the name the person gave it
@@ -130,6 +130,13 @@ function loadSettings() {
         const v = d.pad[k];
         if (PAD_CHOICES[k] && PAD_CHOICES[k].includes(v)) settings.pad[k] = v;
         else if (PAD_RANGES[k] && Number.isFinite(v) && v >= PAD_RANGES[k][0] && v <= PAD_RANGES[k][1]) settings.pad[k] = Math.round(v);
+      }
+      settings.pad.remap = {};
+      if (d.pad.remap && typeof d.pad.remap === 'object') {
+        for (const fam of inputActions.FAMILIES) {
+          const m = d.pad.remap[fam];
+          if (inputActions.validRemap(m) && !inputActions.isIdentity(m)) settings.pad.remap[fam] = m.slice();
+        }
       }
     }
     if (d && d.kb && typeof d.kb === 'object') {

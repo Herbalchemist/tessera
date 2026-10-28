@@ -148,7 +148,10 @@ function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null,
       const entry = { eventName, devicePath, jsProc: null, eventProc: null, mapper: null };
       const hasRightStick = axisCodes.includes(0x03) && axisCodes.includes(0x04);
       const analog = onAnalog ? (name, value) => onAnalog(jsName, name, value) : null;
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick, ...inputActions.repeatTiming(prefs.settings.pad.repeat, 'browser') });
+      // Its buttons by role, under Settings > Button mapping for its family (by USB vendor).
+      const family = vendor === '054c' ? 'playstation' : 'xbox';
+      const roleOf = (n) => inputActions.roleOf(n, inputActions.mapFor(family, prefs.settings.pad));
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick, roleOf, ...inputActions.repeatTiming(prefs.settings.pad.repeat, 'browser') });
       entry.mapper = mapper;
       const startReader = (node, eventSize, consume) => {
         const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });

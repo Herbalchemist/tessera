@@ -44,8 +44,11 @@ const padsCtl = require('../pads').create({
   },
   onMotion: (m) => appWindow.send('pads', { type: 'motion', ...m }),
   onFrame: (f) => {
-    // Every pad here is a Nintendo controller: its buttons by role, under the confirm setting.
-    f = { ...f, b: inputActions.roleBits(f.b | 0, inputActions.swaps('nintendo', prefs.settings.pad.confirm)) };
+    // Every pad here is a Nintendo controller. The launcher page gets its buttons as they are (it
+    // reads them by role itself, like any controller); the browser handling below gets them by
+    // role, under the Nintendo button settings (input-actions.js).
+    const raw = f;
+    f = { ...f, b: inputActions.roleBits(f.b | 0, inputActions.mapFor('nintendo', prefs.settings.pad)) };
     const before = padBits.get(f.id) || 0;
     padBits.set(f.id, f.b);
 
@@ -105,7 +108,7 @@ const padsCtl = require('../pads').create({
     }
 
     web.clearBrowserPadNavigation(f.id);
-    appWindow.send('pads', { type: 'frame', ...f });
+    appWindow.send('pads', { type: 'frame', ...raw });
   },
 });
 ipcMain.handle('pads', (_e, op, p) => {

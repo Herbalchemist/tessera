@@ -327,6 +327,21 @@ async function offerDrive(d, tries = 0) {
 // Settings → Button mapping. For now: which buttons the on-screen keyboard
 // uses. Any button the system reports works here, including paddles and
 // other extra buttons (numbered 17 and up in the Controller test).
+const FAMILY_NAMES = { xbox: 'Xbox', playstation: 'PlayStation', nintendo: 'Nintendo' };
+// The jobs Settings > Button mapping can move between the face buttons and bumpers (roles 0-5).
+const PAD_JOBS = [
+  [0, 'Select / open'],
+  [1, 'Back'],
+  [2, 'X · resize a tile, next link in the browser'],
+  [3, 'Options · hold to move a tile'],
+  [4, 'Previous tab'],
+  [5, 'Next tab'],
+];
+async function padRemap(family, map) {
+  const r = await api.settings('padRemap', { family, map });
+  if (r && r.ok) { prefs.pad = { ...PAD_DEFAULTS, ...r.pad }; applyGlyphs(); }
+  else setStatus("Couldn't change that.", true);
+}
 async function flowControls() {
   let index = 1;
   for (;;) {
@@ -336,10 +351,14 @@ async function flowControls() {
     const items = [{ label: 'Keyboard', header: true, fold: 'map.keyboard', open: true }];
     KEY_ACTIONS.forEach((a) => items.push({ label: a.label, sub: roleName(keymap[a.id]), id: a.id, plain: true }));
     items.push({ label: 'Reset keyboard buttons', op: 'reset', plain: true });
-    items.push({ label: 'Fixed buttons', header: true, fold: 'map.fixed' });
-    [
-      [roleName(0), 'select'], [roleName(1), 'back'], [roleName(3), 'options'], [`${roleName(4)} / ${roleName(5)}`, 'switch tab'], ['D-pad', 'move'],
-    ].forEach(([k, v]) => items.push({ label: k, sub: v, plain: true, info: true }));
+    // The controller in use: its face buttons and bumpers can trade jobs (for its kind of controller).
+    const pad = padInUse();
+    const fam = detectFamily(pad ? pad.id : '');
+    const changed = Boolean(prefs.pad.remap && prefs.pad.remap[fam]);
+    items.push({ label: `${FAMILY_NAMES[fam]} controller buttons`, header: true, fold: 'map.pad', open: true });
+    PAD_JOBS.forEach(([role, label]) => items.push({ label, sub: roleName(role), role, plain: true }));
+    items.push({ label: 'Put these buttons back', sub: changed ? `the usual ${FAMILY_NAMES[fam]} layout` : 'nothing changed', op: 'padReset', plain: true });
+    items.push({ label: 'Always', sub: 'The D-pad and left stick move, and the Guide button opens the guide.', plain: true, info: true });
     const it = await pick('Button mapping', items, index);
     if (!it) return;
     index = items.indexOf(it);
@@ -350,8 +369,22 @@ async function flowControls() {
         keymap = (await api.settings('resetKeys')).keys;
         continue;
       }
+      if (it.op === 'padReset') {
+        if (changed) await padRemap(fam, null);
+        continue;
+      }
     } finally {
       busy = false;
+    }
+    if (it.role !== undefined) {
+      // Press the button that should do this job; it trades jobs with the button that did it.
+      const n = await capture(it.label, { only: [0, 1, 2, 3, 4, 5], hint: `Press the button it's on now (${roleName(it.role)}) to keep it. Esc cancels.` });
+      if (n === null) continue;
+      const map = padMap(pad);
+      const next = IA.assign(map, it.role, IA.physicalFor(n, map));
+      busy = true;
+      try { await padRemap(fam, next); } finally { busy = false; }
+      continue;
     }
     const n = await capture(it.label);
     if (n === null) continue;

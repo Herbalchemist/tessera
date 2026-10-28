@@ -49,7 +49,8 @@ function pick(title, items, index = 0, extra = {}) {
 }
 
 // Waits for the next controller button and resolves with its number.
-function capture(label) {
+// opts.only: the buttons (roles) it takes; opts.hint: the line under it.
+function capture(label, opts = {}) {
   return new Promise((resolve) => {
     const timer = setTimeout(() => finish(null), 10000);
     const finish = (n) => {
@@ -57,7 +58,7 @@ function capture(label) {
       closeModal();
       resolve(n);
     };
-    modal = { kind: 'capture', label, finish, note: '' };
+    modal = { kind: 'capture', label, finish, note: '', only: opts.only || null, hint: opts.hint || '' };
     renderModal();
   });
 }
@@ -335,7 +336,7 @@ function renderModal() {
     h.textContent = modal.keyboard ? `Press a key for “${modal.label}”` : `Press a button for “${modal.label}”`;
     const p = document.createElement('p');
     p.className = 'khint';
-    p.textContent = modal.note || (modal.keyboard ? `Esc or ${roleName(1)} on a controller to cancel` : 'Press Esc on a keyboard to cancel');
+    p.textContent = modal.note || modal.hint || (modal.keyboard ? `Esc or ${roleName(1)} on a controller to cancel` : 'Press Esc on a keyboard to cancel');
     box.appendChild(p);
     modalEl.appendChild(box);
     return;

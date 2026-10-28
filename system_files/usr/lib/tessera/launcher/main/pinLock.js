@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const config = require('./config');
 const keyboardMap = require('../keyboard-map');
+const inputActions = require('../input-actions');
 const library = require('./library');
 const prefs = require('./prefs');
 const theming = require('./theming');
@@ -211,8 +212,22 @@ ipcMain.handle('settings', ipc.safe((op, p) => {
       if (!Number.isFinite(p.value) || p.value < prefs.PAD_RANGES[k][0] || p.value > prefs.PAD_RANGES[k][1]) return { ok: false };
       prefs.settings.pad[k] = Math.round(p.value);
     }
+    // Choosing how Nintendo controllers confirm replaces a Nintendo remap, so the choice shows.
+    if (k === 'confirm' && prefs.settings.pad.remap) delete prefs.settings.pad.remap.nintendo;
     prefs.saveSettings();
     if (k === 'joycons') system.padsCtl.regroup();
+    return { ok: true, pad: { ...prefs.settings.pad }, calib: prefs.settings.calib };
+  }
+  // Settings > Button mapping: a controller family's face buttons and bumpers ({ family, map }; map
+  // null puts them back). Only a full rearrangement is taken, so confirm and back can't be lost.
+  if (op === 'padRemap') {
+    if (!inputActions.FAMILIES.includes(p.family)) return { ok: false };
+    const remap = { ...(prefs.settings.pad.remap || {}) };
+    if (p.map === null || (inputActions.validRemap(p.map) && inputActions.isIdentity(p.map))) delete remap[p.family];
+    else if (inputActions.validRemap(p.map)) remap[p.family] = p.map.slice();
+    else return { ok: false };
+    prefs.settings.pad.remap = remap;
+    prefs.saveSettings();
     return { ok: true, pad: { ...prefs.settings.pad }, calib: prefs.settings.calib };
   }
   if (op === 'kbSet') {
