@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.29.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.30.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -68,11 +68,13 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 
 **One Joy-Con on its own**, held sideways, works like it does on a Switch: the buttons turn with it (on a right Joy-Con, A at the bottom selects) and the hints use its own labels.
 
-**The guide** (the Guide button) comes in three styles in **Settings › Controller › Guide style**: a panel from the side, a floating card, or compact. Notifications sit in their own panel on its right: **X** hides or shows them, **Y** clears them.
+**The guide** (the Guide button) comes in three styles in **Settings › Controller › Guide style**: a panel from the side, a floating card, or compact. Notifications are part of each style (a panel beside the side guide, a card tucked behind the floating one, a strip inside the compact one): **X** hides or shows them, **Y** clears them.
 
 **Bumping through tabs** never stalls on the browser: it only opens if you stay on its tab for a moment, and presses made while it's closing still count.
 
 **Holding a direction** keeps moving, at the same pace in menus and the browser, whether it's the D-pad, the stick or the keyboard. Pick **Slower**, **Standard** or **Faster** in **Settings › Controller › Repeat speed**.
+
+**The browser stays inside Tessera:** the page sits in a frame in your theme's colors, with the tabs either side, the page's address and title, and a loading light. **Y** pulls the address bubble down out of the address (the address starts selected, so typing replaces it; plain words search DuckDuckGo). Prefer the page edge to edge? **Theme Settings › Browser frame › Full screen**.
 
 **In the browser:** the right stick moves a cursor and the left stick scrolls, both faster the further you push. RT clicks and LT right-clicks, Y types an address, X jumps to the next link, and LB / RB or B leave the page. Swap the sticks or change their speed in **Settings › Controller**.
 

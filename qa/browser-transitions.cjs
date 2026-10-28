@@ -116,6 +116,47 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     assert.deepEqual(await state(), { open: true, moving: false, curtain: true }, 'cancelling the address returns to the page');
     checks.push('Address keyboard shows a dimmed picture of the page behind it');
 
+    // Framed (the default): the page sits in the frame's opening, and the frame names it.
+    const bounds = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children[0].getBounds());
+    const opening = () => page.evaluate(() => { const r = document.querySelector('#browser-frame .bf-view').getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; });
+    assert.equal(await page.evaluate(() => !document.getElementById('browser-frame').hidden), true, 'the frame is up');
+    assert.deepEqual(await bounds(), await opening(), 'the page fills the opening exactly');
+    const b = await bounds();
+    assert.ok(b.x > 0 && b.y > 30 && b.width < 1280 && b.height < 720, 'Tessera stays around it');
+    await page.waitForFunction(() => document.querySelector('#browser-frame .bf-title').textContent === 'Transitions QA');
+    assert.match(await page.evaluate(() => document.querySelector('#browser-frame .bf-host').textContent), /^127\.0\.0\.1:\d+$/);
+    shot('browser-framed.png');
+    checks.push('Framed: the page sits in a themed frame (exactly in its opening), which shows its title and address');
+
+    // The address bubble: out of the pill, the address selected; typing replaces it; Go goes.
+    const going = page.evaluate(() => openUrlBar());
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    await page.waitForTimeout(500);
+    const bub = await page.evaluate(() => { const b = document.getElementById('url-bubble'); const t = b.querySelector('.ub-text'); return { out: !b.hidden && b.classList.contains('out'), fromPill: b.classList.contains('from-pill'), sel: t.classList.contains('sel'), text: t.textContent, pulling: document.querySelector('.bf-addr').classList.contains('pulling'), go: [...document.querySelectorAll('#modal .key.done')].map((k) => k.textContent)[0] }; });
+    assert.deepEqual(bub, { out: true, fromPill: true, sel: true, text: url, pulling: true, go: 'Go' });
+    shot('browser-address-bubble.png');
+    await page.evaluate((u) => { for (const ch of u + 'two') typeChar(ch); }, url);
+    assert.equal(await page.evaluate(() => document.querySelector('#url-bubble .ub-text').textContent), url + 'two', 'the first key replaced the selected address');
+    await page.evaluate(() => keyAction('done'));
+    await going;
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => browserUrl), url + 'two');
+    assert.equal(await page.evaluate(() => document.getElementById('url-bubble').hidden), true, 'the bubble went back up');
+    assert.deepEqual(await state(), { open: true, moving: false, curtain: true });
+    checks.push('Address bubble: pulled out of the pill with the address selected; typing replaces it; Go opens it and the bubble goes back');
+
+    // Full screen (Theme Settings › Browser frame): the page gets the whole window again.
+    await page.evaluate(() => closeBrowser(-1));
+    await page.waitForTimeout(700);
+    await page.evaluate(async () => { const r = await launcherAPI.settings('themeSet', { id: 'browserFrame', value: 'full' }); applyTheme(r.theme); });
+    await page.evaluate(() => launchBrowser(1));
+    await page.waitForTimeout(800);
+    const win = await app.evaluate(({ BrowserWindow }) => { const c = BrowserWindow.getAllWindows()[0].getContentBounds(); return { x: 0, y: 0, width: c.width, height: c.height }; });
+    assert.deepEqual(await bounds(), win);
+    assert.equal(await page.evaluate(() => { const f = document.getElementById('browser-frame'); return !f || f.hidden; }), true);
+    await page.evaluate(async () => { const r = await launcherAPI.settings('themeSet', { id: 'browserFrame', value: 'framed' }); applyTheme(r.theme); });
+    checks.push('Full screen is still a choice: the page takes the whole window and the frame steps away');
+
     assert.deepEqual(errors, []);
     console.log('OK ' + checks.length + ' checks\n- ' + checks.join('\n- '));
   } finally {

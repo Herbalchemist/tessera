@@ -172,7 +172,7 @@ async function openGuide() {
     cls: 'guide guide-' + (GUIDE_STYLES.includes(prefs.pad.guideStyle) ? prefs.pad.guideStyle : 'side'),
     onChoose: (it) => guideChoose(it),
     onBack: () => closeGuide(),
-    onRender: () => guideNotesPanel(),
+    onRender: (box) => guideNotesPanel(box),
   });
   guideNotesButtons();
 }
@@ -206,21 +206,28 @@ function guideClearNotes() {
   guideNotesHidden = false;
   setStatus('');
 }
-function guideNotesPanel() {
+// Each guide style has its own: the side panel gets a panel on the right; the floating card a
+// second card tucked behind it; compact a strip inside the panel itself.
+const BELL = '<svg class="gn-bell" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>';
+function guideNotesPanel(box) {
   const notes = guideNotes();
   if (!notes.length) return;
+  const style = /\bguide-(float|compact)\b/.exec(modal.cls || '');
+  const kind = style ? style[1] : 'side';
   const panel = document.createElement('aside');
-  panel.className = 'gnotes' + (guideNotesHidden ? ' hidden' : '');
+  panel.className = `gnotes gn-${kind}` + (guideNotesHidden ? ' hidden' : '');
   const head = document.createElement('div');
   head.className = 'gn-head';
+  head.innerHTML = BELL;
   const title = document.createElement('h4');
-  title.textContent = guideNotesHidden ? `${notes.length} notification${notes.length === 1 ? '' : 's'}` : 'Notifications';
+  const count = `${notes.length} notification${notes.length === 1 ? '' : 's'}`;
+  title.textContent = guideNotesHidden ? (kind === 'side' ? count : String(notes.length)) : 'Notifications';
   head.appendChild(title);
   panel.appendChild(head);
   if (!guideNotesHidden) {
     const list = document.createElement('div');
     list.className = 'gn-list';
-    for (const n of notes) {
+    for (const n of kind === 'compact' ? notes.slice(0, 3) : notes) {
       const row = document.createElement('div');
       row.className = 'gn-item' + (n.error ? ' error' : '');
       const t = document.createElement('span');
@@ -245,9 +252,17 @@ function guideNotesPanel() {
     bar.appendChild(b);
   };
   button('2', guideNotesHidden ? 'Show' : 'Hide', () => modal && modal.onX && modal.onX());
-  button('3', 'Clear', () => modal && modal.onY && modal.onY());
+  if (!(kind === 'float' && guideNotesHidden)) button('3', 'Clear', () => modal && modal.onY && modal.onY());
+  if (kind === 'compact' && !guideNotesHidden && notes.length > 3) {
+    const more = document.createElement('small');
+    more.className = 'gn-more';
+    more.textContent = `and ${notes.length - 3} more`;
+    bar.prepend(more);
+  }
   panel.appendChild(bar);
-  modalEl.appendChild(panel);
+  if (kind === 'side' || !box) modalEl.appendChild(panel);
+  else if (kind === 'float') box.appendChild(panel); // behind the card (see style.css)
+  else box.insertBefore(panel, box.querySelector('.mlist')); // compact: under the clock, above the menu
   applyGlyphs();
 }
 async function guideChoose(it) {

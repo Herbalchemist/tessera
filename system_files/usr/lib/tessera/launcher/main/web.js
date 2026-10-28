@@ -255,7 +255,8 @@ function ensureBrowserCursorView() {
 function showBrowserCursor(x, y, pressed) {
   if (!embeddedBrowserView()) return;
   const cursor = ensureBrowserCursorView();
-  cursor.setBounds({ x: Math.round(x) - 4, y: Math.round(y) - 3, width: CURSOR_W, height: CURSOR_H });
+  const at = webView.browserViewBounds(); // the cursor view is placed in window pixels
+  cursor.setBounds({ x: at.x + Math.round(x) - 4, y: at.y + Math.round(y) - 3, width: CURSOR_W, height: CURSOR_H });
   if (!browserCursorVisible) { cursor.setVisible(true); browserCursorVisible = true; }
   if (pressed !== undefined) {
     cursor.webContents.executeJavaScript(`document.body.classList.toggle('down', ${pressed ? 'true' : 'false'})`).catch(() => {});
@@ -270,8 +271,8 @@ function hideBrowserCursor() {
 }
 const browserPointer = browserPointerLib.createPointer({
   bounds: () => {
-    if (!config.mainWindow || config.mainWindow.isDestroyed()) return { width: 1280, height: 720 };
-    const { width, height } = config.mainWindow.getContentBounds();
+    // The page's own area (it may sit inside Tessera's frame): pointer events are in its pixels.
+    const { width, height } = webView.browserViewBounds();
     return { width, height };
   },
   settings: () => prefs.settings.pad,

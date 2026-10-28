@@ -253,6 +253,8 @@ const STOCK_THEME = {
     { id: 'widgetColor', group: 'Widgets', label: 'Solid color: fill', type: 'color', default: '#ffffff', var: '--wg-color' },
     { id: 'widgetSheen', group: 'Widgets', label: 'Glass: shine', type: 'toggle', default: true, var: '--wg-sheen', on: '1', off: '0' },
     { id: 'motion', group: 'Motion', label: 'Animations', type: 'toggle', default: true, var: '--motion', on: '1', off: '0', hint: 'Turn off if movement makes you dizzy' },
+    { id: 'browserFrame', group: 'Browser', label: 'Browser frame', type: 'choice', default: 'framed', hint: 'Keep Tessera around the web page, or give the page the whole screen',
+      options: [{ label: 'Framed (the page sits in a themed frame with its address)', value: 'framed' }, { label: 'Full screen', value: 'full' }] },
     { id: 'browserAnim', group: 'Motion', label: 'Browser transition', type: 'choice', default: 'slide', hint: 'How the browser comes in and goes away',
       options: [
         { label: 'Slide (from the side you came from)', value: 'slide' },

@@ -73,7 +73,10 @@ const PAGE = `<!doctype html><title>Pointer QA</title>
     assert.ok(fast > slow * 2.5, `full tilt is much faster (${slow}px vs ${fast}px in the same time)`);
     const cv = await cursorView();
     assert.ok(cv.visible && cv.last, 'cursor view shown above the page');
-    assert.equal(cv.bounds.x + 4, b[0], 'cursor drawn where the page sees the mouse');
+    // The page may sit inside Tessera's frame: the cursor is drawn at the page's offset plus where the page sees the mouse.
+    const pageAt = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children[0].getBounds());
+    assert.equal(cv.bounds.x + 4, pageAt.x + b[0], 'cursor drawn where the page sees the mouse');
+    assert.equal(cv.bounds.y + 3, pageAt.y + b[1], 'cursor drawn where the page sees the mouse (down)');
     checks.push('Right stick moves a visible cursor; speed follows stick deflection');
 
     // Left stick scrolls, down is down, harder is faster.

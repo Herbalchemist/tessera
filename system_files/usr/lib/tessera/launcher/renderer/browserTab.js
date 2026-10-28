@@ -16,6 +16,81 @@ function browserAnimStyle() {
   const v = get('browserAnim');
   return BROWSER_ANIMS.includes(v) ? v : 'slide';
 }
+// ---- the frame: Tessera stays around the page (Theme Settings › Browser frame). The page is a
+// native view, so it sits in the frame's opening: the launcher measures the opening and tells the
+// main process where to put it. Full screen sends no opening.
+let browserState = { url: '', title: '', loading: false };
+function browserFramed() {
+  const s = prefs.theme && prefs.theme.settings.find((x) => x.id === 'browserFrame');
+  return !s || s.value !== 'full';
+}
+function browserFrame() {
+  let f = document.getElementById('browser-frame');
+  if (f) return f;
+  f = document.createElement('div');
+  f.id = 'browser-frame';
+  f.hidden = true;
+  f.innerHTML =
+    '<div class="bf-top">' +
+      '<div class="bf-side l"><b data-g="4"></b><span class="bf-prev"></span></div>' +
+      '<div class="bf-addr"><svg class="bf-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/></svg>' +
+        '<span class="bf-host"></span><span class="bf-title"></span><i class="bf-load"></i></div>' +
+      '<div class="bf-side r"><span class="bf-hint"><b data-g="3"></b>Address</span><span class="bf-next"></span><b data-g="5"></b></div>' +
+    '</div>' +
+    '<div class="bf-bezel"><div class="bf-view"></div><i class="bf-corner tl"></i><i class="bf-corner tr"></i><i class="bf-corner bl"></i><i class="bf-corner br"></i></div>';
+  document.body.appendChild(f);
+  return f;
+}
+function paintBrowserFrame() {
+  const f = document.getElementById('browser-frame');
+  if (!f) return;
+  const list = tabList();
+  const i = list.indexOf('browser');
+  f.querySelector('.bf-prev').textContent = tabName(list[(i - 1 + list.length) % list.length]);
+  f.querySelector('.bf-next').textContent = tabName(list[(i + 1) % list.length]);
+  let host = '';
+  let secure = false;
+  try { const u = new URL(browserState.url || browserUrl); host = u.host.replace(/^www\./, ''); secure = u.protocol === 'https:'; } catch { host = ''; }
+  f.querySelector('.bf-host').textContent = host || 'New page';
+  const title = (browserState.title || '').trim();
+  f.querySelector('.bf-title').textContent = title && title !== host ? title : '';
+  f.querySelector('.bf-addr').classList.toggle('secure', secure);
+  f.classList.toggle('loading', Boolean(browserState.loading));
+  applyGlyphs();
+}
+// Show the frame and put the page in its opening (or the whole window, full screen).
+async function placeBrowser() {
+  const framed = browserFramed();
+  document.body.classList.toggle('browser-framed', framed);
+  if (!framed) { const f = document.getElementById('browser-frame'); if (f) f.hidden = true; await api.browser('frame', { rect: null }); return null; }
+  const f = browserFrame();
+  f.hidden = false;
+  paintBrowserFrame();
+  const r = f.querySelector('.bf-view').getBoundingClientRect();
+  const rect = { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) };
+  await api.browser('frame', { rect });
+  return rect;
+}
+function hideBrowserFrame() {
+  const f = document.getElementById('browser-frame');
+  if (f) f.hidden = true;
+  document.body.classList.remove('browser-framed');
+}
+// The curtain (the picture of the page) covers exactly where the page is.
+function fitCurtain(c, rect) {
+  for (const k of ['left', 'top', 'width', 'height']) c.style[k] = '';
+  c.style.inset = '';
+  if (!rect) return;
+  c.style.inset = 'auto';
+  c.style.left = rect.x + 'px'; c.style.top = rect.y + 'px';
+  c.style.width = rect.width + 'px'; c.style.height = rect.height + 'px';
+}
+if (api.onBrowserState) api.onBrowserState((st) => { if (st && typeof st === 'object') { browserState = st; paintBrowserFrame(); } });
+let frameResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(frameResizeTimer);
+  frameResizeTimer = setTimeout(() => { if (browserOpen && !browserMoving) placeBrowser().then((r) => fitCurtain(browserCurtain(), r)).catch(() => {}); }, 120);
+});
 function browserCurtain() {
   let c = document.getElementById('browser-curtain');
   if (c) return c;
@@ -105,6 +180,8 @@ async function launchBrowser(dir = 1) {
   const c = browserCurtain();
   try {
     const style = browserAnimStyle();
+    browserState = { url: browserUrl, title: browserState.url === browserUrl ? browserState.title : '', loading: false };
+    fitCurtain(c, await placeBrowser());
     paintCurtain(c, browserShot);
     if (style !== 'none') {
       await decodeShot(browserShot);
@@ -114,6 +191,7 @@ async function launchBrowser(dir = 1) {
     const result = await api.browser('open', { url: browserUrl });
     if (!result || !result.ok) {
       c.hidden = true;
+      hideBrowserFrame();
       setStatus((result && result.error) || "Couldn't open the browser.", true);
       return;
     }
@@ -143,20 +221,74 @@ async function closeBrowser(dir = -1) {
     browserOpen = false;
     await api.browser('close');
     document.body.classList.remove('browser-open');
+    document.getElementById('browser-frame')?.classList.add('leaving');
     await playCurtain(c, style, 'out', dir);
     c.hidden = true;
+    hideBrowserFrame();
+    document.getElementById('browser-frame')?.classList.remove('leaving');
   } finally {
     browserMoving = false;
     setTimeout(drainTabQueue, 0);
   }
 }
+// ---- the address bubble: pulled down out of the address pill in the frame (or out of the top
+// edge, full screen) on a stretchy neck, with the keyboard docked below. It goes back up when done.
+function urlBubble() {
+  let b = document.getElementById('url-bubble');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'url-bubble';
+    b.innerHTML =
+      '<div class="ub-drop">' +
+        '<svg class="ub-neck" viewBox="0 0 160 30" preserveAspectRatio="none" aria-hidden="true"><path class="skin" d="M52 0 H108 C108 16 128 30 160 30 V33 H0 V30 C32 30 52 16 52 0 Z"/>' +
+          '<path class="edge" d="M52 0 C52 16 32 30 0 30 M108 0 C108 16 128 30 160 30"/></svg>' +
+        '<div class="ub-body">' +
+          '<svg class="ub-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>' +
+          '<div class="ub-field"><span class="ub-text"></span><span class="caret"></span><span class="ub-ph">Search, or type a web address</span></div>' +
+        '</div>' +
+        '<div class="ub-sub"></div>' +
+      '</div>';
+    document.body.appendChild(b);
+  }
+  // Where it comes out of: under the address pill, or the top of the screen.
+  const pill = browserFramed() && document.querySelector('#browser-frame:not([hidden]) .bf-addr');
+  const r = pill ? pill.getBoundingClientRect() : null;
+  b.style.top = (r ? Math.round(r.bottom) : 0) + 'px';
+  b.classList.toggle('from-pill', Boolean(r));
+  return b;
+}
+function paintUrlBubble(text, fresh) {
+  const b = document.getElementById('url-bubble');
+  if (!b) return;
+  const t = b.querySelector('.ub-text');
+  t.textContent = text;
+  t.classList.toggle('sel', Boolean(fresh && text));
+  b.querySelector('.ub-field').classList.toggle('empty', !text);
+  const s = String(text || '').trim();
+  const where = !s ? '' : /^[a-z][a-z0-9+.-]*:\/\//i.test(s) || /^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s) ? 'Opens this address' : 'Searches DuckDuckGo';
+  b.querySelector('.ub-sub').textContent = fresh ? 'Type to replace it' : where;
+}
+function pullUrlBubble(b) {
+  b.classList.remove('retract');
+  b.hidden = false;
+  void b.offsetWidth; // start the pull from the top every time
+  b.classList.add('out');
+  document.querySelector('#browser-frame .bf-addr')?.classList.add('pulling');
+}
+function retractUrlBubble(b) {
+  document.querySelector('#browser-frame .bf-addr')?.classList.remove('pulling');
+  if (!b || b.hidden) return Promise.resolve();
+  b.classList.remove('out');
+  b.classList.add('retract');
+  return new Promise((done) => setTimeout(() => { b.hidden = true; b.classList.remove('retract'); done(); }, 230 * (prefs.theme && prefs.theme.settings.find((x) => x.id === 'motion' && x.value === false) ? 0 : 1)));
+}
 async function openUrlBar() {
   if (!browserOpen || modal || urlBarOpening || browserMoving) return;
   urlBarOpening = true;
-  // The page draws on top of this whole window, so the on-screen keyboard underneath would
-  // be invisible unless the page steps aside for it first. A dimmed picture of the page
-  // stays behind the keyboard so you can see what you are leaving.
+  // The page draws on top of the window, so it steps aside (a dimmed picture of it stays) while
+  // the bubble and the keyboard are out.
   const c = browserCurtain();
+  let bubble = null;
   try {
     const snap = await api.browser('snapshot');
     if (snap && snap.ok) browserShot = snap.image;
@@ -165,7 +297,11 @@ async function openUrlBar() {
     c.hidden = false;
     c.classList.add('dim');
     await api.browser('hide');
-    const v = await ask('Go to', browserUrl, { max: 300 });
+    bubble = urlBubble();
+    paintUrlBubble(browserUrl, true);
+    pullUrlBubble(bubble);
+    const v = await ask('Go to', browserUrl, { max: 300, url: true, selectAll: true, cls: 'url', doneLabel: 'Go', onText: paintUrlBubble });
+    await retractUrlBubble(bubble);
     const u = v === null ? null : normalizeUrl(v);
     const result = u ? await api.browser('go', { url: u }) : await api.browser('show');
     if (!result || !result.ok) {
@@ -174,6 +310,7 @@ async function openUrlBar() {
       setStatus((result && result.error) || "Couldn't open that address.", true);
     } else if (u) browserUrl = u;
   } finally {
+    if (bubble && !bubble.hidden) retractUrlBubble(bubble);
     urlBarOpening = false;
     c.classList.remove('dim');
     setTimeout(() => { if (browserOpen) c.hidden = true; }, 300);
