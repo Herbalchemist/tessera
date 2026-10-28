@@ -57,7 +57,90 @@ const actionFor = (physical, swap) => ACTION_OF_ROLE[roleOf(physical, swap)] || 
 // The physical button that does an action, or null.
 const buttonFor = (action, swap) => (Object.prototype.hasOwnProperty.call(ROLE_OF_ACTION, action) ? physicalFor(ROLE_OF_ACTION[action], swap) : null);
 
-const inputActions = { ACTIONS, ACTION_OF_ROLE, ROLE_OF_ACTION, CONFIRM_CHOICES, familyOf, swaps, physicalFor, roleOf, roleBits, actionFor, buttonFor };
+
+// ---------------------------------------------------------------- holding a direction
+// Keep keyboard-like navigation moving while a direction is held. Linux gamepad
+// devices do not reliably generate EV_KEY repeats, and sticks report only when
+// their position changes. The most recently engaged input wins; releasing it
+// resumes an older held direction, which makes D-pad/stick handoffs predictable.
+function createDirectionRepeater({
+  onAction = () => {},
+  initialDelay = 350,
+  repeatInterval = 90,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+} = {}) {
+  const held = new Map();
+  let sequence = 0;
+  let active = '';
+  let timer = null;
+  let disposed = false;
+
+  const stopTimer = () => {
+    if (timer !== null) clearTimeoutFn(timer);
+    timer = null;
+  };
+  const current = () => {
+    let winner = null;
+    for (const entry of held.values()) {
+      if (!winner || entry.order > winner.order) winner = entry;
+    }
+    return winner ? winner.key : '';
+  };
+  const schedule = (delay) => {
+    if (!active || disposed) return;
+    timer = setTimeoutFn(() => {
+      timer = null;
+      if (!active || disposed) return;
+      onAction(active);
+      schedule(repeatInterval);
+    }, delay);
+    // Unref normal timers so a disconnected controller cannot keep the launcher alive.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+  };
+  const update = (source, key) => {
+    if (disposed || typeof source !== 'string' || !source) return;
+    const old = held.get(source);
+    if (key) {
+      if (old && old.key === key) return;
+      held.set(source, { key, order: ++sequence });
+    } else if (!old) {
+      return;
+    } else {
+      held.delete(source);
+    }
+    const next = current();
+    if (next === active) return;
+    stopTimer();
+    active = next;
+    if (active) {
+      onAction(active);
+      schedule(initialDelay);
+    }
+  };
+
+  return {
+    set: update,
+    clear() { held.clear(); active = ''; stopTimer(); },
+    dispose() { disposed = true; held.clear(); active = ''; stopTimer(); },
+  };
+}
+
+// How fast a held direction repeats (Settings > Controller > Repeat speed): [first pause, then every], in ms.
+// "standard" is what each has always done: the launcher steps every 200 ms, the browser starts after
+// 350 ms and then scrolls through links quickly.
+const REPEAT_SPEEDS = {
+  slow: { launcher: [300, 300], browser: [450, 150] },
+  standard: { launcher: [200, 200], browser: [350, 90] },
+  fast: { launcher: [200, 110], browser: [250, 60] },
+};
+const REPEAT_CHOICES = Object.keys(REPEAT_SPEEDS);
+const repeatTiming = (speed, where) => {
+  const t = (REPEAT_SPEEDS[speed] || REPEAT_SPEEDS.standard)[where === 'browser' ? 'browser' : 'launcher'];
+  return { initialDelay: t[0], repeatInterval: t[1] };
+};
+
+const inputActions = { ACTIONS, ACTION_OF_ROLE, ROLE_OF_ACTION, CONFIRM_CHOICES, familyOf, swaps, physicalFor, roleOf, roleBits, actionFor, buttonFor, createDirectionRepeater, REPEAT_SPEEDS, REPEAT_CHOICES, repeatTiming };
 if (typeof module !== 'undefined' && module.exports) module.exports = inputActions;
 if (typeof window !== 'undefined') window.TesseraInputActions = inputActions;
 })();

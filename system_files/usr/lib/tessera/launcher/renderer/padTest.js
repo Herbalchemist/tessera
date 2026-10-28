@@ -268,6 +268,7 @@ const PAD_LABELS = {
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
   joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
+  repeat: { slow: 'Slower', standard: 'Standard', fast: 'Faster' },
   confirm: { position: 'The bottom button, on every controller', label: 'Nintendo controllers: A (right) confirms, B goes back' },
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
   guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
@@ -337,6 +338,7 @@ async function flowPadMenu() {
       { label: 'Guide on the desktop', sub: PAD_LABELS.guideDesktop[prefs.pad.guideDesktop] || PAD_LABELS.guideDesktop.auto, op: 'guideDesktop' },
       { label: 'Button mapping', sub: Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) ? 'Standard' : 'Changed', op: 'mapping' },
       { label: 'Sticks and triggers', header: true, fold: 'pad.sticks', open: true },
+      { label: 'Repeat speed', sub: `${PAD_LABELS.repeat[prefs.pad.repeat] || 'Standard'} · holding a direction, in menus and the browser`, op: 'repeat' },
       { label: 'Stick deadzone', sub: prefs.pad.deadzone + '%', op: 'deadzone' },
       { label: 'Calibrate sticks', sub: calibrated ? 'calibrated' : 'not calibrated', op: 'calib' },
       { label: 'Trigger sensitivity', sub: prefs.pad.trigger + '% to register', op: 'trigger' },
@@ -372,6 +374,7 @@ async function flowPadMenu() {
     else if (it.op === 'rumble') await pickChoice('Vibration strength', 'rumble');
     else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
     else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
+    else if (it.op === 'repeat') await pickChoice('How fast a held stick or D-pad keeps moving (in menus, on tiles and in the browser)', 'repeat');
     else if (it.op === 'confirm') await pickChoice('Which button confirms? (B, X and Y follow it; the launcher, browser and dialogs all use this)', 'confirm');
     else if (it.op === 'grip') await flowGrip();
     else if (it.op === 'joycons') await pickChoice('When a left and a right Joy-Con are both connected', 'joycons');
@@ -448,6 +451,7 @@ async function flowKeyAction(act) {
         onChoose: (x) => { closeModal(); resolve(x); },
         onBack: () => { closeModal(); resolve(null); },
         onY: (x) => { if (x && x.code) { removing = x; closeModal(); resolve(x); } },
+        yLabel: 'Remove',
       });
     });
     if (!it) return;

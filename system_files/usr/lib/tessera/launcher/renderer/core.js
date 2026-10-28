@@ -11,7 +11,6 @@ const statusEl = document.getElementById('status');
 const modalEl = document.getElementById('modal');
 const canvasEl = document.getElementById('canvas');
 
-const NAV_REPEAT_MS = 200;
 const REORDER_HOLD_MS = 3000;
 const MAX_TEXT = 40;
 const GRID_COLS = 12; // Home is a grid spread over the whole screen (keep in step with main.js)

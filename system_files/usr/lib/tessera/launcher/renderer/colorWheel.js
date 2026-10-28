@@ -331,6 +331,7 @@ async function flowProfiles() {
       list.forEach((p) => items.push({ label: p.name, sub: p.themeId ? `Theme: ${themeName(p.themeId)}` : "Uses Tessera's active theme", id: p.id, plain: true }));
     }
     const it = await pick('Profiles', items, index, {
+      yLabel: 'Options',
       onY: list.length
         ? async (hit) => { if (hit && hit.id) await flowProfileOptions(hit.id, hit.label); }
         : undefined,

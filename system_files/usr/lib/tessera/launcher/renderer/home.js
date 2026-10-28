@@ -15,7 +15,6 @@ let busy = false;           // true while waiting on the main process
 let nestedView = false;     // Tessera was started from the desktop (Return to Tessera), not as the session itself
 let artRev = 0;             // bumps when a game picture changes, so tiles reload it
 let modal = null;
-let lastNav = 0;
 let holdTimer = null;
 let reorderId = null;       // mosaic being moved with the tab bar
 let place = null;           // an inlay being placed or resized on Home's grid

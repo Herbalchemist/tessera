@@ -63,3 +63,36 @@ test('in the browser, a Nintendo A confirms (Enter) and B goes back, under "A co
   assert.deepStrictEqual(press(0, false).keys, ['ENTER']);        // by position (the default): bottom confirms
   assert.deepStrictEqual(press(1, false).browserActions, ['b']);
 });
+
+test('repeat speeds: standard keeps the old timings, and faster is faster everywhere', () => {
+  assert.deepStrictEqual(I.repeatTiming('standard', 'launcher'), { initialDelay: 200, repeatInterval: 200 });
+  assert.deepStrictEqual(I.repeatTiming('standard', 'browser'), { initialDelay: 350, repeatInterval: 90 });
+  assert.deepStrictEqual(I.repeatTiming('nonsense', 'launcher'), I.repeatTiming('standard', 'launcher'));
+  assert.deepStrictEqual(I.REPEAT_CHOICES, ['slow', 'standard', 'fast']);
+  for (const where of ['launcher', 'browser']) {
+    const [s, n, f] = I.REPEAT_CHOICES.map((c) => I.repeatTiming(c, where).repeatInterval);
+    assert.ok(s > n && n > f, where);
+  }
+});
+
+test('the repeater: moves at once, waits, then repeats; the newest direction wins', () => {
+  const timers = [];
+  const out = [];
+  const r = I.createDirectionRepeater({
+    onAction: (a) => out.push(a), initialDelay: 200, repeatInterval: 100,
+    setTimeoutFn: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeoutFn: () => {},
+  });
+  r.set('pad', 'down');
+  assert.deepStrictEqual(out, ['down']);
+  assert.strictEqual(timers.at(-1).ms, 200);
+  timers.at(-1).fn();
+  assert.deepStrictEqual(out, ['down', 'down']);
+  assert.strictEqual(timers.at(-1).ms, 100);
+  r.set('stick', 'left');
+  assert.deepStrictEqual(out.at(-1), 'left');
+  r.set('stick', '');
+  assert.deepStrictEqual(out.at(-1), 'down', 'releasing the newer one goes back to the held one');
+  r.dispose();
+  r.set('pad', 'up');
+  assert.strictEqual(out.at(-1), 'down');
+});

@@ -562,6 +562,7 @@ function showBrowse(r, purpose, after) {
       if (after) after();
     },
     // Y on a drive: give it a name you'd actually say.
+    yLabel: 'Rename',
     onY: r.renamable
       ? async (it) => {
           if (!it || !it.key) return;

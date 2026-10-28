@@ -244,6 +244,10 @@ body.hold > :not(#modal):not(script) { opacity: 0; pointer-events: none; transit
 .mitem.header.fold { color: var(--text); font-size: 1.1rem; text-transform: none; letter-spacing: 0; font-weight: 700; padding: 14px 18px 8px; background: none; }
 .mitem.header.fold.active { background: var(--accent); color: var(--on-accent); }
 .khint { margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: pre; }
+/* the hints under a menu: what this menu takes, named for the controller, keyboard or mouse in use */
+.mhints { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 28px; margin: 16px 0 0; color: var(--muted); font-size: 0.9rem; }
+.mhints b { color: var(--text); font-weight: 600; margin-right: 6px; }
+.mhints b:empty { display: none; }
 
 /* ---- on-screen keyboard: docked to the bottom, sized to the screen ---- */
 #modal.keys {
