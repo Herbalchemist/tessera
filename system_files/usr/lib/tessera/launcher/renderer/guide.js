@@ -56,7 +56,7 @@ function guideGoHome() {
 async function closeGuide({ stay = false } = {}) {
   if (!guideOpen) return;
   guideOpen = false;
-  if (modal && modal.cls === 'guide') closeModal();
+  if (modal && /\bguide\b/.test(modal.cls || '')) closeModal();
   if (GUIDE_ONLY) { if (!stay) await api.guide('hideHelper'); return; }
   if (guideBrowserHidden) {
     guideBrowserHidden = false;
@@ -149,11 +149,7 @@ async function openGuide() {
   items.push({ label: 'Profiles', header: true });
   for (const pr of prof.profiles || []) items.push({ label: pr.name, sub: pr.id === prof.active ? 'playing now' : '', op: 'profile', id: pr.id, plain: true });
   if (!GUIDE_ONLY) items.push({ label: (prof.profiles || []).length ? 'Manage profiles…' : 'Add a profile…', op: 'profiles', plain: true });
-  // ---- notifications
-  const notes = [];
-  for (const l of (prefs.storage && prefs.storage.low) || []) notes.push({ label: `Low storage on ${l.name}`, sub: `${fmtBytes(l.free)} left`, op: 'storage', plain: true });
-  for (const m of statusLog.slice(0, 4)) notes.push({ label: m.msg.length > 70 ? m.msg.slice(0, 68) + '…' : m.msg, sub: fmtAgo(m.at), plain: true, info: true });
-  if (notes.length) { items.push({ label: 'Notifications', header: true }); items.push(...notes); }
+  // (notifications have their own panel on the right: see guideNotes below)
   if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); }
   // ---- power
   items.push({ label: 'Power', header: true, fold: 'guide.power' });
@@ -173,10 +169,86 @@ async function openGuide() {
     body: bits.join('  ·  '),
     items,
     index: 0,
-    cls: 'guide',
+    cls: 'guide guide-' + (GUIDE_STYLES.includes(prefs.pad.guideStyle) ? prefs.pad.guideStyle : 'side'),
     onChoose: (it) => guideChoose(it),
     onBack: () => closeGuide(),
+    onRender: () => guideNotesPanel(),
   });
+  guideNotesButtons();
+}
+
+// ---- notifications: a panel of their own on the right of the guide. X hides or shows it (they
+// stay in the queue), Y clears them (gone from the queue). Low storage comes back if it's still low
+// next time Tessera checks.
+const GUIDE_STYLES = ['side', 'float', 'compact'];
+let guideNotesHidden = false;
+const clearedLow = new Set(); // low-storage warnings cleared this session, by drive
+function guideNotes() {
+  const notes = [];
+  for (const l of (prefs.storage && prefs.storage.low) || []) {
+    if (!clearedLow.has(l.name + '|' + l.free)) notes.push({ text: `Low storage on ${l.name}`, sub: `${fmtBytes(l.free)} left`, error: true, low: l });
+  }
+  for (const m of statusLog) notes.push({ text: m.msg.length > 90 ? m.msg.slice(0, 88) + '…' : m.msg, sub: fmtAgo(m.at), error: m.isError });
+  return notes;
+}
+// The guide's X and Y act on the panel while there's something in it.
+function guideNotesButtons() {
+  if (!modal || !guideOpen) return;
+  const n = guideNotes().length;
+  modal.onX = n ? () => { guideNotesHidden = !guideNotesHidden; guideNotesButtons(); renderModal(); } : null;
+  modal.xLabel = guideNotesHidden ? `Show notifications (${n})` : 'Hide notifications';
+  modal.onY = n ? () => { guideClearNotes(); guideNotesButtons(); renderModal(); } : null;
+  modal.yLabel = 'Clear notifications';
+}
+function guideClearNotes() {
+  for (const l of (prefs.storage && prefs.storage.low) || []) clearedLow.add(l.name + '|' + l.free);
+  statusLog.length = 0;
+  guideNotesHidden = false;
+  setStatus('');
+}
+function guideNotesPanel() {
+  const notes = guideNotes();
+  if (!notes.length) return;
+  const panel = document.createElement('aside');
+  panel.className = 'gnotes' + (guideNotesHidden ? ' hidden' : '');
+  const head = document.createElement('div');
+  head.className = 'gn-head';
+  const title = document.createElement('h4');
+  title.textContent = guideNotesHidden ? `${notes.length} notification${notes.length === 1 ? '' : 's'}` : 'Notifications';
+  head.appendChild(title);
+  panel.appendChild(head);
+  if (!guideNotesHidden) {
+    const list = document.createElement('div');
+    list.className = 'gn-list';
+    for (const n of notes) {
+      const row = document.createElement('div');
+      row.className = 'gn-item' + (n.error ? ' error' : '');
+      const t = document.createElement('span');
+      t.textContent = n.text;
+      const sub = document.createElement('small');
+      sub.textContent = n.sub;
+      row.append(t, sub);
+      list.appendChild(row);
+    }
+    panel.appendChild(list);
+  }
+  // Buttons for the mouse, named for the controller or keyboard in use.
+  const bar = document.createElement('div');
+  bar.className = 'gn-bar';
+  const button = (g, label, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const k = document.createElement('b');
+    k.dataset.g = g;
+    b.append(k, label);
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+    bar.appendChild(b);
+  };
+  button('2', guideNotesHidden ? 'Show' : 'Hide', () => modal && modal.onX && modal.onX());
+  button('3', 'Clear', () => modal && modal.onY && modal.onY());
+  panel.appendChild(bar);
+  modalEl.appendChild(panel);
+  applyGlyphs();
 }
 async function guideChoose(it) {
   if (!it || it.info) return;

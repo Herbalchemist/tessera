@@ -48,7 +48,9 @@ const padsCtl = require('../pads').create({
     // reads them by role itself, like any controller); the browser handling below gets them by
     // role, under the Nintendo button settings (input-actions.js).
     const raw = f;
-    f = { ...f, b: inputActions.roleBits(f.b | 0, inputActions.mapFor('nintendo', prefs.settings.pad)) };
+    // (A Joy-Con on its own, held sideways, is read by position: pads.js already turned it.)
+    const family = /^j[lr]:/.test(String(f.id)) ? 'sideways' : 'nintendo';
+    f = { ...f, b: inputActions.roleBits(f.b | 0, inputActions.mapFor(family, prefs.settings.pad)) };
     const before = padBits.get(f.id) || 0;
     padBits.set(f.id, f.b);
 

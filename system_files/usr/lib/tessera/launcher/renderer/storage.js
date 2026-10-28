@@ -353,11 +353,17 @@ async function flowControls() {
     items.push({ label: 'Reset keyboard buttons', op: 'reset', plain: true });
     // The controller in use: its face buttons and bumpers can trade jobs (for its kind of controller).
     const pad = padInUse();
-    const fam = detectFamily(pad ? pad.id : '');
+    const fam = padFamilyOf(pad);
     const changed = Boolean(prefs.pad.remap && prefs.pad.remap[fam]);
-    items.push({ label: `${FAMILY_NAMES[fam]} controller buttons`, header: true, fold: 'map.pad', open: true });
-    PAD_JOBS.forEach(([role, label]) => items.push({ label, sub: roleName(role), role, plain: true }));
-    items.push({ label: 'Put these buttons back', sub: changed ? `the usual ${FAMILY_NAMES[fam]} layout` : 'nothing changed', op: 'padReset', plain: true });
+    if (fam === 'sideways') {
+      items.push({ label: 'A Joy-Con held sideways', header: true, fold: 'map.pad', open: true });
+      PAD_JOBS.forEach(([role, label]) => items.push({ label, sub: roleName(role), plain: true, info: true }));
+      items.push({ label: 'Read by position, as on a Switch', sub: 'the bottom button selects; these buttons stay put', plain: true, info: true });
+    } else {
+      items.push({ label: `${FAMILY_NAMES[fam]} controller buttons`, header: true, fold: 'map.pad', open: true });
+      PAD_JOBS.forEach(([role, label]) => items.push({ label, sub: roleName(role), role, plain: true }));
+      items.push({ label: 'Put these buttons back', sub: changed ? `the usual ${FAMILY_NAMES[fam]} layout` : 'nothing changed', op: 'padReset', plain: true });
+    }
     items.push({ label: 'Always', sub: 'The D-pad and left stick move, and the Guide button opens the guide.', plain: true, info: true });
     const it = await pick('Button mapping', items, index);
     if (!it) return;

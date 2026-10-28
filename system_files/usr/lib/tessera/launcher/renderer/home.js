@@ -25,8 +25,9 @@ const prevBtn = new Array(32).fill(false);
 const wasBig = {};          // rows that showed the big empty tile last render
 
 const statusLog = []; // the last few messages, for the guide
-function setStatus(msg, isError) {
-  if (msg && msg !== 'Starting…' && (!statusLog.length || statusLog[0].msg !== msg)) {
+// opts.log: false for passing remarks that aren't worth a notification (a controller taking over).
+function setStatus(msg, isError, opts = {}) {
+  if (msg && opts.log !== false && msg !== 'Starting…' && (!statusLog.length || statusLog[0].msg !== msg)) {
     statusLog.unshift({ msg, isError: Boolean(isError), at: Date.now() });
     statusLog.length = Math.min(statusLog.length, 6);
   }

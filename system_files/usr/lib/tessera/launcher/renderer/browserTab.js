@@ -79,6 +79,25 @@ function playCurtain(c, style, phase, dir) {
   }
   return Promise.all(runs.map((a) => a.finished.catch(() => {})));
 }
+// Bumping through the tabs: landing on Browser opens it only once you stay there a moment, so
+// passing over it (or turning back) never waits for the page to open and close. And bumper presses
+// made while the browser is coming or going are kept and played after it, not dropped.
+const BROWSER_SETTLE_MS = 250;
+let browserOpenTimer = null;
+const queuedTabs = [];
+function arriveOnBrowser(dir) {
+  clearTimeout(browserOpenTimer);
+  browserOpenTimer = setTimeout(() => {
+    browserOpenTimer = null;
+    if (hoverId === 'browser' && !browserOpen && !modal && !suspended && !busy) launchBrowser(dir);
+  }, BROWSER_SETTLE_MS);
+}
+function queueTabPress(act) {
+  if (queuedTabs.length < 6) queuedTabs.push(act);
+}
+function drainTabQueue() {
+  while (queuedTabs.length && !browserMoving) press(queuedTabs.shift());
+}
 async function launchBrowser(dir = 1) {
   if (browserOpen || browserMoving) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
@@ -105,6 +124,7 @@ async function launchBrowser(dir = 1) {
     setTimeout(() => { if (browserOpen && !urlBarOpening) c.hidden = true; }, 300);
   } finally {
     browserMoving = false;
+    setTimeout(drainTabQueue, 0);
   }
 }
 async function closeBrowser(dir = -1) {
@@ -127,6 +147,7 @@ async function closeBrowser(dir = -1) {
     c.hidden = true;
   } finally {
     browserMoving = false;
+    setTimeout(drainTabQueue, 0);
   }
 }
 async function openUrlBar() {
@@ -161,6 +182,8 @@ async function openUrlBar() {
 // Bumpers and left/right on the tab bar. The bar is a loop. The page follows the
 // pointer, except on the button tabs.
 function moveTabs(d) {
+  clearTimeout(browserOpenTimer); // moving on: don't open the browser we were passing
+  browserOpenTimer = null;
   const list = tabList();
   const i = Math.max(0, list.indexOf(hoverId));
   hoverId = list[(i + d + list.length) % list.length];

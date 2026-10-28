@@ -7,6 +7,7 @@
 function closeModal() {
   const done = modal && modal.onClose;
   modal = null;
+  renderedModal = null;
   modalEl.hidden = true;
   modalEl.className = '';
   modalEl.replaceChildren();
@@ -27,11 +28,11 @@ function visibleFlags(items) {
   });
 }
 const pickable = (items, flags, i) => Boolean(items[i]) && flags[i] && !(items[i].header && !items[i].fold);
-function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, yLabel = '', body = '', welcome = false, cls = '', onRender = null }) {
+function openList({ title, items, index = 0, multi = false, onChoose, onBack, onY, yLabel = '', onX = null, xLabel = '', body = '', welcome = false, cls = '', onRender = null }) {
   // Never start on a label or on something folded away.
   const flags = visibleFlags(items);
   for (let i = index; i < items.length; i++) if (pickable(items, flags, i)) { index = i; break; }
-  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, yLabel, body, welcome, cls, onRender };
+  modal = { kind: 'list', title, items, index, multi, onChoose, onBack, onY, yLabel, onX, xLabel, body, welcome, cls, onRender };
   renderModal();
 }
 // Resolves with the chosen item, or null if the user backs out.
@@ -299,6 +300,7 @@ function listHints(m) {
   if (cur && cur.header && cur.fold) hints.push({ g: '0', label: isOpen(cur) ? 'Close' : 'Open' });
   else if (cur && !cur.header && !cur.info) hints.push({ g: '0', label: m.multi && 'checked' in cur ? 'Tick' : 'Select' });
   hints.push({ g: '1', label: 'Back' });
+  if (m.onX) hints.push({ g: '2', label: m.xLabel || 'More' });
   if (m.onY) hints.push({ g: '3', label: m.yLabel || 'More' });
   const row = document.createElement('div');
   row.className = 'mhints';
@@ -313,13 +315,20 @@ function listHints(m) {
   return row;
 }
 
+let renderedModal = null; // the menu last drawn, to tell a redraw from a new menu
 function renderModal() {
   if (!modal) return;
   if (modal.kind === 'tour') return renderTour();
   modalEl.hidden = false;
   if (modal.kind === 'keys') return updateKeys();
   if (modal.kind === 'pad' || modal.kind === 'color' || modal.kind === 'cal') return;
-  modalEl.className = modal.welcome ? 'welcome' : (modal.cls || '');
+  // Redrawing the same menu (moving through it, a value changing) is not opening it again: no
+  // entrance animation, and the list stays scrolled where it was.
+  const again = renderedModal === modal;
+  renderedModal = modal;
+  const oldList = again ? modalEl.querySelector('.mlist') : null;
+  const scrollTop = oldList ? oldList.scrollTop : 0;
+  modalEl.className = (modal.welcome ? 'welcome' : (modal.cls || '')) + (again ? ' again' : '');
   modalEl.replaceChildren();
   const box = document.createElement('div');
   box.className = 'box';
@@ -385,6 +394,7 @@ function renderModal() {
     list.appendChild(e);
   }
   box.appendChild(list);
+  if (scrollTop) list.scrollTop = scrollTop;
   const hintRow = listHints(modal);
   if (hintRow) box.appendChild(hintRow);
   modalEl.appendChild(box);
@@ -424,6 +434,7 @@ function modalPress(act) {
     }
     else if (act === 'b') modal.onBack();
     else if (act === 'y' && modal.onY) return modal.onY(cur); // Y on a keyboard (the controller's Y goes straight to onY)
+    else if (act === 'x' && modal.onX) return modal.onX(cur);
     renderModal();
     return;
   }

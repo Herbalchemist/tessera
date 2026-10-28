@@ -51,6 +51,7 @@ async function reorderPress(act) {
 }
 
 function press(act) {
+  if (browserMoving && !suspended && (act === 'lb' || act === 'rb')) return queueTabPress(act);
   if (suspended || busy || browserMoving) return;
   if (browserOpen && !modal) {
     if (act === 'lb' || act === 'rb') { const d = act === 'lb' ? -1 : 1; closeBrowser(d); moveTabs(d); }
@@ -62,7 +63,7 @@ function press(act) {
   if (place) return placePress(act);
   if (act === 'lb' || act === 'rb') {
     moveTabs(act === 'lb' ? -1 : 1);
-    if (hoverId === 'browser') launchBrowser(act === 'lb' ? -1 : 1); // arriving on it with a bumper opens it
+    if (hoverId === 'browser') arriveOnBrowser(act === 'lb' ? -1 : 1); // staying on it after a bumper opens it
     return;
   }
   if (focus === 'tabs') {
@@ -322,7 +323,7 @@ function loop(now) {
       lastPadId = pad.id;
       applyGlyphs(); // "automatic" labels follow whichever controller is in use
       if (modal && modal.kind === 'keys') renderModal();
-      setStatus(`Controller: ${pad.id} [${pad.mapping || 'non-standard'}]`);
+      setStatus(`Controller: ${pad.id.replace(/\s*\((STANDARD GAMEPAD|Vendor)[^)]*\)/gi, '').replace(/ \(Nintendo\)$/, '').trim() || 'connected'}`, false, { log: false });
     }
     // n is a role (0 confirms, 1 goes back...): read the physical button doing that job.
     const swap = padMap(pad);

@@ -14,6 +14,7 @@ const output = process.env.TESSERA_QA_OUTPUT || path.resolve(process.cwd(), 'qa-
 const executablePath = process.env.TESSERA_ELECTRON || require('electron');
 fs.mkdirSync(output, { recursive: true });
 const checks = [];
+if (process.env.QA_VERBOSE) { const push = checks.push.bind(checks); checks.push = (c) => { console.error('.. ' + c); return push(c); }; }
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tessera-input-'));
 // Past the first-run welcome, so its pages don't open over the test's menus.
 fs.mkdirSync(path.join(temp, 'data'), { recursive: true });
@@ -193,6 +194,93 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     const saved2 = JSON.parse(fs.readFileSync(path.join(temp, 'data', 'settings.json'), 'utf8'));
     assert.deepEqual(saved2.pad.remap, {});
     checks.push('Remaps must keep every job on one button; choosing a confirm button or "Put these buttons back" undoes them');
+
+    // A right Joy-Con on its own, held sideways (as pads.js hands it over): read by position, labelled
+    // as it's held (A at the bottom), and the Nintendo "A confirms" setting leaves it alone.
+    await page.evaluate(() => {
+      applyPadList({ ok: true, grip: false, mode: 'separate', pads: [{ id: 'jr:qa/jr', name: 'Joy-Con (R) (Nintendo)', kind: 'jr', player: 1, parts: ['jr'], sideways: true, battery: null, error: '' }] });
+      navigator.getGamepads = () => [];
+      window.__qaPad = vpads.get('jr:qa/jr');
+      setInputMode('pad');
+    });
+    await page.waitForTimeout(200);
+    for (const confirm of ['position', 'label']) {
+      await setConfirm(confirm);
+      assert.equal(await menuAnswer(0), 'chose', `sideways, ${confirm}: the bottom button (A) selects`);
+      assert.equal(await menuAnswer(1), 'left', `sideways, ${confirm}: the right button (X) goes back`);
+      assert.deepEqual(await menuHints(false), ['ASelect', 'XBack']);
+    }
+    await setConfirm('position');
+    await page.evaluate(() => applyPadList({ ok: true, grip: false, mode: 'separate', pads: [] }));
+    checks.push('A single Joy-Con held sideways: the bottom button (A) selects and the hints say A / X, with either Confirm setting');
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+
+    // The guide: moving through it redraws in place (no slide-in again, scroll kept).
+    await page.evaluate(() => { for (let i = 0; i < 8; i++) setStatus('QA note ' + i); });
+    await page.evaluate(() => openGuide());
+    await page.waitForFunction(() => modal && modal.title === 'Guide');
+    await page.waitForTimeout(400);
+    const guideState = () => page.evaluate(() => ({ cls: document.getElementById('modal').className, anims: document.getElementById('modal').getAnimations({ subtree: true }).filter((a) => a.playState === 'running').length, top: document.querySelector('#modal .mlist').scrollTop }));
+    for (let i = 0; i < 14; i++) await page.evaluate(() => modalPress('down'));
+    const g1 = await guideState();
+    assert.match(g1.cls, /\bagain\b/);
+    assert.equal(g1.anims, 0, 'nothing replays while moving');
+    await page.evaluate(() => modalPress('down'));
+    const g2 = await guideState();
+    assert.ok(g2.top >= g1.top, 'the list stays scrolled');
+    checks.push('The guide redraws in place as you move: no slide-in again, and it keeps its scroll');
+
+    // Notifications: a panel on the right; X hides it (still queued), Y clears it.
+    const notes = () => page.evaluate(() => { const p = document.querySelector('#modal .gnotes'); return p ? { hidden: p.classList.contains('hidden'), items: p.querySelectorAll('.gn-item').length, title: p.querySelector('h4').textContent } : null; });
+    assert.equal(await page.evaluate(() => modal.items.some((x) => /QA note/.test(x.label))), false, 'not in the guide list');
+    assert.deepEqual(await notes(), { hidden: false, items: 6, title: 'Notifications' });
+    await page.screenshot({ path: path.join(output, 'input-guide-notes.png') });
+    await tap(2);
+    assert.deepEqual(await notes(), { hidden: true, items: 0, title: '6 notifications' });
+    assert.equal(await page.evaluate(() => statusLog.length), 6, 'hiding keeps them');
+    await tap(2);
+    assert.equal((await notes()).hidden, false);
+    await tap(3);
+    assert.equal(await notes(), null, 'cleared: the panel goes');
+    assert.equal(await page.evaluate(() => statusLog.length), 0);
+    assert.equal(await page.evaluate(() => modal.onX), null);
+    await page.evaluate(() => closeGuide());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => setStatus('Controller: QA pad', false, { log: false }));
+    assert.equal(await page.evaluate(() => statusLog.length), 0, 'a controller taking over is not a notification');
+    checks.push('Notifications sit in their own panel: X hides or shows them (kept), Y clears them; controller changes aren\'t notifications');
+
+    // Guide styles.
+    await page.evaluate(() => padSet('guideStyle', 'float'));
+    await page.evaluate(() => openGuide());
+    await page.waitForFunction(() => modal && modal.title === 'Guide');
+    assert.match(await page.evaluate(() => document.getElementById('modal').className), /guide-float/);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(output, 'input-guide-float.png') });
+    await page.evaluate(() => closeGuide());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => padSet('guideStyle', 'side'));
+    checks.push('Guide style: side panel, floating card or compact');
+
+    // Bumping past the browser tab doesn't open it; pausing on it does; presses while it closes are kept.
+    await page.evaluate(() => { page = 'home'; hoverId = 'home'; focus = 'tabs'; render(); window.__qaOpens = 0; const real = api.browser; api.browser = (op, ...r) => { if (op === 'open') window.__qaOpens++; return real(op, ...r); }; });
+    const order = await page.evaluate(() => tabList());
+    const hops = order.indexOf('home') - order.indexOf('browser'); // LB presses from Home to Browser
+    for (let i = 0; i < hops + 1; i++) await page.evaluate(() => press('lb')); // past it, quickly
+    await page.waitForTimeout(500);
+    assert.equal(await page.evaluate(() => window.__qaOpens), 0, 'passing over Browser leaves it shut');
+    await page.evaluate(() => press('rb')); // back onto Browser, and stay
+    await page.waitForFunction(() => browserOpen, null, { timeout: 5000 });
+    await page.waitForFunction(() => !browserMoving);
+    const t0 = Date.now();
+    await page.evaluate(() => { press('rb'); press('rb'); press('lb'); }); // out, then on, then back while it closes
+    await page.waitForFunction(() => !browserOpen && !browserMoving && !queuedTabs.length, null, { timeout: 5000 });
+    const where = await page.evaluate(() => hoverId);
+    assert.equal(where, order[(order.indexOf('browser') + 1) % order.length], 'every press counted: out, +1, -1');
+    await page.waitForTimeout(500);
+    assert.equal(await page.evaluate(() => browserOpen), false);
+    checks.push(`Bumpers: passing Browser doesn't open it, staying does, and presses during its exit are kept (settled in ${Date.now() - t0} ms)`);
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);
