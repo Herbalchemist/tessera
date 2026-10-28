@@ -252,15 +252,20 @@ async function start() {
     assert.equal((await P('list', {})).active, kid);
     checks.push("After a restart a profile with a PIN isn't logged in: Tessera asks who's playing, with them first, and their PIN");
 
-    // Guessing at profile logins counts against the admin PIN's lockout too.
+    // Wrong guesses: a profile PIN waits a while; the admin PIN never waits, and opens it anyway.
     await P('use', { id: null });
     let last;
     for (let i = 0; i < 5; i++) last = await P('use', { id: kid, pin: '0000' });
-    assert.ok(last.wait > 0, 'locked out after five misses');
-    const adminTry = await S('pinCheck', { pin: '1357' });
-    assert.equal(adminTry.ok, false);
-    assert.ok(adminTry.wait > 0, 'the admin PIN waits too: profile logins are no way around its limit');
-    checks.push('Misses at any profile login count against the admin PIN lockout (no extra guesses by switching profiles)');
+    assert.ok(last.wait > 0, "Kid's login waits after five misses");
+    assert.equal((await P('use', { id: kid, pin: '2469' })).ok, false, 'even the right Kid PIN waits it out');
+    u = await P('use', { id: kid, pin: '1357' });
+    assert.equal(u.ok && u.active, kid, 'the admin PIN skips the wait');
+    await P('use', { id: null });
+    assert.equal((await P('use', { id: kid, pin: '2469' })).ok, true, 'and cleared it for Kid');
+    await S('pinLock', {});
+    for (let i = 0; i < 12; i++) { const r = await S('pinCheck', { pin: '9999' }); assert.equal(r.wait, undefined, 'a wrong admin PIN never makes anyone wait'); }
+    assert.equal((await S('pinCheck', { pin: '1357' })).ok, true);
+    checks.push('Profile PINs wait after five misses; the admin PIN never waits, skips any profile wait and clears it');
   } finally { await app.close().catch(() => {}); server.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);

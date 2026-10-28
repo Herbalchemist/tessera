@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.34.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.34.1-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -130,7 +130,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 - **Three tile layouts**: **Rails** (sideways rows), **Grid** and **Flow**, in ready-made sizes or your own (up to 12 columns).
 - **Your own themes**: *Save current as a new theme…* writes a `theme.json` you can rename, overwrite, share or hand-edit. Factory themes stay read-only. A theme is values only, never code, so nothing it ships can do more than Settings itself already allows.
 - **Profiles**: everyone in the house gets their own setup: their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are installed once and shared. A new profile starts as a copy of the shared setup or from scratch; switch from the guide or *Settings › Profiles*, and Tessera can ask *Who's playing?* when it starts. Removing a profile deletes what was theirs. Stick calibration stays with the controller, and the PIN, Wi-Fi, storage and add-ons belong to the machine.
-  - **Profile PINs**: anyone can have a PIN of their own, for logging in as them and for their own things (their browser, asked again after a few minutes). It never grants admin rights: Settings, adding and deleting still need the admin PIN, and the admin PIN opens any profile. The **admin profile** logs in with the admin PIN, or with a separate login PIN of its own (then the admin PIN is asked whenever admin rights are needed). After a restart nobody is logged in: Tessera asks who's playing. Wrong guesses at any login count against the admin PIN's lockout too. Forgot a profile PIN? The admin removes it in *Settings › Profiles*.
+  - **Profile PINs**: anyone can have a PIN of their own, for logging in as them and for their own things (their browser, asked again after a few minutes). It never grants admin rights: Settings, adding and deleting still need the admin PIN, and the admin PIN opens any profile. The **admin profile** logs in with the admin PIN, or with a separate login PIN of its own (then the admin PIN is asked whenever admin rights are needed). After a restart nobody is logged in: Tessera asks who's playing. Five wrong guesses make a profile's login wait a while (never more than 5 minutes); the admin PIN never waits, and skips and clears any profile's wait. Forgot a profile PIN? The admin removes it in *Settings › Profiles*.
 - Display calibration for the launcher and, optionally, for games.
 
 📘 **[The theming guide](docs/theming.md)** covers every setting a `theme.json` can hold, how the layout parts combine, worked examples, and a checker that tells you what Tessera will accept before you copy a theme over.

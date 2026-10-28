@@ -79,12 +79,13 @@ function ownPinMatches(pr, pin) {
 function profilePinTry(pr, pin) {
   const now = Date.now();
   const t = profileTries.get(pr.id) || { fails: 0, lockedUntil: 0 };
-  if (now < t.lockedUntil) return { ok: false, wait: Math.ceil((t.lockedUntil - now) / 1000), error: `Too many tries. Wait ${Math.ceil((t.lockedUntil - now) / 1000)} seconds.` };
+  // The admin PIN always opens a profile, even while it is waiting out wrong guesses, and clears that wait.
   if (pinLock.pinIsSet() && pinLock.pinMatches(pin)) {
-    const r = pinLock.pinTry(pin); // counts it as an admin PIN entry (its own lockout applies)
+    const r = pinLock.pinTry(pin);
     if (r.ok) { profileTries.delete(pr.id); saveProfileTries(); profileUnlockedUntil.set(pr.id, now + PROFILE_WINDOW); return { ok: true, admin: true }; }
     return r;
   }
+  if (now < t.lockedUntil) return { ok: false, wait: Math.ceil((t.lockedUntil - now) / 1000), error: `Too many tries. Wait ${Math.ceil((t.lockedUntil - now) / 1000)} seconds, or use the admin PIN.` };
   const adminLogin = isAdminProfile(pr) && pr.login !== 'own';
   if (!adminLogin && ownPinMatches(pr, pin)) {
     profileTries.delete(pr.id);
@@ -92,10 +93,8 @@ function profilePinTry(pr, pin) {
     profileUnlockedUntil.set(pr.id, now + PROFILE_WINDOW);
     return { ok: true };
   }
-  // A miss here was also a guess at the admin PIN: it counts against that one's lockout too.
-  const admin = pinLock.pinIsSet() ? pinLock.pinMiss(now) : null;
+  // A wrong guess here only slows down this profile's login: it never makes the admin wait.
   t.fails++;
-  if (admin && admin.wait && t.fails < 5) { profileTries.set(pr.id, t); saveProfileTries(); return admin; }
   if (t.fails >= 5) {
     const wait = Math.min(300, 30 * 2 ** Math.floor((t.fails - 5) / 5));
     t.lockedUntil = now + wait * 1000;

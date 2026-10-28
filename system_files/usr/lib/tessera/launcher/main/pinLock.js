@@ -68,12 +68,12 @@ function pinMatches(pin) {
 function pinInfo() {
   return { set: pinIsSet(), browser: prefs.settings.pinBrowser !== false, firstRun: !prefs.settings.firstRunDone, unlocked: pinOk() };
 }
-// Checks a PIN with a short lockout after repeated misses.
+// Checks the admin PIN. It never makes anyone wait: the admin PIN is the owner's, and a wait on it
+// could leave the device unusable for them. (Profile PINs do have a wait, which the admin PIN skips.)
 function pinTry(pin) {
   loadPinTries();
   pinTriesLoaded = false; // read again next time: the desktop helper may have counted misses too
   const now = Date.now();
-  if (now < pinLockedUntil) return { ok: false, wait: Math.ceil((pinLockedUntil - now) / 1000), error: `Too many tries. Wait ${Math.ceil((pinLockedUntil - now) / 1000)} seconds.` };
   if (pinMatches(pin)) {
     pinFails = 0;
     pinLockedUntil = 0;
@@ -83,19 +83,13 @@ function pinTry(pin) {
   }
   return pinMiss(now);
 }
-// A wrong guess that could have been the admin PIN (it is also accepted at every profile's login),
-// counted against the admin PIN's own lockout.
-function pinMiss(now = Date.now()) {
+// A wrong admin PIN: noted, never a wait.
+function pinMiss() {
   loadPinTries();
-  pinFails++;
+  pinFails++; // kept for the record (shown nowhere, never a lockout)
+  pinLockedUntil = 0;
   savePinTries();
-  if (pinFails >= 5) {
-    const wait = Math.min(300, 30 * 2 ** Math.floor((pinFails - 5) / 5));
-    pinLockedUntil = now + wait * 1000;
-    savePinTries();
-    return { ok: false, wait, error: `Too many tries. Wait ${wait} seconds and try again.` };
-  }
-  return { ok: false, error: `That isn't the PIN. ${5 - pinFails} ${5 - pinFails === 1 ? 'try' : 'tries'} left.` };
+  return { ok: false, error: "That isn't the PIN." };
 }
 const NEED_PIN = { ok: false, needPin: true, error: 'Enter the PIN first.' };
 
