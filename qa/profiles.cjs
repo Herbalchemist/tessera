@@ -183,6 +183,84 @@ async function start() {
     assert.equal(await page.evaluate(() => prefs.pad.deadzone), 15);
     assert.equal(await page.evaluate(() => keymap.back), 2, 'a reserved button is refused');
     checks.push('Stored controls are checked like a fresh load: bad values are dropped, unknown profiles ignored');
+
+    // ---- PINs. The admin PIN 1357; Kid gets 2468; Mom is the admin profile.
+    const P = (op, x) => page.evaluate(([op, x]) => api.profiles(op, x), [op, x]);
+    const S = (op, x) => page.evaluate(([op, x]) => api.settings(op, x), [op, x]);
+    const adminUnlocked = async () => (await S('pinStatus', {})).unlocked;
+    assert.ok((await S('pinSet', { pin: '1357' })).ok);
+    const kid = (await P('add', { name: 'Kid', start: 'fresh' })).id;
+    const mom = (await P('add', { name: 'Mom', start: 'fresh' })).id;
+    assert.ok((await P('setPin', { id: kid, pin: '2468' })).ok, 'the admin gives Kid a PIN');
+    assert.ok((await P('setAdmin', { id: mom })).ok);
+    await S('pinLock', {});
+    assert.equal(await adminUnlocked(), false);
+
+    let u = await P('use', { id: kid });
+    assert.equal(u.needProfilePin, true, "Kid's profile asks for a PIN");
+    u = await P('use', { id: kid, pin: '0000' });
+    assert.equal(u.ok, false);
+    u = await P('use', { id: kid, pin: '2468' });
+    assert.equal(u.ok && u.active, kid, 'their own PIN logs them in');
+    assert.equal(await adminUnlocked(), false, 'and grants no admin rights');
+    assert.equal((await S('pinBrowser', { value: false })).needPin, true, 'admin things still ask for the admin PIN');
+    assert.equal((await P('setPin', { id: mom, pin: '9999' })).needPin, true, "Kid can't change someone else's PIN");
+    assert.ok((await P('setPin', { id: kid, pin: '2469' })).ok, 'but can change their own while logged in');
+    assert.equal((await P('browserCheck', {})).ok, true, 'their browser is open to them right after logging in');
+    checks.push("A profile PIN logs that person in and opens their own things, and never grants admin rights");
+
+    await P('use', { id: null });
+    u = await P('use', { id: kid, pin: '1357' });
+    assert.equal(u.ok && u.active, kid, 'the admin PIN opens any profile');
+    assert.equal(await adminUnlocked(), true, '(entering it is an admin unlock, as anywhere)');
+    await S('pinLock', {});
+    await P('use', { id: null });
+    assert.equal((await P('use', { id: mom, pin: '2469' })).ok, false, "Kid's PIN doesn't open Mom");
+    u = await P('use', { id: mom, pin: '1357' });
+    assert.equal(u.ok && u.active, mom, 'the admin profile logs in with the admin PIN');
+    assert.equal(await adminUnlocked(), true);
+    checks.push('The admin PIN overrides any profile PIN; the admin profile logs in with it by default');
+
+    // Mom chooses a login PIN of her own: then the admin PIN is asked separately for admin things.
+    assert.ok((await P('setPin', { id: mom, pin: '4321' })).ok);
+    assert.equal((await P('list', {})).profiles.find((x) => x.id === mom).login, 'own');
+    await S('pinLock', {});
+    await P('use', { id: null });
+    u = await P('use', { id: mom, pin: '4321' });
+    assert.equal(u.ok && u.active, mom, 'her own login PIN logs her in');
+    assert.equal(await adminUnlocked(), false, 'without admin rights');
+    assert.equal((await S('pinBrowser', { value: false })).needPin, true, 'the admin PIN is asked when needed');
+    assert.ok((await S('pinCheck', { pin: '1357' })).ok);
+    assert.ok((await P('adminLogin', { login: 'admin' })).ok, 'and she can go back to logging in with the admin PIN');
+    assert.equal((await P('use', { id: null })).ok, true);
+    assert.equal((await P('use', { id: mom, pin: '4321' })).ok, false, 'her old login PIN is gone');
+    checks.push('The admin profile can keep the admin PIN as its login, or use a separate login PIN with the admin PIN asked for admin things');
+
+    // A restart doesn't log anyone in: a locked profile that was playing gets asked for.
+    await S('pinCheck', { pin: '1357' });
+    await P('use', { id: kid, pin: '2469' });
+    await app.close();
+    ({ app, page } = await start());
+    await page.waitForFunction(() => modal && modal.title === "Who's playing?", null, { timeout: 8000 });
+    assert.equal(await page.evaluate(() => modal.items[modal.index].label), 'Kid', 'Kid first');
+    assert.equal((await P('list', {})).active, null, 'nobody is logged in yet');
+    await page.evaluate(() => { modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 4000 });
+    await page.screenshot({ path: path.join(output, 'profiles-pin.png') });
+    await page.evaluate(() => { for (const d of '2469') typeChar(d); keyAction('done'); });
+    await page.waitForFunction(() => !modal, null, { timeout: 4000 });
+    assert.equal((await P('list', {})).active, kid);
+    checks.push("After a restart a profile with a PIN isn't logged in: Tessera asks who's playing, with them first, and their PIN");
+
+    // Guessing at profile logins counts against the admin PIN's lockout too.
+    await P('use', { id: null });
+    let last;
+    for (let i = 0; i < 5; i++) last = await P('use', { id: kid, pin: '0000' });
+    assert.ok(last.wait > 0, 'locked out after five misses');
+    const adminTry = await S('pinCheck', { pin: '1357' });
+    assert.equal(adminTry.ok, false);
+    assert.ok(adminTry.wait > 0, 'the admin PIN waits too: profile logins are no way around its limit');
+    checks.push('Misses at any profile login count against the admin PIN lockout (no extra guesses by switching profiles)');
   } finally { await app.close().catch(() => {}); server.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);

@@ -112,6 +112,7 @@ function createWindow() {
     library.loadState();
     prefs.loadSettings();
     shards.startEnabled(); // the shards their owner turned on (nothing else runs)
+    require('./profiles').atStartup(); // a profile with a PIN isn't logged in by a restart
     send('init', library.buildView());
   });
   // Tessera is the front door of the machine, so there is no quit shortcut for

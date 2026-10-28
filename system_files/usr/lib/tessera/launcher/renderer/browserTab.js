@@ -176,6 +176,7 @@ function drainTabQueue() {
 async function launchBrowser(dir = 1) {
   if (browserOpen || browserMoving) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
+  if (!(await unlockOwnBrowser())) return; // their own browser, behind their own PIN
   browserMoving = true;
   const c = browserCurtain();
   try {

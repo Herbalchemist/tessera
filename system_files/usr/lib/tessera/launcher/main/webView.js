@@ -23,6 +23,7 @@ const pinLock = require('./pinLock');
 const web = require('./web');
 const appWindow = require('./appWindow');
 const guide = require('./guide');
+const profiles = require('./profiles');
 
 // ------------------------------------------------------------- embedded browser view
 // WebContentsView is the supported Electron 44 API; the browser remains inside Tessera.
@@ -177,6 +178,8 @@ ipcMain.handle('browser', async (event, op, payload) => {
   if (op === 'open' || op === 'go') {
     const url = payload && typeof payload.url === 'string' ? payload.url : null;
     if (prefs.settings.pinBrowser !== false && !pinLock.pinOk()) return pinLock.NEED_PIN;
+    const own = profiles.browserNeedsProfilePin(); // their own browser, behind their own PIN
+    if (own) return own;
     const checked = browserNavigation.validateHttpUrl(url);
     if (!checked.ok) return checked;
     const fresh = !browserView;
@@ -218,6 +221,7 @@ ipcMain.handle('browser', async (event, op, payload) => {
   if (op === 'show') {
     if (prefs.settings.pinBrowser !== false && !pinLock.pinOk()) return pinLock.NEED_PIN;
     if (!browserSessionOpen) return { ok: false, error: 'Open the browser first.' };
+    // (show: the page coming back from behind the guide or the address keyboard: already theirs)
     if (browserView) { attachBrowserView(); web.startBrowserViewJoystickWatch(); fitBrowserView(); }
     return { ok: true };
   }

@@ -174,7 +174,7 @@ api.onInit((payload) => {
   } else {
     reveal();
     // "Who's playing?" once at start, when that's turned on (Settings › Profiles).
-    if (!GUIDE_ONLY && !askedWho) { askedWho = true; api.profiles('list').then((pr) => { if (pr && pr.ask && pr.profiles && pr.profiles.length && !modal && !busy) whoIsPlaying(); }).catch(() => {}); }
+    if (!GUIDE_ONLY && !askedWho) { askedWho = true; api.profiles('list').then((pr) => { if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !modal && !busy) whoIsPlaying(); }).catch(() => {}); }
   }
 });
 let askedWho = false;
