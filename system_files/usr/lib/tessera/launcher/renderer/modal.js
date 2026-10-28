@@ -205,7 +205,7 @@ function keysButton(n) {
 // Built once and then updated in place, so the slide-up only plays on open.
 function buildKeys() {
   modalEl.replaceChildren();
-  modalEl.className = 'keys' + (modal.digits ? ' numeric' : '') + (modal.cls ? ' ' + modal.cls : '');
+  modalEl.className = 'keys' + (modal.digits ? ' numeric' : '') + (modal.cls ? ' ' + modal.cls : '') + (!modal.digits && prefs.pad.oskSize === 'wide' ? ' osk-wide' : '');
   const centre = document.createElement('div');
   centre.className = 'kbcenter';
   const h = document.createElement('h3');

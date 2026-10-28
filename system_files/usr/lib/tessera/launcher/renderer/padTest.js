@@ -273,6 +273,7 @@ const PAD_LABELS = {
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
   guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
   guideDesktop: { auto: 'On, except while Steam is running', on: 'Always on', off: 'Off' },
+  oskSize: { dock: 'Docked: a compact panel in the middle', wide: 'Wide: bigger keys across the whole screen' },
   guideStyle: { side: 'A panel from the side', float: 'A floating card in the middle', compact: 'Compact: a narrow panel, smaller text' },
 };
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -350,6 +351,7 @@ async function flowPadMenu() {
       { label: 'Labels', header: true },
       { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
       { label: 'Confirm button', sub: prefs.pad.remap && prefs.pad.remap.nintendo ? 'Nintendo: your own (Button mapping)' : prefs.pad.confirm === 'label' ? 'Nintendo: A confirms' : 'Bottom button', op: 'confirm' },
+      { label: 'On-screen keyboard', sub: (PAD_LABELS.oskSize[prefs.pad.oskSize] || PAD_LABELS.oskSize.dock).split(':')[0], op: 'oskSize' },
       { label: 'Joy-Con', header: true },
       { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
       { label: 'A left and a right Joy-Con', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.together, op: 'joycons' },
@@ -366,6 +368,7 @@ async function flowPadMenu() {
     if (it.op === 'test') await flowPad();
     else if (it.op === 'mapping') await flowControls();
     else if (it.op === 'guideButton') await pickChoice('The Guide button (Xbox, PS or Home button)', 'guideButton');
+    else if (it.op === 'oskSize') await pickChoice('On-screen keyboard size', 'oskSize');
     else if (it.op === 'guideStyle') await pickChoice('How the guide looks (notifications sit beside it on the right)', 'guideStyle');
     else if (it.op === 'guideDesktop') await pickChoice('The guide in Desktop Mode (Steam takes the button for itself while it runs)', 'guideDesktop');
     else if (it.op === 'browserCursor') await pickChoice('In the browser, which stick moves the cursor?', 'browserCursor');

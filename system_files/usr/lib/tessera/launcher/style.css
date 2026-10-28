@@ -1330,25 +1330,20 @@ body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b
 .keys.numeric .krow:last-child .key { flex: 0 0 calc(var(--key) * 4.8); }
 @media (prefers-reduced-motion: reduce) { .kbpanel { animation: none; } }
 
-/* ---- the address bubble, pulled out of the address pill ---- */
-#url-bubble { position: fixed; left: 0; right: 0; z-index: 12; height: 60vh; overflow: hidden; pointer-events: none; }
+/* ---- the address bubble: the pill itself, pulled out of the bar and grown (browserTab.js animates it) ---- */
+#url-bubble { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
 #url-bubble[hidden] { display: none; }
-.ub-drop { width: min(820px, 72vw); margin: 0 auto; transform: translateY(-110%); }
-#url-bubble.out .ub-drop { transform: none; animation: ub-pull calc(0.46s * var(--motion)) cubic-bezier(.3, 1.35, .45, 1); }
-#url-bubble.retract .ub-drop { animation: ub-back calc(0.22s * var(--motion)) cubic-bezier(.55, 0, .8, .35) forwards; }
-@keyframes ub-pull { 0% { transform: translateY(-110%); } 100% { transform: none; } }
-@keyframes ub-back { from { transform: none; } to { transform: translateY(-110%); } }
-/* The neck: the bubble's own skin stretched up into the pill, so it looks drawn out of it. */
-.ub-neck { position: relative; z-index: 1; display: block; width: 200px; height: 28px; margin: -1px auto -1px; overflow: visible; transform-origin: 50% 0; }
+.ub-neck { position: fixed; z-index: 1; display: block; width: 200px; overflow: visible; }
 .ub-neck .skin { fill: var(--panel); }
 .ub-neck .edge { fill: none; stroke: color-mix(in srgb, var(--accent) 75%, transparent); stroke-width: 2px; vector-effect: non-scaling-stroke; }
-#url-bubble.out .ub-neck { animation: ub-neck calc(0.6s * var(--motion)) cubic-bezier(.3, 1.6, .5, 1); }
-@keyframes ub-neck { 0% { transform: scaleY(2.6) scaleX(.5); } 55% { transform: scaleY(.8) scaleX(1.06); } 100% { transform: none; } }
-#url-bubble:not(.from-pill) .ub-neck { width: 240px; }
 .ub-body {
-  display: flex; align-items: center; gap: 16px; padding: 18px 26px; border-radius: 30px; background: var(--panel); color: var(--text);
+  position: fixed; box-sizing: border-box; overflow: hidden; display: flex; align-items: center; padding: 0 26px; background: var(--panel); color: var(--text);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 32%, transparent), 0 26px 70px rgb(0 0 0 / 0.5);
 }
+.ub-mini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 9px; font-weight: 650; font-size: 1rem; white-space: nowrap; opacity: 0; }
+.ub-mini svg { width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 2; }
+.ub-mini.secure svg { stroke: var(--ok); }
+.ub-row { display: flex; align-items: center; gap: 16px; width: 100%; min-width: 0; }
 .ub-icon { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
 .ub-field { flex: 1; min-width: 0; display: flex; align-items: center; font-size: clamp(1.3rem, 2.4vw, 2rem); white-space: pre; overflow: hidden; }
 .ub-text { overflow: hidden; text-overflow: ellipsis; }
@@ -1356,10 +1351,12 @@ body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b
 .ub-text.sel + .caret { display: none; }
 .ub-ph { display: none; color: var(--muted); }
 .ub-field.empty .ub-ph { display: inline; margin-left: 8px; }
-.ub-sub { margin: 10px 0 0 30px; font-size: 0.9rem; color: color-mix(in srgb, #fff 75%, transparent); text-shadow: 0 1px 6px rgb(0 0 0 / 0.6); min-height: 1.2em; }
-/* The pill lights up while its bubble is out. */
-.bf-addr.pulling { box-shadow: 0 0 0 2px var(--accent), 0 0 26px color-mix(in srgb, var(--accent) 50%, transparent); }
-.bf-addr { transition: box-shadow calc(0.2s * var(--motion)); }
+.ub-sub { position: fixed; font-size: 0.9rem; color: color-mix(in srgb, #fff 75%, transparent); text-shadow: 0 1px 6px rgb(0 0 0 / 0.6); min-height: 1.2em; }
+/* The slot the pill leaves in the bar: a recess, lit, waiting for it to dock again. */
+.bf-addr { transition: background-color calc(0.2s * var(--motion)), box-shadow calc(0.2s * var(--motion)); }
+.bf-addr > * { transition: opacity calc(0.12s * var(--motion)); }
+.bf-addr.pulled > * { opacity: 0; }
+.bf-addr.pulled { background: color-mix(in srgb, var(--bg) 80%, #000); box-shadow: inset 0 2px 8px rgb(0 0 0 / 0.55), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent); }
 /* With the bubble, the keyboard's own title and field step aside; the frame stays visible behind. */
 #modal.keys.url { background: transparent; }
 #modal.keys.url .kbcenter { display: none; }
@@ -1395,3 +1392,11 @@ body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b
 #modal.guide .gnotes.gn-compact.hidden { flex-direction: row; justify-content: space-between; align-items: center; padding: 6px 10px; }
 #modal.guide .gnotes.gn-compact.hidden h4 { text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text); }
 #modal.guide .gn-more { margin-right: auto; color: var(--muted); font-size: 0.75rem; }
+/* Wide keyboard (Settings › Controller › On-screen keyboard): bigger keys, edge to edge. */
+#modal.keys.osk-wide { --key: clamp(40px, min(6.6vw, 9.4vh), 124px); }
+#modal.keys.osk-wide .kbpanel {
+  left: 0; right: 0; bottom: 0; width: auto; transform: none; border-radius: calc(var(--key) * 0.36) calc(var(--key) * 0.36) 0 0;
+  padding: calc(var(--key) * 0.2) max(2vw, calc((100vw - var(--key) * 15.5) / 2)) calc(var(--key) * 0.16);
+  animation: kbup calc(0.3s * var(--motion)) cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+#modal.keys.osk-wide .kbcenter { top: 18%; }

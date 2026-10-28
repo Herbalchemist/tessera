@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.30.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.31.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -72,9 +72,11 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 
 **Bumping through tabs** never stalls on the browser: it only opens if you stay on its tab for a moment, and presses made while it's closing still count.
 
+**The on-screen keyboard** comes docked (a compact panel in the middle) or wide (bigger keys across the whole screen): **Settings › Controller › On-screen keyboard**.
+
 **Holding a direction** keeps moving, at the same pace in menus and the browser, whether it's the D-pad, the stick or the keyboard. Pick **Slower**, **Standard** or **Faster** in **Settings › Controller › Repeat speed**.
 
-**The browser stays inside Tessera:** the page sits in a frame in your theme's colors, with the tabs either side, the page's address and title, and a loading light. **Y** pulls the address bubble down out of the address (the address starts selected, so typing replaces it; plain words search DuckDuckGo). Prefer the page edge to edge? **Theme Settings › Browser frame › Full screen**.
+**The browser stays inside Tessera:** the page sits in a frame in your theme's colors, with the tabs either side, the page's address and title, and a loading light. **Y** pulls the address pill itself down out of the bar (its slot stays lit) and grows it into a big bubble for editing; the address starts selected, so typing replaces it, and plain words search DuckDuckGo. Done, it shrinks back into its slot. Prefer the page edge to edge? **Theme Settings › Browser frame › Full screen**.
 
 **In the browser:** the right stick moves a cursor and the left stick scrolls, both faster the further you push. RT clicks and LT right-clicks, Y types an address, X jumps to the next link, and LB / RB or B leave the page. Swap the sticks or change their speed in **Settings › Controller**.
 
