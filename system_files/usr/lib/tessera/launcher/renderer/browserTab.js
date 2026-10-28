@@ -275,6 +275,15 @@ function bubbleGeometry() {
   const big = { left: (W - fw) / 2, top: edge + Math.max(26, H * 0.045), width: fw, height: fh };
   return { pillEl, pill, mid, big, anchor: Math.max(0, r.bottom), cx };
 }
+// The neck's shape (Theme Settings › Address bubble): its outline, as a fraction of its own width.
+const NECKS = {
+  narrow: { skin: 'M52 0 H108 C108 16 128 30 160 30 V33 H0 V30 C32 30 52 16 52 0 Z', edge: 'M52 0 C52 16 32 30 0 30 M108 0 C108 16 128 30 160 30' },
+  wide: { skin: 'M22 0 H138 C138 18 147 30 160 30 V33 H0 V30 C13 30 22 18 22 0 Z', edge: 'M22 0 C22 18 13 30 0 30 M138 0 C138 18 147 30 160 30' },
+};
+function bubbleStyle() {
+  const s = prefs.theme && prefs.theme.settings.find((x) => x.id === 'addressBubble');
+  return s && ['wide', 'narrow', 'detached'].includes(s.value) ? s.value : 'wide';
+}
 const px = (g, extra = {}) => ({ left: g.left + 'px', top: g.top + 'px', width: g.width + 'px', height: g.height + 'px', ...extra });
 function paintUrlBubble(text, fresh) {
   const b = document.getElementById('url-bubble');
@@ -304,10 +313,22 @@ function pullUrlBubble(b) {
   for (const a of b.getAnimations({ subtree: true })) a.cancel();
   b.classList.remove('back');
   b.hidden = false;
+  // Wide: the neck spans most of the slot. Narrow (and Detached, which pinches a thin one): a tail.
+  const style = bubbleStyle();
+  const shape = NECKS[style === 'wide' ? 'wide' : 'narrow'];
+  neck.querySelector('.skin').setAttribute('d', shape.skin);
+  neck.querySelector('.edge').setAttribute('d', shape.edge);
+  const nw = style === 'wide' ? Math.round(g.pill.width * 0.96) : 200;
+  b._style = style;
+  b._detached = false;
   Object.assign(body.style, px(g.big, { borderRadius: '30px' }));
-  Object.assign(neck.style, { left: g.cx - 100 + 'px', top: g.anchor - 1 + 'px', height: g.big.top - g.anchor + 3 + 'px' });
+  Object.assign(neck.style, { width: nw + 'px', left: g.cx - nw / 2 + 'px', top: g.anchor - 1 + 'px', height: g.big.top - g.anchor + 3 + 'px', opacity: '' });
   Object.assign(sub.style, { left: g.big.left + 30 + 'px', top: g.big.top + g.big.height + 10 + 'px' });
-  if (!motionOn()) { mini.style.opacity = 0; row.style.opacity = 1; return Promise.resolve(); }
+  if (!motionOn()) {
+    mini.style.opacity = 0; row.style.opacity = 1;
+    if (style === 'detached') { neck.style.opacity = '0'; b._detached = true; }
+    return Promise.resolve();
+  }
   const T = 620;
   const pullEase = 'cubic-bezier(.55,0,.8,.45)'; // tugged out of the slot
   const growEase = 'cubic-bezier(.2,1.25,.4,1)'; // then it swells, overshooting a touch
@@ -328,7 +349,24 @@ function pullUrlBubble(b) {
     row.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.8 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
     sub.animate([{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
   ];
-  return Promise.all(runs.map((a) => a.finished.catch(() => {})));
+  const done = Promise.all(runs.map((a) => a.finished.catch(() => {})));
+  if (style !== 'detached') return done;
+  // Detached: once it's open, the tail pinches in the middle and snaps back up into the slot, and
+  // the bubble, let go, drops a little and settles.
+  return done.then(() => {
+    if (b.hidden || b._style !== 'detached' || !runs.every((a) => a.playState === 'finished')) return;
+    const h = g.big.top - g.anchor + 3;
+    b._detached = true;
+    const snap = [
+      neck.animate([
+        { height: h + 'px', transform: 'none', opacity: 1 },
+        { height: h * 0.6 + 'px', transform: 'scaleX(.32)', opacity: 1, offset: 0.45 },
+        { height: '0px', transform: 'scaleX(.18)', opacity: 0 },
+      ], { duration: 300, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' }),
+      body.animate([{ transform: 'none' }, { transform: 'translateY(7px)', offset: 0.45 }, { transform: 'translateY(-2px)', offset: 0.75 }, { transform: 'none' }], { duration: 420, easing: 'ease-out' }),
+    ];
+    return Promise.all(snap.map((a) => a.finished.catch(() => {})));
+  });
 }
 async function retractUrlBubble(b) {
   if (!b || b.hidden) return;
@@ -337,17 +375,29 @@ async function retractUrlBubble(b) {
   const neck = b.querySelector('.ub-neck');
   if (motionOn()) {
     for (const a of b.getAnimations({ subtree: true })) a.cancel();
-    const T = 380;
+    // Detached: the tail first reaches back down from the slot and catches the bubble (the first
+    // 30%), then it is drawn home the same way as the others.
+    const reach = b._detached ? 0.3 : 0;
+    const at = (o) => reach + o * (1 - reach);
+    const T = 380 + (reach ? 200 : 0);
+    const H = g.big.top - g.anchor + 3;
+    const neckFrames = [
+      ...(reach ? [{ height: '0px', opacity: 0, transform: 'scaleX(.4)' }, { height: H + 'px', opacity: 1, transform: 'none', offset: reach, easing: 'cubic-bezier(.3,1.4,.5,1)' }] : [{ height: H + 'px', opacity: 1, transform: 'none' }]),
+      { height: Math.max(0, g.mid.top - g.anchor) + 3 + 'px', opacity: 1, transform: 'none', offset: at(0.62) },
+      { height: '0px', opacity: 0, transform: 'none', offset: at(0.85) },
+      { height: '0px', opacity: 0, transform: 'none' },
+    ];
     const runs = [
       body.animate([
-        { ...px(g.big), borderRadius: '30px', easing: 'cubic-bezier(.5,0,.75,.3)' },
-        { ...px(g.mid), borderRadius: g.mid.height / 2 + 'px', offset: 0.62, easing: 'cubic-bezier(.3,.7,.4,1)' },
+        { ...px(g.big), borderRadius: '30px' },
+        ...(reach ? [{ ...px(g.big), borderRadius: '30px', offset: reach }] : []),
+        { ...px(g.mid), borderRadius: g.mid.height / 2 + 'px', offset: at(0.62), easing: 'cubic-bezier(.3,.7,.4,1)' },
         { ...px(g.pill), borderRadius: g.pill.height / 2 + 'px' },
-      ], { duration: T, fill: 'forwards' }),
-      neck.animate([{ height: g.big.top - g.anchor + 3 + 'px', opacity: 1 }, { height: Math.max(0, g.mid.top - g.anchor) + 3 + 'px', opacity: 1, offset: 0.62 }, { height: '0px', opacity: 0, offset: 0.85 }, { height: '0px', opacity: 0 }], { duration: T, fill: 'forwards' }),
-      b.querySelector('.ub-row').animate([{ opacity: 1 }, { opacity: 0, offset: 0.3 }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
-      b.querySelector('.ub-mini').animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1, offset: 0.75 }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
-      b.querySelector('.ub-sub').animate([{ opacity: 1 }, { opacity: 0, offset: 0.2 }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
+      ], { duration: T, fill: 'forwards', easing: 'linear' }),
+      neck.animate(neckFrames, { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-row').animate([{ opacity: 1 }, { opacity: 1, offset: reach }, { opacity: 0, offset: at(0.3) }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-mini').animate([{ opacity: 0 }, { opacity: 0, offset: at(0.45) }, { opacity: 1, offset: at(0.75) }, { opacity: 1 }], { duration: T, fill: 'forwards' }),
+      b.querySelector('.ub-sub').animate([{ opacity: 1 }, { opacity: 0, offset: at(0.2) }, { opacity: 0 }], { duration: T, fill: 'forwards' }),
     ];
     await Promise.all(runs.map((a) => a.finished.catch(() => {})));
   }
