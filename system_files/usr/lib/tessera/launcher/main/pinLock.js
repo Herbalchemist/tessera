@@ -176,6 +176,9 @@ ipcMain.handle('settings', ipc.safe((op, p) => {
     if (typeof p.id !== 'string' || !theming.themes.has(p.id)) return { ok: false, theme: theming.themePayload() };
     prefs.settings.theme.active = p.id;
     theming.themeRev++;
+    // The person playing keeps the look they pick.
+    const me = prefs.settings.profiles.find((x) => x.id === prefs.settings.activeProfile);
+    if (me) me.themeId = p.id;
     prefs.saveSettings();
     return { ok: true, theme: theming.themePayload() };
   }

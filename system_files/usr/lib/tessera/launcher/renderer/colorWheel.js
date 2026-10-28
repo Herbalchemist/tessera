@@ -313,6 +313,62 @@ async function editThemeSetting(s) {
 
 // Minimal, on purpose: who's using this Tessera, and which theme (if any) is theirs. No
 // switching session or startup wizard yet — see the plan doc for where this is headed.
+// ---- profiles: each person has their own controls (button layout too), keyboard keys, Home and
+// mosaics, Recently played, browser logins and theme. "Everyone" is the shared set (no profile).
+const PROFILE_OWN = 'Their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are shared.';
+// Leave the browser before switching: the next person's opens with their own logins.
+async function leaveBrowserForSwitch() {
+  if (!browserOpen) return;
+  if (guideOpen && guideBrowserHidden) {
+    // the guide already stepped the page aside: just close it, no animation
+    browserOpen = false;
+    guideBrowserHidden = false;
+    document.body.classList.remove('browser-open');
+    hideBrowserFrame();
+    browserCurtain().hidden = true;
+    browserCurtain().classList.remove('dim');
+    await api.browser('close');
+  } else await closeBrowser(-1);
+}
+async function switchProfile(id, name) {
+  await leaveBrowserForSwitch();
+  busy = true;
+  let r;
+  try { r = await api.profiles('use', { id }); } finally { busy = false; }
+  if (!r || !r.ok) { setStatus((r && r.error) || "Couldn't switch.", true); return null; }
+  if (r.view) applyView(r.view); // their pages, controls, keys and theme
+  else if (r.theme) applyTheme(r.theme);
+  if (!guideOpen) { page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); }
+  setStatus(id ? `Hi, ${name}!` : 'Playing as Everyone.');
+  return r;
+}
+// "Who's playing?" (at start, when that's turned on).
+async function whoIsPlaying() {
+  const pr = await api.profiles('list');
+  if (!pr || !pr.profiles || !pr.profiles.length) return;
+  const items = pr.profiles.map((p) => ({ label: p.name, sub: p.id === pr.active ? 'last played' : '', id: p.id, plain: true }));
+  items.push({ label: 'Everyone', sub: 'the shared setup', id: null, plain: true });
+  const at = Math.max(0, items.findIndex((x) => x.id === pr.active));
+  const it = await pick("Who's playing?", items, at);
+  if (it && it.id !== pr.active) await switchProfile(it.id, it.label);
+}
+async function addProfile() {
+  const name = await ask('Name this profile', '', { max: 24 });
+  if (name === null) return null;
+  if (!name.trim()) { setStatus('Give them a name.', true); return null; }
+  const start = await pick(`Start ${name.trim()} with`, [
+    { label: 'A copy of the shared setup', sub: "Everyone's Home, mosaics and controls, to change from there", op: 'copy', plain: true },
+    { label: 'A fresh start', sub: 'An empty Home and the usual controls', op: 'fresh', plain: true },
+  ]);
+  if (!start) return null;
+  const go = () => api.profiles('add', { name, start: start.op });
+  busy = true;
+  let r;
+  try { r = await go(); } finally { busy = false; }
+  if (r && r.needPin) { if (!(await requirePin())) return null; busy = true; try { r = await go(); } finally { busy = false; } }
+  setStatus(r && r.ok ? `Added ${name.trim()}.` : (r && r.error) || "Couldn't add that.", !(r && r.ok));
+  return r && r.ok ? r.id : null;
+}
 async function flowProfiles() {
   if (modal || busy) return;
   let index = 1;
@@ -322,44 +378,45 @@ async function flowProfiles() {
     try { [pr, t] = await Promise.all([api.profiles('list'), api.settings('themeGet')]); } finally { busy = false; }
     const list = pr.profiles || [];
     const themeName = (id) => { const x = t.themes.find((th) => th.id === id); return x ? x.name : id; };
-    const items = [
-      { label: 'Profiles', header: true },
-      { label: 'Add a profile…', op: 'add', plain: true },
-    ];
-    if (list.length) {
-      items.push({ label: `Press ${hintName(3)} on a profile for its options`, header: true });
-      list.forEach((p) => items.push({ label: p.name, sub: p.themeId ? `Theme: ${themeName(p.themeId)}` : "Uses Tessera's active theme", id: p.id, plain: true }));
-    }
+    const items = [{ label: "Who's playing", header: true }];
+    list.forEach((p) => items.push({ label: p.name, sub: (p.id === pr.active ? 'Playing now' : 'Switch to them') + (p.themeId ? ` · ${themeName(p.themeId)}` : ''), id: p.id, who: true, plain: true }));
+    items.push({ label: 'Everyone', sub: (pr.active ? 'Switch to the shared setup' : 'Playing now') + ' · no profile', id: null, who: true, plain: true });
+    items.push({ label: 'Add a profile…', op: 'add', plain: true });
+    if (list.length) items.push({ label: "Ask who's playing when Tessera starts", sub: pr.ask ? 'On' : 'Off', op: 'ask', plain: true });
     const it = await pick('Profiles', items, index, {
+      body: `Each profile has ${PROFILE_OWN.charAt(0).toLowerCase()}${PROFILE_OWN.slice(1)}`,
       yLabel: 'Options',
-      onY: list.length
-        ? async (hit) => { if (hit && hit.id) await flowProfileOptions(hit.id, hit.label); }
-        : undefined,
+      onY: list.length ? async (hit) => { if (hit && hit.id) { closeModal(); await flowProfileOptions(hit.id, hit.label); } } : undefined,
     });
     if (!it) return;
     index = items.indexOf(it);
+    if (it.info) continue;
+    if (it.who) { if (it.id !== pr.active) await switchProfile(it.id, it.label); continue; }
     if (it.op === 'add') {
-      const name = await ask('Name this profile', '');
-      if (name === null) continue;
-      if (!name.trim()) { setStatus('Give them a name.', true); continue; }
+      const id = await addProfile();
+      if (id && (await confirm('Switch to them now?', 'Switch'))) {
+        const np = await api.profiles('list');
+        const me = (np.profiles || []).find((x) => x.id === id);
+        await switchProfile(id, me ? me.name : '');
+      }
+    } else if (it.op === 'ask') {
       busy = true;
-      let r;
-      try { r = await api.profiles('add', { name }); } finally { busy = false; }
-      if (r && r.needPin) { if (!(await requirePin())) continue; busy = true; try { r = await api.profiles('add', { name }); } finally { busy = false; } }
-      setStatus(r && r.ok ? `Added ${name.trim()}.` : (r && r.error) || "Couldn't add that.", !(r && r.ok));
+      try { await api.profiles('ask', { on: !pr.ask }); } finally { busy = false; }
     }
   }
 }
 async function flowProfileOptions(id, name) {
   const it = await pick(name, [
+    { label: 'Switch to them', op: 'use', plain: true },
     { label: 'Rename…', op: 'rename', plain: true },
-    { label: 'Give it a theme…', op: 'theme', plain: true },
-    { label: "Use Tessera's active theme", op: 'clear', plain: true },
-    { label: 'Remove this profile…', op: 'remove', plain: true },
+    { label: 'Their theme…', sub: 'what they pick while playing is kept too', op: 'theme', plain: true },
+    { label: 'Remove this profile…', sub: 'their pages, controls and browser logins go with it', op: 'remove', plain: true },
   ]);
   if (!it) return;
-  if (it.op === 'rename') {
-    const newName = await ask('Rename this profile', name);
+  if (it.op === 'use') {
+    await switchProfile(id, name);
+  } else if (it.op === 'rename') {
+    const newName = await ask('Rename this profile', name, { max: 24 });
     if (newName === null || !newName.trim()) return;
     busy = true;
     let r;
@@ -375,18 +432,16 @@ async function flowProfileOptions(id, name) {
     busy = true;
     let r;
     try { r = await api.profiles('setTheme', { id, themeId: choice.id }); } finally { busy = false; }
+    if (r && r.ok && r.theme) applyTheme(r.theme);
     setStatus(r && r.ok ? `${name} now uses ${choice.label}.` : (r && r.error) || "Couldn't set that.", !(r && r.ok));
-  } else if (it.op === 'clear') {
-    busy = true;
-    let r;
-    try { r = await api.profiles('setTheme', { id, themeId: null }); } finally { busy = false; }
-    setStatus(r && r.ok ? `${name} now follows the active theme.` : (r && r.error) || "Couldn't set that.", !(r && r.ok));
   } else if (it.op === 'remove') {
-    if (!(await confirm(`Remove the profile “${name}”?`, 'Remove'))) return;
+    if (!(await confirm(`Remove “${name}”? Their own Home and mosaics, controls, Recently played and browser logins are deleted. Games stay installed.`, 'Remove'))) return;
+    await leaveBrowserForSwitch();
     busy = true;
     let r;
     try { r = await api.profiles('remove', { id }); } finally { busy = false; }
     if (r && r.needPin) { if (!(await requirePin())) return; busy = true; try { r = await api.profiles('remove', { id }); } finally { busy = false; } }
+    if (r && r.ok && r.view) applyView(r.view);
     setStatus(r && r.ok ? `Removed ${name}.` : (r && r.error) || "Couldn't remove that.", !(r && r.ok));
   }
 }

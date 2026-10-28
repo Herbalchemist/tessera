@@ -12,6 +12,10 @@ module.exports = {
   get itemById() { return itemById; },
   get libraryOp() { return libraryOp; },
   get loadState() { return loadState; },
+  get switchLayout() { return switchLayout; },
+  get layoutOf() { return layoutOf; },
+  get setLayout() { return setLayout; },
+  get freshLayout() { return freshLayout; },
   get recordPlay() { return recordPlay; },
   get saveState() { return saveState; },
   get state() { return state; },
@@ -84,6 +88,40 @@ function loadState() {
     if (typeof g.art === 'string' && path.isAbsolute(g.art)) it.art = g.art; // a picture the person chose
     items.push(it);
   }
+  const itemIds = new Set(items.map((i) => i.id));
+  const live = parseLayout(data, itemIds);
+  skipped += live.skipped;
+  // The other people's pages, kept while someone else is playing (see switchLayout).
+  const layouts = {};
+  if (data.layouts && typeof data.layouts === 'object') {
+    for (const [key, lay] of Object.entries(data.layouts).slice(0, 20)) {
+      if (!LAYOUT_KEY_RE.test(key) || !lay || typeof lay !== 'object') continue;
+      const parsed = parseLayout(lay, itemIds);
+      delete parsed.skipped;
+      layouts[key] = parsed;
+    }
+  }
+  const layoutKey = typeof data.layoutKey === 'string' && LAYOUT_KEY_RE.test(data.layoutKey) ? data.layoutKey : EVERYONE;
+  delete layouts[layoutKey];
+  const { inlays, categories, tabOrder, recent } = live;
+  state = {
+    items,
+    inlays,
+    categories,
+    tabOrder,
+    recent,
+    layouts,
+    layoutKey,
+    warn: skipped ? `${skipped} entry(ies) skipped: check ids, titles and absolute paths.` : null,
+    locked: null,
+  };
+}
+
+// One person's pages: the categories (Home and the mosaics), the widgets placed on them, the tab
+// order and Recently played. The games and apps themselves (items) are shared by everyone.
+function parseLayout(data, itemIds) {
+  let skipped = 0;
+  const ids = new Set(itemIds);
   const inlays = [];
   const autoPlace = [];
   for (const n of Array.isArray(data.inlays) ? data.inlays : []) {
@@ -127,20 +165,11 @@ function loadState() {
   const tabOrder = (Array.isArray(data.tabOrder) ? data.tabOrder : [])
     .filter((t) => typeof t === 'string' && config.TAB_ID_RE.test(t))
     .slice(0, 200);
-  const itemIds = new Set(items.map((i) => i.id));
   const recent = (Array.isArray(data.recent) ? data.recent : [])
     .filter((r) => r && typeof r.id === 'string' && itemIds.has(r.id) && Number.isFinite(r.at))
     .slice(0, config.RECENT_MAX)
     .map((r) => ({ id: r.id, at: r.at }));
-  state = {
-    items,
-    inlays,
-    categories,
-    tabOrder,
-    recent,
-    warn: skipped ? `${skipped} entry(ies) skipped: check ids, titles and absolute paths.` : null,
-    locked: null,
-  };
+  return { inlays, categories, tabOrder, recent, skipped };
 }
 
 function saveState() {
@@ -148,7 +177,7 @@ function saveState() {
   const tmp = config.LIBRARY_FILE + '.tmp';
   fs.writeFileSync(
     tmp,
-    JSON.stringify({ items: state.items, inlays: state.inlays, categories: state.categories, tabOrder: state.tabOrder, recent: state.recent }, null, 2)
+    JSON.stringify({ items: state.items, inlays: state.inlays, categories: state.categories, tabOrder: state.tabOrder, recent: state.recent, layoutKey: state.layoutKey || EVERYONE, layouts: state.layouts || {} }, null, 2)
   );
   fs.renameSync(tmp, config.LIBRARY_FILE); // atomic: a crash never leaves half a file
 }
@@ -256,8 +285,51 @@ function newId(title, fallback) {
     title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || fallback;
   for (;;) {
     const id = `${slug}-${crypto.randomBytes(2).toString('hex')}`;
-    if (!itemById(id) && !catById(id) && !inlayById(id)) return id;
+    if (!itemById(id) && !catById(id) && !inlayById(id) && !storedLayoutUses(id)) return id;
   }
+}
+// Is an id used in someone else's pages? (A new game must never take the id of one of their pages.)
+function storedLayoutUses(id) {
+  return Object.values(state.layouts || {}).some((l) => l.categories.some((c) => c.id === id) || l.inlays.some((n) => n.id === id));
+}
+
+// ---- each person's pages (see parseLayout). The live ones are always the person playing.
+const EVERYONE = '_everyone';
+const LAYOUT_KEY_RE = /^(_everyone|[a-z0-9][a-z0-9._-]{0,23})$/;
+const layoutNow = () => JSON.parse(JSON.stringify({ categories: state.categories, inlays: state.inlays, tabOrder: state.tabOrder, recent: state.recent }));
+const freshLayout = () => ({ categories: [homeCat()], inlays: [], tabOrder: [], recent: [] });
+// A copy of someone's pages, to start a new profile from.
+function layoutOf(key) {
+  if (key === (state.layoutKey || EVERYONE)) return layoutNow();
+  const l = state.layouts && state.layouts[key];
+  return l ? JSON.parse(JSON.stringify(l)) : null;
+}
+function setLayout(key, layout) {
+  if (!LAYOUT_KEY_RE.test(key) || key === (state.layoutKey || EVERYONE)) return;
+  state.layouts = state.layouts || {};
+  if (layout) state.layouts[key] = layout;
+  else delete state.layouts[key];
+}
+function switchLayout(to) {
+  if (state.locked || !LAYOUT_KEY_RE.test(to)) return false;
+  const from = state.layoutKey || EVERYONE;
+  if (from === to) return true;
+  state.layouts = state.layouts || {};
+  state.layouts[from] = layoutNow();
+  const next = state.layouts[to] || freshLayout();
+  delete state.layouts[to];
+  // Games removed while this person was away: drop them from their pages and history.
+  const itemIds = new Set(state.items.map((i) => i.id));
+  const parsed = parseLayout(next, itemIds);
+  const known = new Set([...itemIds, ...parsed.categories.map((c) => c.id), ...parsed.inlays.map((n) => n.id)]);
+  for (const c of parsed.categories) c.entries = c.entries.filter((e) => known.has(e));
+  state.categories = parsed.categories;
+  state.inlays = parsed.inlays;
+  state.tabOrder = parsed.tabOrder;
+  state.recent = parsed.recent;
+  state.layoutKey = to;
+  saveState();
+  return true;
 }
 
 // Does `target` appear inside `fromId`'s folders, however deep?

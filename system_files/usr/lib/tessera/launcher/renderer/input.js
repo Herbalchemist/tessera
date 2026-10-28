@@ -171,8 +171,13 @@ api.onInit((payload) => {
     else reveal();
   } else if (!GUIDE_ONLY && payload.prefs && payload.prefs.pin && payload.prefs.pin.firstRun && !welcomed) {
     if (!modal && !busy) flowWelcome().then(reveal);
-  } else reveal();
+  } else {
+    reveal();
+    // "Who's playing?" once at start, when that's turned on (Settings › Profiles).
+    if (!GUIDE_ONLY && !askedWho) { askedWho = true; api.profiles('list').then((pr) => { if (pr && pr.ask && pr.profiles && pr.profiles.length && !modal && !busy) whoIsPlaying(); }).catch(() => {}); }
+  }
 });
+let askedWho = false;
 
 function resume(message) {
   suspended = false;
