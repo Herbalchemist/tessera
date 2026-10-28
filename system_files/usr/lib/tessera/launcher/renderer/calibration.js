@@ -348,7 +348,7 @@ async function flowCalMenu(index = 0) {
   items.push({ label: 'Quick calibration', sub: 'About a minute', op: 'quick', plain: true });
   items.push({ label: 'Thorough calibration', sub: 'About 5 minutes', op: 'thorough', plain: true });
   if (c) {
-    items.push({ label: 'Calibration', sub: c.enabled ? 'On · A to turn off' : 'Off · A to turn on', op: 'toggle', plain: true });
+    items.push({ label: 'Calibration', sub: c.enabled ? `On · ${roleName(0)} to turn off` : `Off · ${roleName(0)} to turn on`, op: 'toggle', plain: true });
     items.push({ label: 'Apply to games too', sub: p.system ? 'On · experimental' : 'Off · experimental', op: 'system', plain: true });
     items.push({ label: 'Reset to default', op: 'reset', plain: true });
   }

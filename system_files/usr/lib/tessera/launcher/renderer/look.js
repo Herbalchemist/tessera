@@ -21,24 +21,24 @@ const GLYPH_SETS = {
   playstation: { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'Create', 9: 'Options', 10: 'L3', 11: 'R3', 16: 'PS' },
   nintendo: { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+', 10: 'LS', 11: 'RS', 16: 'Home' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto' };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
-function detectFamily(id) {
-  const v = /vendor:\s*([0-9a-f]{4})/i.exec(id || '');
-  const ven = v ? v[1].toLowerCase() : '';
-  if (ven === '054c' || /dualsense|dualshock|playstation|sony/i.test(id)) return 'playstation';
-  if (ven === '057e' || /nintendo|joy-?con|switch|pro controller/i.test(id)) return 'nintendo';
-  return 'xbox';
-}
+// What each button means comes from the one input system (input-actions.js).
+const IA = window.TesseraInputActions;
+const detectFamily = (id) => IA.familyOf(id);
+// Whether the controller in use trades its face buttons (Nintendo, with "A confirms" chosen).
+const padSwap = (p = activePad()) => IA.swaps(detectFamily(p ? p.id : ''), prefs.pad.confirm);
 const glyphSet = () => {
   let g = prefs.pad.glyphs;
   if (g === 'auto') { const p = activePad(); g = detectFamily(p ? p.id : ''); }
   return GLYPH_SETS[g] || BUTTON_NAMES;
 };
 const glyph = (n) => glyphSet()[n];
-const buttonName = (n) => glyph(n) || `Button ${n}`;
+const buttonName = (n) => glyph(n) || `Button ${n}`; // physical button n
+// The label of the button that does role n's job ("press A to open" names the button that opens).
+const roleName = (n) => buttonName(IA.physicalFor(n, padSwap()));
 // ---- keyboard & mouse
 // Keys are looked up by KeyboardEvent.code (the key's position), so bindings survive a
 // change of keyboard layout; labels come from the layout when Chromium can tell us.
@@ -71,16 +71,16 @@ function setInputMode(m) {
   if (modal && (modal.kind === 'keys' || modal.kind === 'cal' || modal.kind === 'tour')) renderModal();
   else if (!modal && (hoverId === 'new' || hoverId === 'browser') && typeof update === 'function') update(); // "Press A to…" under those tabs
 }
-const ROLE_ACTION = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 12: 'up', 13: 'down', 14: 'left', 15: 'right', 16: 'guide' };
+const ROLE_ACTION = IA.ACTION_OF_ROLE;
 // The name to show in a hint for controller button n, in whatever the person is using.
 function hintName(n) {
   const m = hintMode();
-  if (m === 'pad') return buttonName(n);
+  if (m === 'pad') return roleName(n);
   if (m === 'mouse' && n === 0) return 'Click';
   if (m === 'mouse' && n === 1) return 'Right-click';
   const a = ROLE_ACTION[n];
   const k = a ? actionKeys(a)[0] : '';
-  return k || buttonName(n);
+  return k || roleName(n);
 }
 // "Press Enter" / "Press A", or just "Click" for the mouse.
 const pressTo = (n) => (hintMode() === 'mouse' && n <= 1 ? hintName(n) : `Press ${hintName(n)}`);
@@ -90,7 +90,7 @@ function applyGlyphs() {
   document.body.dataset.input = m;
   for (const el of document.querySelectorAll('[data-g]')) {
     const ids = el.dataset.g.split(',').map(Number);
-    el.textContent = ids.length === 1 ? hintName(ids[0]) : ids[0] === 8 ? `Hold ${buttonName(8)} + ${buttonName(9)}` : ids.map(hintName).join(' / ');
+    el.textContent = ids.length === 1 ? hintName(ids[0]) : ids[0] === 8 ? `Hold ${roleName(8)} + ${roleName(9)}` : ids.map(hintName).join(' / ');
   }
 }
 

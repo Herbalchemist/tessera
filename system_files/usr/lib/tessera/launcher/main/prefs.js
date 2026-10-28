@@ -34,9 +34,14 @@ const OLD_DEFAULT_KEYS = { back: 1, space: 2, shift: 3, done: 9, cancel: 8 }; //
 const SETTINGS_VERSION = 2;
 const RESERVED_BUTTONS = [0, 12, 13, 14, 15];
 
+const inputActions = require('../input-actions');
+
 // Controller preferences. Deadzone and trigger threshold are percentages.
 const PAD_DEFAULTS = {
   deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together',
+  // Which face button confirms: 'position' (the bottom one, on every controller) or 'label'
+  // (Nintendo controllers follow their printed A/B/X/Y). See input-actions.js.
+  confirm: 'position',
   // The browser pointer: which stick moves the cursor (the other one scrolls), and how fast.
   browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,
   // The Guide button: what a quick press and a long hold do (see guide-button.js).
@@ -48,6 +53,7 @@ const PAD_CHOICES = {
   style: ['split', 'both', 'pulse'],
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
   joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
+  confirm: inputActions.CONFIRM_CHOICES,
   browserCursor: ['right', 'left'],
   guideButton: ['menu-home', 'home-menu', 'menu'],
   guideDesktop: ['auto', 'on', 'off'],

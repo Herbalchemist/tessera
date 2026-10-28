@@ -148,7 +148,7 @@ async function flowDriveMenu(d, back) {
   if (!d.library && !d.system) items.push({ label: 'Use for games', sub: 'Make a Games folder and scan it', op: 'use', plain: true });
   if (d.ejectable) items.push({ label: 'Eject safely', sub: 'Then it can be unplugged', op: 'eject', plain: true });
   items.push({ label: 'Name this drive…', op: 'name', plain: true });
-  items.push({ label: 'Low space warning', sub: d.muted ? 'Off · A to turn on' : 'On · A to turn off', op: 'mute', plain: true });
+  items.push({ label: 'Low space warning', sub: d.muted ? `Off · ${roleName(0)} to turn on` : `On · ${roleName(0)} to turn off`, op: 'mute', plain: true });
   items.push({ label: 'Hide this drive', sub: 'Brings back from Hidden drives', op: 'hide', plain: true });
   items.push({ label: 'Back', op: 'back', plain: true });
   const it = await pick(`${d.name} · ${fmtBytes(d.free)} free of ${fmtBytes(d.total)}`, items);
@@ -172,7 +172,7 @@ async function flowHidden(back) {
   let r;
   try { r = await api.storage('hiddenDrives', {}); } finally { busy = false; }
   const items = r.drives.length
-    ? r.drives.map((d) => ({ label: d.name, sub: `${fmtBytes(d.total)} · A to show again`, key: d.key, plain: true }))
+    ? r.drives.map((d) => ({ label: d.name, sub: `${fmtBytes(d.total)} · ${roleName(0)} to show again`, key: d.key, plain: true }))
     : [{ label: 'No hidden drives', sub: 'Hide one from its menu in Storage', header: true }];
   items.push({ label: 'Back', op: 'back', plain: true });
   const it = await pick('Hidden drives', items, 0);
@@ -334,11 +334,11 @@ async function flowControls() {
     try { keymap = (await api.settings('getKeys')).keys; } finally { busy = false; }
     // These are settings rows, so Done and Cancel stay plain here (plain: true).
     const items = [{ label: 'Keyboard', header: true, fold: 'map.keyboard', open: true }];
-    KEY_ACTIONS.forEach((a) => items.push({ label: a.label, sub: buttonName(keymap[a.id]), id: a.id, plain: true }));
+    KEY_ACTIONS.forEach((a) => items.push({ label: a.label, sub: roleName(keymap[a.id]), id: a.id, plain: true }));
     items.push({ label: 'Reset keyboard buttons', op: 'reset', plain: true });
     items.push({ label: 'Fixed buttons', header: true, fold: 'map.fixed' });
     [
-      [buttonName(0), 'select'], [buttonName(1), 'back'], [buttonName(3), 'options'], [`${buttonName(4)} / ${buttonName(5)}`, 'switch tab'], ['D-pad', 'move'],
+      [roleName(0), 'select'], [roleName(1), 'back'], [roleName(3), 'options'], [`${roleName(4)} / ${roleName(5)}`, 'switch tab'], ['D-pad', 'move'],
     ].forEach(([k, v]) => items.push({ label: k, sub: v, plain: true, info: true }));
     const it = await pick('Button mapping', items, index);
     if (!it) return;

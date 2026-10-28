@@ -232,7 +232,7 @@
   function btItems(st) {
     const d = st.data;
     const out = [{ label: 'Bluetooth', header: true, key: 'h:bt' }];
-    out.push({ key: 'power', label: d.adapter.powered ? 'Bluetooth is on' : 'Bluetooth is off', sub: d.adapter.powered ? 'A switches it off' : 'A switches it on', op: 'power', plain: true });
+    out.push({ key: 'power', label: d.adapter.powered ? 'Bluetooth is on' : 'Bluetooth is off', sub: d.adapter.powered ? `${roleName(0)} switches it off` : `${roleName(0)} switches it on`, op: 'power', plain: true });
     if (!d.adapter.powered) return out;
     const mine = d.devices.filter((x) => x.paired);
     const near = d.devices.filter((x) => !x.paired);
@@ -331,7 +331,7 @@
   function wifiItems(st) {
     const d = st.data;
     const out = [{ label: 'Wi-Fi', header: true, key: 'h:wifi' }];
-    out.push({ key: 'radio', label: d.radio ? 'Wi-Fi is on' : 'Wi-Fi is off', sub: d.radio ? 'A switches it off' : 'A switches it on', op: 'radio', plain: true });
+    out.push({ key: 'radio', label: d.radio ? 'Wi-Fi is on' : 'Wi-Fi is off', sub: d.radio ? `${roleName(0)} switches it off` : `${roleName(0)} switches it on`, op: 'radio', plain: true });
     if (d.wired) out.push({ key: 'wired', label: 'Connected by cable', sub: 'Ethernet', info: true, plain: true });
     if (!d.radio) return out;
     out.push({ label: 'Networks', header: true, key: 'h:nets' });

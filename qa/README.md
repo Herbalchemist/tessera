@@ -29,6 +29,7 @@ xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/keyboard.cjs            
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/installer.cjs            # Install Tessera from the USB (with a stand-in for the USB's root helper)
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/graphics.cjs             # a graphics card swap: noticed at start, matching build offered and switched to
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/addons.cjs               # Get add-ons (a stand-in list), shards turned on/off, their pages and library sources, Shard safety
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/input.cjs                # the one input system: what buttons do on Xbox and Nintendo pads, with either Confirm button choice, and the hints
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
 ```
 

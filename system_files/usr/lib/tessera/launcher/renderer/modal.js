@@ -279,12 +279,12 @@ function updateKeys() {
     return;
   }
   if (modal.digits) {
-    hint.textContent = `A press   ${buttonName(keymap.back)} delete   ${buttonName(keymap.done)} done   ${buttonName(keymap.cancel)} cancel`;
+    hint.textContent = `${roleName(0)} press   ${roleName(keymap.back)} delete   ${roleName(keymap.done)} done   ${roleName(keymap.cancel)} cancel`;
     return;
   }
   hint.textContent =
-    `A type   ${buttonName(keymap.back)} delete   ${buttonName(keymap.space)} space   ` +
-    `${buttonName(keymap.shift)} shift   ${buttonName(keymap.done)} done` +
+    `${roleName(0)} type   ${roleName(keymap.back)} delete   ${roleName(keymap.space)} space   ` +
+    `${roleName(keymap.shift)} shift   ${roleName(keymap.done)} done` +
     (modal.last === null ? '' : `      (last button: ${modal.last})`);
 }
 
@@ -311,7 +311,7 @@ function renderModal() {
     h.textContent = modal.keyboard ? `Press a key for “${modal.label}”` : `Press a button for “${modal.label}”`;
     const p = document.createElement('p');
     p.className = 'khint';
-    p.textContent = modal.note || (modal.keyboard ? `Esc or ${buttonName(1)} on a controller to cancel` : 'Press Esc on a keyboard to cancel');
+    p.textContent = modal.note || (modal.keyboard ? `Esc or ${roleName(1)} on a controller to cancel` : 'Press Esc on a keyboard to cancel');
     box.appendChild(p);
     modalEl.appendChild(box);
     return;
