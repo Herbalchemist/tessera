@@ -458,7 +458,7 @@ window.addEventListener('mousedown', (e) => {
       return keyAction(keyFor(modal.r, modal.c));
     }
     if (modal.kind === 'grip') return closeModal();
-    if (modal.kind === 'tour') return press('a');
+    if (modal.kind === 'tour') return press(t.closest('.tour-do') ? 'x' : 'a');
     return; // the controller tester, color wheel and calibration are made for the controller
   }
   const tab = t.closest('.tab');

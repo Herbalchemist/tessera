@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.35.1-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.36.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -96,7 +96,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
   - *Take the tour*.
 
   Holding Guide goes straight Home (swap press and hold in *Settings › Controller*). In Desktop Mode the same guide comes up over the desktop with *Return to Tessera*. It steps aside while Steam is running, since Steam takes the button for itself.
-- **First-run setup**: who's playing (a profile), pick a look with the whole launcher previewing behind it, an optional PIN, and an optional **guided tour** that lights up each part of the screen in turn.
+- **First-run setup**: who's playing (a profile), pick a look with the whole launcher previewing behind it, an optional PIN, and an optional **guided tour** that lights up each part of the screen in turn and lets you try it: switch tabs with the bumpers, add a widget to Home, link a library drive or folder, and make your own tab, each right from its step.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN. With a real keyboard you just type.
 - Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
 

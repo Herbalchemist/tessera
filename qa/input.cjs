@@ -315,6 +315,34 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.evaluate(() => setInputMode('pad'));
     checks.push('A click outside a menu goes back (and outside the keyboard cancels), like Esc or right-click; inside still chooses');
 
+    // The tour lets you try things: switch tabs on the Tabs step, add a widget, link a library
+    // folder, make a tab, each from its own step, and it comes back to that step afterwards.
+    await page.evaluate(() => { if (modal) closeModal(); page = hoverId = 'home'; render(); runTour(1); });
+    await page.waitForFunction(() => modal && modal.kind === 'tour' && modal.i === 1);
+    const tabBefore = await page.evaluate(() => hoverId);
+    await page.evaluate(() => press('rb'));
+    await page.waitForTimeout(200);
+    assert.notEqual(await page.evaluate(() => hoverId), tabBefore, 'RB really switched tabs during the tour');
+    assert.match(await page.evaluate(() => document.querySelector('#modal .tour-try').textContent), /^✓/);
+    const doStep = async (i, opened) => {
+      await page.evaluate((i) => { modal.i = i; renderTour(); }, i);
+      await page.waitForTimeout(300);
+      await page.evaluate(() => { press('x'); }); // (not awaited: the tour waits for the person to finish)
+      await page.waitForFunction(opened, null, { timeout: 4000 });
+    };
+    await doStep(2, () => modal && modal.kind === 'list' && /widget/i.test(modal.title + JSON.stringify(modal.items.map((x) => x.label))));
+    await page.evaluate(() => modalPress('b'));
+    await page.waitForFunction(() => modal && modal.kind === 'tour' && modal.i === 2, null, { timeout: 4000 });
+    await doStep(3, () => modal && modal.title === 'Your games');
+    await page.evaluate(() => modalPress('b'));
+    await page.waitForFunction(() => modal && modal.kind === 'tour' && modal.i === 3, null, { timeout: 4000 });
+    await doStep(4, () => modal && modal.kind === 'keys');
+    await page.evaluate(() => { for (const c of 'Tour tab') typeChar(c); keyAction('done'); });
+    await page.waitForFunction(() => modal && modal.kind === 'tour' && modal.i === 4, null, { timeout: 4000 });
+    assert.ok(await page.evaluate(() => data.mosaics.some((m) => m.title === 'Tour tab')), 'the tab was made');
+    await page.evaluate(() => closeModal());
+    checks.push('The tour lets you try it: LB/RB switch tabs on the Tabs step; add a widget, link a library folder and make a tab from their steps, then back to the same step');
+
     // On-screen keyboard size: docked (default) or wide.
     const kbClass = async () => { page.evaluate(() => { ask('QA', ''); }); await page.waitForFunction(() => modal && modal.kind === 'keys'); const c = await page.evaluate(() => document.getElementById('modal').className); await page.evaluate(() => finishKeys(false)); return c; };
     assert.doesNotMatch(await kbClass(), /osk-wide/);
