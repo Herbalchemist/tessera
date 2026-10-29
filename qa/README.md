@@ -31,6 +31,7 @@ xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/graphics.cjs            
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/addons.cjs               # Get add-ons (a stand-in list), shards turned on/off, their pages and library sources, Shard safety
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/input.cjs                # the one input system: what buttons do on Xbox and Nintendo pads, with either Confirm button choice, and the hints
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/profiles.cjs             # profiles: each person's own pages, controls, browser logins and theme; switching, restart, removing
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/report.cjs               # Report a problem: made only when asked, readable on screen, nothing personal in it
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
 ```
 

@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.36.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.37.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -217,6 +217,10 @@ After the restart the machine signs in to Tessera by itself.
 - **No telemetry.** The launcher makes no network requests of its own: its pages can't (their content-security policy forbids it), and the only thing it fetches is the add-on list and packages, when you open Get add-ons. Updates are fetched by the system's own `bootc` tool. GitHub signs every Tessera image, and the system carries the key that checks those signatures.
 - **Browser permissions:** the embedded browser is isolated from the launcher and currently denies camera, microphone, location, notifications and other permission requests. A controller-friendly website-permission prompt is not built yet. Typing into a page's own text fields with the on-screen keyboard is not built yet (the address bar works).
 - **Not yet:** Bluetooth keyboards that ask you to type a code, enterprise (802.1X) and WEP Wi-Fi, parental controls beyond the PIN.
+
+## Reporting a problem
+
+*Settings › Report a problem* (or *Help* in the guide) writes a text file about the machine and Tessera's recent logs to `~/Tessera/Reports`: the Tessera build, the system, the hardware (processor, memory, graphics card and driver, screens, controllers by name), how it starts up, Tessera's logs and the login screen's log, and the settings that change how things work. It is **not telemetry**: nothing is sent anywhere. It is made only when you ask, you can read every line on screen first, and you choose whether to attach it to an [issue](https://github.com/Herbalchemist/tessera/issues). PINs, passwords and Wi-Fi names are never in it, and your account and computer names, network and hardware addresses and e-mail addresses are replaced with `[brackets]`.
 
 ## Roadmap
 

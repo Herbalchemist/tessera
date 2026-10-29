@@ -620,3 +620,54 @@ async function flowRoots(backTo) {
   }
   flowRoots(backTo);
 }
+
+// Settings › Report a problem (and the guide's Help). A text file about this machine and Tessera's
+// recent logs, for attaching to an issue. It is made only when asked, stays on this machine, and
+// can be read here in full first: nothing is ever sent anywhere (see main/report.js).
+const ISSUES_URL = 'https://github.com/Herbalchemist/tessera/issues';
+async function flowReport() {
+  if (modal || busy) return;
+  const info = await api.report('contents');
+  for (;;) {
+    const it = await pick('Report a problem', [
+      { label: 'Make a report', sub: 'takes a few seconds', op: 'make', ok: true },
+      { label: 'What goes in it', header: true },
+      ...info.contents.map((c) => ({ label: c, plain: true, info: true })),
+      { label: 'Never in it: PINs, passwords, Wi-Fi names. Your account and computer names, and network and hardware addresses, are replaced with [brackets].', plain: true, info: true },
+    ], 0, { body: 'Tessera writes a report file to the Reports folder in your Tessera folder. Nothing is sent anywhere: you read it here, and you choose whether to share it.' });
+    if (!it) return;
+    if (it.info) continue;
+    setStatus('Making the report…');
+    busy = true;
+    let r;
+    try { r = await api.report('make'); } finally { busy = false; }
+    if (!r || !r.ok) { setStatus((r && r.error) || "Couldn't make the report.", true); return; }
+    setStatus(`Saved ${r.folder}/${r.name}`);
+    return reportMade(r);
+  }
+}
+async function reportMade(r) {
+  for (;;) {
+    const it = await pick('Report saved', [
+      { label: 'Read it', sub: 'every line, before you share it', op: 'read', plain: true },
+      { label: 'Open the issues page', sub: 'in the browser, to describe what happened', op: 'issues', plain: true },
+      { label: 'Delete it', op: 'delete', plain: true, danger: true },
+      { label: 'To share it', sub: `On ${ISSUES_URL.replace('https://', '')}, start a new issue (or answer yours) and attach the file. It's in ${r.folder} (from Desktop Mode, or copy it to a USB drive).`, plain: true, info: true },
+    ], 0, { body: `${r.folder}/${r.name}` });
+    if (!it) return;
+    if (it.info) continue;
+    if (it.op === 'read') {
+      const lines = r.text.split('\n').slice(0, 900);
+      await pick(r.name, lines.map((l) => (/^== /.test(l) ? { label: l.slice(3), header: true } : { label: l || ' ', plain: true, info: true })));
+    } else if (it.op === 'issues') {
+      browserUrl = ISSUES_URL;
+      page = hoverId = 'browser';
+      return launchBrowser(1);
+    } else if (it.op === 'delete') {
+      if (!(await confirm(`Delete ${r.name}?`, 'Delete'))) continue;
+      await api.report('delete', { name: r.name });
+      setStatus('Report deleted.');
+      return;
+    }
+  }
+}
