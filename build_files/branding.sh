@@ -132,6 +132,16 @@ fi
 f=/usr/share/ublue-os/motd/template.md
 if [ -f "$f" ]; then install -m644 "$BR/motd.md" "$f"; note "$f"; else missing "$f"; fi
 
+# ---- the boot splash (Plymouth). Bazzite's theme, bgrt, draws the spinner theme's watermark at the
+# bottom: the Bazzite wordmark. Every theme's watermark becomes Tessera's. The splash runs from the
+# initramfs, so build.sh rebuilds that afterwards (a changed file here alone would never be seen).
+found=0
+for f in /usr/share/plymouth/themes/*/watermark.png; do
+  [ -e "$f" ] || continue
+  install -m644 "$BR/tessera-plymouth-watermark.png" "$f"; found=1; note "$f"
+done
+[ "$found" = 1 ] || missing "a Plymouth watermark (/usr/share/plymouth/themes/*/watermark.png)"
+
 # ---- Bazzite's own pop-ups and pins: Tessera has its own first-run setup and updates
 for f in /etc/skel/.config/autostart/bazzite-portal.desktop /etc/xdg/autostart/bazzite-announcement.desktop; do
   if [ -e "$f" ]; then rm -f "$f"; note "no longer starts by itself: $f"; else missing "$f"; fi

@@ -296,7 +296,7 @@ const browserPointer = browserPointerLib.createPointer({
 function browserAnalog(source, name, value) {
   const key = String(source).includes(':') ? String(source) : 'js:' + source;
   if (name === 'gone') return browserPointer.removeSource(key);
-  if (name === 'lt' || name === 'rt') return browserPointer.setTrigger(key, name === 'lt' ? 'left' : 'right', value);
+  if (name === 'lt' || name === 'rt') return browserPointer.setTrigger(key, name === 'rt' ? 'left' : 'right', value);
   return browserPointer.setAxis(key, name, value);
 }
 // Integration tests (TESSERA_DEV=1 only) feed stick/trigger values here, standing in for a real pad.
