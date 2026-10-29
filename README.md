@@ -236,6 +236,7 @@ After the restart the machine signs in to Tessera by itself.
 - NVIDIA builds: test on real hardware and drop the *experimental* label.
 - Controllers on real hardware: a single Joy-Con held sideways (left and right), a Switch Pro Controller and Joy-Cons with **Confirm button** set to "A confirms" and with a remap (0.28 fixes them being swapped twice in the launcher's menus), and an Xbox and a PlayStation controller remapped in the browser.
 - Wi-Fi: hand the password to NetworkManager without putting it on `nmcli`'s command line, where other accounts on the machine can briefly see it while it joins. Needs a test on real Wi-Fi before it ships.
+- Before 1.0.0: Tessera's own wallpapers and other content, enough to stand on its own; then Bazzite's wallpapers come out. Until then they stay as they are, beside Tessera's.
 
 ## How it's built
 
