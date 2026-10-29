@@ -56,6 +56,17 @@ ls -la /usr/share/wallpapers/F44 /usr/share/wallpapers/F44/contents /usr/share/w
 sec "DETAIL2 start-here / distributor svg"; head -c 400 /usr/share/icons/hicolor/scalable/apps/start-here.svg; echo; head -c 300 /usr/share/icons/hicolor/scalable/places/distributor-logo.svg; echo; ls -la /usr/share/icons/hicolor/*/apps/start-here* /usr/share/icons/hicolor/*/places/start-here* 2>/dev/null | head -20; rpm -qf /usr/share/icons/hicolor/scalable/apps/start-here.svg /usr/share/icons/hicolor/scalable/places/distributor-logo.svg /usr/share/pixmaps/system-logo-white.png /usr/share/pixmaps/bootloader/bootlogo_128.png 2>&1
 sec "DETAIL2 kickoff icon config"; cat /usr/share/plasma/look-and-feel/com.valve.vapor.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js 2>&1 | head -20; cat /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-here-2.js | head -30
 sec "DETAIL2 hardware-setup hostname context"; grep -n -B8 -A6 'set-hostname' /usr/libexec/bazzite-hardware-setup
+sec "DETAIL3 boot splash inside the initramfs (what is actually shown at boot)"
+for img in /usr/lib/modules/*/initramfs.img; do
+  echo "initramfs: $img"
+  for t in spinner bgrt; do
+    f="usr/share/plymouth/themes/$t/watermark.png"
+    sum=$(lsinitrd -f "$f" "$img" 2>/dev/null | md5sum | cut -d' ' -f1)
+    echo "  $f md5=$sum"
+  done
+done
+echo "  tessera watermark md5=$(md5sum < /usr/share/tessera/branding/tessera-plymouth-watermark.png 2>/dev/null | cut -d' ' -f1)"
+echo "  on-disk spinner watermark md5=$(md5sum < /usr/share/plymouth/themes/spinner/watermark.png 2>/dev/null | cut -d' ' -f1)"
 sec "DETAIL2 plymouth watermarks"; ls -la /usr/share/plymouth/themes/spinner/ /usr/share/plymouth/themes/bgrt/ | grep -i -e water -e logo; cat /usr/share/plymouth/themes/bgrt/bgrt.plymouth | head -30
 sec "DETAIL2 sddm / login screen"; ls /usr/share/sddm 2>&1; ls /etc/sddm* 2>&1; systemctl get-default 2>&1; ls -la /etc/systemd/system/display-manager.service 2>&1
 sec "DETAIL2 end"
