@@ -70,7 +70,9 @@ async function start() {
       await page.waitForFunction(() => !browserOpen && !browserMoving);
     };
 
-    // Everyone sets things up: a mosaic, a faster repeat, Select on RB, a browser login.
+    // With nobody's profile yet, nothing is restricted.
+    assert.equal((await page.evaluate(() => api.profiles('guestCheck', { perm: 'apps' }))).ok, true, 'no profiles: no Guest restrictions');
+    // Guest (nobody's profile) sets things up: a mosaic, a faster repeat, Select on RB, a browser login.
     await page.evaluate(() => lib('newCategory', { title: 'Shared page' }));
     await page.evaluate(() => padSet('repeat', 'fast'));
     await page.evaluate(() => api.settings('padRemap', { family: 'xbox', map: [5, 1, 2, 3, 4, 0] }).then((r) => { prefs.pad = { ...PAD_DEFAULTS, ...r.pad }; }));
@@ -81,6 +83,8 @@ async function start() {
     const ana = await add('Ana', 'copy');
     const bo = await add('Bo', 'fresh');
     assert.deepEqual([ana, bo], ['ana', 'bo']);
+    // Guest is locked down now that profiles exist; these checks need its browser and controls.
+    for (const key of ['browser', 'controls', 'pages']) await page.evaluate((key) => api.profiles('guestSet', { key, value: true }), key);
 
     const sharedTheme = await page.evaluate(() => api.settings('themeGet').then((t) => t.active));
     assert.ok(await use(ana));
@@ -120,7 +124,7 @@ async function start() {
     await page.evaluate(() => { openGuide(); });
     await page.waitForFunction(() => modal && modal.title === 'Guide');
     const whoList = await page.evaluate(() => modal.items.filter((x) => x.op === 'profile').map((x) => [x.label, x.sub]));
-    assert.deepEqual(whoList, [['Ana', 'playing now'], ['Bo', ''], ['Everyone', '']]);
+    assert.deepEqual(whoList, [['Ana', 'playing now'], ['Bo', ''], ['Guest', '']]);
     await page.evaluate(() => guideChoose(modal.items.find((x) => x.op === 'profile' && x.id === 'bo')));
     await page.waitForFunction(() => modal && modal.items.find((x) => x.id === 'bo' && x.sub === 'playing now'));
     assert.deepEqual(await mosaics(), []);
@@ -133,7 +137,7 @@ async function start() {
     await app.close();
     ({ app, page } = await start());
     await page.waitForFunction(() => modal && modal.title === "Who's playing?", null, { timeout: 8000 });
-    assert.deepEqual(await page.evaluate(() => modal.items.map((x) => x.label)), ['Ana', 'Bo', 'Everyone']);
+    assert.deepEqual(await page.evaluate(() => modal.items.map((x) => x.label)), ['Ana', 'Bo', 'Guest']);
     await page.screenshot({ path: path.join(output, 'profiles-who.png') });
     await page.evaluate(() => { modal.index = 0; modalPress('a'); });
     await page.waitForFunction(() => !modal && data.mosaics.length === 2);
@@ -266,6 +270,31 @@ async function start() {
     for (let i = 0; i < 12; i++) { const r = await S('pinCheck', { pin: '9999' }); assert.equal(r.wait, undefined, 'a wrong admin PIN never makes anyone wait'); }
     assert.equal((await S('pinCheck', { pin: '1357' })).ok, true);
     checks.push('Profile PINs wait after five misses; the admin PIN never waits, skips any profile wait and clears it');
+
+    // ---- Guest: locked down to what the admin allows; the admin PIN allows the rest on the spot.
+    for (const key of ['browser', 'controls', 'pages']) await page.evaluate((key) => api.profiles('guestSet', { key, value: false }), key); // admin is unlocked from the last check
+    assert.equal((await P('use', { id: null })).active, null);
+    await S('pinLock', {});
+    const raw = (k, op, x) => page.evaluate(([k, op, x]) => window.launcherAPI[k](op, x), [k, op, x]); // without the PIN-asking wrapper
+    assert.equal((await raw('profiles', 'guestCheck', { perm: 'games' })).ok, true, 'Guest plays games');
+    for (const [perm, call] of [['apps', ['profiles', 'guestCheck', { perm: 'apps' }]], ['browser', ['browser', 'open', { url: base + '/' }]], ['pages', ['library', 'newCategory', { title: 'Guest page' }]], ['controls', ['settings', 'padSet', { key: 'repeat', value: 'fast' }]], ['look', ['settings', 'themeUse', { id: 'stock' }]]]) {
+      const r = await raw(...call);
+      assert.equal(r.ok, false, `Guest can't (${perm})`);
+      assert.equal(r.needPin, true, `and the admin PIN is offered (${perm})`);
+    }
+    assert.equal((await raw('profiles', 'guestSet', { key: 'apps', value: true })).needPin, true, 'only the admin changes what Guest may do');
+    // The wrapper asks for the admin PIN and tries again.
+    const pending = page.evaluate(() => api.settings('padSet', { key: 'repeat', value: 'fast' }));
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    await page.evaluate(() => { for (const d of '1357') typeChar(d); keyAction('done'); });
+    assert.equal((await pending).ok, true, 'with the admin PIN it goes through');
+    assert.equal(await page.evaluate(() => api.profiles('guestSet', { key: 'apps', value: true }).then((r) => r.guest.apps)), true, 'and the admin can allow more');
+    assert.ok((await P('guestSet', { key: 'show', value: false })).ok);
+    await S('pinLock', {});
+    assert.ok((await P('use', { id: kid, pin: '2469' })).ok);
+    assert.equal((await P('use', { id: null })).needPin, true, 'a hidden Guest only with the admin PIN');
+    assert.deepEqual((await P('list', {})).guest, { show: false, games: true, apps: true, browser: false, pages: false, look: false, controls: false });
+    checks.push("Guest (nobody's profile) is locked down once profiles exist: games only, until the admin allows more; the admin PIN allows anything on the spot; the admin can hide Guest");
   } finally { await app.close().catch(() => {}); server.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);

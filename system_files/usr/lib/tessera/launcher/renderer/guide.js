@@ -93,6 +93,7 @@ async function openGuide() {
       c.classList.add('dim');
     } catch { /* no picture: the guide still opens */ }
     await api.browser('hide');
+    window.focus(); // keyboard and controllers back to the launcher page
   }
   let info = {}; let audio = null; let prof = { profiles: [], active: null }; let wifi = null; let bt = null; let st = {};
   const quick = (pr) => Promise.race([Promise.resolve(pr).catch(() => null), sleep(1500).then(() => null)]);
@@ -148,7 +149,7 @@ async function openGuide() {
   // ---- profiles
   items.push({ label: 'Profiles', header: true });
   for (const pr of prof.profiles || []) items.push({ label: pr.name, sub: pr.id === prof.active ? 'playing now' : '', op: 'profile', id: pr.id, plain: true });
-  if ((prof.profiles || []).length) items.push({ label: 'Everyone', sub: prof.active ? '' : 'playing now', op: 'profile', id: null, plain: true });
+  if ((prof.profiles || []).length && (!prof.guest || prof.guest.show !== false || !prof.active)) items.push({ label: 'Guest', sub: prof.active ? '' : 'playing now', op: 'profile', id: null, plain: true });
   if (!GUIDE_ONLY) items.push({ label: (prof.profiles || []).length ? 'Manage profiles…' : 'Add a profile…', op: 'profiles', plain: true });
   // (notifications have their own panel on the right: see guideNotes below)
   if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); }

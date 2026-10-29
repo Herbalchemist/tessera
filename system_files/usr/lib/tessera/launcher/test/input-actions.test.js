@@ -147,3 +147,18 @@ test('in the browser, a remap applies to evdev controllers too, at once', () => 
   assert.deepStrictEqual(out.splice(0), ['ENTER', 'act:rb'], 'a remap mid-press leaves nothing stuck');
   m.dispose();
 });
+
+test('in the browser, Xbox pads (xpad / xpadneo) have X and Y the other way round: swapped back', () => {
+  const B = require('../browser-gamepad');
+  const out = [];
+  const m = B.createMapper({ onAction: (k) => out.push(k), onBrowserAction: (a) => out.push('act:' + a), swapNorthWest: true, setTimeoutFn: () => 0, clearTimeoutFn: () => {} });
+  const tap = (code) => { m.handleButton(code, 1); m.handleButton(code, 0); };
+  tap(0x133); // what xpad sends for X
+  tap(0x134); // ... and for Y
+  assert.deepStrictEqual(out, ['TAB', 'act:y'], 'X jumps to the next link, Y opens the address');
+  const plain = [];
+  const n = B.createMapper({ onAction: (k) => plain.push(k), onBrowserAction: (a) => plain.push('act:' + a), setTimeoutFn: () => 0, clearTimeoutFn: () => {} });
+  n.handleButton(0x133, 1); n.handleButton(0x134, 1);
+  assert.deepStrictEqual(plain, ['act:y', 'TAB'], 'other controllers follow the spec');
+  m.dispose(); n.dispose();
+});

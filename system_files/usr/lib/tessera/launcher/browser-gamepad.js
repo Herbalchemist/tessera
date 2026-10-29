@@ -114,6 +114,9 @@ function createMapper({
   // Settings > Button mapping: (standard button number 0-5) -> the role it plays, asked at each
   // press so a change applies at once. Face buttons and bumpers only.
   roleOf = null,
+  // Xbox controllers on Linux (the xpad and xpadneo drivers) report X as BTN_NORTH and Y as
+  // BTN_WEST, the other way round from the gamepad spec this file follows: swap them back.
+  swapNorthWest = false,
 } = {}) {
   if (typeof onShoulder !== 'function') onShoulder = () => {};
   if (typeof onBrowserAction !== 'function') onBrowserAction = null;
@@ -181,6 +184,7 @@ function createMapper({
       return onAnalog(code === BTN_TL2 ? 'lt' : 'rt', value ? 1 : 0);
     }
     const raw = code; // held buttons are tracked as they are, so a remap mid-press can't strand one
+    if (swapNorthWest && (code === BTN_NORTH || code === BTN_WEST)) code = code === BTN_NORTH ? BTN_WEST : BTN_NORTH;
     if (roleOf) {
       const n = MAPPABLE.indexOf(code);
       if (n >= 0) {

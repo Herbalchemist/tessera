@@ -296,7 +296,8 @@ function navRepeater() {
   padNav = IA.createDirectionRepeater({
     ...IA.repeatTiming(speed, 'launcher'),
     onAction: (dir) => {
-      if (suspended || busy || browserOpen || performance.now() < navQuietUntil) return;
+      // (with the browser open, a menu or the address keyboard over it still moves)
+      if (suspended || busy || (browserOpen && !modal) || performance.now() < navQuietUntil) return;
       if (!(modal && modal.kind === 'capture')) press(dir);
     },
   });
@@ -436,6 +437,10 @@ window.addEventListener('mousedown', (e) => {
   const t = e.target instanceof Element ? e.target : null;
   if (!t) return;
   if (modal) {
+    // A click outside the menu (on the dimmed screen around it) goes back, like Esc or right-click.
+    const outside = !t.closest('.box, .kbpanel, .gnotes, #url-bubble');
+    if (outside && modal.kind === 'list' && !modal.welcome) return press('b'); // (not the first-run welcome: a stray click mustn't skip setup)
+    if (outside && modal.kind === 'keys' && !modal.patternWanted) return finishKeys(false);
     if (modal.kind === 'list') {
       const it = t.closest('.mitem');
       if (!it || it.dataset.i === undefined) return;

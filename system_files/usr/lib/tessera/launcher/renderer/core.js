@@ -2,7 +2,32 @@
 // Page elements, timings, and the built-in widgets (inlays).
 // Part of the launcher page; the parts share one scope and load in the order index.html lists them.
 
-const api = window.launcherAPI;
+// The main process's API. One addition: when Guest isn't allowed something (Settings › Profiles ›
+// Guest), the answer says so; the admin PIN is asked for right there and the request tried again.
+const api = (() => {
+  const raw = window.launcherAPI;
+  const out = { ...raw };
+  for (const k of ['settings', 'library', 'browser', 'profiles']) {
+    out[k] = async (op, p) => {
+      let r = await raw[k](op, p);
+      if (r && r.guest && r.needPin && typeof requirePin === 'function') {
+        const wasBusy = busy;
+        busy = false; // the PIN pad needs the controller
+        let ok = false;
+        try { ok = await requirePin(r.error); } finally { busy = wasBusy; }
+        if (ok) r = await raw[k](op, p);
+      }
+      if (r && r.guest && !r.ok && r.error) setStatus(r.error, true);
+      return r;
+    };
+  }
+  return out;
+})();
+// Is Guest allowed this? ({ id } of a game or app, or { perm }); asks for the admin PIN if not.
+async function guestAllowed(q) {
+  const r = await api.profiles('guestCheck', q);
+  return Boolean(r && r.ok);
+}
 const tabsEl = document.getElementById('tabs');
 const rowsEl = document.getElementById('rows');
 const crumbEl = document.getElementById('crumb');
