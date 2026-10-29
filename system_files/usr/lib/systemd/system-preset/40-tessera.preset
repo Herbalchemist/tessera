@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Boot into Tessera: sign the account in to the Tessera session at boot (see autologin-setup).
+# A fresh install applies presets on its first boot; without this line systemd leaves the service off.
+enable tessera-autologin.service
