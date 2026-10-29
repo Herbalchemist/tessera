@@ -496,7 +496,8 @@ function activate() {
   } else if (t.kind === 'inlay') {
     openMenu(); // widgets are display-only; A offers move / resize / remove
   } else if (t.kind === 'action') {
-    requirePin().then((ok) => { if (ok) runAction(t.id); });
+    // Making a problem report changes nothing, so it never asks for the PIN.
+    (t.id === '_report' ? Promise.resolve(true) : requirePin()).then((ok) => { if (ok) runAction(t.id); });
   } else if (t.offline) {
     setStatus(t.offline === 'drive' ? `${t.title} is on a drive that isn't plugged in.` : `${t.title}'s files can't be found. Settings > Storage > Clean up can remove broken entries.`, true);
   } else {
@@ -527,5 +528,6 @@ function runAction(id) {
   else if (id === '_bluetooth') flowBluetooth();
   else if (id === '_sound') flowSound();
   else if (id === '_power') flowPower();
+  else if (id === '_report') flowReport();
   else setStatus('Not available yet.');
 }

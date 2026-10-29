@@ -35,3 +35,4 @@ require('./main/pinLock'); // The PIN, and the settings and scan requests that i
 require('./main/web'); // The default web browser, launching games and apps, and the browser pointer.
 require('./main/guide'); // The Guide button: over a running game, over the browser, and leaving Tessera.
 require('./main/webView'); // The embedded browser view.
+require('./main/report'); // "Report a problem": a report file, made only when asked, never sent anywhere.

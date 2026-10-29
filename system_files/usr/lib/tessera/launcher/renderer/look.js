@@ -366,6 +366,7 @@ const ICONS = {
   pad: { anim: 'seq', parts: [['path', { d: 'M7 8h10a4 4 0 0 1 3.9 3.1l1 4.6a2.4 2.4 0 0 1-4.3 1.9L16 16H8l-1.6 1.6a2.4 2.4 0 0 1-4.3-1.9l1-4.6A4 4 0 0 1 7 8z' }], ['path', { d: 'M8 10.6v3.4M6.3 12.3h3.4' }], ['circle', { cx: 15.6, cy: 11.4, r: 0.9, class: 'dot a1' }], ['circle', { cx: 17.6, cy: 13.3, r: 0.9, class: 'dot a2' }]] },
   keyboard: { anim: 'press', parts: [['rect', { x: 2.5, y: 6, width: 19, height: 12, rx: 2 }], ['path', { d: 'M6 9.5h.01M9 9.5h.01M12 9.5h.01M15 9.5h.01M18 9.5h.01', class: 'a1' }], ['path', { d: 'M7.5 12.5h.01M10.5 12.5h.01M13.5 12.5h.01M16.5 12.5h.01', class: 'a2' }], ['path', { d: 'M8 15.3h8', class: 'a3' }]] },
   controls: { anim: 'press', parts: [['rect', { x: 3, y: 5, width: 5, height: 5, rx: 1.3, class: 'a1' }], ['rect', { x: 9.5, y: 5, width: 5, height: 5, rx: 1.3, class: 'a2' }], ['rect', { x: 16, y: 5, width: 5, height: 5, rx: 1.3, class: 'a3' }], ['rect', { x: 3, y: 13, width: 18, height: 5.5, rx: 1.3 }]] },
+  report: { anim: 'press', parts: [['path', { d: 'M6 3.5h8.5L19 8v12.5H6z' }], ['path', { d: 'M14.5 3.5V8H19' }], ['path', { d: 'M9 12h7M9 15h7', class: 'a1' }], ['path', { d: 'M9 18h4', class: 'a2' }]] },
   theme: { anim: 'pop', parts: [['path', { d: 'M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z' }], ['circle', { cx: 7.5, cy: 11, r: 1.2, class: 'dot a1' }], ['circle', { cx: 9.5, cy: 7, r: 1.2, class: 'dot a2' }], ['circle', { cx: 14.5, cy: 7, r: 1.2, class: 'dot a3' }], ['circle', { cx: 17.2, cy: 10.6, r: 1.2, class: 'dot a4' }]] },
   profiles: { anim: 'pop', parts: [['circle', { cx: 16, cy: 7.5, r: 2.2, class: 'a2' }], ['path', { d: 'M12.3 19c.3-2.8 2.1-4.6 4.2-4.6s3.9 1.8 4.2 4.6', class: 'a2' }], ['circle', { cx: 8.5, cy: 8.5, r: 2.6, class: 'a1' }], ['path', { d: 'M3.5 19c0-3.3 2.2-5.5 5-5.5s5 2.2 5 5.5', class: 'a1' }]] },
   display: { anim: 'draw', parts: [['rect', { x: 3, y: 4, width: 18, height: 12.5, rx: 2 }], ['path', { d: 'M9 20.5h6M12 16.5v4' }], ['path', { d: 'M6 13l3.2-3.2 2.6 2.6 2.2-2.2L17.8 14', class: 'a1', pathLength: 1 }]] },
@@ -427,6 +428,7 @@ const SETTINGS_ROWS = [
       { id: '_update', title: 'Update software', kind: 'action', icon: 'update' },
       { id: '_addons', title: 'Add-ons', kind: 'action', icon: 'addons' },
       { id: '_pin', title: 'PIN', kind: 'action', icon: 'pin' },
+      { id: '_report', title: 'Report a problem', kind: 'action', icon: 'report' },
     ],
   },
   {

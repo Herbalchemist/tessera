@@ -62,7 +62,7 @@ const WIDGET_MAX_FILE = 5 * 1024 * 1024;
 // itself only ever deletes things *inside* these folders, never the folders
 // themselves, so nothing the system expects to find can be removed from here.
 const VAULT_DIR = process.env.TESSERA_VAULT_DIR || path.join(process.env.TESSERA_DATA_DIR ? config.DATA_DIR : os.homedir(), 'Tessera');
-const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads', packs: 'Shards' };
+const VAULT_FOLDERS = { games: 'Games', apps: 'Apps', themes: 'Themes', widgets: 'Widgets', art: 'Pictures', fonts: 'Fonts', sounds: 'Sounds', downloads: 'Downloads', packs: 'Shards', reports: 'Reports' };
 const addonDir = (name) => path.join(VAULT_DIR, VAULT_FOLDERS[name] || name);
 const vaultFolder = (key) => path.join(VAULT_DIR, VAULT_FOLDERS[key]);
 // Is this real path inside the Tessera folder? With strict, the folder itself and

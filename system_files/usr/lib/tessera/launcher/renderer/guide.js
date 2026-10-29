@@ -152,7 +152,7 @@ async function openGuide() {
   if ((prof.profiles || []).length && (!prof.guest || prof.guest.show !== false || !prof.active)) items.push({ label: 'Guest', sub: prof.active ? '' : 'playing now', op: 'profile', id: null, plain: true });
   if (!GUIDE_ONLY) items.push({ label: (prof.profiles || []).length ? 'Manage profiles…' : 'Add a profile…', op: 'profiles', plain: true });
   // (notifications have their own panel on the right: see guideNotes below)
-  if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); }
+  if (!GUIDE_ONLY) { items.push({ label: 'Help', header: true }); items.push({ label: 'Take the tour', sub: 'a quick look around Tessera', op: 'tour', plain: true }); items.push({ label: 'Report a problem', sub: 'a file to attach to an issue; nothing is sent', op: 'report', plain: true }); }
   // ---- power
   items.push({ label: 'Power', header: true, fold: 'guide.power' });
   items.push({ label: 'Sleep', op: 'sleep', plain: true });
@@ -308,6 +308,7 @@ async function guideChoose(it) {
   if (op === 'settings') return leaveTo(() => { page = 'settings'; hoverId = 'settings'; stack = []; focus = 'content'; render(); });
   if (op === 'profiles') return leaveTo(() => flowProfiles());
   if (op === 'tour') return leaveTo(() => runTour());
+  if (op === 'report') return leaveTo(() => flowReport());
   if (op === 'install') return leaveTo(() => flowInstaller());
   if (op === 'storage') return leaveTo(() => flowStorage());
   if (op === 'sleep' || op === 'restart' || op === 'shutdown' || op === 'desktop') {
