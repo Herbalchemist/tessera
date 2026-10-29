@@ -6,6 +6,7 @@
 module.exports = {
   get browserNeedsProfilePin() { return browserNeedsProfilePin; },
   get atStartup() { return atStartup; },
+  get guestDenies() { return guestDenies; },
 };
 
 const { ipcMain } = require('electron');
@@ -31,6 +32,7 @@ const profilesInfo = () => ({
   profiles: prefs.settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId, color: p.color, locked: profileLocked(p), ownPin: Boolean(p.pin), browserLock: p.browserLock !== false, login: p.login || 'admin', admin: p.id === prefs.settings.adminProfile })),
   active: activeProfile(),
   ask: Boolean(prefs.settings.profileAsk),
+  guest: { ...(prefs.settings.guest || prefs.GUEST_DEFAULTS) },
   adminPin: pinLock.pinIsSet(),
   lockedOut,
 });
@@ -114,6 +116,20 @@ function browserNeedsProfilePin() {
   if (!pr || pr.browserLock === false || !profileLocked(pr) || profileOk(pr)) return null;
   return { ok: false, needProfilePin: true, id: pr.id, name: pr.name, error: `Enter ${pr.name}'s PIN first.` };
 }
+// ---- Guest: nobody's profile. Once anyone has a profile, Guest is restricted to what the admin
+// allows (settings.guest); the admin PIN allows anything else right then, as everywhere.
+const GUEST_PERMS = {
+  games: 'play games', apps: 'open apps', browser: 'use the browser', pages: 'change Home or the mosaics',
+  look: 'change the look', controls: 'change the controls',
+};
+// null when allowed; otherwise the answer that asks for the admin PIN.
+function guestDenies(perm) {
+  if (!GUEST_PERMS[perm] || activeProfile() || !prefs.settings.profiles.length) return null;
+  if ((prefs.settings.guest || prefs.GUEST_DEFAULTS)[perm] !== false) return null;
+  if (pinLock.pinIsSet() ? pinLock.pinOk() : false) return null;
+  const msg = `Guest can't ${GUEST_PERMS[perm]}.` + (pinLock.pinIsSet() ? ' The admin PIN allows it.' : ' The admin can allow it in Settings › Profiles › Guest.');
+  return { ok: false, needPin: pinLock.pinIsSet(), guest: true, error: msg };
+}
 // Tessera starting while a profile with a PIN was playing: nobody is logged in yet, so it starts as
 // Everyone and asks who's playing (that person first).
 let lockedOut = null;
@@ -146,6 +162,20 @@ const switched = () => ({ ok: true, ...profilesInfo(), theme: theming.themePaylo
 ipcMain.handle('profiles', ipc.safe((op, p) => {
   if (op === 'list') return profilesInfo();
   if (op === 'browserCheck') return browserNeedsProfilePin() || { ok: true };
+  // Before launching something or opening the browser: is Guest allowed?
+  if (op === 'guestCheck') {
+    let perm = p.perm;
+    if (typeof p.id === 'string') { const it = library.itemById(p.id); perm = it && it.kind === 'app' ? 'apps' : 'games'; }
+    return guestDenies(perm) || { ok: true };
+  }
+  // What Guest may do, and whether it's offered in "Who's playing?". Admin rights needed.
+  if (op === 'guestSet') {
+    if (pinLock.pinIsSet() && !pinLock.pinOk()) return pinLock.NEED_PIN;
+    if (!Object.prototype.hasOwnProperty.call(prefs.GUEST_DEFAULTS, p.key) || typeof p.value !== 'boolean') return { ok: false, error: 'Bad request.' };
+    prefs.settings.guest = { ...(prefs.settings.guest || prefs.GUEST_DEFAULTS), [p.key]: p.value };
+    prefs.saveSettings();
+    return { ok: true, ...profilesInfo() };
+  }
   if (op === 'add') {
     if (!pinLock.pinOk()) return pinLock.NEED_PIN;
     const name = theming.clip(p.name, 24);
@@ -200,6 +230,8 @@ ipcMain.handle('profiles', ipc.safe((op, p) => {
   if (op === 'use') {
     const pr = p.id !== null && prefs.settings.profiles.find((x) => x.id === p.id);
     if (p.id !== null && !pr) return { ok: false, error: "That profile doesn't exist." };
+    // Guest, when the admin has hidden it, only with the admin PIN.
+    if (p.id === null && activeProfile() && prefs.settings.guest && prefs.settings.guest.show === false && pinLock.pinIsSet() && !pinLock.pinOk()) return pinLock.NEED_PIN;
     // A profile with a PIN: theirs, or the admin PIN. (Switching to Everyone needs none.)
     if (pr && profileLocked(pr) && activeProfile() !== pr.id) {
       if (p.pin === undefined) return NEED_PROFILE_PIN(pr);

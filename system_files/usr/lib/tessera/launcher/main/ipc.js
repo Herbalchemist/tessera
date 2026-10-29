@@ -27,6 +27,8 @@ const safe = (fn) => (_e, op, p) => {
 };
 
 ipcMain.handle('library', safe((op, p) => {
+  const guest = require('./profiles').guestDenies('pages'); // Guest changes pages only if the admin allows
+  if (guest) return { ...guest, view: library.buildView() };
   if (['deleteItem', 'deleteCategory', 'removeEntry', 'deleteFiles'].includes(op) && !pinLock.pinOk()) return { ...pinLock.NEED_PIN, view: library.buildView() };
   const r = library.libraryOp(op, p);
   if (r.ok) {

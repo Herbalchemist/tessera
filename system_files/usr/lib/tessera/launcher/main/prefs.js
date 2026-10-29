@@ -17,6 +17,7 @@ module.exports = {
   get saveSettings() { return saveSettings; },
   get settings() { return settings; },
   get EVERYONE() { return EVERYONE; },
+  get GUEST_DEFAULTS() { return GUEST_DEFAULTS; },
   get switchControls() { return switchControls; },
   get controlsOf() { return controlsOf; },
   get freshControls() { return freshControls; },
@@ -76,6 +77,8 @@ const KB_CHOICES = { preset: Object.keys(keyboardMap.PRESETS), hints: ['auto', '
 const KB_RANGES = { mouseHide: [0, 30] }; // seconds; 0 = never hide while the mouse is in use
 const kbPayload = () => ({ ...settings.kb, bindings: keyboardMap.normalize(settings.kb.bindings, settings.kb.preset) });
 
+// What Guest may do once profiles exist: locked down to playing games until the admin allows more.
+const GUEST_DEFAULTS = { show: true, games: true, apps: false, browser: false, pages: false, look: false, controls: false };
 let settings = {
   scanRoots: [],
   keys: { ...DEFAULT_KEYS },
@@ -97,6 +100,9 @@ let settings = {
   profileData: {}, // the controls of everyone not playing right now (see switchControls)
   activeProfile: null, // who is playing (a profile id), or null: Everyone
   adminProfile: null, // the admin's own profile (see profiles.js: profile PINs)
+  // Guest: Tessera with nobody's profile. Once profiles exist, Guest only does what the admin
+  // allows here (see profiles.js); with no profiles at all nothing is restricted.
+  guest: { ...GUEST_DEFAULTS },
   profileAsk: false, // ask "Who's playing?" when Tessera starts
   everyoneTheme: null, // the theme Everyone had on when someone else started playing
   profiles: [], // { id, name, themeId } — themeId null means "use the active theme"; first look at who's using Tessera
@@ -165,6 +171,8 @@ function loadSettings() {
       settings.profiles = [];
     }
     settings.profileAsk = Boolean(d && d.profileAsk === true && settings.profiles.length);
+    settings.guest = { ...GUEST_DEFAULTS };
+    if (d && d.guest && typeof d.guest === 'object') for (const k of Object.keys(GUEST_DEFAULTS)) if (typeof d.guest[k] === 'boolean') settings.guest[k] = d.guest[k];
     // The admin's own profile: it can log in with the admin PIN itself, or a PIN of its own.
     settings.adminProfile = d && typeof d.adminProfile === 'string' && settings.profiles.some((pr) => pr.id === d.adminProfile) ? d.adminProfile : null;
     settings.everyoneTheme = d && typeof d.everyoneTheme === 'string' && theming.THEME_ID_RE.test(d.everyoneTheme) ? d.everyoneTheme : null;
@@ -211,7 +219,7 @@ function loadSettings() {
 // on-screen keyboard's buttons. The live ones (settings.pad / kb / keys) are always the person
 // playing; the others wait in settings.profileData, under their profile id or EVERYONE (no
 // profile). Everything reads the live ones, so switching is a swap, checked like a fresh load.
-const EVERYONE = '_everyone';
+const EVERYONE = '_everyone'; // Guest's own controls (the key is older than the name)
 function cleanKeys(src) {
   const keys = { ...DEFAULT_KEYS };
   const untouched = src && Object.keys(OLD_DEFAULT_KEYS).every((k) => src[k] === OLD_DEFAULT_KEYS[k]);

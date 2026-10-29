@@ -314,8 +314,9 @@ async function editThemeSetting(s) {
 // Minimal, on purpose: who's using this Tessera, and which theme (if any) is theirs. No
 // switching session or startup wizard yet — see the plan doc for where this is headed.
 // ---- profiles: each person has their own controls (button layout too), keyboard keys, Home and
-// mosaics, Recently played, browser logins and theme. "Everyone" is the shared set (no profile).
-const PROFILE_OWN = 'Their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are shared.';
+// mosaics, Recently played, browser logins and theme. Guest is Tessera with nobody's profile: once
+// profiles exist it only does what the admin allows.
+const PROFILE_OWN = 'Their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are shared. Press Y on Guest to choose what Guest may do.';
 // Leave the browser before switching: the next person's opens with their own logins.
 async function leaveBrowserForSwitch() {
   if (!browserOpen) return;
@@ -356,11 +357,12 @@ async function switchProfile(id, name) {
   let r;
   try { r = await api.profiles('use', { id }); } finally { busy = false; }
   if (r && r.needProfilePin) r = await profilePin(r.name || name, (pin) => api.profiles('use', { id, pin }));
+  if (r && r.needPin && !r.ok) { if (await requirePin('Enter the admin PIN to switch to Guest')) r = await api.profiles('use', { id }); }
   if (!r || !r.ok) { setStatus((r && r.error) || "Couldn't switch.", true); return null; }
   if (r.view) applyView(r.view); // their pages, controls, keys and theme
   else if (r.theme) applyTheme(r.theme);
   if (!guideOpen) { page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); }
-  setStatus(id ? `Hi, ${name}!` : 'Playing as Everyone.');
+  setStatus(id ? `Hi, ${name}!` : 'Playing as Guest.');
   return r;
 }
 // "Who's playing?" (at start, when that's turned on).
@@ -368,7 +370,7 @@ async function whoIsPlaying() {
   const pr = await api.profiles('list');
   if (!pr || !pr.profiles || !pr.profiles.length) return;
   const items = pr.profiles.map((p) => ({ label: p.name, sub: [p.id === pr.active || p.id === pr.lockedOut ? 'last played' : '', p.locked ? 'PIN' : ''].filter(Boolean).join(' · '), id: p.id, plain: true }));
-  items.push({ label: 'Everyone', sub: 'the shared setup', id: null, plain: true });
+  if (pr.guest.show !== false) items.push({ label: 'Guest', sub: 'only what the admin allows', id: null, plain: true });
   const at = Math.max(0, items.findIndex((x) => x.id === (pr.lockedOut || pr.active)));
   const it = await pick("Who's playing?", items, at);
   if (it && it.id !== pr.active) await switchProfile(it.id, it.label);
@@ -378,7 +380,7 @@ async function addProfile() {
   if (name === null) return null;
   if (!name.trim()) { setStatus('Give them a name.', true); return null; }
   const start = await pick(`Start ${name.trim()} with`, [
-    { label: 'A copy of the shared setup', sub: "Everyone's Home, mosaics and controls, to change from there", op: 'copy', plain: true },
+    { label: "A copy of Guest's setup", sub: "Guest's Home, mosaics and controls, to change from there", op: 'copy', plain: true },
     { label: 'A fresh start', sub: 'An empty Home and the usual controls', op: 'fresh', plain: true },
   ]);
   if (!start) return null;
@@ -401,13 +403,16 @@ async function flowProfiles() {
     const themeName = (id) => { const x = t.themes.find((th) => th.id === id); return x ? x.name : id; };
     const items = [{ label: "Who's playing", header: true }];
     list.forEach((p) => items.push({ label: p.name, sub: [p.id === pr.active ? 'Playing now' : 'Switch to them', p.admin ? 'Admin' : '', p.locked ? 'PIN' : '', p.themeId ? themeName(p.themeId) : ''].filter(Boolean).join(' · '), id: p.id, who: true, plain: true }));
-    items.push({ label: 'Everyone', sub: (pr.active ? 'Switch to the shared setup' : 'Playing now') + ' · no profile', id: null, who: true, plain: true });
+    items.push({ label: 'Guest', sub: [pr.active ? 'Switch to Guest' : 'Playing now', 'nobody\'s profile', pr.guest.show === false ? 'hidden' : ''].filter(Boolean).join(' · '), id: null, who: true, guestRow: true, plain: true });
     items.push({ label: 'Add a profile…', op: 'add', plain: true });
     if (list.length) items.push({ label: "Ask who's playing when Tessera starts", sub: pr.ask ? 'On' : 'Off', op: 'ask', plain: true });
     const it = await pick('Profiles', items, index, {
       body: `Each profile has ${PROFILE_OWN.charAt(0).toLowerCase()}${PROFILE_OWN.slice(1)}`,
       yLabel: 'Options',
-      onY: list.length ? async (hit) => { if (hit && hit.id) { closeModal(); await flowProfileOptions(hit.id, hit.label); } } : undefined,
+      onY: async (hit) => {
+        if (hit && hit.guestRow) { closeModal(); await flowGuestOptions(); }
+        else if (hit && hit.id) { closeModal(); await flowProfileOptions(hit.id, hit.label); }
+      },
     });
     if (!it) return;
     index = items.indexOf(it);
@@ -424,6 +429,27 @@ async function flowProfiles() {
       busy = true;
       try { await api.profiles('ask', { on: !pr.ask }); } finally { busy = false; }
     }
+  }
+}
+// What Guest may do once profiles exist. Changing it needs the admin PIN.
+const GUEST_LABELS = [
+  ['games', 'Play games'], ['apps', 'Open apps'], ['browser', 'Use the browser'],
+  ['pages', 'Change Home and the mosaics'], ['look', 'Change the look (themes)'], ['controls', 'Change the controls'],
+];
+async function flowGuestOptions() {
+  let index = 1;
+  for (;;) {
+    const pr = await api.profiles('list');
+    const g = pr.guest || {};
+    const items = [{ label: 'Guest may', header: true }];
+    for (const [k, label] of GUEST_LABELS) items.push({ label, sub: g[k] ? 'Allowed' : 'Not allowed', key: k, plain: true });
+    items.push({ label: 'Offer Guest in "Who\'s playing?"', sub: g.show !== false ? 'Yes' : 'No: only the admin can switch to Guest', key: 'show', plain: true });
+    const it = await pick('Guest', items, index, { body: pr.profiles.length ? 'Guest is Tessera with nobody\'s profile. It only does what you allow here; the admin PIN allows anything else on the spot.' : 'These apply once someone has a profile. Until then Tessera is all yours.' });
+    if (!it) return;
+    index = items.indexOf(it);
+    let r = await api.profiles('guestSet', { key: it.key, value: !(it.key === 'show' ? g.show !== false : g[it.key]) });
+    if (r && r.needPin) { if (!(await requirePin('Enter the admin PIN'))) continue; r = await api.profiles('guestSet', { key: it.key, value: !(it.key === 'show' ? g.show !== false : g[it.key]) }); }
+    if (r && !r.ok && r.error) setStatus(r.error, true);
   }
 }
 async function flowProfileOptions(id, name) {

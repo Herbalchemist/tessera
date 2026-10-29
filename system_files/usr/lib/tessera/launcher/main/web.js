@@ -150,8 +150,13 @@ function watchJoysticks(onShoulder, onAction = () => {}, onBrowserAction = null,
       const analog = onAnalog ? (name, value) => onAnalog(jsName, name, value) : null;
       // Its buttons by role, under Settings > Button mapping for its family (by USB vendor).
       const family = vendor === '054c' ? 'playstation' : 'xbox';
+      // Which kernel driver it has: Xbox pads (xpad, xpadneo; or Microsoft's own) report X and Y
+      // the other way round from every other controller.
+      const driver = ['device/driver', 'device/device/driver', 'device/device/device/driver']
+        .map((rel) => path.basename(real(path.join(sysDevice, rel)) || '')).find(Boolean) || '';
+      const swapNorthWest = /xpad/i.test(driver) || vendor === '045e';
       const roleOf = (n) => inputActions.roleOf(n, inputActions.mapFor(family, prefs.settings.pad));
-      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick, roleOf, ...inputActions.repeatTiming(prefs.settings.pad.repeat, 'browser') });
+      const mapper = browserGamepad.createMapper({ onShoulder, onAction, onBrowserAction, onAnalog: analog, hasRightStick, roleOf, swapNorthWest, ...inputActions.repeatTiming(prefs.settings.pad.repeat, 'browser') });
       entry.mapper = mapper;
       const startReader = (node, eventSize, consume) => {
         const proc = spawn('cat', [path.join(dir, node)], { stdio: ['ignore', 'pipe', 'ignore'] });
@@ -443,12 +448,16 @@ ipcMain.on('launch', (_event, id) => {
   if (config.running) return appWindow.send('launch-failed', `${guide.runningInfo ? guide.runningInfo.title : 'A game'} is still running. Close it from the guide first.`);
   if (id === '_browser') {
     if (prefs.settings.pinBrowser !== false && !pinLock.pinOk()) return appWindow.send('launch-failed', 'Enter the PIN first.');
+    const guest = require('./profiles').guestDenies('browser');
+    if (guest) return appWindow.send('launch-failed', guest.error);
     const b = resolveBrowser();
     if (!b) return appWindow.send('launch-failed', "Couldn't find a web browser to open.");
     return runChild(b.file, b.args, os.homedir(), 'Browser', null, 'Browser');
   }
   const game = library.itemById(id);
   if (!game) return appWindow.send('launch-failed', 'Unknown game.');
+  const guest = require('./profiles').guestDenies(game.kind === 'app' ? 'apps' : 'games');
+  if (guest) return appWindow.send('launch-failed', guest.error);
   try {
     fs.accessSync(game.path, fs.constants.X_OK);
   } catch {

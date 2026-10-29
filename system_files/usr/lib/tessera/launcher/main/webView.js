@@ -145,7 +145,9 @@ function detachBrowserView() {
   if (web.browserCursorView) { try { config.mainWindow.contentView.removeChildView(web.browserCursorView); } catch { /* not attached */ } }
   config.mainWindow.contentView.removeChildView(browserView);
   browserViewAttached = false;
-  try { config.mainWindow.focus(); } catch { /* window is closing */ }
+  // Give the launcher page the keyboard and controllers back (the address keyboard, the guide):
+  // focusing the window alone leaves them with the page that just stepped aside.
+  try { config.mainWindow.focus(); config.mainWindow.webContents.focus(); } catch { /* window is closing */ }
 }
 // Where the page sits: the whole window, or the opening of Tessera's frame around it (the launcher
 // measures the frame and sends it, in window pixels). Kept inside the window, and never tiny.
@@ -180,6 +182,8 @@ ipcMain.handle('browser', async (event, op, payload) => {
     if (prefs.settings.pinBrowser !== false && !pinLock.pinOk()) return pinLock.NEED_PIN;
     const own = profiles.browserNeedsProfilePin(); // their own browser, behind their own PIN
     if (own) return own;
+    const guest = profiles.guestDenies('browser');
+    if (guest) return guest;
     const checked = browserNavigation.validateHttpUrl(url);
     if (!checked.ok) return checked;
     const fresh = !browserView;

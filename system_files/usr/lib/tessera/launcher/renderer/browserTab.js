@@ -177,6 +177,7 @@ async function launchBrowser(dir = 1) {
   if (browserOpen || browserMoving) return;
   if (prefs.pin.set && prefs.pin.browser && !(await requirePin())) return;
   if (!(await unlockOwnBrowser())) return; // their own browser, behind their own PIN
+  if (!(await guestAllowed({ perm: 'browser' }))) return;
   browserMoving = true;
   const c = browserCurtain();
   try {
@@ -421,6 +422,7 @@ async function openUrlBar() {
     c.hidden = false;
     c.classList.add('dim');
     await api.browser('hide');
+    window.focus(); // keyboard and controllers back to the launcher page
     bubble = urlBubble();
     paintUrlBubble(browserUrl, true);
     pullUrlBubble(bubble); // the keyboard rises while it comes out
@@ -498,10 +500,13 @@ function activate() {
   } else if (t.offline) {
     setStatus(t.offline === 'drive' ? `${t.title} is on a drive that isn't plugged in.` : `${t.title}'s files can't be found. Settings > Storage > Clean up can remove broken entries.`, true);
   } else {
-    suspended = true;
-    dropAllArt(); // the launcher sits hidden while a game runs: don't hold the pictures in memory meanwhile
-    setStatus('Starting…');
-    api.launch(t.id);
+    guestAllowed({ id: t.id }).then((ok) => {
+      if (!ok) return;
+      suspended = true;
+      dropAllArt(); // the launcher sits hidden while a game runs: don't hold the pictures in memory meanwhile
+      setStatus('Starting…');
+      api.launch(t.id);
+    });
   }
 }
 

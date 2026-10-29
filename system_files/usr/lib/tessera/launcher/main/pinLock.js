@@ -93,7 +93,13 @@ function pinMiss() {
 }
 const NEED_PIN = { ok: false, needPin: true, error: 'Enter the PIN first.' };
 
+// What Guest may change (Settings › Profiles › Guest); everything else here is as for anyone.
+const GUEST_OPS = {
+  padSet: 'controls', padRemap: 'controls', padCalib: 'controls', kbSet: 'controls', kbBind: 'controls', kbUnbind: 'controls', kbReset: 'controls', setKey: 'controls', resetKeys: 'controls',
+  themeSet: 'look', themeUse: 'look', themeReset: 'look', pageGridSet: 'pages',
+};
 ipcMain.handle('settings', ipc.safe((op, p) => {
+  if (GUEST_OPS[op]) { const guest = require('./profiles').guestDenies(GUEST_OPS[op]); if (guest) return guest; }
   if (op === 'pinStatus') return pinInfo();
   if (op === 'pinCheck') return pinTry(p.pin);
   if (op === 'pinLock') { pinUnlockedUntil = 0; return { ok: true }; }

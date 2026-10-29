@@ -278,6 +278,43 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.evaluate(() => padSet('guideStyle', 'side'));
     checks.push('Guide style: side panel, floating card or compact, each with its own notifications (side panel, tucked card, inline strip)');
 
+    // With the browser open, the address keyboard still takes the D-pad.
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+    page.evaluate(() => { browserOpen = true; ask('QA address', ''); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    const c0 = await page.evaluate(() => modal.c);
+    await page.evaluate(() => { __qaPad.buttons[15] = { pressed: true, touched: true, value: 1 }; });
+    await page.waitForTimeout(150);
+    await page.evaluate(() => { __qaPad.buttons[15] = { pressed: false, touched: false, value: 0 }; });
+    await page.waitForTimeout(250);
+    assert.equal(await page.evaluate(() => modal.c), c0 + 1, 'D-pad right moves along the keys');
+    await tap(0);
+    assert.equal(await page.evaluate(() => modal.text.length), 1, 'A types');
+    await page.evaluate(() => { finishKeys(false); browserOpen = false; });
+    checks.push('With the browser open, the address keyboard takes the D-pad and A (they used to be ignored)');
+
+    // A click outside a menu or the keyboard goes back.
+    await page.evaluate(() => setInputMode('mouse'));
+    page.evaluate(() => { window.__qaGone = null; pick('Click test', [{ label: 'One' }, { label: 'Two' }]).then((r) => { window.__qaGone = r === null ? 'back' : 'chose'; }); });
+    await page.waitForFunction(() => modal && modal.title === 'Click test');
+    await page.mouse.click(30, 690);
+    await page.waitForFunction(() => window.__qaGone !== null);
+    assert.equal(await page.evaluate(() => window.__qaGone), 'back');
+    page.evaluate(() => { window.__qaGone = undefined; ask('Click test', 'abc').then((r) => { window.__qaGone = r; }); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys');
+    await page.mouse.click(30, 30);
+    await page.waitForFunction(() => window.__qaGone !== undefined);
+    assert.equal(await page.evaluate(() => window.__qaGone), null, 'the keyboard cancels');
+    page.evaluate(() => { window.__qaGone = null; pick('Click test', [{ label: 'One' }, { label: 'Two' }]).then((r) => { window.__qaGone = r ? 'chose' : 'back'; }); });
+    await page.waitForFunction(() => modal && modal.title === 'Click test');
+    const one = await page.evaluate(() => { const r = document.querySelector('#modal .mitem').getBoundingClientRect(); return [r.left + 20, r.top + r.height / 2]; });
+    await page.mouse.click(one[0], one[1]);
+    await page.waitForFunction(() => window.__qaGone !== null);
+    assert.equal(await page.evaluate(() => window.__qaGone), 'chose', 'a click inside still chooses');
+    await page.evaluate(() => setInputMode('pad'));
+    checks.push('A click outside a menu goes back (and outside the keyboard cancels), like Esc or right-click; inside still chooses');
+
     // On-screen keyboard size: docked (default) or wide.
     const kbClass = async () => { page.evaluate(() => { ask('QA', ''); }); await page.waitForFunction(() => modal && modal.kind === 'keys'); const c = await page.evaluate(() => document.getElementById('modal').className); await page.evaluate(() => finishKeys(false)); return c; };
     assert.doesNotMatch(await kbClass(), /osk-wide/);

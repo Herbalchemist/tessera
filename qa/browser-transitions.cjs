@@ -145,6 +145,14 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     const first = await page.evaluate(() => window.__qaFirst);
     assert.deepEqual({ left: first.left, top: first.top, width: first.width }, pillRect, 'the bubble starts as the pill itself');
     shot('browser-address-bubble.png');
+    // Real input reaches it (not just the page's own functions): the launcher page has the focus
+    // back from the web page, and keys typed on a keyboard land in the bubble.
+    assert.equal(await page.evaluate(() => document.hasFocus()), true, 'the launcher page has the focus again');
+    await app.evaluate(({ BrowserWindow }) => { const wc = BrowserWindow.getAllWindows()[0].webContents; for (const k of ['x', 'y']) { wc.sendInputEvent({ type: 'keyDown', keyCode: k }); wc.sendInputEvent({ type: 'char', keyCode: k }); wc.sendInputEvent({ type: 'keyUp', keyCode: k }); } });
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => document.querySelector('#url-bubble .ub-text').textContent), 'xy', 'typed keys replace the selected address');
+    await app.evaluate(({ BrowserWindow }) => { const wc = BrowserWindow.getAllWindows()[0].webContents; for (let i = 0; i < 2; i++) { wc.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' }); wc.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' }); } });
+    await page.waitForTimeout(200);
     await page.evaluate((u) => { for (const ch of u + 'two') typeChar(ch); }, url);
     assert.equal(await page.evaluate(() => document.querySelector('#url-bubble .ub-text').textContent), url + 'two', 'the first key replaced the selected address');
     await page.evaluate(() => keyAction('done'));
