@@ -72,6 +72,12 @@ fi
 ### the computer's name). See branding.sh for what changes and what stays Bazzite's.
 bash /ctx/branding.sh
 
+### Boot into Tessera. tessera-autologin.service signs the account in to the Tessera session at boot;
+### it was never turned on, so new installs stopped at the login screen. Enabled here for machines
+### that update, and by the preset (40-tessera.preset) for fresh installs.
+systemctl enable tessera-autologin.service
+systemctl is-enabled tessera-autologin.service
+
 ### The boot splash runs from the initramfs, which Bazzite built before branding.sh changed its
 ### logo: build it again from this image's own files and dracut settings, the way Universal Blue
 ### images do. (The kernel is signed for Secure Boot; the initramfs never is, so that's unchanged.)
