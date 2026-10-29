@@ -1,6 +1,12 @@
 <div align="center">
 
-# Tessera
+<h1>
+  <img src="system_files/usr/share/tessera/branding/tessera-logo.svg" height="76" alt="">&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="system_files/usr/share/tessera/branding/tessera-wordmark.svg">
+    <img src="system_files/usr/share/tessera/branding/tessera-wordmark-dark.svg" height="58" alt="Tessera">
+  </picture>
+</h1>
 
 **A gaming OS you drive from the couch.**<br>
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
@@ -235,7 +241,7 @@ After the restart the machine signs in to Tessera by itself.
 
 - `Containerfile`: starts from `ghcr.io/ublue-os/bazzite:stable` and adds Tessera.
 - `system_files/`: files copied into the image. The launcher is plain Electron + HTML/CSS/JavaScript in `system_files/usr/lib/tessera/launcher`, run inside [Gamescope](https://github.com/ValveSoftware/gamescope) by `tessera-session`. Its main process is split into parts in `main/` (library, settings, themes, add-ons, shards, updates, the browser and so on; `main.js` lists them in load order), and the page into `renderer/` (`index.html` loads them in order).
-- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools.
+- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools. Every logo file is drawn by `tools/branding/make-logos.py` and `render.cjs`, so they stay alike.
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
 

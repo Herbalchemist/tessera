@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>Tessera</title>
-  <rect x="4" y="4" width="26" height="26" rx="6" fill="#b4a7ff"/>
-  <rect x="34" y="4" width="26" height="26" rx="6" fill="#ffb3c7"/>
-  <rect x="4" y="34" width="26" height="26" rx="6" fill="#8fe3cf"/>
-  <rect x="34" y="34" width="26" height="26" rx="6" fill="#ffd98f"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>Tessera</title><rect x="6.00" y="6.00" width="38.00" height="38.00" rx="8.74" fill="#b4a7ff" transform="rotate(-5 25.00 25.00)"/><rect x="47.00" y="9.00" width="14.00" height="14.00" rx="3.22" fill="#ffb3c7" transform="rotate(12 54.00 16.00)"/><rect x="46.25" y="30.25" width="11.50" height="11.50" rx="2.65" fill="#8fe3cf" transform="rotate(-6 52.00 36.00)"/><rect x="37.50" y="44.50" width="17.00" height="17.00" rx="3.91" fill="#ffd98f" transform="rotate(9 46.00 53.00)"/></svg>
