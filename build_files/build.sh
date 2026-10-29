@@ -72,6 +72,20 @@ fi
 ### the computer's name). See branding.sh for what changes and what stays Bazzite's.
 bash /ctx/branding.sh
 
+### The boot splash runs from the initramfs, which Bazzite built before branding.sh changed its
+### logo: build it again from this image's own files and dracut settings, the way Universal Blue
+### images do. (The kernel is signed for Secure Boot; the initramfs never is, so that's unchanged.)
+KVER="$(ls /usr/lib/modules)"
+if [ "$(printf '%s\n' "$KVER" | wc -l)" -ne 1 ] || [ ! -d "/usr/lib/modules/$KVER" ]; then
+  echo "Expected exactly one kernel in /usr/lib/modules, found: $KVER" >&2
+  exit 1
+fi
+/usr/bin/dracut --no-hostonly --kver "$KVER" --reproducible --add ostree -f "/usr/lib/modules/$KVER/initramfs.img"
+chmod 0600 "/usr/lib/modules/$KVER/initramfs.img"
+lsinitrd "/usr/lib/modules/$KVER/initramfs.img" > /tmp/initramfs-files.txt || true
+grep -q 'plymouth/themes/spinner/watermark.png' /tmp/initramfs-files.txt && echo "initramfs: Tessera's boot splash is in" || echo "note: the initramfs has no spinner watermark (Plymouth layout changed?)"
+rm -f /tmp/initramfs-files.txt
+
 ### Tessera's images must carry Tessera's signature: /etc/containers/policy.json requires
 ### /etc/pki/containers/tessera.pub for ghcr.io/herbalchemist (registries.d/tessera.yaml says where
 ### the signatures are). Bazzite's own entries in the file are kept.

@@ -91,10 +91,13 @@ const PAGE = `<!doctype html><title>Pointer QA</title>
     checks.push('Left stick scrolls with analog speed in the right direction');
 
     // Triggers click.
+    // Each trigger on its own, so one can't be credited with the other's click.
     await feed('rt', 1); await page.waitForTimeout(40); await feed('rt', 0); await page.waitForTimeout(150);
+    assert.equal((await inPage('qa.clicks')).length, 1, 'RT made a left click');
+    assert.equal(await inPage('qa.menus'), 0, 'and no right click');
     await feed('lt', 1); await page.waitForTimeout(40); await feed('lt', 0); await page.waitForTimeout(150);
     const clicks = await inPage('qa.clicks');
-    assert.equal(clicks.length, 1, 'RT made exactly one left click');
+    assert.equal(clicks.length, 1, 'LT made no left click');
     assert.equal(clicks[0][0], 0);
     assert.equal(clicks[0][1], b[0], 'the click lands under the cursor');
     assert.equal(await inPage('qa.menus'), 1, 'LT made a right click (context menu)');
