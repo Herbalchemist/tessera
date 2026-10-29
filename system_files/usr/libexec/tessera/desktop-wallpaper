@@ -1,0 +1,41 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Desktop Mode's wallpaper and lock screen for an account that was set up before it ran Tessera.
+#
+# The image makes Tessera's wallpaper the default, but Plasma only reads defaults when it builds a
+# desktop for the first time. An account that started out on Bazzite keeps the picture Bazzite gave
+# it (the isometric room, convergence) in its own settings. This switches the account over once:
+# only settings still pointing at one of Bazzite's or Universal Blue's own pictures change, so a
+# wallpaper the person picked themselves is left alone.
+#
+#   desktop-wallpaper          run by tessera-session at the start of the console session
+#   desktop-wallpaper --force  do it again even if it was done before
+#
+# It changes nothing while Plasma is running (Plasma writes its settings back when it closes and
+# would undo it); then it simply tries again next time.
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
+DONE="$STATE/desktop-wallpaper-done"
+WP=/usr/share/wallpapers/Tessera/contents/images/3840x2160.jpg
+
+[ "$1" = --force ] && rm -f "$DONE"
+[ -e "$DONE" ] && exit 0
+[ -e "$WP" ] || exit 0
+if pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1; then
+  echo "desktop wallpaper: Plasma is running, trying again next time"
+  exit 0
+fi
+
+# Image=/PreviewImage= lines naming a stock Bazzite or Universal Blue picture, with or without file://
+STOCK='^((Preview)?Image=(file://)?)/usr/share/(wallpapers|backgrounds)/(convergence[^[:space:]]*|bazzite[^[:space:]]*|ublue[^[:space:]]*)$'
+changed=""
+for f in "$CONF/plasma-org.kde.plasma.desktop-appletsrc" "$CONF/kscreenlockerrc"; do
+  [ -f "$f" ] || continue
+  if grep -Eq "$STOCK" "$f"; then
+    sed -E -i.tessera-bak "s#$STOCK#\\1$WP#" "$f" && changed="$changed ${f##*/}"
+  fi
+done
+mkdir -p "$STATE" && : >"$DONE"
+echo "desktop wallpaper:${changed:- nothing to change}"

@@ -47,6 +47,11 @@ mkdir -p "$STATE"
 echo "session start $(date -Is)${TESSERA_NESTED:+ (from the desktop)}" >"$LOG"
 rm -f "$LEAVE"
 
+# An account set up before it ran Tessera still has Bazzite's wallpaper in Desktop Mode: switch it
+# to Tessera's, once (leaves a wallpaper the person picked alone). Only from the console session,
+# when Plasma isn't running.
+[ -z "$TESSERA_NESTED" ] && /usr/libexec/tessera/desktop-wallpaper >>"$LOG" 2>&1
+
 # Without the launcher program there is nothing to run. Say so in the log and end the session
 # (the login screen is the way to the desktop) instead of starting Gamescope with nothing in it.
 if [ ! -x "$ELECTRON" ]; then
