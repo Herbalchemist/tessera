@@ -426,7 +426,7 @@ function libraryOp(op, p) {
       const c = catById(p.catId);
       if (!c) return { ok: false, error: 'That no longer exists.' };
       const def = typeof p.type === 'string' ? addons.inlayDef(p.type) : null;
-      if (!def) return { ok: false, error: 'That inlay is not installed.' };
+      if (!def) return { ok: false, error: 'That widget is not installed.' };
       const rect = fitRect(def, p);
       const others = c.entries.map(inlayById).filter(Boolean);
       if (others.some((o) => overlaps(rect, o))) return { ok: false, error: 'That spot is taken.' };

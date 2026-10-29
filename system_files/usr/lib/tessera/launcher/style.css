@@ -1400,3 +1400,8 @@ body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b
   animation: kbup calc(0.3s * var(--motion)) cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 #modal.keys.osk-wide .kbcenter { top: 18%; }
+/* The tour's try-it parts: the Tabs step's prompt, and a step's "do it now" button. */
+.tour-try { margin: 10px 0 0; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); font-weight: 600; font-size: 0.95rem; }
+.tour-try.done { background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.tour-do { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 8px 14px; border: 0; border-radius: var(--radius); font: inherit; font-weight: 600; font-size: 0.95rem; color: var(--on-accent); background: var(--accent); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); cursor: pointer; }
+.tour-do b { display: inline-flex; min-width: 1.6em; justify-content: center; padding: 1px 6px; border-radius: 0.4em; background: color-mix(in srgb, var(--on-accent) 18%, transparent); }

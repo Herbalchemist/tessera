@@ -63,7 +63,7 @@ async function flowAddInlay(into) {
       ...info.widgets.map((w) => ({ label: w.name, sub: sub(w, 'widget'), type: w.type })),
       { label: '↻  Reload add-ons', op: 'reload' },
     ];
-    const it = await pick('Add an inlay', items);
+    const it = await pick('Add a widget', items);
     if (!it) return;
     if (it.op === 'reload') {
       busy = true;
