@@ -6,7 +6,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.34.1-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.35.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -52,6 +52,8 @@ The hints at the bottom of the screen always show the buttons for what you're ho
 | Switch tab | LB / RB | PgUp / PgDn, `[` / `]`, or Esc + ← / → | Click a tab, or the forward thumb button |
 | The guide | Guide (Xbox / PS / Home button) | F1 or Home | |
 | Volume | | Volume keys | |
+
+A click outside a menu goes back, like Esc or a right-click (outside the on-screen keyboard, it cancels).
 
 Every keyboard action can be rebound in **Settings › Keyboard & mouse**. Bindings follow the key's position, so they survive a change of keyboard layout, and the hints show what's actually printed on your keys. Pick a starting layout there:
 
@@ -130,7 +132,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 - **Three tile layouts**: **Rails** (sideways rows), **Grid** and **Flow**, in ready-made sizes or your own (up to 12 columns).
 - **Your own themes**: *Save current as a new theme…* writes a `theme.json` you can rename, overwrite, share or hand-edit. Factory themes stay read-only. A theme is values only, never code, so nothing it ships can do more than Settings itself already allows.
 - **Profiles**: everyone in the house gets their own setup: their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are installed once and shared. A new profile starts as a copy of the shared setup or from scratch; switch from the guide or *Settings › Profiles*, and Tessera can ask *Who's playing?* when it starts. Removing a profile deletes what was theirs. Stick calibration stays with the controller, and the PIN, Wi-Fi, storage and add-ons belong to the machine.
-  - **Profile PINs**: anyone can have a PIN of their own, for logging in as them and for their own things (their browser, asked again after a few minutes). It never grants admin rights: Settings, adding and deleting still need the admin PIN, and the admin PIN opens any profile. The **admin profile** logs in with the admin PIN, or with a separate login PIN of its own (then the admin PIN is asked whenever admin rights are needed). After a restart nobody is logged in: Tessera asks who's playing. Five wrong guesses make a profile's login wait a while (never more than 5 minutes); the admin PIN never waits, and skips and clears any profile's wait. Forgot a profile PIN? The admin removes it in *Settings › Profiles*.
+  - **Profile PINs**: anyone can have a PIN of their own, for logging in as them and for their own things (their browser, asked again after a few minutes). It never grants admin rights: Settings, adding and deleting still need the admin PIN, and the admin PIN opens any profile. The **admin profile** logs in with the admin PIN, or with a separate login PIN of its own (then the admin PIN is asked whenever admin rights are needed). After a restart nobody is logged in: Tessera asks who's playing. **Guest** is Tessera with nobody's profile. Once anyone has a profile, Guest is locked down to playing games until the admin allows more in *Settings › Profiles* (press Y on Guest): apps, the browser, changing Home and the mosaics, the look, the controls, and whether Guest is offered in *Who's playing?* at all. The admin PIN allows anything else on the spot. With no profiles, nothing is restricted. Five wrong guesses make a profile's login wait a while (never more than 5 minutes); the admin PIN never waits, and skips and clears any profile's wait. Forgot a profile PIN? The admin removes it in *Settings › Profiles*.
 - Display calibration for the launcher and, optionally, for games.
 
 📘 **[The theming guide](docs/theming.md)** covers every setting a `theme.json` can hold, how the layout parts combine, worked examples, and a checker that tells you what Tessera will accept before you copy a theme over.
