@@ -109,12 +109,10 @@ while IFS= read -r f; do
   sed -i "s|/usr/share/wallpapers/convergence\.jxl|$WP|g" "$f"; found=1; note "$f: wallpaper"
 done < <(grep -rl 'wallpapers/convergence\.jxl' /usr/share/plasma /etc/xdg 2>/dev/null)
 [ "$found" = 1 ] || missing "the Plasma script that sets convergence.jxl"
-# Bazzite's own wallpaper package: its picture becomes Tessera's, so a desktop set to it shows Tessera.
-for d in /usr/share/wallpapers/bazzite/*/contents/images; do
-  [ -d "$d" ] || continue
-  for img in "$d"/*; do rm -f "$img"; done
-  ln -sf "$WP" "$d/3840x2160.jpg"; note "$d"
-done
+# Bazzite's own wallpapers stay as they are and can still be picked: Tessera's sits beside them
+# (and is the default). An account that started on Bazzite is switched over once, at its first
+# Tessera session (/usr/libexec/tessera/desktop-wallpaper). Bazzite's pictures go before 1.0.0,
+# once Tessera has enough of its own.
 
 # ---- the terminal: fastfetch's logo and the banner (motd)
 f=/usr/share/ublue-os/bazzite/fastfetch.jsonc
