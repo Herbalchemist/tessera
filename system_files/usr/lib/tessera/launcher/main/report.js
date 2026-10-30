@@ -64,6 +64,7 @@ const CONTENTS = [
   'Tessera: the launcher version and which build and update the machine runs',
   'The system: its version and the kernel',
   'Hardware: processor, memory, graphics card and its driver, screens, controllers by name',
+  'Controllers and Bluetooth: what the system logged while connecting them, and which controller drivers are loaded',
   'Starting up: whether Tessera signs in at boot, and the login screen',
   'Tessera\'s own logs from this and the last session, and the login screen\'s log',
   'Settings that change how things work (no PIN, no names, no addresses)',
@@ -127,6 +128,14 @@ async function buildReport() {
   let logs = [];
   try { logs = fs.readdirSync(config.LOG_DIR).filter((f) => f.endsWith('.log')).slice(0, 8); } catch { /* none */ }
   for (const f of logs) sec(`Log: ${f}`, readTail(path.join(config.LOG_DIR, f), 80));
+  // Controllers that pair but never work: the kernel's Nintendo/PlayStation/Xbox drivers and
+  // Bluetooth say why here (a handshake that timed out, a driver that didn't load).
+  const kern = await run('journalctl', ['-k', '-b', '--no-pager', '-o', 'short-monotonic', '-g', 'nintendo|joycon|joy-con|hid|bluetooth|xpad|playstation|sony', '-n', '120'], 8000);
+  sec('Controllers and Bluetooth (kernel, this boot)', kern);
+  sec('Bluetooth service (this boot)', await run('journalctl', ['-b', '-u', 'bluetooth', '--no-pager', '-n', '60', '-o', 'short-monotonic'], 8000));
+  sec('Controller drivers loaded', await run('sh', ['-c', 'lsmod | grep -i -E "^(hid_nintendo|hid_playstation|xpad|hid_xpadneo|hid_steam)\\b" || echo "(none of them)"']));
+  sec('Joy-Con helper (joycond)', await run('systemctl', ['is-active', 'joycond.service']));
+  sec('Steam running', await run('sh', ['-c', 'pgrep -x steam >/dev/null && echo yes || echo no']));
   sec('Login screen log (this boot)', await run('journalctl', ['-b', '-u', 'plasmalogin', '-u', 'sddm', '--no-pager', '-n', '80', '-o', 'short-monotonic'], 8000));
 
   // Settings that change behaviour: no PIN (not even its hash), no profile names, no folders
