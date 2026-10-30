@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Tessera"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-0abc7c8e3201cat: /etc/machine-info: No such file or directory
+6d25c75828a9cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="tessera"
 /etc/os-release:12:DEFAULT_HOSTNAME="tessera"
 
@@ -250,7 +250,7 @@ IMAGE_ID="bazzite-44.20261026"
 /usr/share/wallpapers/ublue.png
 
 ===== text files mentioning Bazzite (per folder counts) =====
-453
+455
 /etc/bazzite-updater/KAboutData_OS.json
 /etc/bazzite-updater/config.ini
 /etc/bazzite-updater/rebase-targets.json
@@ -270,6 +270,7 @@ IMAGE_ID="bazzite-44.20261026"
 /usr/bin/dnf
 /usr/bin/switcherooctl
 /usr/bin/tessera-fix-graphics
+/usr/bin/tessera-session
 /usr/bin/waydroid-launcher
 /usr/bin/yafti_gtk.py
 /usr/lib/fedora-release
@@ -296,6 +297,7 @@ IMAGE_ID="bazzite-44.20261026"
 /usr/libexec/ntfs-exfat-monitor-script
 /usr/libexec/sunshine-start-vmon
 /usr/libexec/sunshine-stop-vmon
+/usr/libexec/tessera/desktop-wallpaper
 /usr/share/applications/bazzite-documentation.desktop
 /usr/share/applications/bazzite-steam-bpm.desktop
 /usr/share/applications/discourse.desktop
@@ -778,7 +780,7 @@ drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
 -rw-r--r-- 2 root root   84 Jan  1  1970 details.plymouth
 
 /usr/share/plymouth/themes/spinner/:
-total 380
+total 384
 drwxr-xr-x 1 root root  4096 Jan  1  1970 .
 drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
 -rw-r--r-- 2 root root  1651 Jan  1  1970 animation-0001.png
@@ -1057,7 +1059,7 @@ ublue.png
 /usr/share/pixmaps/fedora-logo-small.png
 
 ===== logo links =====
-total 180
+total 184
 drwxr-xr-x 1 root root  4096 Jan  1  1970 .
 drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
 drwxr-xr-x 1 root root  4096 Jan  1  1970 bootloader
@@ -1080,7 +1082,7 @@ drwxr-xr-x 1 root root  4096 Jan  1  1970 faces
 -rw-r--r-- 2 root root  2587 Jan  1  1970 sane.png
 -rw-r--r-- 3 root root  2697 Jan  1  1970 steam.png
 -rw-r--r-- 2 root root  5405 Jan  1  1970 steam_tray_mono.png
--rw-r--r-- 3 root root  3767 Jan  1  1970 system-logo-white.png
+-rw-r--r-- 3 root root  5138 Jan  1  1970 system-logo-white.png
 
 ===== fastfetch =====
 total 148
@@ -1269,7 +1271,7 @@ drwxr-xr-x 1 root root 4096 Jan  1  1970 images
 total 8
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
 drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
-lrwxrwxrwx 2 root root   59 Jan  1  1970 3840x2160.jpg -> /usr/share/wallpapers/Tessera/contents/images/3840x2160.jpg
+lrwxrwxrwx 4 root root   37 Jan  1  1970 3940x2160.jxl -> /usr/share/wallpapers/convergence.jxl
 -rw-r--r-- 2 root root 5247051 Jan  1  1970 /usr/share/wallpapers/bazzite-blue.png
 -rw-r--r-- 2 root root 8567241 Jan  1  1970 /usr/share/wallpapers/bazzite-glass.png
 -rw-r--r-- 2 root root 4714302 Jan  1  1970 /usr/share/wallpapers/convergence.jxl
@@ -1504,26 +1506,26 @@ org.kde.plasma.desktop.emptyPanel
 total 12
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
 drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
--rw-r--r-- 5 root root 1766 Jan  1  1970 start-here.png
+-rw-r--r-- 5 root root 1353 Jan  1  1970 start-here.png
 
 /usr/share/icons/hicolor/scalable/places/:
 total 44
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
 drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
--rw-r--r-- 7 root root  388 Jan  1  1970 bazzite-logo-le.svg
+-rw-r--r-- 7 root root  549 Jan  1  1970 bazzite-logo-le.svg
 lrwxrwxrwx 2 root root   26 Jan  1  1970 bazzite-logo-white.svg -> distributor-logo-white.svg
 lrwxrwxrwx 3 root root   20 Jan  1  1970 bazzite-logo.svg -> distributor-logo.svg
 lrwxrwxrwx 3 root root   20 Jan  1  1970 distributor-logo-steamdeck.svg -> distributor-logo.svg
--rw-r--r-- 4 root root  388 Jan  1  1970 distributor-logo-white.svg
--rw-r--r-- 7 root root  388 Jan  1  1970 distributor-logo.svg
+-rw-r--r-- 4 root root  549 Jan  1  1970 distributor-logo-white.svg
+-rw-r--r-- 7 root root  549 Jan  1  1970 distributor-logo.svg
 lrwxrwxrwx 2 root root   22 Jan  1  1970 start-here.svg -> ../apps/start-here.svg
 -rw-r--r-- 2 root root 1829 Jan  1  1970 steamdeck-le.svg
 -rw-r--r-- 2 root root 1020 Jan  1  1970 steamdeck.svg
--rw-r--r-- 4 root root  388 Jan  1  1970 tessera-logo-white.svg
--rw-r--r-- 7 root root  388 Jan  1  1970 tessera-logo.svg
+-rw-r--r-- 4 root root  549 Jan  1  1970 tessera-logo-white.svg
+-rw-r--r-- 7 root root  549 Jan  1  1970 tessera-logo.svg
 -rw-r--r-- 2 root root 2556 Jan  1  1970 xapp-user-favorites-symbolic.svg
 -rw-r--r-- 3 root root 2862 Jan  1  1970 xapp-user-favorites.svg
--rw-r--r-- 3 root root 3767 Jan  1  1970 /usr/share/pixmaps/system-logo-white.png
+-rw-r--r-- 3 root root 5138 Jan  1  1970 /usr/share/pixmaps/system-logo-white.png
 
 /usr/share/pixmaps/bootloader:
 total 120
@@ -1905,7 +1907,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Oct 29 04:27 ..
+drwxr-xr-x 1 root root 4096 Oct 30 18:01 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1927,7 +1929,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Oct 29 04:27 ..
+dr-xr-xr-x 1 root root 4096 Oct 30 18:01 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2074,28 +2076,17 @@ lrwxrwxrwx 37 root root   50 Jan  1  1970 1366x768.jxl -> ../../../../background
 }
 
 ===== DETAIL2 start-here / distributor svg =====
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>Tessera</title>
-  <rect x="4" y="4" width="26" height="26" rx="6" fill="#b4a7ff"/>
-  <rect x="34" y="4" width="26" height="26" rx="6" fill="#ffb3c7"/>
-  <rect x="4" y="34" width="26" height="26" rx="6" fill="#8fe3cf"/>
-  <rect x="34" y="34" width="26" height="26" rx="6" fill="#ffd98f"/>
-</svg>
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>Tessera</title>
-  <rect x="4" y="4" width="26" height="26" rx="6" fill="#b4a7ff"/>
-  <rect x="34" y="4" width="26" height="26" rx="6" fill="#ffb3c7"/>
-  <rect x="4" y="34" width="26" height="26" rx="6" fill=
--rw-r--r-- 5 root root  731 Jan  1  1970 /usr/share/icons/hicolor/16x16/places/start-here.png
--rw-r--r-- 5 root root  935 Jan  1  1970 /usr/share/icons/hicolor/22x22/places/start-here.png
--rw-r--r-- 5 root root  985 Jan  1  1970 /usr/share/icons/hicolor/24x24/places/start-here.png
--rw-r--r-- 5 root root 9081 Jan  1  1970 /usr/share/icons/hicolor/256x256/places/start-here.png
--rw-r--r-- 5 root root 1187 Jan  1  1970 /usr/share/icons/hicolor/32x32/places/start-here.png
--rw-r--r-- 5 root root 1434 Jan  1  1970 /usr/share/icons/hicolor/36x36/places/start-here.png
--rw-r--r-- 5 root root 1766 Jan  1  1970 /usr/share/icons/hicolor/48x48/places/start-here.png
--rw-r--r-- 5 root root 3383 Jan  1  1970 /usr/share/icons/hicolor/96x96/places/start-here.png
--rw-r--r-- 7 root root  388 Jan  1  1970 /usr/share/icons/hicolor/scalable/apps/start-here.svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>Tessera</title><rect x="6.00" y="6.00" width="38.00" height="38.00" rx="8.74" fill="#b4a7ff" transform="rotate(-5 25.00 25.00)"/><rect x="47.00" y="9.00" width="14.00" height="14.00" rx="3.22" fill="#ffb3c7" transform="rotate(12 54.00 16.00)"/><rect x="46.25" y="30.25" width="11.50" height="11.50" rx="2.65" fill="#8fe3cf" transform
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>Tessera</title><rect x="6.00" y="6.00" width="38.00" height="38.00" rx="8.74" fill="#b4a7ff" transform="rotate(-5 25.00 25.00)"/><rect x="47.00" y="9.00" width="14.00" height="14.00" rx="3.22" fill="#ffb3c7" transform="rotate(12 54.0
+-rw-r--r-- 5 root root  491 Jan  1  1970 /usr/share/icons/hicolor/16x16/places/start-here.png
+-rw-r--r-- 5 root root  658 Jan  1  1970 /usr/share/icons/hicolor/22x22/places/start-here.png
+-rw-r--r-- 5 root root  684 Jan  1  1970 /usr/share/icons/hicolor/24x24/places/start-here.png
+-rw-r--r-- 5 root root 6803 Jan  1  1970 /usr/share/icons/hicolor/256x256/places/start-here.png
+-rw-r--r-- 5 root root  846 Jan  1  1970 /usr/share/icons/hicolor/32x32/places/start-here.png
+-rw-r--r-- 5 root root 1005 Jan  1  1970 /usr/share/icons/hicolor/36x36/places/start-here.png
+-rw-r--r-- 5 root root 1353 Jan  1  1970 /usr/share/icons/hicolor/48x48/places/start-here.png
+-rw-r--r-- 5 root root 2526 Jan  1  1970 /usr/share/icons/hicolor/96x96/places/start-here.png
+-rw-r--r-- 7 root root  549 Jan  1  1970 /usr/share/icons/hicolor/scalable/apps/start-here.svg
 lrwxrwxrwx 2 root root   22 Jan  1  1970 /usr/share/icons/hicolor/scalable/places/start-here.svg -> ../apps/start-here.svg
 fedora-logos-42.0.1-3.fc44.noarch
 file /usr/share/icons/hicolor/scalable/places/distributor-logo.svg is not owned by any package
@@ -2156,13 +2147,13 @@ for (i = 0; i < pids.length; ++i) {
 
 ===== DETAIL3 boot splash inside the initramfs (what is actually shown at boot) =====
 initramfs: /usr/lib/modules/7.2.11-ogc4.1.fc44.x86_64/initramfs.img
-  usr/share/plymouth/themes/spinner/watermark.png md5=61a80308566c9e43f4f7370f86c56629
+  usr/share/plymouth/themes/spinner/watermark.png md5=4ab002cce371fa69e6333041c0482cd1
   usr/share/plymouth/themes/bgrt/watermark.png md5=d41d8cd98f00b204e9800998ecf8427e
-  tessera watermark md5=61a80308566c9e43f4f7370f86c56629
-  on-disk spinner watermark md5=61a80308566c9e43f4f7370f86c56629
+  tessera watermark md5=4ab002cce371fa69e6333041c0482cd1
+  on-disk spinner watermark md5=4ab002cce371fa69e6333041c0482cd1
 
 ===== DETAIL2 plymouth watermarks =====
--rw-r--r-- 3 root root  3398 Jan  1  1970 watermark.png
+-rw-r--r-- 3 root root  4512 Jan  1  1970 watermark.png
 [Plymouth Theme]
 Name[be]=BGRT
 Name[cs]=BGRT
