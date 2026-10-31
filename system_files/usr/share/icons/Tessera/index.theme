@@ -1,0 +1,4 @@
+[Icon Theme]
+Name=Tessera
+Comment=Breeze's pointers, with Tessera's symbol building itself while something loads
+Inherits=breeze_cursors

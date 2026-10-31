@@ -12,7 +12,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.37.1-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.38.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -242,7 +242,7 @@ After the restart the machine signs in to Tessera by itself.
 
 - `Containerfile`: starts from `ghcr.io/ublue-os/bazzite:stable` and adds Tessera.
 - `system_files/`: files copied into the image. The launcher is plain Electron + HTML/CSS/JavaScript in `system_files/usr/lib/tessera/launcher`, run inside [Gamescope](https://github.com/ValveSoftware/gamescope) by `tessera-session`. Its main process is split into parts in `main/` (library, settings, themes, add-ons, shards, updates, the browser and so on; `main.js` lists them in load order), and the page into `renderer/` (`index.html` loads them in order).
-- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools. Every logo file is drawn by `tools/branding/make-logos.py` and `render.cjs`, so they stay alike.
+- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools. Every logo file is drawn by `tools/branding/make-logos.py` and `render.cjs`, so they stay alike; `motion.cjs` makes the boot animation (Tessera's own Plymouth theme, the symbol building itself tile by tile above the wordmark) and the busy pointer (the same build, small, in the `Tessera` pointer theme).
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
 

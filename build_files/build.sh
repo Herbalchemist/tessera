@@ -89,7 +89,7 @@ fi
 /usr/bin/dracut --no-hostonly --kver "$KVER" --reproducible --add ostree -f "/usr/lib/modules/$KVER/initramfs.img"
 chmod 0600 "/usr/lib/modules/$KVER/initramfs.img"
 lsinitrd "/usr/lib/modules/$KVER/initramfs.img" > /tmp/initramfs-files.txt || true
-grep -q 'plymouth/themes/spinner/watermark.png' /tmp/initramfs-files.txt && echo "initramfs: Tessera's boot splash is in" || echo "note: the initramfs has no spinner watermark (Plymouth layout changed?)"
+grep -q 'plymouth/themes/tessera/throbber-0001.png' /tmp/initramfs-files.txt && echo "initramfs: Tessera's boot splash is in" || echo "note: the initramfs has no Tessera boot splash (Plymouth layout changed?)"
 rm -f /tmp/initramfs-files.txt
 
 ### Tessera's images must carry Tessera's signature: /etc/containers/policy.json requires

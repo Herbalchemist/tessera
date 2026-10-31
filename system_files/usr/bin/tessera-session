@@ -41,6 +41,9 @@ if [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q
   export TESSERA_CAL_SYSTEM=1
 fi
 
+# Pointers: Breeze's, with Tessera's busy pointer (its symbol building itself) while something loads.
+[ -d /usr/share/icons/Tessera/cursors ] && export XCURSOR_THEME=Tessera
+
 mkdir -p "$STATE"
 # Keep the previous session's log for a while: what happened the last time is the first thing to look at.
 [ -f "$LOG" ] && cp -f "$LOG" "$LOG.1" 2>/dev/null

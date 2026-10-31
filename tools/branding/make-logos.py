@@ -4,7 +4,7 @@
 # them into PNGs. Needs fontTools and Inter Bold (the launcher's font) for the wordmark's letters,
 # which are written out as shapes so the files never depend on a font being installed.
 #
-#   python3 tools/branding/make-logos.py && node tools/branding/render.cjs
+#   python3 tools/branding/make-logos.py && node tools/branding/render.cjs && node tools/branding/motion.cjs
 #
 # The symbol: one large tile with three smaller ones stepping down its side, each turned a little,
 # like loose tesserae. The wordmark: "Tessera" in Inter Bold, its T built from five tiles.
@@ -77,6 +77,10 @@ def main():
     # Mortar's icon and the GitHub pictures are drawn from these too (render.cjs)
     w(os.path.join(OUT, 'app-icon.svg'),
       svg('0 0 512 512', '<rect width="512" height="512" rx="112" fill="#17151f"/>' + symbol(ox=80, oy=80, scale=352 / 64)))
+    # the symbol's tiles for motion.cjs (the boot animation and the busy cursor)
+    import json
+    json.dump({'colors': [L, P, M, G], 'tiles': [list(t[:4]) for t in SYMBOL]},
+              open(os.path.join(ROOT, 'tools/branding/symbol.json'), 'w'), indent=1)
     print('logo SVGs written')
 
 if __name__ == '__main__':
