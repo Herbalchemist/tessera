@@ -59,7 +59,7 @@ sec "DETAIL2 hardware-setup hostname context"; grep -n -B8 -A6 'set-hostname' /u
 sec "DETAIL3 boot splash inside the initramfs (what is actually shown at boot)"
 for img in /usr/lib/modules/*/initramfs.img; do
   echo "initramfs: $img"
-  for t in spinner bgrt; do
+  for t in tessera spinner bgrt; do
     f="usr/share/plymouth/themes/$t/watermark.png"
     sum=$(lsinitrd -f "$f" "$img" 2>/dev/null | md5sum | cut -d' ' -f1)
     echo "  $f md5=$sum"

@@ -26,6 +26,7 @@ const wasBig = {};          // rows that showed the big empty tile last render
 
 const statusLog = []; // the last few messages, for the guide
 // opts.log: false for passing remarks that aren't worth a notification (a controller taking over).
+let busyTimer = 0;
 function setStatus(msg, isError, opts = {}) {
   if (msg && opts.log !== false && msg !== 'Starting…' && (!statusLog.length || statusLog[0].msg !== msg)) {
     statusLog.unshift({ msg, isError: Boolean(isError), at: Date.now() });
@@ -33,6 +34,12 @@ function setStatus(msg, isError, opts = {}) {
   }
   statusEl.textContent = msg || '';
   statusEl.classList.toggle('error', Boolean(isError));
+  // While a game starts, the pointer becomes the busy one: Tessera's symbol building itself (the
+  // system's "progress" pointer, from icons/Tessera). Back to normal on the next message, or after a
+  // minute in case the game never says anything.
+  document.body.classList.toggle('busy', msg === 'Starting…');
+  clearTimeout(busyTimer);
+  if (msg === 'Starting…') busyTimer = setTimeout(() => document.body.classList.remove('busy'), 60000);
 }
 
 // ------------------------------------------------------------------- tabs

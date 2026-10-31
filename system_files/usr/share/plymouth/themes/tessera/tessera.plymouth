@@ -1,0 +1,61 @@
+[Plymouth Theme]
+Name=Tessera
+Description=Tessera's symbol building itself, tile by tile, with the Tessera wordmark below
+ModuleName=two-step
+
+# Laid out like Bazzite's (bgrt), but with Tessera's symbol in the middle instead of the computer
+# maker's logo. throbber-*.png and watermark.png are made by tools/branding (motion.cjs, render.cjs);
+# the password-prompt pictures (entry, bullet, lock, ...) are copied from the spinner theme at build.
+[two-step]
+Font=Cantarell 12
+TitleFont=Cantarell Light 30
+ImageDir=/usr/share/plymouth/themes/tessera
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.382
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.382
+HorizontalAlignment=.5
+VerticalAlignment=.5
+WatermarkHorizontalAlignment=.5
+WatermarkVerticalAlignment=.96
+Transition=none
+TransitionDuration=0.0
+BackgroundStartColor=0x000000
+BackgroundEndColor=0x000000
+ProgressBarBackgroundColor=0x606060
+ProgressBarForegroundColor=0xffffff
+DialogClearsFirmwareBackground=true
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+UseFirmwareBackground=false
+
+[shutdown]
+UseEndAnimation=false
+UseFirmwareBackground=false
+
+[reboot]
+UseEndAnimation=false
+UseFirmwareBackground=false
+
+[updates]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Installing Updates...
+SubTitle=Do not turn off your computer
+
+[system-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading System...
+SubTitle=Do not turn off your computer
+
+[firmware-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading Firmware...
+SubTitle=Do not turn off your computer

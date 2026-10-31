@@ -130,15 +130,30 @@ fi
 f=/usr/share/ublue-os/motd/template.md
 if [ -f "$f" ]; then install -m644 "$BR/motd.md" "$f"; note "$f"; else missing "$f"; fi
 
-# ---- the boot splash (Plymouth). Bazzite's theme, bgrt, draws the spinner theme's watermark at the
-# bottom: the Bazzite wordmark. Every theme's watermark becomes Tessera's. The splash runs from the
-# initramfs, so build.sh rebuilds that afterwards (a changed file here alone would never be seen).
-found=0
-for f in /usr/share/plymouth/themes/*/watermark.png; do
-  [ -e "$f" ] || continue
-  install -m644 "$BR/tessera-plymouth-watermark.png" "$f"; found=1; note "$f"
-done
-[ "$found" = 1 ] || missing "a Plymouth watermark (/usr/share/plymouth/themes/*/watermark.png)"
+# ---- the boot splash (Plymouth): Tessera's own theme (/usr/share/plymouth/themes/tessera), its
+# symbol building itself above the wordmark, made the default. Bazzite's and Fedora's themes stay as
+# they ship, beside it. The splash runs from the initramfs, so build.sh rebuilds that afterwards.
+T=/usr/share/plymouth/themes/tessera
+if [ -f "$T/tessera.plymouth" ]; then
+  # the password prompt's pictures (encrypted disks) come from the spinner theme
+  for img in entry bullet lock capslock keyboard keymap-render; do
+    [ -e "/usr/share/plymouth/themes/spinner/$img.png" ] && install -m644 "/usr/share/plymouth/themes/spinner/$img.png" "$T/$img.png"
+  done
+  f=/usr/share/plymouth/plymouthd.defaults
+  if [ -f "$f" ]; then sed -i 's/^Theme=.*/Theme=tessera/' "$f"; note "$f: Theme=tessera"; else missing "$f"; fi
+else
+  missing "$T/tessera.plymouth"
+fi
+
+# ---- the busy pointer: Tessera's symbol building itself (icons/Tessera; Breeze for every other
+# pointer). The default for Desktop Mode; the console session asks for it too (tessera-session).
+mkdir -p /etc/xdg
+if [ -f /etc/xdg/kcminputrc ] && grep -q '^\[Mouse\]' /etc/xdg/kcminputrc; then
+  grep -q '^cursorTheme=' /etc/xdg/kcminputrc && sed -i 's/^cursorTheme=.*/cursorTheme=Tessera/' /etc/xdg/kcminputrc || sed -i '/^\[Mouse\]/a cursorTheme=Tessera' /etc/xdg/kcminputrc
+else
+  printf '[Mouse]\ncursorTheme=Tessera\n' >> /etc/xdg/kcminputrc
+fi
+note "/etc/xdg/kcminputrc: cursorTheme=Tessera"
 
 # ---- Bazzite's own pop-ups and pins: Tessera has its own first-run setup and updates
 for f in /etc/skel/.config/autostart/bazzite-portal.desktop /etc/xdg/autostart/bazzite-announcement.desktop; do

@@ -765,6 +765,8 @@ body[data-wg="outline"] .card.kind-inlay .sysinfo-label, body[data-wg="outline"]
 /* The mouse pointer: hidden until the mouse moves (body.mouse), then drawn in the theme's colors. */
 body.mouse, body.mouse * { cursor: var(--tcursor, default), default !important; }
 body.mouse .card, body.mouse .tab, body.mouse .mitem, body.mouse .key { cursor: var(--tcursor, pointer), pointer !important; }
+/* starting a game: the system's busy pointer (Tessera's symbol building itself) */
+body.mouse.busy, body.mouse.busy * { cursor: progress !important; }
 
 /* Browser tab: Electron's own BrowserView draws the real page on top of this window at
    exact pixel bounds set from main.js — nothing here sizes or shows it, CSS only hides
