@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-325c2a80c396cat: /etc/machine-info: No such file or directory
+7c8001c5e3b0cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -1924,7 +1924,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Oct 30 18:00 ..
+drwxr-xr-x 1 root root 4096 Oct 31 01:54 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1946,7 +1946,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Oct 30 18:00 ..
+dr-xr-xr-x 1 root root 4096 Oct 31 01:54 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2172,6 +2172,7 @@ for (i = 0; i < pids.length; ++i) {
 
 ===== DETAIL3 boot splash inside the initramfs (what is actually shown at boot) =====
 initramfs: /usr/lib/modules/7.2.11-ogc4.1.fc44.x86_64/initramfs.img
+  usr/share/plymouth/themes/tessera/watermark.png md5=d41d8cd98f00b204e9800998ecf8427e
   usr/share/plymouth/themes/spinner/watermark.png md5=96b652507b2d464bc484b76c2bf2640e
   usr/share/plymouth/themes/bgrt/watermark.png md5=d41d8cd98f00b204e9800998ecf8427e
 /t/branding-inventory.sh: line 68: /usr/share/tessera/branding/tessera-plymouth-watermark.png: No such file or directory
