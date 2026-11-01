@@ -93,7 +93,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 **A launcher made for a controller**
 - Tabs: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself) and Settings.
 - **Home** is a page of widgets: a clock, recently played, six system widgets (CPU, Memory, Storage, Battery, Network, Uptime) and community widgets from Add-ons.
-- Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game.
+- Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game. Steam games launch quietly through Steam so Steam's Big Picture shell does not cover Tessera; use **Guide → Desktop Mode** when you actually want to end Tessera and reach the login screen.
 - **The guide**: press Guide from anywhere, even in the middle of a game, for:
   - what's running (resume or close it);
   - volume, Wi-Fi and Bluetooth;

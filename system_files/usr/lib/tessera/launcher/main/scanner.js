@@ -18,6 +18,7 @@ const library = require('./library');
 const prefs = require('./prefs');
 const folderBrowser = require('./folderBrowser');
 const steamShortcuts = require('../steam-shortcuts');
+const steamLaunch = require('../steam-launch');
 
 // ---------------------------------------------------------------- scanner
 // Looks for things Tessera recognizes, not for "any .exe": installers and
@@ -174,7 +175,7 @@ function scanSteamShortcuts(offer) {
   for (const s of steamShortcuts.read(os.homedir())) {
     if (s.hidden || /heroic|lutris/i.test(`${s.exe} ${s.options}`)) continue;
     const title = library.cleanTitle(s.name, 60);
-    if (title && !STEAM_SKIP.test(title)) offer({ title, source: 'Steam (added game)', kind: 'game', file: steam.file, args: [...steam.pre, `steam://rungameid/${s.launchId}`] });
+    if (title && !STEAM_SKIP.test(title)) offer({ title, source: 'Steam (added game)', kind: 'game', file: steam.file, args: [...steam.pre, ...steamLaunch.shortcutArgs(s.launchId)] });
   }
 }
 
@@ -213,7 +214,7 @@ function runScan() {
           if (!title || STEAM_SKIP.test(title)) continue;
           offer({
             title, source: 'Steam', kind: 'game',
-            file: steam.file, args: [...steam.pre, `steam://rungameid/${m[1]}`],
+            file: steam.file, args: [...steam.pre, ...steamLaunch.appArgs(m[1])],
           });
         }
       }
