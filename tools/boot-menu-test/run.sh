@@ -29,10 +29,8 @@ grub-mkimage -O x86_64-efi -o "$W/BOOTX64.EFI" -p '(hd0,gpt1)/boot/grub2' \
   part_gpt fat normal configfile echo test sleep loadenv regexp gfxterm gfxmenu png font all_video efi_gop video_bochs video_cirrus search reboot halt efifwsetup minicmd
 # a GPT disk whose one partition (the EFI system partition) holds GRUB and /boot
 truncate -s 96M "$W/disk.img"
-sgdisk -q -n1:2048:0 -t1:ef00 "$W/disk.img"
-end=$(sgdisk -i 1 "$W/disk.img" | sed -n 's/^Last sector: \([0-9]*\).*/\1/p')
-sectors=$(( end - 2048 + 1 ))
-mkfs.vfat -F 32 -S 512 -s 1 -C "$W/esp.img" $(( sectors / 2 ))
+sgdisk -q -n1:2048:+90M -t1:ef00 "$W/disk.img"   # 90 MiB = 184320 sectors from 1 MiB in
+mkfs.vfat -F 32 -S 512 -s 1 -C "$W/esp.img" 92160    # the same 90 MiB, in KiB
 mmd -i "$W/esp.img" ::/EFI ::/EFI/BOOT
 mcopy -i "$W/esp.img" "$W/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
 mcopy -s -i "$W/esp.img" "$W/boot" ::/
