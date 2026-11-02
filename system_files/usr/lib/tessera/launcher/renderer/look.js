@@ -398,6 +398,14 @@ const SETTINGS_ROWS = [
     tiles: [
       { id: '_wifi', title: 'Wi-Fi', kind: 'action', icon: 'wifi' },
       { id: '_bluetooth', title: 'Bluetooth', kind: 'action', icon: 'bluetooth' },
+    ],
+  },
+  {
+    id: '_cat_look',
+    title: 'Picture & sound',
+    cat: true,
+    tiles: [
+      { id: '_appearance', title: 'Appearance', kind: 'action', icon: 'theme' },
       { id: '_sound', title: 'Sound', kind: 'action', icon: 'sound' },
     ],
   },
@@ -411,14 +419,12 @@ const SETTINGS_ROWS = [
     ],
   },
   {
-    id: '_cat_look',
-    title: 'Appearance',
+    id: '_cat_people',
+    title: 'People',
     cat: true,
     tiles: [
-      { id: '_theme', title: 'Theme Settings', kind: 'action', icon: 'theme' },
       { id: '_profiles', title: 'Profiles', kind: 'action', icon: 'profiles' },
-      { id: '_screens', title: 'Screens', kind: 'action', icon: 'display' },
-      { id: '_display', title: 'Display calibration', kind: 'action', icon: 'display' },
+      { id: '_pin', title: 'PIN', kind: 'action', icon: 'pin' },
     ],
   },
   {
@@ -429,7 +435,6 @@ const SETTINGS_ROWS = [
       { id: '_storage', title: 'Storage', kind: 'action', icon: 'storage' },
       { id: '_update', title: 'Update software', kind: 'action', icon: 'update' },
       { id: '_addons', title: 'Add-ons', kind: 'action', icon: 'addons' },
-      { id: '_pin', title: 'PIN', kind: 'action', icon: 'pin' },
       { id: '_report', title: 'Report a problem', kind: 'action', icon: 'report' },
     ],
   },
@@ -460,7 +465,7 @@ function calmNote(id) {
     case '_pad': return shortPad(activePad());
     case '_keyboard': return (KBM.PRESET_NAMES[(prefs.kb && prefs.kb.preset) || 'standard'] || '').replace(/ \(.*$/, '') + (prefs.kb && prefs.kb.bindings ? ', changed' : '');
     case '_controls': return Object.keys(DEFAULT_KEYMAP).every((k) => keymap[k] === DEFAULT_KEYMAP[k]) && !Object.keys(prefs.pad.remap || {}).length ? 'Standard' : 'Changed';
-    case '_theme': return themeName();
+    case '_theme': case '_appearance': return themeName();
     case '_profiles': return prefs.profiles && prefs.profiles.length ? `${prefs.profiles.length} profile${prefs.profiles.length === 1 ? '' : 's'}` : 'None yet';
     case '_display': return prefs.calibration && prefs.calibration.cal ? (prefs.calibration.cal.enabled === false ? 'Calibrated, off' : 'Calibrated') : 'Not calibrated';
     case '_storage': return tileNotes.home && Number.isFinite(tileNotes.home.free) ? `${fmtBytes(tileNotes.home.free)} free` : '';

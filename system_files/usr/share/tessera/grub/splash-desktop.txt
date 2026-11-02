@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera's boot menu: the wait screen, with the login screen (Opus) chosen for this start (L). The empty tile spots sit where the boot
-# animation's tiles land, for three seconds. The menu itself
+# animation's tiles land, for two seconds. The menu itself
 # is there but not drawn: Enter starts, O or F2 opens Boot options.
 title-text: ""
 desktop-color: "#000000"

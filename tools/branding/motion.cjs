@@ -6,11 +6,13 @@
 //
 // The build: the big tile drops in, then the three small ones snap into place beside it, each
 // settling with a little overshoot, like tesserae being set. It holds, fades, and starts again.
+// At boot the tiles are set into the dashed spots the boot menu's wait screen shows.
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
+const { slotsBody } = require('./slots.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SYM = JSON.parse(fs.readFileSync(path.join(__dirname, 'symbol.json'), 'utf8'));
@@ -51,8 +53,9 @@ function symbolAt(t) {
 const ARROW = '<path d="M5 3 L5 25 L11 19.5 L15 28.5 L19 26.8 L15.2 18 L23 18 Z" fill="#ffffff" stroke="#17151f" stroke-width="2" stroke-linejoin="round"/>';
 
 const svg = (size, view, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${view}">${body}</svg>`;
-// the boot frame: 128 px, the symbol drawn 100 px wide in the middle (room for the overshoot)
-const bootFrame = (t) => svg(128, '-10 -10 84 84', symbolAt(t));
+// the boot frame: 128 px, the symbol drawn 100 px wide in the middle (room for the overshoot), over
+// the empty spots the boot menu's wait screen showed (grub.cjs): the tiles are set into them
+const bootFrame = (t) => svg(128, '-10 -10 84 84', slotsBody() + symbolAt(t));
 // "wait": only the symbol, building
 const waitFrame = (t, n) => svg(n, '-6 -6 76 76', symbolAt(t));
 // "progress": the pointer, and the symbol building at its lower right
