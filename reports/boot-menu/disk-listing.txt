@@ -2,7 +2,6 @@
 /boot/grub/fonts/unicode.pf2
 /boot/grub/grub.cfg
 /boot/grub/tessera/blank.txt
-/boot/grub/tessera/boot.cfg
 /boot/grub/tessera/common.cfg
 /boot/grub/tessera/fonts/tessera-16.pf2
 /boot/grub/tessera/fonts/tessera-20.pf2
