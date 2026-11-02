@@ -56,6 +56,10 @@ if [ -z "\${tessera_plain}" -a -f "\${prefix}/tessera/splash.cfg" ]; then
     export tessera_env
     configfile "\${prefix}/tessera/splash.cfg"
   fi
+elif [ -n "\${tessera_plain}" ]; then
+  # asked for from Boot options > Full boot menu: wait for a choice
+  set timeout_style=menu
+  set timeout=-1
 fi
 $END
 HOOKEOF

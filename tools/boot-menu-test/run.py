@@ -140,7 +140,7 @@ def s_versions(vm):
 def s_full(vm):
     # Boot options > Full boot menu: GRUB's own list (anything else on the machine is there too)
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 6); vm.key('ret')
-    vm.wait(is_plain, 'full menu', 15); time.sleep(0.8); vm.shot('full-menu'); vm.key('ret'); wait_boot(vm)
+    vm.wait(is_plain, 'full menu', 15); time.sleep(3); vm.shot('full-menu-still-waiting'); vm.key('down'); vm.key('ret'); wait_boot(vm)
 def s_options_back(vm):
     # Esc in Boot options goes back to the wait screen's menu; Enter there starts Tessera
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('esc')
@@ -159,7 +159,7 @@ scenario('console-this-time', s_console, {'booted': 'ostree:0', 'once': 'console
 scenario('previous-version', s_previous, {'booted': 'ostree:1'})
 scenario('f2-and-scroll', s_f2, {'booted': 'ostree:0'})
 scenario('all-versions', s_versions, {'booted': 'ostree:1'})
-scenario('full-boot-menu', s_full, {'booted': 'ostree:0'})
+scenario('full-boot-menu', s_full, {'booted': 'ostree:1'})
 scenario('options-esc-back', s_options_back, {'booted': 'ostree:0'})
 scenario('failed-update-fallback', s_fallback, {'booted': 'ostree:1', 'default': '1'})
 
