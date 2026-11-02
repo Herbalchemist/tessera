@@ -1,5 +1,0 @@
---- boot-once on the settings file GRUB left after the last 'this time' scenario:
-tessera-boot-once: this start: repair console (no login screen)
-note: console  console-once: yes
-left in grubenv: 
-PASS boot-once: read, cleared, note left
