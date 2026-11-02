@@ -32,6 +32,7 @@ T=${JSON.stringify(temp)}
 echo "$*" >> "$T/args"
 case "$1" in
   probe|diagnose|report) cat "$T/$1.json" ;;
+  space) echo '{"ok": true, "free": 1500000000, "total": 256000000000, "versions": 2, "people": [{"name": "alex", "home": 120000000000, "games": 100000000000, "caches": 3000000000, "shaders": 2000000000, "trash": 500000000}]}' ;;
   drives) echo '{"ok": true, "drives": [{"uuid": "AB12-CD34", "fstype": "exfat", "label": "STICK", "model": "SanDisk", "size": 64000000000, "free": 50000000000}]}' ;;
   state) n=$(cat "$T/polls" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "$T/polls"
          if [ $n -lt 3 ]; then echo '{"ok": true, "phase": "copying", "done": 1000000, "total": 4000000, "line": "Pictures/a.png"}'; else echo '{"ok": true, "phase": "done", "copied": 42, "skipped": 1, "folder": "Tessera backup 2026-11-02 1200", "drive": "STICK"}'; fi ;;
@@ -135,6 +136,25 @@ esac
     assert.deepEqual(bk, { user: 'alex', password: 'tessera1', who: 'alex', drive: 'AB12-CD34', what: 'mine' });
     assert.doesNotMatch(fs.readFileSync(path.join(temp, 'args'), 'utf8'), /tessera1/);
     checks.push('Back up to a USB drive picks the person, drive and what to copy, asks for the password on input only, and follows the copy to the end');
+
+    // Free up space: what uses the disk, then clearing caches and the trash
+    await page.evaluate(() => { if (modal) closeModal(); });
+    await page.waitForTimeout(300);
+    page.evaluate(() => { flowRecovery(); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'space'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Free up space', null, { timeout: 10000, polling: 100 });
+    const sp = await page.evaluate(() => ({ body: modal.body, first: [modal.items[0].label, modal.items[0].sub] }));
+    assert.match(sp.body, /1\.5 GB free of 256\.0 GB/);
+    assert.match(sp.body, /alex: 120\.0 GB \(games 100\.0 GB, caches 5\.0 GB, trash 500 MB\)/);
+    assert.deepEqual(sp.first, ['Clear all three', '5.5 GB']);
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
+    const cl = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
+    assert.deepEqual(cl, { tool: 'clean', user: 'alex', password: 'tessera1', what: ['caches', 'shaders', 'trash'] });
+    checks.push('Free up space shows what uses the disk per person and clears only caches, shader caches and the trash');
 
     assert.deepEqual(errors, [], 'no page errors');
   } finally {

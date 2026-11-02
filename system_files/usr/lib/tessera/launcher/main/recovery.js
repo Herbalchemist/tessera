@@ -17,7 +17,8 @@ const SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n
 const ID_RE = /^[0-9a-fA-F-]{8,40}:[A-Za-z0-9._-]{1,40}$/;
 const USER_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
 const UUID_RE = /^[0-9A-Za-z-]{4,64}$/;
-const TOOLS = ['signin', 'pin', 'shards', 'version'];
+const TOOLS = ['signin', 'pin', 'shards', 'version', 'clean'];
+const CLEAN = ['caches', 'shaders', 'trash'];
 const VERSION_ACTIONS = ['default', 'keep', 'unkeep'];
 
 function helper(args, input) {
@@ -45,12 +46,17 @@ async function recoveryOp(op, p) {
   if (!ID_RE.test(String(p.id || ''))) return { ok: false, error: 'Unknown Tessera.' };
   if (op === 'diagnose') return helper(['diagnose', p.id]);
   if (op === 'report') return helper(['report', p.id]);
+  if (op === 'space') return helper(['space', p.id]);
   if (op === 'fix') {
     if (!TOOLS.includes(p.tool) || !USER_RE.test(String(p.user || '')) || typeof p.password !== 'string' || !p.password || p.password.length > 256) return { ok: false, error: 'Bad request.' };
     const req = { tool: p.tool, user: p.user, password: p.password };
     if (p.tool === 'version') {
       if (!VERSION_ACTIONS.includes(p.action) || !Number.isInteger(p.index) || p.index < 0 || p.index > 20) return { ok: false, error: 'Bad request.' };
       Object.assign(req, { action: p.action, index: p.index });
+    }
+    if (p.tool === 'clean') {
+      if (!Array.isArray(p.what) || !p.what.length || p.what.length > CLEAN.length || !p.what.every((w) => CLEAN.includes(w))) return { ok: false, error: 'Bad request.' };
+      req.what = [...new Set(p.what)];
     }
     return helper(['fix', p.id], JSON.stringify(req));
   }
