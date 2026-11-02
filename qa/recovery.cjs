@@ -32,6 +32,11 @@ T=${JSON.stringify(temp)}
 echo "$*" >> "$T/args"
 case "$1" in
   probe|diagnose|report) cat "$T/$1.json" ;;
+  drives) echo '{"ok": true, "drives": [{"uuid": "AB12-CD34", "fstype": "exfat", "label": "STICK", "model": "SanDisk", "size": 64000000000, "free": 50000000000}]}' ;;
+  state) n=$(cat "$T/polls" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "$T/polls"
+         if [ $n -lt 3 ]; then echo '{"ok": true, "phase": "copying", "done": 1000000, "total": 4000000, "line": "Pictures/a.png"}'; else echo '{"ok": true, "phase": "done", "copied": 42, "skipped": 1, "folder": "Tessera backup 2026-11-02 1200", "drive": "STICK"}'; fi ;;
+  backup) in=$(cat); echo "$in" >> "$T/stdin"
+       if echo "$in" | grep -q '"password":"tessera1"'; then echo '{"ok": true, "started": true}'; else echo '{"ok": false, "needPassword": true, "error": "nope"}'; fi ;;
   fix) in=$(cat); echo "$in" >> "$T/stdin"
        if echo "$in" | grep -q '"password":"tessera1"'; then echo '{"ok": true, "done": ["turned on for version 43.20261101.0"]}'; else echo '{"ok": false, "needPassword": true, "error": "That is not the password of an administrator account on this Tessera."}'; exit 1; fi ;;
 esac
@@ -105,6 +110,31 @@ esac
     const last = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
     assert.deepEqual(last, { tool: 'version', user: 'alex', password: 'tessera1', action: 'default', index: 1 });
     checks.push('Versions lists the kept versions; starting the one before the last update sends that exact change');
+
+    // Back up to a USB drive: whose files, which drive, what, the password, then progress to done
+    await page.evaluate(() => { if (modal) closeModal(); });
+    await page.waitForTimeout(300);
+    page.evaluate(() => { flowRecovery(); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'backup'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Whose files?', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Which USB drive?', null, { timeout: 5000, polling: 100 });
+    assert.deepEqual(await page.evaluate(() => modal.items.map((x) => [x.label, x.sub])), [['STICK', '50.0 GB free of 64.0 GB'], ['Look again', 'after plugging one in']]);
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'What to copy', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Backing up', null, { timeout: 10000, polling: 100 });
+    assert.match(await page.evaluate(() => modal.body), /1 MB of 4 MB|Counting/);
+    await page.screenshot({ path: path.join(output, 'recovery-backup.png') });
+    await page.waitForFunction(() => modal && modal.title === 'Backed up', null, { timeout: 15000, polling: 200 });
+    assert.match(await page.evaluate(() => modal.body), /42 files copied to the folder "Tessera backup 2026-11-02 1200" on STICK[\s\S]*1 couldn't be copied/);
+    const bk = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
+    assert.deepEqual(bk, { user: 'alex', password: 'tessera1', who: 'alex', drive: 'AB12-CD34', what: 'mine' });
+    assert.doesNotMatch(fs.readFileSync(path.join(temp, 'args'), 'utf8'), /tessera1/);
+    checks.push('Back up to a USB drive picks the person, drive and what to copy, asks for the password on input only, and follows the copy to the end');
 
     assert.deepEqual(errors, [], 'no page errors');
   } finally {

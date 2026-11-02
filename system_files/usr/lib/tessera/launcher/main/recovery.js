@@ -16,6 +16,7 @@ const LIVE_RECOVER = process.env.TESSERA_LIVE_RECOVER || '/usr/libexec/tessera/l
 const SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n'];
 const ID_RE = /^[0-9a-fA-F-]{8,40}:[A-Za-z0-9._-]{1,40}$/;
 const USER_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
+const UUID_RE = /^[0-9A-Za-z-]{4,64}$/;
 const TOOLS = ['signin', 'pin', 'shards', 'version'];
 const VERSION_ACTIONS = ['default', 'keep', 'unkeep'];
 
@@ -38,6 +39,9 @@ function helper(args, input) {
 async function recoveryOp(op, p) {
   if (!installer.INSTALLER) return { ok: false, error: 'Recover works from the Tessera USB.' };
   if (op === 'probe') return helper(['probe']);
+  if (op === 'drives') return helper(['drives']);
+  if (op === 'state') return helper(['state']);
+  if (op === 'cancel') return helper(['cancel']);
   if (!ID_RE.test(String(p.id || ''))) return { ok: false, error: 'Unknown Tessera.' };
   if (op === 'diagnose') return helper(['diagnose', p.id]);
   if (op === 'report') return helper(['report', p.id]);
@@ -49,6 +53,11 @@ async function recoveryOp(op, p) {
       Object.assign(req, { action: p.action, index: p.index });
     }
     return helper(['fix', p.id], JSON.stringify(req));
+  }
+  if (op === 'backup') {
+    if (!USER_RE.test(String(p.user || '')) || !USER_RE.test(String(p.who || '')) || typeof p.password !== 'string' || !p.password || p.password.length > 256
+      || !UUID_RE.test(String(p.drive || '')) || !['mine', 'all'].includes(p.what)) return { ok: false, error: 'Bad request.' };
+    return helper(['backup', p.id], JSON.stringify({ user: p.user, password: p.password, who: p.who, drive: p.drive, what: p.what }));
   }
   return { ok: false, error: 'Unknown action.' };
 }
