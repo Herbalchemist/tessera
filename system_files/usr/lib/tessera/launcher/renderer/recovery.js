@@ -50,6 +50,8 @@ async function recoveryMenu(inst) {
     const items = [{ label: 'Repairs', header: true }];
     for (const [tool, t] of Object.entries(RECOVERY_TOOLS)) items.push({ label: t.label, sub: suggested.has(tool) ? 'suggested' : t.sub, op: 'fix', tool, ok: suggested.has(tool), plain: !suggested.has(tool) });
     if (inst.versions.length) items.push({ label: 'Versions', sub: inst.versions.length > 1 ? `${inst.versions.length} kept: start another, keep one for good` : 'keep this one for good', op: 'versions', plain: true });
+    const diskWorry = findings.some((f) => f.key === 'fs');
+    items.push({ label: 'Check the disk', sub: diskWorry ? 'suggested: errors were recorded' : 'the drive\'s health and every file system; read-only', op: 'check', ok: diskWorry, plain: !diskWorry });
     items.push({ label: 'Free up space', sub: suggested.has('clean') ? 'suggested: the disk is nearly full' : 'see what uses the disk; clear caches and the trash', op: 'space', ok: suggested.has('clean'), plain: !suggested.has('clean') });
     items.push({ label: 'Back up to a USB drive', sub: 'copy a home folder off this computer first', op: 'backup', plain: true });
     items.push({ label: 'More', header: true });
@@ -62,6 +64,7 @@ async function recoveryMenu(inst) {
     else if (it.op === 'fix') await recoveryFix(inst, it.tool);
     else if (it.op === 'backup') await recoveryBackup(inst);
     else if (it.op === 'space') await recoverySpace(inst);
+    else if (it.op === 'check') await recoveryCheck(inst);
   }
 }
 
@@ -131,6 +134,74 @@ async function recoveryFix(inst, tool, extra = {}, title = '') {
   return true;
 }
 
+// Check the disk: the drive's own health report, the start-up and boot partitions, and every block
+// of the main file system (read-only). If something is wrong, Repair runs only the repairs that are
+// safe unattended, after an administrator's password, and names files that couldn't be saved.
+async function recoveryCheck(inst) {
+  setStatus('Starting the check…');
+  busy = true;
+  let r;
+  try { r = await api.recovery('check', { id: inst.id }); } finally { busy = false; setStatus(''); }
+  if (!r || !r.ok) return void (await pick("Can't check", [{ label: 'OK', plain: true }], 0, { body: (r && r.error) || 'The check could not start.' }));
+  let end = await recoveryJobProgress('Checking the disk');
+  if (end.phase === 'done' && !end.ok) {
+    const it = await pick('Problems found', [
+      { label: 'Repair', sub: 'only repairs that are safe to run on their own', op: 'repair', ok: true },
+      { label: 'Not now', plain: true },
+    ], 0, { body: recoveryCheckBody(end) + '\n\nBack up first if you can (Back up to a USB drive).' });
+    if (!it || it.op !== 'repair') return;
+    const user = await recoveryAdmin(inst);
+    if (!user) return;
+    if (!(await recoveryWithPassword(user, 'Starting the repair…', (password) => api.recovery('check', { id: inst.id, repair: true, user, password })))) return;
+    end = await recoveryJobProgress('Repairing the disk');
+  }
+  if (end.phase === 'done') await pick(end.ok ? (end.repair ? 'Repaired' : 'No problems found') : "Some problems remain", [{ label: 'OK', plain: true }], 0, { body: recoveryCheckBody(end) });
+  else if (end.phase === 'canceled') await pick('Stopped', [{ label: 'OK', plain: true }], 0, { body: 'The check was stopped. Nothing was changed by stopping it.' });
+  else await pick("The check didn't finish", [{ label: 'OK', plain: true }], 0, { body: end.error || 'Something went wrong.' });
+}
+
+function recoveryCheckBody(end) {
+  const lines = (end.results || []).map((x) => `${x.ok === false ? '✗' : x.ok ? '✓' : '•'} ${x.text}`);
+  const files = end.files || [];
+  if (files.length) lines.push('', `Damaged file${files.length === 1 ? '' : 's'}:`, ...files.slice(0, 12).map((f) => `  ${f}`), files.length > 12 ? `  and ${files.length - 12} more` : '');
+  return lines.filter((l, i, a) => l !== '' || i < a.length - 1).join('\n');
+}
+
+// Follows a long job of the helper's (a backup or a disk check) until it ends; B stops it.
+function recoveryJobProgress(title) {
+  return new Promise((resolve) => {
+    let st = { done: 0, total: 0, line: '' };
+    const t0 = Date.now();
+    const pc = () => (st.total ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0);
+    const bar = (p) => { const n = Math.round(p / 5); return '▰'.repeat(n) + '▱'.repeat(20 - n); };
+    const body = () => {
+      const head = st.job === 'check' ? `Step ${st.step || 1} of ${st.steps || 4}: ${st.line || ''}` : `Copying · ${pc()}%`;
+      const size = st.total ? `${fmtBackupSize(st.done)} of ${fmtBackupSize(st.total)}` : (st.job === 'check' ? '' : 'Counting what to copy…');
+      return [`${head} · ${fmtClock(Math.round((Date.now() - t0) / 1000))}`, st.total ? bar(pc()) : '', size,
+        st.job === 'check' ? 'Reading every block can take a while on a big disk. B stops it.' : 'Keep the drive plugged in. B stops the backup.',
+        st.job !== 'check' && st.line ? `\n${st.line}` : ''].filter(Boolean).join('\n');
+    };
+    const row = () => [{ label: title, sub: st.total ? `${pc()}%` : '', info: true, plain: true }];
+    let stopping = false;
+    const onBack = async () => { if (!stopping) { stopping = true; await api.recovery('cancel', {}); } };
+    openList({ title, items: row(), index: 0, body: body(), onChoose: () => {}, onBack });
+    const m = modal;
+    let lost = 0;
+    (async () => {
+      for (;;) {
+        await sleep(1000);
+        let q = null;
+        try { q = await api.recovery('state', {}); } catch { /* try again */ }
+        if (!q || !q.ok) { if (++lost > 30) return resolve({ phase: 'error', error: 'Lost touch with the recovery tools.' }); continue; }
+        lost = 0;
+        if (['done', 'error', 'canceled'].includes(q.phase)) { if (modal === m) closeModal(); return resolve(q); }
+        if (q.phase === 'copying' || q.phase === 'checking') st = q;
+        if (modal === m) { m.body = body(); m.items = row(); renderModal(); }
+      }
+    })();
+  });
+}
+
 // Free up space: what uses the disk, per person, and clearing what comes back by itself (caches,
 // shader caches) or was thrown away (the trash). Games and files are never deleted here.
 async function recoverySpace(inst) {
@@ -186,7 +257,7 @@ async function recoveryBackup(inst) {
   if (!user) return;
   const r = await recoveryWithPassword(user, 'Starting the backup…', (password) => api.recovery('backup', { id: inst.id, user, password, who, drive: drive.uuid, what: what.what }));
   if (!r) return;
-  const end = await recoveryBackupProgress();
+  const end = await recoveryJobProgress('Backing up');
   if (end.phase === 'done') {
     await pick('Backed up', [{ label: 'OK', plain: true }], 0, { body: `${end.copied || 0} files copied to the folder "${end.folder}" on ${end.drive}.${end.skipped ? `\n\n${end.skipped} couldn't be copied; they're listed in "not copied.txt" in that folder.` : ''}\n\nWait for this screen before unplugging the drive. It's done now.` });
   } else if (end.phase === 'canceled') {
@@ -194,36 +265,4 @@ async function recoveryBackup(inst) {
   } else {
     await pick("Backup didn't finish", [{ label: 'OK', plain: true }], 0, { body: end.error || 'Something went wrong.' });
   }
-}
-
-function recoveryBackupProgress() {
-  return new Promise((resolve) => {
-    let st = { done: 0, total: 0, line: '' };
-    const t0 = Date.now();
-    const pc = () => (st.total ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0);
-    const bar = (p) => { const n = Math.round(p / 5); return '▰'.repeat(n) + '▱'.repeat(20 - n); };
-    const body = () => [`Copying · ${pc()}% · ${fmtClock(Math.round((Date.now() - t0) / 1000))}`, bar(pc()), st.total ? `${fmtBackupSize(st.done)} of ${fmtBackupSize(st.total)}` : 'Counting what to copy…', 'Keep the drive plugged in. B stops the backup.', st.line ? `\n${st.line}` : ''].filter(Boolean).join('\n');
-    const row = () => [{ label: 'Backing up', sub: `${pc()}%`, info: true, plain: true }];
-    let stopping = false;
-    const onBack = async () => {
-      if (stopping) return;
-      stopping = true;
-      await api.recovery('cancel', {});
-    };
-    openList({ title: 'Backing up', items: row(), index: 0, body: body(), onChoose: () => {}, onBack });
-    const m = modal;
-    let lost = 0;
-    (async () => {
-      for (;;) {
-        await sleep(1000);
-        let q = null;
-        try { q = await api.recovery('state', {}); } catch { /* try again */ }
-        if (!q || !q.ok) { if (++lost > 30) return resolve({ phase: 'error', error: 'Lost touch with the backup.' }); continue; }
-        lost = 0;
-        if (['done', 'error', 'canceled'].includes(q.phase)) { if (modal === m) closeModal(); return resolve(q); }
-        if (q.phase === 'copying') st = q;
-        if (modal === m) { m.body = body(); m.items = row(); renderModal(); }
-      }
-    })();
-  });
 }
