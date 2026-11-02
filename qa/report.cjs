@@ -36,9 +36,10 @@ fs.writeFileSync(path.join(state, 'session.log'), `session start\nlauncher at ${
     await page.waitForFunction(() => modal && modal.title === 'Report a problem');
     const listed = await page.evaluate(() => modal.items.filter((x) => x.info).length);
     assert.ok(listed >= 6, 'it says what goes in it');
+    assert.deepEqual(await page.evaluate(() => modal.items.filter((x) => x.op).map((x) => x.label)), ['Report it on GitHub', 'Save a report']);
     const rep = path.join(temp, 'data', 'Tessera', 'Reports');
     assert.equal(fs.existsSync(rep) ? fs.readdirSync(rep).length : 0, 0, 'nothing is made until asked');
-    await page.evaluate(() => modalPress('a'));
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'make'); modalPress('a'); });
     await page.waitForFunction(() => modal && modal.title === 'Report saved', null, { timeout: 30000 });
     const files = fs.readdirSync(path.join(temp, 'data', 'Tessera', 'Reports'));
     assert.equal(files.length, 1);
@@ -63,6 +64,36 @@ fs.writeFileSync(path.join(state, 'session.log'), `session start\nlauncher at ${
     await page.waitForFunction(() => !modal);
     assert.equal(fs.readdirSync(path.join(temp, 'data', 'Tessera', 'Reports')).length, 0);
     checks.push('It can be read on screen line by line, and deleted');
+
+    // Report it on GitHub: saved too; what happened is asked; the issue is shown first; GitHub's own
+    // form opens filled in (nothing is sent by Tessera), short enough for an address, scrubbed.
+    await page.evaluate(() => { page = hoverId = 'settings'; render(); runAction('_report'); });
+    await page.waitForFunction(() => modal && modal.title === 'Report a problem');
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'github'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys' && /What happened/.test(modal.title), null, { timeout: 30000 });
+    assert.equal(fs.readdirSync(rep).length, 1, 'the report is saved as well');
+    await page.evaluate(() => { modal.text = 'Black login screen after an update'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Report it on GitHub');
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'read'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'What goes in the issue');
+    const shown = await page.evaluate(() => modal.items.map((x) => x.label).join('\n'));
+    assert.match(shown, /^Title: Black login screen after an update/);
+    assert.match(shown, /Black login screen after an update[\s\S]*Tessera/);
+    await page.evaluate(() => modalPress('b'));
+    await page.waitForFunction(() => modal && modal.title === 'Report it on GitHub');
+    await page.screenshot({ path: path.join(output, 'report-github.png') });
+    await page.evaluate(() => { window.__qaOpened = null; launchBrowser = () => { window.__qaOpened = browserUrl; }; modal.index = modal.items.findIndex((x) => x.op === 'open'); modalPress('a'); });
+    await page.waitForFunction(() => window.__qaOpened);
+    const url = await page.evaluate(() => window.__qaOpened);
+    assert.match(url, /^https:\/\/github\.com\/Herbalchemist\/tessera\/issues\/new\?title=Black%20login%20screen%20after%20an%20update&body=/);
+    assert.ok(url.length < 8200, `short enough for an address (${url.length})`);
+    const body = decodeURIComponent(url.split('&body=')[1]);
+    assert.match(body, /\*\*What happened\*\*\n\nBlack login screen after an update/);
+    assert.match(body, /<summary>Tessera<\/summary>/);
+    assert.ok(!body.includes(temp), 'no home folder');
+    assert.ok(!body.includes('192.168.4.20'), 'no IP address');
+    if (os.hostname().length > 1 && os.hostname() !== 'localhost') assert.ok(!body.includes(os.hostname()), 'no computer name');
+    checks.push('Report it on GitHub: saved too, asks what happened, shows the issue first, then opens GitHub\'s form filled in (scrubbed, short enough for an address); Tessera sends nothing');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);
