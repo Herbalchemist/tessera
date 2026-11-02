@@ -247,6 +247,7 @@ Tessera's security standards, how each is met and how they're checked, are in [S
   - **Compatibility tools per game**: install Proton-CachyOS or Proton-GE from a controller-friendly screen and pick one for a game that misbehaves.
   - **Smooth under load**: a setting that turns on one of the sched-ext CPU schedulers Bazzite ships (`scx-scheds`, such as LAVD, made for gaming), and off again.
   - **Performance while playing**: the performance power profile while a game runs, back to normal when it ends.
+- Sending a problem report, always shown first and only when you choose it: (1) **Open on GitHub**, a new issue filled in with the report's summary (signed in to GitHub; the full file attached by hand), with a QR code to do it from a phone; (2) later, **Send to the Tessera team**, an upload to a small receiver run by the project (a Raspberry Pi behind a tunnel, no open ports) that checks size and rate, keeps the full report private and files a summary issue or an email itself. No key or token for GitHub or email is ever in Tessera: those stay on the receiver.
 - Before 1.0.0: Tessera's own wallpapers and other content, enough to stand on its own; then Bazzite's wallpapers come out. Until then they stay as they are, beside Tessera's.
 
 ## How it's built
