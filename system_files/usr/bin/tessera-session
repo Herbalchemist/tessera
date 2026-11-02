@@ -67,11 +67,19 @@ if [ ! -x "$ELECTRON" ]; then
   exit 1
 fi
 
+# On top of Opus, gamescope runs nested in a window and doesn't look at the screen: without a size it
+# draws 1280x720 and stretches it. Give it the main screen's size, so an ultrawide stays ultrawide.
+SIZE_ARGS=()
+if [ -n "${TESSERA_NESTED:-}" ] && read -r W H < <(/usr/libexec/tessera/display-size 2>/dev/null); then
+  SIZE_ARGS=(-W "$W" -H "$H" -w "$W" -h "$H")
+  echo "on top of the desktop: ${W}x${H}" >>"$LOG"
+fi
+
 fails=0
 while true; do
   started=$(date +%s)
   rm -f "$LEAVE"
-  gamescope -f $FORCE_FULL "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
 
