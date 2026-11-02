@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Boot options > "this time" starts (Desktop Mode, safe settings, repair console): reads and clears
+# Boot options > "this time" starts (Opus, safe settings, repair console): reads and clears
 # tessera_once from GRUB's settings file before the login screen. See /usr/libexec/tessera/boot-once.
 [Unit]
 Description=Tessera: a different start chosen in the boot menu, this time only

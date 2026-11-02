@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera console session. Started by the login manager via tessera.desktop.
 # Runs the launcher inside Gamescope and restarts it if it crashes.
-# Settings > Desktop Mode (or Ctrl+Q in a test build) ends the session and returns to the login
+# Settings > Opus (or Ctrl+Q in a test build) ends the session and returns to the login
 # screen, which is the way back to the desktop. The launcher says so by writing a note
 # (TESSERA_LEAVE_FILE) just before it quits; the exit code of Gamescope is not trusted for that,
 # because it is not reliable at shutdown. Without the note a non-zero exit is a crash: restart.
 #
-# When it is started from the desktop (tessera-return, "Return to Tessera") TESSERA_NESTED=1 is
+# When it is started from the desktop (tessera-return, "Return to Ludus") TESSERA_NESTED=1 is
 # set: the same thing runs on top of the desktop, and leaving it shows the desktop again.
 
 APP=/usr/lib/tessera/launcher
@@ -55,7 +55,7 @@ mkdir -p "$STATE"
 echo "session start $(date -Is)${TESSERA_NESTED:+ (from the desktop)}" >"$LOG"
 rm -f "$LEAVE"
 
-# An account set up before it ran Tessera still has Bazzite's wallpaper in Desktop Mode: switch it
+# An account set up before it ran Tessera still has Bazzite's wallpaper in Opus: switch it
 # to Tessera's, once (leaves a wallpaper the person picked alone). Only from the console session,
 # when Plasma isn't running.
 [ -z "$TESSERA_NESTED" ] && /usr/libexec/tessera/desktop-wallpaper >>"$LOG" 2>&1
@@ -75,15 +75,15 @@ while true; do
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
 
-  # The person chose Desktop Mode: leave, whatever the exit code was.
+  # The person chose Opus: leave, whatever the exit code was.
   if [ -e "$LEAVE" ]; then
-    echo "Desktop Mode was asked for: ending the session" >>"$LOG"
+    echo "Opus was asked for: ending the session" >>"$LOG"
     rm -f "$LEAVE"
     exit 0
   fi
 
   # Gamescope reports success even when the program it was asked to run could not be started,
-  # which used to look like a normal exit to Desktop Mode. Nobody gets to Desktop Mode within a
+  # which used to look like a normal exit to Opus. Nobody gets to Opus within a
   # few seconds of starting, so a "clean" exit that quick is counted as a failure.
   if [ "$code" -eq 0 ] && [ $(( $(date +%s) - started )) -lt "$EARLY_EXIT_SECS" ]; then
     echo "launcher ended after less than ${EARLY_EXIT_SECS}s without being asked to: counted as a failure" >>"$LOG"

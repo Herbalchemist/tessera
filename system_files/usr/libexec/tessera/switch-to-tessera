@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# "Return to Tessera" from the desktop, for real: the desktop session ends and the machine signs
+# "Return to Ludus" from the desktop, for real: the desktop session ends and the machine signs
 # in to the Tessera console, with nothing of the desktop left running (no Plasma, no file indexer,
 # no panels).
 #
@@ -13,7 +13,7 @@
 #
 #   switch-to-tessera --check   can this machine do it? (no root needed) prints the reason if not
 #   switch-to-tessera           the real thing; runs as root from tessera-session-switch.service,
-#                               which Settings / "Return to Tessera" start (see 49-tessera-update.rules)
+#                               which Settings / "Return to Ludus" start (see 49-tessera-update.rules)
 #
 # It never changes anything unless the desktop session really ended first, and it gives up after
 # TESSERA_SWITCH_WAIT seconds (180) if it did not, for example because someone answered

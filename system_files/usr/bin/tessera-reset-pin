@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Forgot the Tessera PIN? Run this from Desktop Mode (you need your login
+# Forgot the Tessera PIN? Run this from Opus (you need your login
 # to get there). It removes the PIN; Tessera then starts with no PIN, and you can
 # set a new one in Settings > PIN.
 f="${XDG_DATA_HOME:-$HOME/.local/share}/tessera/settings.json"

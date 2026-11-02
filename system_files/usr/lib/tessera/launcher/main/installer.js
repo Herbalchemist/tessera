@@ -252,7 +252,7 @@ async function cancelUpdate() {
 async function restartNow() {
   if (config.running) return { ok: false, error: 'Close the game first.' };
   const r = await updates.sysctl(['reboot'], 15000);
-  return r.ok ? { ok: true } : { ok: false, error: "Couldn't restart from here. Use the power button, or Desktop Mode." };
+  return r.ok ? { ok: true } : { ok: false, error: "Couldn't restart from here. Use the power button, or Opus." };
 }
 async function updateOp(op, p) {
   try {

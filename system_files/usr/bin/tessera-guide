@@ -1,9 +1,9 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# The Tessera guide in Desktop Mode. Started with the desktop (/etc/xdg/autostart/tessera-guide.desktop).
+# The Tessera guide in Opus. Started with the desktop (/etc/xdg/autostart/tessera-guide.desktop).
 # It is the Tessera launcher showing only its guide, in a hidden see-through window that comes up
 # over the desktop when a controller's Guide button is pressed: quick settings, profiles, power and
-# "Return to Tessera". Holding Guide goes straight back to Tessera.
+# "Return to Ludus". Holding Guide goes straight back to Tessera.
 # Settings > Controller > Guide on the desktop turns it off, or on even while Steam is running
 # (by default it steps aside for Steam, which takes the Guide button for itself).
 

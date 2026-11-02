@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Opus: Tessera's name for the desktop (KDE Plasma). Sits beside Plasma's own entry, which stays.
+[Desktop Entry]
+Name=Opus
+Comment=Tessera's desktop (KDE Plasma)
+Exec=/usr/libexec/tessera/opus-session
+DesktopNames=KDE
+Type=Application

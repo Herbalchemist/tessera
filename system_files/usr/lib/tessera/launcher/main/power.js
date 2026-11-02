@@ -10,8 +10,8 @@ const updates = require('./updates');
 // Restart, shut down, sleep: the normal permissions of someone sitting at the console, through logind.
 const POWER_VERB = { restart: 'reboot', shutdown: 'poweroff', sleep: 'suspend' };
 const POWER_FAIL = {
-  restart: "Couldn't restart from here. Use the power button, or Desktop Mode.",
-  shutdown: "Couldn't shut down from here. Hold the power button, or use Desktop Mode.",
+  restart: "Couldn't restart from here. Use the power button, or Opus.",
+  shutdown: "Couldn't shut down from here. Hold the power button, or use Opus.",
   sleep: "Couldn't go to sleep from here.",
 };
 ipcMain.handle('power', async (_e, op) => {

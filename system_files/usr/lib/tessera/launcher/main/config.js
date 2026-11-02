@@ -54,7 +54,7 @@ const LIBRARY_FILE = process.env.LAUNCHER_LIBRARY || path.join(DATA_DIR, 'librar
 const LEGACY_FILE = process.env.LAUNCHER_GAMES || path.join(DATA_DIR, 'games.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DEV = process.env.TESSERA_DEV === '1';
-// Desktop Mode helper (tessera-guide): the same program, showing only the guide, in a hidden
+// Opus helper (tessera-guide): the same program, showing only the guide, in a hidden
 // window that comes up over the desktop when a controller's Guide button is pressed.
 const GUIDE_ONLY = process.env.TESSERA_GUIDE_ONLY === '1';
 

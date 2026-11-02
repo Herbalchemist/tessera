@@ -6,7 +6,7 @@
 // The Guide button (Xbox / PS / Home) opens this panel from anywhere: the launcher, the
 // browser, or in front of a running game (the main process watches the button and brings
 // Tessera up). It holds game controls, quick settings, profiles, notifications and power.
-// The Desktop Mode helper loads this page with ?guide: only the guide is ever shown.
+// The Opus helper loads this page with ?guide: only the guide is ever shown.
 const GUIDE_ONLY = new URLSearchParams(location.search).has('guide');
 if (GUIDE_ONLY) document.body.classList.add('guide-only');
 let guideWatching = 0;     // controllers the main process reads Guide from (0: the page reads it)
@@ -114,7 +114,7 @@ async function openGuide() {
   }
   items.push({ label: 'Go', header: true });
   if (GUIDE_ONLY) {
-    items.push({ label: 'Return to Tessera', sub: 'Closes the desktop and starts Tessera', op: 'returnTessera', plain: true });
+    items.push({ label: 'Return to Ludus', sub: 'Closes Opus and starts Ludus', op: 'returnTessera', plain: true });
   } else {
     items.push({ label: 'Home', op: 'home', plain: true });
     if (browserOpen) items.push({ label: 'Back to the browser', op: 'close', plain: true });
@@ -158,7 +158,7 @@ async function openGuide() {
   items.push({ label: 'Sleep', op: 'sleep', plain: true });
   items.push({ label: 'Restart', op: 'restart', plain: true });
   items.push({ label: 'Shut down', op: 'shutdown', plain: true });
-  if (!GUIDE_ONLY) items.push({ label: 'Desktop Mode', op: 'desktop', plain: true });
+  if (!GUIDE_ONLY) items.push({ label: 'Opus', op: 'desktop', plain: true });
 
   const now = new Date();
   const who = (prof.profiles || []).find((p) => p.id === prof.active);
@@ -313,7 +313,7 @@ async function guideChoose(it) {
   if (op === 'storage') return leaveTo(() => flowStorage());
   if (op === 'sleep' || op === 'restart' || op === 'shutdown' || op === 'desktop') {
     await closeGuide({ stay: true });
-    const words = { sleep: ['Go to sleep?', 'Sleep'], restart: ['Restart the computer?', 'Restart'], shutdown: ['Shut down the computer?', 'Shut down'], desktop: ['Switch to Desktop Mode?', 'Switch'] }[op];
+    const words = { sleep: ['Go to sleep?', 'Sleep'], restart: ['Restart the computer?', 'Restart'], shutdown: ['Shut down the computer?', 'Shut down'], desktop: ['Switch to Opus?', 'Switch'] }[op];
     if (gameOn && op !== 'sleep') { setStatus(`Close ${gameOn.title} first.`, true); return openGuide(); }
     const done = () => { if (GUIDE_ONLY) api.guide('hideHelper'); };
     if (!(await confirm(words[0], words[1]))) return done();

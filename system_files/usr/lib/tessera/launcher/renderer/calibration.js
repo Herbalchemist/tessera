@@ -373,14 +373,14 @@ async function flowCalMenu(index = 0) {
   return again();
 }
 
-// Desktop Mode is the login screen: Tessera closes, and the person signs in
+// Opus is the login screen: Tessera closes, and the person signs in
 // (password and all) to whichever session they pick. See tessera-session.
-let leavingNow = false; // Desktop Mode was chosen and Tessera is closing: ignore further presses
+let leavingNow = false; // Opus was chosen and Tessera is closing: ignore further presses
 async function flowDesktop() {
   if (modal || busy || leavingNow) return;
   const ok = await confirm(nestedView
-    ? 'Switch to Desktop Mode?  Tessera will close and the desktop will be shown again.'
-    : 'Switch to Desktop Mode?  Tessera will close and the login screen will appear.  To come back later, choose Return to Tessera in the application menu.');
+    ? 'Switch to Opus?  Ludus will close and the desktop will be shown again.'
+    : 'Switch to Opus?  Ludus will close and the login screen will appear (choose Opus there).  To come back later, choose Return to Ludus in the application menu.');
   if (!ok) return;
   leavingNow = true;
   setStatus('Closing Tessera…');

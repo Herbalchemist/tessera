@@ -437,7 +437,7 @@ const SETTINGS_ROWS = [
     cat: true,
     tiles: [
       { id: '_power', title: 'Power', kind: 'action', icon: 'power' },
-      { id: '_desktop', title: 'Desktop Mode', kind: 'action', icon: 'desktop' },
+      { id: '_desktop', title: 'Opus', kind: 'action', icon: 'desktop' },
     ],
   },
 ];

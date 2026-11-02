@@ -149,7 +149,7 @@ async function recoveryGraphics(inst, g) {
   const wrong = g.have && g.want && g.have !== g.want;
   if (wrong) items.push({ label: `Switch to the ${GFX_NAMES[g.want]} build`, sub: 'at the next start, once online; games and saves stay', action: 'switch', to: g.want, ok: true });
   items.push({ label: 'Next start: safe settings', sub: 'no display calibration, no shards', action: 'safe', plain: wrong, ok: !wrong });
-  items.push({ label: 'Next start: the login screen', sub: 'Desktop Mode, with the password', action: 'desktop', plain: true });
+  items.push({ label: 'Next start: the login screen', sub: 'Opus, with the password', action: 'desktop', plain: true });
   items.push({ label: 'Next start: a repair console', sub: 'text only, for experts', action: 'console', plain: true });
   const body = [
     g.cards && g.cards.length ? `Graphics in this computer: ${g.cards.join(', ')}.` : '',

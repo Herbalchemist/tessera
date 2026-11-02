@@ -125,7 +125,7 @@ async function flowUpdate() {
         await pick('Restarting…', [{ label: 'Close', op: 'close', plain: true }], 0, { body: 'The console is restarting. This takes a moment.' });
         break;
       }
-      note = (r && r.error) || "Couldn't restart from here. Use the power button, or Desktop Mode.";
+      note = (r && r.error) || "Couldn't restart from here. Use the power button, or Opus.";
       continue;
     }
     if (it.op === 'update') {

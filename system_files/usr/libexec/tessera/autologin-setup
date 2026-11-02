@@ -4,7 +4,7 @@
 #
 # The login manager logs one user into one session when the machine starts
 # ("Autologin"), and never again after that: when the Tessera session ends
-# (Desktop Mode, or Exit) it shows its normal login screen, so reaching the
+# (Opus, or Exit) it shows its normal login screen, so reaching the
 # desktop needs the account password. Relogin stays off on purpose; it would
 # loop straight back into Tessera.
 #
@@ -63,8 +63,8 @@ if [ -z "$user" ]; then
 fi
 [ -n "$user" ] || off "no normal user account yet"
 
-# Boot options > "Start at the login screen (Desktop Mode)": no automatic sign-in this start, so the
-# login screen shows and the desktop needs the account password, as Desktop Mode always does.
+# Boot options > "Start at the login screen (Opus)": no automatic sign-in this start, so the
+# login screen shows and the desktop needs the account password, as Opus always does.
 # (tessera-boot-once leaves the note in /run, which is empty again at the next start.)
 [ "$(cat "$ROOT/run/tessera/boot-once" 2>/dev/null)" = desktop ] && off "this start: the login screen, chosen in Boot options"
 if [ "$kind" = sddm ]; then conf="$SDDM_CONF"; rm -f "$PLASMA_CONF"; else conf="$PLASMA_CONF"; rm -f "$SDDM_CONF"; fi

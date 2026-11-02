@@ -353,7 +353,7 @@
   const WIFI_WAIT = (name) => (p, stopping) => (stopping ? 'Canceling…' : `Joining ${name} · ${clock(p.elapsed)}\nThis can take up to half a minute.`);
 
   async function wifiJoin(st, ssid, security, hidden) {
-    if (security === 'enterprise') { st.note = "Networks that ask for a user name aren't supported here yet. Use Desktop Mode for this one."; return; }
+    if (security === 'enterprise') { st.note = "Networks that ask for a user name aren't supported here yet. Use Opus for this one."; return; }
     if (security === 'wep') { st.note = "This network uses old WEP security, which isn't supported."; return; }
     let password = '';
     if (security === 'secured' || security === 'hiddenAsk') {
