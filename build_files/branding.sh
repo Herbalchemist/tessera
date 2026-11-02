@@ -145,6 +145,18 @@ else
   missing "$T/tessera.plymouth"
 fi
 
+# ---- Opus, Tessera's name for the desktop, on the login screen: a copy of Plasma's own session
+# entry with only the name and comment changed, so it starts the desktop exactly as Plasma's does
+# (Plasma's entry stays, beside it).
+src=""
+for f in /usr/share/wayland-sessions/plasma.desktop /usr/share/wayland-sessions/plasmawayland.desktop; do [ -f "$f" ] && { src=$f; break; }; done
+if [ -n "$src" ]; then
+  grep -vE '^(Name|Comment)(\[[^]]*\])?=' "$src" | sed '/^\[Desktop Entry\]/a Name=Opus\nComment=Tessera'"'"'s desktop (KDE Plasma)' > /usr/share/wayland-sessions/opus.desktop
+  note "/usr/share/wayland-sessions/opus.desktop: a copy of $src, named Opus"
+else
+  missing "Plasma's Wayland session entry (no Opus entry on the login screen)"
+fi
+
 # ---- the busy pointer: Tessera's symbol building itself (icons/Tessera; Breeze for every other
 # pointer). The default for Opus; the console session asks for it too (tessera-session).
 mkdir -p /etc/xdg
