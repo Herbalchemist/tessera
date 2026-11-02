@@ -240,7 +240,11 @@ Tessera's security standards, how each is met and how they're checked, are in [S
 - NVIDIA builds: test on real hardware and drop the *experimental* label.
 - Controllers on real hardware: a single Joy-Con held sideways (left and right), a Switch Pro Controller and Joy-Cons with **Confirm button** set to "A confirms" and with a remap (0.28 fixes them being swapped twice in the launcher's menus), and an Xbox and a PlayStation controller remapped in the browser.
 - Wi-Fi: hand the password to NetworkManager without putting it on `nmcli`'s command line, where other accounts on the machine can briefly see it while it joins. Needs a test on real Wi-Fi before it ships.
-- The recovery system ([plan](https://github.com/Herbalchemist/tessera-mortar/blob/main/docs/recovery.md)): stage 1 is in (Recover on the Tessera USB: what's wrong, a report, sign-in at boot, the admin PIN, shards). Next: versions, back up, space, disk and boot repair, graphics, files, reset and reinstall; then Recovery on the machine itself (its own partition on new installs, a file on existing ones, in Boot options).
+- The recovery system ([plan](https://github.com/Herbalchemist/tessera-mortar/blob/main/docs/recovery.md)): Recover on the Tessera USB has what's wrong, a report, sign-in at boot, the admin PIN, shards, versions, back up to a USB drive, free up space, check the disk and repair the boot menu. Next: graphics, files, reset and reinstall, and undo for files; then Recovery on the machine itself (its own partition on new installs, a file on existing ones, in Boot options).
+- Ideas from CachyOS, beside Bazzite rather than instead of it:
+  - **Compatibility tools per game**: install Proton-CachyOS or Proton-GE from a controller-friendly screen and pick one for a game that misbehaves.
+  - **Smooth under load**: a setting that turns on one of the sched-ext CPU schedulers Bazzite ships (`scx-scheds`, such as LAVD, made for gaming), and off again.
+  - **Performance while playing**: the performance power profile while a game runs, back to normal when it ends.
 - Before 1.0.0: Tessera's own wallpapers and other content, enough to stand on its own; then Bazzite's wallpapers come out. Until then they stay as they are, beside Tessera's.
 
 ## How it's built
