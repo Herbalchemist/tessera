@@ -466,7 +466,7 @@ function themeImage(sid) {
   if (!ok) return { dataUrl: '', error: "That file isn't a real picture." };
   return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
 }
-const prefsPayload = () => ({ live: installer.INSTALLER, pad: { ...prefs.settings.pad }, kb: prefs.kbPayload(), calib: prefs.settings.calib, pageGrid: prefs.settings.pageGrid, pin: pinLock.pinInfo(), vault: calibration.display(addons.VAULT_DIR), storage: { low: storage.lowSpace() }, calibration: calibration.calPayload(), theme: themePayload(), profiles: prefs.settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
+const prefsPayload = () => ({ safe: process.env.TESSERA_SAFE === '1', live: installer.INSTALLER, pad: { ...prefs.settings.pad }, kb: prefs.kbPayload(), calib: prefs.settings.calib, pageGrid: prefs.settings.pageGrid, pin: pinLock.pinInfo(), vault: calibration.display(addons.VAULT_DIR), storage: { low: storage.lowSpace() }, calibration: calibration.calPayload(), theme: themePayload(), profiles: prefs.settings.profiles.map((p) => ({ id: p.id, name: p.name, themeId: p.themeId })) });
 
 // Parts that load after this one. Only code that runs once everything has loaded uses them,
 // so requiring them here, at the end, keeps the load order of main.js.

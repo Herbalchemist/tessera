@@ -78,6 +78,22 @@ bash /ctx/branding.sh
 systemctl enable tessera-autologin.service
 systemctl is-enabled tessera-autologin.service
 
+### The boot menu: tessera-boot-menu puts Tessera's wait screen and Boot options in /boot (and keeps
+### them up to date), tessera-boot-once carries out a "this time" start chosen there. Also in the preset.
+systemctl enable tessera-boot-menu.service tessera-boot-once.service
+### GRUB draws text with its own font format (.pf2): made here from the launcher's font (Inter, or the
+### system's sans-serif if Inter isn't installed), Latin letters and punctuation only. Without them the
+### menu falls back to GRUB's built-in font, so a failure here is reported but doesn't stop the build.
+GF=/usr/share/tessera/grub/fonts
+mkdir -p "$GF"
+reg="$(fc-match -f '%{file}' 'Inter:style=Regular' 2>/dev/null || true)"; [ -f "$reg" ] || reg="$(fc-match -f '%{file}' 'sans-serif' 2>/dev/null || true)"
+bold="$(fc-match -f '%{file}' 'Inter:style=Bold' 2>/dev/null || true)"; [ -f "$bold" ] || bold="$(fc-match -f '%{file}' 'sans-serif:bold' 2>/dev/null || true)"
+echo "boot menu fonts from: $reg / $bold"
+range='0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193'
+for s in 16 20 28; do grub2-mkfont -n Tessera -s "$s" -r "$range" -o "$GF/tessera-$s.pf2" "$reg" || echo "note: boot menu font $s not made"; done
+grub2-mkfont -n Tessera -s 28 -r "$range" -o "$GF/tessera-bold-28.pf2" "$bold" || echo "note: boot menu bold font not made"
+ls -la "$GF"
+
 ### The boot splash runs from the initramfs, which Bazzite built before branding.sh changed its
 ### logo: build it again from this image's own files and dracut settings, the way Universal Blue
 ### images do. (The kernel is signed for Secure Boot; the initramfs never is, so that's unchanged.)

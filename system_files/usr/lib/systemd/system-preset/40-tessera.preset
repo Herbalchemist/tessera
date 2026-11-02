@@ -2,3 +2,6 @@
 # Boot into Tessera: sign the account in to the Tessera session at boot (see autologin-setup).
 # A fresh install applies presets on its first boot; without this line systemd leaves the service off.
 enable tessera-autologin.service
+# The boot menu (wait screen, Boot options) and its "this time" starts: see boot-menu and boot-once.
+enable tessera-boot-menu.service
+enable tessera-boot-once.service

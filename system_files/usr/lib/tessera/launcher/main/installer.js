@@ -153,17 +153,22 @@ const BOOT_THEMES = ['tessera', 'bgrt', 'spinner', 'details'];
 const BOOT_UNIT = (t) => `tessera-boot-theme@${t}.service`;
 const CMDLINE = process.env.TESSERA_CMDLINE || '/proc/cmdline';
 let bootPending = null; // set this run, shows after the restart
+// Theme Settings > Boot menu: Tessera's wait screen and Boot options in front of GRUB, or GRUB's own
+// menu. tessera-boot-menu-set@on|off.service (usr/libexec/tessera/boot-menu) changes /boot.
+const BOOTMENU_UNIT = (v) => `tessera-boot-menu-set@${v}.service`;
+const PLAIN_MENU = process.env.TESSERA_PLAIN_MENU || '/etc/tessera/plain-boot-menu';
 function bootInfo() {
   let cmd = '';
   try { cmd = fs.readFileSync(CMDLINE, 'utf8'); } catch { /* unknown: the default */ }
   const m = /(?:^|\s)plymouth\.splash=(\S+)/.exec(cmd);
   const current = m && BOOT_THEMES.includes(m[1]) ? m[1] : 'tessera';
-  return { ok: true, themes: BOOT_THEMES, current, pending: bootPending && bootPending !== current ? bootPending : null };
+  return { ok: true, themes: BOOT_THEMES, current, pending: bootPending && bootPending !== current ? bootPending : null, menu: fs.existsSync(PLAIN_MENU) ? 'off' : 'on' };
 }
 async function startUpdate(kind, p = {}) {
-  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback' && kind !== 'graphics' && kind !== 'boot') return { ok: false, error: 'Unknown action.' };
+  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback' && kind !== 'graphics' && kind !== 'boot' && kind !== 'bootmenu') return { ok: false, error: 'Unknown action.' };
   if (kind === 'graphics' && !gpuMatch.VARIANTS.includes(p.variant)) return { ok: false, error: 'Unknown action.' };
   if (kind === 'boot' && !BOOT_THEMES.includes(p.theme)) return { ok: false, error: 'Unknown action.' };
+  if (kind === 'bootmenu' && p.menu !== 'on' && p.menu !== 'off') return { ok: false, error: 'Unknown action.' };
   if (config.running) return { ok: false, error: 'Close the game first.' };
   const cur = await updates.runningJob();
   if (cur) return { ok: true, job: cur.kind };
@@ -180,7 +185,7 @@ async function startUpdate(kind, p = {}) {
     const st = await updates.fetchStatus();
     if (st.ok && st.staged) return { ok: false, error: 'An update is waiting for a restart. Restart first, then change the boot screen.' };
   }
-  const unit = kind === 'graphics' ? GRAPHICS_UNIT(p.variant) : kind === 'boot' ? BOOT_UNIT(p.theme) : updates.UPDATE_UNIT[kind];
+  const unit = kind === 'graphics' ? GRAPHICS_UNIT(p.variant) : kind === 'boot' ? BOOT_UNIT(p.theme) : kind === 'bootmenu' ? BOOTMENU_UNIT(p.menu) : updates.UPDATE_UNIT[kind];
   const before = await updates.unitProps(unit);
   if (!before || before.LoadState === 'not-found') return { ok: false, error: updates.UPDATE_PROBLEM.missing };
   const r = await updates.sysctl(['start', '--no-block', unit], 15000);
@@ -210,6 +215,10 @@ async function pollUpdate() {
   updates.upJob = null;
   const done = { ok: true, phase: 'done', job: job.kind };
   if (job.canceled) return { ...done, result: 'canceled' };
+  if (job.kind === 'bootmenu') {
+    if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: updates.lastLine(log) || "Couldn't change the boot menu.", detail: '' };
+    return { ...done, result: 'bootmenu' };
+  }
   if (job.kind === 'boot') {
     if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: updates.lastLine(log) || "Couldn't change the boot screen.", detail: '' };
     bootPending = job.theme;

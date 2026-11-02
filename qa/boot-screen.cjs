@@ -39,6 +39,7 @@ case "\${args[0]}" in
     case "$u" in
       tessera-update-status.service) cp "$T/status-now.json" "$U/status.json";;
       tessera-boot-theme@*.service) printf 'Setting the boot screen\\nDone: it shows from the next restart.\\n' > "$U/boot.log"; echo "$u" >> "$T/boot-started";;
+      tessera-boot-menu-set@*.service) echo 'tessera-boot-menu: now off' > "$U/bootmenu.log"; echo "$u" >> "$T/menu-started";;
     esac
     echo b > "$T/inv-$u";;
 esac
@@ -51,7 +52,7 @@ exit 0
     executablePath,
     args: ['--no-sandbox', '--disable-gpu', path.join(launcher, 'main.js')],
     env: { ...process.env, HOME: temp, TESSERA_DATA_DIR: dataDir, TESSERA_DEV: '1', TESSERA_SYSTEMCTL: ctl, TESSERA_UPDATE_DIR: upDir,
-      TESSERA_CMDLINE: path.join(temp, 'cmdline'), XDG_CONFIG_HOME: path.join(temp, 'config'), XDG_STATE_HOME: path.join(temp, 'state') },
+      TESSERA_CMDLINE: path.join(temp, 'cmdline'), TESSERA_PLAIN_MENU: path.join(temp, 'plain-boot-menu'), XDG_CONFIG_HOME: path.join(temp, 'config'), XDG_STATE_HOME: path.join(temp, 'state') },
   });
   try {
     const page = await app.firstWindow();
@@ -94,6 +95,21 @@ exit 0
     await page.waitForFunction(() => /update is waiting for a restart/.test(document.getElementById('status').textContent), null, { timeout: 15000, polling: 200 });
     assert.equal(fs.readFileSync(path.join(temp, 'boot-started'), 'utf8').trim().split('\n').length, 1, 'nothing more was started');
     checks.push('With an update waiting for a restart it refuses and starts nothing');
+
+    // Boot menu: Tessera's by default; picking GRUB's starts tessera-boot-menu-set@off.service
+    fs.writeFileSync(path.join(temp, 'status-now.json'), status(false));
+    await page.evaluate(() => { if (modal) closeModal(); });
+    await page.waitForTimeout(400);
+    page.evaluate(() => { flowTheme(); });
+    await page.waitForFunction(() => modal && modal.title === 'Theme Settings' && modal.items.some((x) => x.op === 'bootmenu'), null, { timeout: 10000, polling: 100 });
+    assert.equal(await page.evaluate(() => modal.items.find((x) => x.op === 'bootmenu').label), 'Tessera');
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'bootmenu'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Boot menu', null, { timeout: 5000, polling: 100 });
+    await page.screenshot({ path: path.join(output, 'boot-menu-choices.png') });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.id === 'off'); modalPress('a'); });
+    await page.waitForFunction(() => /GRUB's menu shows from the next start/.test(document.getElementById('status').textContent), null, { timeout: 15000, polling: 200 });
+    assert.equal(fs.readFileSync(path.join(temp, 'menu-started'), 'utf8').trim(), 'tessera-boot-menu-set@off.service');
+    checks.push("Boot menu: Tessera's by default; choosing GRUB's menu starts tessera-boot-menu-set@off.service");
 
     assert.deepEqual(errors, [], 'no page errors');
   } finally {

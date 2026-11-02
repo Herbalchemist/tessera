@@ -35,6 +35,10 @@ polkit.addRule(function (action, subject) {
   if (/^tessera-graphics-switch@(standard|nvidia|nvidia-open)\.service$/.test(unit) && (verb === "start" || verb === "stop")) {
     return polkit.Result.YES;
   }
+  // Theme Settings > Boot menu: Tessera's (on) or GRUB's own (off).
+  if (/^tessera-boot-menu-set@(on|off)\.service$/.test(unit) && (verb === "start" || verb === "stop")) {
+    return polkit.Result.YES;
+  }
   // Theme Settings > Boot screen. Only these four instances exist.
   if (/^tessera-boot-theme@(tessera|bgrt|spinner|details)\.service$/.test(unit) && (verb === "start" || verb === "stop")) {
     return polkit.Result.YES;

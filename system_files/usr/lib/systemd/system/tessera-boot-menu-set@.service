@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Theme Settings > Boot menu: %i is on (Tessera's) or off (GRUB's own). Started on demand by Tessera
+# (see 49-tessera-update.rules); leaves what it printed in /run/tessera-update/bootmenu.log.
+[Unit]
+Description=Tessera: boot menu %i
+RequiresMountsFor=/boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tessera/boot-menu %i
+StandardOutput=truncate:/run/tessera-update/bootmenu.log
+StandardError=inherit

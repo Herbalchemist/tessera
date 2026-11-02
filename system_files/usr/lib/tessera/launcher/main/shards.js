@@ -149,6 +149,8 @@ function stopShard(id) {
 
 // Called once the page has loaded and settings are read; safe to call again (only starts what isn't running).
 function startEnabled() {
+  // Started with safe settings (boot menu > Boot options): no shards this time, so a broken one can't get in the way.
+  if (process.env.TESSERA_SAFE === '1') return;
   for (const id of enabledIds()) if (!running.has(id)) startShard(id);
 }
 

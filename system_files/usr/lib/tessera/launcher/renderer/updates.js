@@ -199,15 +199,15 @@ function updateWatch(kind, hint = {}) {
       return [{ label: 'Stop', op: 'stop', plain: true }];
     };
     const bodyNow = () => {
-      if (mode === 'ask') return kind === 'boot' ? 'Stop changing the boot screen?\nNothing is changed until it finishes.' : kind === 'rollback' ? 'Stop going back?\nNothing is changed until it finishes.' : 'Stop the update?\nWhat is already downloaded is kept for next time.';
+      if (mode === 'ask') return kind === 'boot' || kind === 'bootmenu' ? 'Stop changing the boot screen?\nNothing is changed until it finishes.' : kind === 'rollback' ? 'Stop going back?\nNothing is changed until it finishes.' : 'Stop the update?\nWhat is already downloaded is kept for next time.';
       if (mode === 'stopping') return '';
-      const what = kind === 'boot' ? `Setting the boot screen to ${hint.name || 'your choice'}` : kind === 'rollback' ? 'Setting up the previous version' : kind === 'check' ? 'Looking for a newer version' : kind === 'graphics' ? `Downloading the ${hint.name || 'new'} build` : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
+      const what = kind === 'bootmenu' ? `Setting the boot menu to ${hint.name || 'your choice'}` : kind === 'boot' ? `Setting the boot screen to ${hint.name || 'your choice'}` : kind === 'rollback' ? 'Setting up the previous version' : kind === 'check' ? 'Looking for a newer version' : kind === 'graphics' ? `Downloading the ${hint.name || 'new'} build` : hint.version ? `Downloading version ${hint.version}` : 'Downloading the update';
       const status = [what, kind === 'apply' && hint.size ? `about ${hint.size}` : '', fmtClock(p.elapsed)].filter(Boolean).join(' · ');
       const big = kind === 'apply' || kind === 'graphics';
       return [status, big ? 'Keep the console on until this finishes.' : '', big ? p.line : '', note].filter(Boolean).join('\n');
     };
     openList({
-      title: kind === 'boot' ? 'Boot screen' : kind === 'check' ? 'Checking for updates' : kind === 'rollback' ? 'Going back' : kind === 'graphics' ? 'Switching graphics build' : 'Updating',
+      title: kind === 'bootmenu' ? 'Boot menu' : kind === 'boot' ? 'Boot screen' : kind === 'check' ? 'Checking for updates' : kind === 'rollback' ? 'Going back' : kind === 'graphics' ? 'Switching graphics build' : 'Updating',
       items: itemsNow(),
       index: 0,
       body: bodyNow(),
