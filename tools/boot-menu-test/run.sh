@@ -30,6 +30,7 @@ if [ -n "${FEDORA:-}" ]; then
     for s in 16 20 28; do grub2-mkfont -n Tessera -s \$s -r '$range' -o /w/src/fonts/tessera-\$s.pf2 \$reg; done
     grub2-mkfont -n Tessera -s 28 -r '$range' -o /w/src/fonts/tessera-bold-28.pf2 \$bold
     cp /usr/share/grub/unicode.pf2 /w/fedora/ 2>/dev/null || true
+    cd /tmp && dnf -y -q download kernel-core >/dev/null && rpm2cpio kernel-core-*.rpm | cpio -idm --quiet './lib/modules/*/vmlinuz' && cp lib/modules/*/vmlinuz /w/fedora/vmlinuz
     chmod -R a+rwX /w"
   cat "$W/fedora/versions.txt"; mkdir -p "$OUT"; cp "$W/fedora/versions.txt" "$OUT/fedora-versions.txt"
 else
@@ -38,7 +39,12 @@ else
 fi
 cp /usr/share/grub/unicode.pf2 "$W/boot/grub2/" 2>/dev/null || true
 mkdir -p "$W/boot/grub2/fonts"; cp /usr/share/grub/unicode.pf2 "$W/boot/grub2/fonts/" 2>/dev/null || true
-cp "$ROOT/tools/boot-menu-test/grub.cfg" "$W/boot/grub2/grub.cfg"
+if [ -n "${FEDORA:-}" ]; then
+  # Fedora's GRUB has blscfg built in: the stand-in's function is dropped, the real one reads the entries
+  python3 -c "import re,sys; s=open(sys.argv[1]).read(); print(re.sub(r'function blscfg \{.*?\n\}\n', '', s, flags=re.S), end='')" "$ROOT/tools/boot-menu-test/grub.cfg" > "$W/boot/grub2/grub.cfg"
+else
+  cp "$ROOT/tools/boot-menu-test/grub.cfg" "$W/boot/grub2/grub.cfg"
+fi
 grub-editenv "$W/boot/grub2/grubenv" create
 TESSERA_BOOT="$W/boot" TESSERA_SRC="$W/src" TESSERA_ETC="$W/etc" bash "$ROOT/system_files/usr/libexec/tessera/boot-menu"
 
@@ -65,6 +71,18 @@ if [ -n "${FEDORA:-}" ]; then
   mcopy -i "$W/iso/efiboot.img" "$W/fedora/shimx64.efi" ::/EFI/BOOT/BOOTX64.EFI
   for d in BOOT fedora; do mcopy -i "$W/iso/efiboot.img" "$W/fedora/grubx64.efi" ::/EFI/$d/grubx64.efi; mcopy -i "$W/iso/efiboot.img" "$W/stub.cfg" ::/EFI/$d/grub.cfg; done
   mkdir -p "$W/iso/EFI/BOOT" "$W/iso/EFI/fedora"; cp "$W/stub.cfg" "$W/iso/EFI/BOOT/grub.cfg"; cp "$W/stub.cfg" "$W/iso/EFI/fedora/grub.cfg"
+  # Real boot entries, the way ostree writes them (the newest has the higher version), for Fedora's
+  # own blscfg; the "system" is Fedora's kernel with an initrd that only reports what it was started
+  # with, on the serial port, and powers off.
+  cp "$W/fedora/vmlinuz" "$W/iso/vmlinuz"
+  mkdir -p "$W/initrd/bin" "$W/iso/loader/entries"
+  cp "$(command -v busybox)" "$W/initrd/bin/busybox"
+  printf '#!/bin/busybox sh\n/bin/busybox mkdir -p /proc /dev\n/bin/busybox mount -t proc proc /proc\n/bin/busybox mount -t devtmpfs dev /dev\necho "TESSERA-BOOTED $(/bin/busybox cat /proc/cmdline)" > /dev/ttyS0\n/bin/busybox sleep 2\n/bin/busybox poweroff -f\n' > "$W/initrd/init"
+  chmod 755 "$W/initrd/init"
+  (cd "$W/initrd" && find . | cpio -o -H newc --quiet) | gzip > "$W/iso/initrd.img"
+  for n in 0 1; do
+    printf 'title Tessera 43.2026110%s.0 (ostree:%s)\nversion %s\noptions console=ttyS0,115200 tessera_booted=ostree:%s\nlinux /vmlinuz\ninitrd /initrd.img\n' "$((1 - n))" "$n" "$((2 - n))" "$n" > "$W/iso/loader/entries/ostree-$((2 - n))-default.conf"
+  done
   xorriso -as mkisofs -quiet -R -J -o "$W/system.iso" -e efiboot.img -no-emul-boot "$W/iso"
 else
   grub-mkrescue -o "$W/system.iso" "$W/iso"

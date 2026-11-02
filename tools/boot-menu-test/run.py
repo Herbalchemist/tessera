@@ -3,7 +3,8 @@
 # Boots GRUB with Tessera's boot menu in QEMU (UEFI) and drives it with key presses, the way a
 # person at the machine would. Screenshots go to OUT; what each start chose is read back from
 # GRUB's settings file (the stand-in boot entries save tessera_booted there).
-import os, socket, subprocess, sys, time, shutil
+import os, re, socket, subprocess, sys, time, shutil
+FEDORA = bool(os.environ.get('FEDORA'))
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -110,6 +111,10 @@ def scenario(name, steps, expect):
         time.sleep(1.5)
         vm.stop()
     env = grubenv()
+    if FEDORA:  # the real kernel says which entry started it, on the serial port
+        log = open(f'{OUT}/{name}-serial.log', errors='replace').read()
+        m = re.search(r'TESSERA-BOOTED .*?tessera_booted=(\S+)', log)
+        env['tessera_booted'] = m.group(1) if m else None
     got = {k: env.get(k) for k in ('tessera_booted', 'tessera_once')}
     want = {'tessera_booted': expect['booted'], 'tessera_once': expect.get('once')}
     ok = got == want
@@ -117,6 +122,16 @@ def scenario(name, steps, expect):
     print(results[-1], flush=True)
 
 def wait_boot(vm, label='booted'):
+    if FEDORA:  # a real kernel: it reports on the serial port, then powers the machine off
+        end = time.time() + 60
+        while time.time() < end and vm.p.poll() is None:
+            if 'TESSERA-BOOTED' in open(f'{OUT}/{vm.name}-serial.log', errors='replace').read(): break
+            time.sleep(0.5)
+        try: vm.shot(label)
+        except Exception: pass
+        if 'TESSERA-BOOTED' not in open(f'{OUT}/{vm.name}-serial.log', errors='replace').read():
+            raise AssertionError(f'{vm.name}: no started system within 60s')
+        return
     try: vm.wait(is_booted, 'started system', 30)
     finally: vm.shot(label)
 
@@ -149,6 +164,7 @@ def s_enter(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('ret'); wait_boot(vm)
 def s_fallback(vm):
     # after a failed update GRUB's own fallback picks entry 1: Tessera's menu stays out of the way
+    if FEDORA: return wait_boot(vm)
     vm.wait(lambda im: is_plain(im) or is_booted(im), 'GRUB menu', 60); vm.shot('fallback-menu'); wait_boot(vm)
 
 scenario('wait', s_wait, {'booted': 'ostree:0'})
