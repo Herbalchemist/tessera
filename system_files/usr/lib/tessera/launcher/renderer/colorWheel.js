@@ -187,6 +187,20 @@ async function flowBootScreen(info) {
   if (r.result === 'bootset') setStatus(`Done. The ${BOOT_SCREENS[pickB.id].name} boot screen shows from the next restart.`);
   else { const end = updateEnd(r); if (end) setStatus(end, r.result === 'error'); }
 }
+// Theme Settings > Boot menu: Tessera's (a wait screen with the empty tile spots, O or F2 for Boot
+// options: Desktop Mode, safe settings, a repair console, the previous version...) or GRUB's own list.
+async function flowBootMenu(info) {
+  const pickM = await pick('Boot menu', [
+    { label: 'Tessera', sub: info.menu === 'on' ? 'current' : 'wait screen; O opens Boot options', id: 'on' },
+    { label: "GRUB's menu", sub: info.menu === 'off' ? 'current' : 'the list of system versions', id: 'off' },
+  ], info.menu === 'off' ? 1 : 0, { body: "Shown for 3 seconds when the machine starts. Tessera's shows the empty tile spots; press O (or F2) on a keyboard for Boot options: Desktop Mode, safe settings, a repair console, the previous version. Needs the admin PIN." });
+  if (!pickM || pickM.id === info.menu) return;
+  if (!(await requirePin())) return;
+  const bad = await updateStart('bootmenu', { menu: pickM.id });
+  const r = bad || (await updateWatch('bootmenu', { name: pickM.label }));
+  if (r.result === 'bootmenu') setStatus(pickM.id === 'on' ? "Done. Tessera's boot menu shows from the next start." : "Done. GRUB's menu shows from the next start.");
+  else { const end = updateEnd(r); if (end) setStatus(end, r.result === 'error'); }
+}
 async function flowTheme() {
   if (modal || busy) return;
   let index = 1;
@@ -212,6 +226,8 @@ async function flowTheme() {
       const shown = boot.pending || boot.current;
       items.push({ label: 'Boot screen', header: true });
       items.push({ label: BOOT_SCREENS[shown].name, sub: boot.pending ? 'shows after the next restart' : 'for everyone on this machine', op: 'boot', boot, plain: true });
+      items.push({ label: 'Boot menu', header: true });
+      items.push({ label: boot.menu === 'off' ? "GRUB's menu" : 'Tessera', sub: boot.menu === 'off' ? 'the list of system versions' : 'wait screen; O opens Boot options', op: 'bootmenu', boot, plain: true });
     }
     items.push({ label: 'Your themes', header: true });
     items.push({ label: 'Save current as a new theme…', op: 'saveNew', plain: true });
@@ -225,6 +241,10 @@ async function flowTheme() {
     const it = await pick('Theme Settings', items, index);
     if (!it) return;
     index = items.indexOf(it);
+    if (it.op === 'bootmenu') {
+      await flowBootMenu(it.boot);
+      continue;
+    }
     if (it.op === 'boot') {
       await flowBootScreen(it.boot);
       continue;

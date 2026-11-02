@@ -1,0 +1,92 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Puts Tessera's boot menu (the wait screen with the empty tile spots, and Boot options) in front of
+# GRUB's own menu, or takes it away again. Run as root at every start by tessera-boot-menu.service,
+# and by tessera-boot-menu-set@.service when Theme Settings > Boot menu changes.
+#
+# The image can't change /boot itself, so the files are copied there from /usr/share/tessera/grub
+# into /boot/grub2/tessera, and one marked block is added to /boot/grub2/custom.cfg, the file every
+# GRUB set-up here reads last (bootupd's static config and grub2-mkconfig's 41_custom both do). The
+# rest of custom.cfg (your own entries, for instance another system) is never touched.
+#
+# Off: /etc/tessera/plain-boot-menu exists (Theme Settings > Boot menu > GRUB's menu). Then the
+# block and the folder are removed and GRUB's own menu shows as before.
+#
+#   boot-menu            make /boot match the setting (does nothing if it already does)
+#   boot-menu on|off     change the setting first
+#
+# TESSERA_BOOT / TESSERA_SRC / TESSERA_ETC are only for tests.
+set -euo pipefail
+BOOT="${TESSERA_BOOT:-/boot}"
+SRC="${TESSERA_SRC:-/usr/share/tessera/grub}"
+ETC="${TESSERA_ETC:-/etc/tessera}"
+G="$BOOT/grub2"
+DEST="$G/tessera"
+CUSTOM="$G/custom.cfg"
+BEGIN='### BEGIN tessera-boot-menu'
+END='### END tessera-boot-menu'
+say() { echo "tessera-boot-menu: $*"; }
+
+case "${1:-}" in
+  on) mkdir -p "$ETC"; rm -f "$ETC/plain-boot-menu"; say "setting: Tessera's boot menu" ;;
+  off) mkdir -p "$ETC"; : >"$ETC/plain-boot-menu"; say "setting: GRUB's own menu" ;;
+  "") ;;
+  *) echo "usage: boot-menu [on|off]" >&2; exit 2 ;;
+esac
+want=on
+[ -e "$ETC/plain-boot-menu" ] && want=off
+
+if [ ! -d "$G" ]; then say "no $G (GRUB isn't set up like this here): nothing to do"; exit 0; fi
+if [ "$want" = on ] && [ ! -f "$SRC/splash.cfg" ]; then say "no $SRC/splash.cfg: nothing to do"; exit 0; fi
+
+hook() {
+  cat <<HOOKEOF
+$BEGIN
+# Tessera's boot menu: a wait screen, then the newest version starts; O opens Boot options.
+# Written by tessera-boot-menu.service. Theme Settings > Boot menu turns it off; or delete this block.
+# It only steps in when the normal choice is the newest version (not after a failed update).
+if [ -z "\${tessera_plain}" -a -f "\${prefix}/tessera/splash.cfg" ]; then
+  if [ -z "\${default}" -o "\${default}" = "0" ]; then
+    configfile "\${prefix}/tessera/splash.cfg"
+  fi
+fi
+$END
+HOOKEOF
+}
+# custom.cfg without our block
+others() { [ -f "$CUSTOM" ] && awk -v b="$BEGIN" -v e="$END" '$0==b{skip=1;next} $0==e{skip=0;next} !skip' "$CUSTOM" || true; }
+
+# What /boot should look like, and whether it already does.
+if [ "$want" = on ]; then
+  wanted_custom="$( { others; hook; } )"
+  same_files=1
+  if [ -d "$DEST" ]; then diff -rq "$SRC" "$DEST" >/dev/null 2>&1 || same_files=0; else same_files=0; fi
+else
+  wanted_custom="$(others)"
+  same_files=1; [ -e "$DEST" ] && same_files=0
+fi
+have_custom="$( [ -f "$CUSTOM" ] && cat "$CUSTOM" || true )"
+if [ "$same_files" = 1 ] && [ "$have_custom" = "$wanted_custom" ]; then say "already $want"; exit 0; fi
+
+# /boot is usually mounted read-only on these systems: open it for the change, close it after.
+remounted=0
+if [ -z "${TESSERA_BOOT:-}" ] && findmnt -no OPTIONS "$BOOT" 2>/dev/null | tr ',' '\n' | grep -qx ro; then
+  mount -o remount,rw "$BOOT"; remounted=1
+fi
+close() { [ "$remounted" = 1 ] && mount -o remount,ro "$BOOT" || true; }
+trap close EXIT
+
+if [ "$want" = on ]; then
+  rm -rf "$DEST.new"; cp -a "$SRC" "$DEST.new"
+  rm -rf "$DEST"; mv "$DEST.new" "$DEST"
+else
+  rm -rf "$DEST"
+fi
+if [ -z "$wanted_custom" ]; then
+  rm -f "$CUSTOM"
+else
+  printf '%s\n' "$wanted_custom" >"$CUSTOM.tmp.$$"; mv -f "$CUSTOM.tmp.$$" "$CUSTOM"
+fi
+sync
+say "now $want"

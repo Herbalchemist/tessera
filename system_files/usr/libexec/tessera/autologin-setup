@@ -63,6 +63,14 @@ if [ -z "$user" ]; then
 fi
 [ -n "$user" ] || off "no normal user account yet"
 
+# Boot options > "Start in Desktop Mode (this time)": the desktop session for this start only
+# (tessera-boot-once leaves the note in /run, which is empty again at the next start).
+session=tessera.desktop
+if [ "$(cat "$ROOT/run/tessera/boot-once" 2>/dev/null)" = desktop ]; then
+  for s in plasma.desktop plasmawayland.desktop; do
+    if [ -f "$ROOT/usr/share/wayland-sessions/$s" ]; then session="$s"; say "this start: the desktop ($s), chosen in Boot options"; break; fi
+  done
+fi
 if [ "$kind" = sddm ]; then conf="$SDDM_CONF"; rm -f "$PLASMA_CONF"; else conf="$PLASMA_CONF"; rm -f "$SDDM_CONF"; fi
 mkdir -p "$(dirname "$conf")"
 tmp="$conf.tmp.$$"
@@ -70,11 +78,11 @@ cat >"$tmp" <<CONFEOF
 # Written by tessera-autologin.service at boot. Do not edit: see autologin-setup.
 [Autologin]
 User=$user
-Session=tessera.desktop
+Session=$session
 Relogin=false
 CONFEOF
 mv -f "$tmp" "$conf"
-say "$kind: will log in $user to Tessera at boot ($conf)"
+say "$kind: will log in $user to ${session%.desktop} at boot ($conf)"
 
 # Plasma Login Manager gives the main file priority over drop-ins. If something
 # (for instance Plasma's own autologin setting) already put a user there, ours

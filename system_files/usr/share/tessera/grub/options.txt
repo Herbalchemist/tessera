@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Tessera's boot menu: Boot options (GRUB theme).
+title-text: ""
+desktop-color: "#0d0c12"
+terminal-font: "Tessera Regular 16"
+
++ image {
+  left = 50%-32
+  top = 10%
+  width = 64
+  height = 64
+  file = "symbol.png"
+}
++ label {
+  left = 0
+  top = 10%+80
+  width = 100%
+  height = 40
+  align = "center"
+  color = "#ece8f5"
+  font = "Tessera Bold 28"
+  text = "Boot options"
+}
++ boot_menu {
+  left = 50%-330
+  top = 10%+140
+  width = 660
+  height = 62%
+  item_font = "Tessera Regular 20"
+  selected_item_font = "Tessera Regular 20"
+  item_color = "#c9c4d8"
+  selected_item_color = "#17132a"
+  item_height = 40
+  item_padding = 14
+  item_spacing = 4
+  icon_width = 0
+  icon_height = 0
+  selected_item_pixmap_style = "select_*.png"
+  scrollbar = false
+}
++ label {
+  left = 0
+  top = 100%-56
+  width = 100%
+  height = 24
+  align = "center"
+  color = "#6f6a80"
+  font = "Tessera Regular 16"
+  text = "Up / Down  choose      Enter  start      Esc  back"
+}

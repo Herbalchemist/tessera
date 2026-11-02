@@ -1,0 +1,57 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Boot options > "this time" starts: the boot menu leaves tessera_once=desktop|safe|console in
+# GRUB's settings file (grubenv). Early in the start, before the login screen, this reads it,
+# clears it (so the next start is normal again) and leaves a note in /run/tessera/boot-once:
+#   desktop  tessera-autologin signs in to the desktop instead of Tessera
+#   safe     tessera-session starts Tessera without display calibration and shards
+#   console  the login screen doesn't start (sddm/plasmalogin drop-ins check /run/tessera/console-once):
+#            a text login on the screen, for repairs
+# Run as root by tessera-boot-once.service. TESSERA_BOOT / TESSERA_RUN are only for tests.
+set -u
+BOOT="${TESSERA_BOOT:-/boot}"
+RUN="${TESSERA_RUN:-/run/tessera}"
+say() { echo "tessera-boot-once: $*"; }
+EDITENV=$(command -v grub2-editenv || command -v grub-editenv || true)
+[ -n "$EDITENV" ] || { say "no grub2-editenv"; exit 0; }
+
+mode=""
+files=()
+for f in "$BOOT/grub2/grubenv" "$BOOT"/efi/EFI/*/grubenv; do
+  [ -f "$f" ] || continue
+  v=$("$EDITENV" "$f" list 2>/dev/null | sed -n 's/^tessera_once=//p' | head -n1)
+  [ -n "$v" ] && { mode="$v"; files+=("$f"); }
+done
+[ -n "$mode" ] || exit 0
+
+# clear it first: whatever happens, the next start is a normal one
+remounted=0
+if [ -z "${TESSERA_BOOT:-}" ] && findmnt -no OPTIONS "$BOOT" 2>/dev/null | tr ',' '\n' | grep -qx ro; then
+  mount -o remount,rw "$BOOT" && remounted=1
+fi
+cleared=1
+for f in "${files[@]}"; do "$EDITENV" "$f" unset tessera_once || cleared=0; done
+[ "$remounted" = 1 ] && mount -o remount,ro "$BOOT"
+# A mode that can't be cleared would come back at every start: then this start is a normal one.
+if [ "$cleared" = 0 ]; then say "couldn't clear tessera_once ($mode): starting normally"; exit 0; fi
+
+mkdir -p "$RUN"; chmod 755 "$RUN"
+case "$mode" in
+  desktop|safe) echo "$mode" >"$RUN/boot-once"; chmod 644 "$RUN/boot-once"; say "this start: $mode" ;;
+  console)
+    echo console >"$RUN/boot-once"; chmod 644 "$RUN/boot-once"; : >"$RUN/console-once"
+    mkdir -p /run/issue.d 2>/dev/null && cat >/run/issue.d/50-tessera-repair.issue 2>/dev/null <<'ISSUE'
+
+  Tessera repair console (chosen in Boot options; the next start is normal again).
+  Log in with your account. Things that may help:
+    sudo systemctl enable tessera-autologin.service   start in Tessera again at boot
+    tessera-fix-graphics                              the build for this graphics card
+    sudo bootc rollback                               go back to the previous version
+    sudo reboot                                       restart
+
+ISSUE
+    say "this start: repair console (no login screen)" ;;
+  *) say "unknown tessera_once '$mode': ignored" ;;
+esac
+exit 0

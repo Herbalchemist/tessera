@@ -157,11 +157,15 @@ function onRelease(n) {
 const reveal = () => document.body.classList.remove('hold');
 setTimeout(() => { if (!modal) reveal(); }, 8000); // never leave the screen blank
 let lowWarned = false;
+let safeSaid = false;
 api.onDriveAdded((d) => offerDrive(d));
 api.onInit((payload) => {
   applyView(payload);
   if (payload.error) setStatus(payload.error, true);
-  else if (!lowWarned && payload.prefs && payload.prefs.storage && payload.prefs.storage.low.length) {
+  else if (payload.prefs && payload.prefs.safe && !safeSaid) {
+    safeSaid = true;
+    setStatus('Started with safe settings: display calibration and shards are off until the next restart.');
+  } else if (!lowWarned && payload.prefs && payload.prefs.storage && payload.prefs.storage.low.length) {
     lowWarned = true;
     const l = payload.prefs.storage.low[0];
     setStatus(`Low storage: ${l.name} has ${fmtBytes(l.free)} left. Settings > Storage can help free some up.`, true);

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Keeps Tessera's boot menu in /boot up to date with this version (or removed, if Theme Settings >
+# Boot menu says GRUB's menu). See /usr/libexec/tessera/boot-menu.
+[Unit]
+Description=Tessera: boot menu in /boot
+After=local-fs.target
+RequiresMountsFor=/boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tessera/boot-menu
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Boot options > "this time" starts (Desktop Mode, safe settings, repair console): reads and clears
+# tessera_once from GRUB's settings file before the login screen. See /usr/libexec/tessera/boot-once.
+[Unit]
+Description=Tessera: a different start chosen in the boot menu, this time only
+After=local-fs.target
+Before=tessera-autologin.service display-manager.service sddm.service plasmalogin.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/tessera/boot-once
+
+[Install]
+WantedBy=multi-user.target

@@ -33,10 +33,15 @@ fi
 # writes a shader there only if the person turned that on. If Gamescope can't
 # start with it, it is dropped for this session and a note is left so Tessera
 # can say so, and nobody is ever locked out by it.
+# Boot options > "Start Tessera with safe settings (this time)": no display calibration and no
+# shards for this start (the launcher reads TESSERA_SAFE), so a setting gone wrong can be undone.
+SAFE=""
+[ "$(cat /run/tessera/boot-once 2>/dev/null)" = safe ] && SAFE=1
+[ -n "$SAFE" ] && export TESSERA_SAFE=1
 CAL_FX="${XDG_DATA_HOME:-$HOME/.local/share}/tessera/calibration/tessera-calibration.fx"
 CAL_FAILED="$STATE/calibration-failed"
 FX_ARGS=()
-if [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q -- '--reshade-effect'; then
+if [ -z "$SAFE" ] && [ -f "$CAL_FX" ] && [ ! -f "$CAL_FAILED" ] && gamescope --help 2>&1 | grep -q -- '--reshade-effect'; then
   FX_ARGS=(--reshade-effect "$CAL_FX")
   export TESSERA_CAL_SYSTEM=1
 fi

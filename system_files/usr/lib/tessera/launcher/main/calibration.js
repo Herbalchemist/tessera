@@ -88,7 +88,8 @@ function syncCalFx() {
   } catch { /* can't write: the page filter still works */ }
 }
 function calPayload() {
-  const c = prefs.settings.calibration;
+  // Started with safe settings (boot menu > Boot options): show the picture as it is this time.
+  const c = process.env.TESSERA_SAFE === '1' && prefs.settings.calibration ? { ...prefs.settings.calibration, enabled: false } : prefs.settings.calibration;
   const systemActive = process.env.TESSERA_CAL_SYSTEM === '1' && prefs.settings.calibrationSystem && Boolean(c && c.enabled);
   return {
     cal: c, // null = never calibrated
