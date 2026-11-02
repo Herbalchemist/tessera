@@ -1,0 +1,75 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Prints "WIDTH HEIGHT" of the desktop's main screen, in pixels, as it is set now.
+
+Ludus on top of Opus runs inside a nested gamescope, which doesn't look at the screen: without a
+size it makes a 1280x720 picture and stretches it, so an ultrawide (or any non-16:9 screen) gets
+the wrong shape. tessera-session gives gamescope this size instead.
+
+Asks KDE first (kscreen-doctor -j: the enabled output with the highest priority, its current mode,
+turned if the screen is rotated), then X (xrandr: the primary output's current mode). Prints
+nothing when neither answers. TESSERA_KSCREEN_JSON / TESSERA_XRANDR are only for tests.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+
+def from_kscreen(text):
+    try:
+        outs = [o for o in json.loads(text).get("outputs", []) if o.get("enabled") and o.get("connected", True)]
+    except (ValueError, AttributeError):
+        return None
+    # priority 1 is the main screen (0 or missing on older KDE: then the first one)
+    outs.sort(key=lambda o: (o.get("priority") in (0, None), o.get("priority") or 0))
+    for o in outs:
+        mode = next((m for m in o.get("modes", []) if str(m.get("id")) == str(o.get("currentModeId"))), None)
+        size = (mode or {}).get("size") or {}
+        w, h = int(size.get("width") or 0), int(size.get("height") or 0)
+        if w > 0 and h > 0:
+            if o.get("rotation") in (2, 8):  # turned left or right
+                w, h = h, w
+            return w, h
+    return None
+
+
+def from_xrandr(text):
+    lines = text.splitlines()
+    for want_primary in (True, False):
+        on = False
+        for line in lines:
+            if not line.startswith((" ", "\t")):
+                on = " connected" in line and (not want_primary or " primary" in line)
+                m = re.search(r" connected (?:primary )?(\d+)x(\d+)\+", line)
+                if on and m:
+                    return int(m.group(1)), int(m.group(2))
+            elif on and "*" in line:
+                m = re.match(r"\s*(\d+)x(\d+)", line)
+                if m:
+                    return int(m.group(1)), int(m.group(2))
+    return None
+
+
+def run(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def main():
+    ks = os.environ.get("TESSERA_KSCREEN_JSON")
+    size = from_kscreen(open(ks).read() if ks else run(["kscreen-doctor", "-j"]))
+    if not size:
+        xr = os.environ.get("TESSERA_XRANDR")
+        size = from_xrandr(open(xr).read() if xr else run(["xrandr", "--current"]))
+    if size and 320 <= size[0] <= 16384 and 240 <= size[1] <= 16384:
+        print(f"{size[0]} {size[1]}")
+        return 0
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
