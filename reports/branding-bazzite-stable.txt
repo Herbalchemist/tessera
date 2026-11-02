@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-7c8001c5e3b0cat: /etc/machine-info: No such file or directory
+c2a73db21732cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -1924,7 +1924,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Oct 31 01:54 ..
+drwxr-xr-x 1 root root 4096 Nov  2 01:29 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1946,7 +1946,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Oct 31 01:54 ..
+dr-xr-xr-x 1 root root 4096 Nov  2 01:29 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2219,3 +2219,271 @@ graphical.target
 lrwxrwxrwx 2 root root 43 Jan  1  1970 /etc/systemd/system/display-manager.service -> /usr/lib/systemd/system/plasmalogin.service
 
 ===== DETAIL2 end =====
+
+===== DETAIL4 boot menu (GRUB via bootupd) =====
+/usr/lib/bootupd:
+total 16
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 grub2-static
+drwxr-xr-x 1 root root 4096 Jan  1  1970 updates
+
+/usr/lib/bootupd/grub2-static:
+total 20
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+drwxr-xr-x 1 root root 4096 Jan  1  1970 configs.d
+-rw-r--r-- 2 root root  657 Jan  1  1970 grub-static-efi.cfg
+-rw-r--r-- 2 root root 1995 Jan  1  1970 grub-static-pre.cfg
+
+/usr/lib/bootupd/grub2-static/configs.d:
+total 32
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  277 Jan  1  1970 01_users.cfg
+-rw-r--r-- 2 root root  657 Jan  1  1970 08_greenboot.cfg
+-rw-r--r-- 2 root root    7 Jan  1  1970 10_blscfg.cfg
+-rw-r--r-- 2 root root  321 Jan  1  1970 14_menu_show_once.cfg
+-rw-r--r-- 2 root root  157 Jan  1  1970 30_uefi-firmware.cfg
+-rw-r--r-- 2 root root   66 Jan  1  1970 41_custom.cfg
+
+/usr/lib/bootupd/updates:
+total 16
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  165 Jan  1  1970 BIOS.json
+-rw-r--r-- 2 root root  209 Jan  1  1970 EFI.json
+--- /usr/lib/bootupd/grub2-static/configs.d/08_greenboot.cfg
+# greenboot support, aka boot counter and boot success reporting
+# This will be installed via bootupd
+insmod increment
+# Check if boot_counter exists and boot_success=0 to activate this behavior.
+if [ -n "${boot_counter}" -a "${boot_success}" = "0" ]; then
+  # if countdown has ended, choose to boot rollback deployment,
+  # i.e. default=1 on OSTree-based systems.
+  if  [ "${boot_counter}" = "0" -o "${boot_counter}" = "-1" ]; then
+    set default=1
+    set boot_counter=-1
+  # otherwise decrement boot_counter
+  else
+    decrement boot_counter
+  fi
+  save_env boot_counter
+fi
+
+# Reset boot_success for current boot
+set boot_success=0
+save_env boot_success--- /usr/lib/bootupd/grub2-static/configs.d/10_blscfg.cfg
+blscfg
+--- /usr/lib/bootupd/grub2-static/configs.d/14_menu_show_once.cfg
+# Force the menu to be shown once, with a timeout of ${menu_show_once_timeout}
+# if requested by ${menu_show_once_timeout} being set in the env.
+if [ "${menu_show_once_timeout}" ]; then
+  set timeout_style=menu
+  set timeout="${menu_show_once_timeout}"
+  unset menu_show_once_timeout
+  save_env menu_show_once_timeout
+fi
+--- /usr/lib/bootupd/grub2-static/configs.d/01_users.cfg
+# Keep the comment for grub2-set-password
+### BEGIN /etc/grub.d/01_users ###
+if [ -f ${prefix}/user.cfg ]; then
+  source ${prefix}/user.cfg
+  if [ -n "${GRUB2_PASSWORD}" ]; then
+    set superusers="root"
+    export superusers
+    password_pbkdf2 root ${GRUB2_PASSWORD}
+  fi
+fi
+--- /usr/lib/bootupd/grub2-static/configs.d/41_custom.cfg
+if [ -f $prefix/custom.cfg ]; then
+  source $prefix/custom.cfg
+fi
+--- /usr/lib/bootupd/grub2-static/configs.d/30_uefi-firmware.cfg
+if [ "$grub_platform" = "efi" ]; then
+        menuentry 'UEFI Firmware Settings' $menuentry_id_option 'uefi-firmware' {
+                fwsetup
+        }
+fi
+--- /usr/lib/bootupd/grub2-static/grub-static-efi.cfg
+if [ -e (md/md-boot) ]; then
+  # The search command might pick a RAID component rather than the RAID,
+  # since the /boot RAID currently uses superblock 1.0.  See the comment in
+  # the main grub.cfg.
+  set prefix=md/md-boot
+else
+  if [ -f ${config_directory}/bootuuid.cfg ]; then
+    source ${config_directory}/bootuuid.cfg
+  fi
+  if [ -n "${BOOT_UUID}" ]; then
+    search --fs-uuid "${BOOT_UUID}" --set prefix --no-floppy
+  else
+    search --label boot --set prefix --no-floppy
+  fi
+fi
+if [ -d ($prefix)/grub2 ]; then
+  set prefix=($prefix)/grub2
+  configfile $prefix/grub.cfg
+else
+  set prefix=($prefix)/boot/grub2
+  configfile $prefix/grub.cfg
+fi
+boot
+
+--- /usr/lib/bootupd/grub2-static/grub-static-pre.cfg
+# This file is copied from https://github.com/coreos/coreos-assembler/blob/0eb25d1c718c88414c0b9aedd19dc56c09afbda8/src/grub.cfg
+# Changes:
+#   - Dropped Ignition glue, that can be injected into platform.cfg
+# petitboot doesn't support -e and doesn't support an empty path part
+if [ -d (md/md-boot)/grub2 ]; then
+  # fcct currently creates /boot RAID with superblock 1.0, which allows
+  # component partitions to be read directly as filesystems.  This is
+  # necessary because transposefs doesn't yet rerun grub2-install on BIOS,
+  # so GRUB still expects /boot to be a partition on the first disk.
+  #
+  # There are two consequences:
+  # 1. On BIOS and UEFI, the search command might pick an individual RAID
+  #    component, but we want it to use the full RAID in case there are bad
+  #    sectors etc.  The undocumented --hint option is supposed to support
+  #    this sort of override, but it doesn't seem to work, so we set $boot
+  #    directly.
+  # 2. On BIOS, the "normal" module has already been loaded from an
+  #    individual RAID component, and $prefix still points there.  We want
+  #    future module loads to come from the RAID, so we reset $prefix.
+  #    (On UEFI, the stub grub.cfg has already set $prefix properly.)
+  set boot=md/md-boot
+  set prefix=($boot)/grub2
+else
+  if [ -f ${config_directory}/bootuuid.cfg ]; then
+    source ${config_directory}/bootuuid.cfg
+  fi
+  if [ -n "${BOOT_UUID}" ]; then
+    search --fs-uuid "${BOOT_UUID}" --set boot --no-floppy
+  else
+    search --label boot --set boot --no-floppy
+  fi
+fi
+set root=$boot
+
+if [ -f ${config_directory}/grubenv ]; then
+  load_env -f ${config_directory}/grubenv
+elif [ -s $prefix/grubenv ]; then
+  load_env
+fi
+
+if [ -f $prefix/console.cfg ]; then
+  # Source in any GRUB console settings if provided by the user/platform
+  source $prefix/console.cfg
+fi
+
+menuentry_id_option="--id"
+
+function load_video {
+  insmod all_video
+}
+
+set timeout_style=menu
+set timeout=1
+
+# Other package code will be injected from here
+--- bootupd update payloads
+/usr/lib/bootupd/updates
+/usr/lib/bootupd/updates/BIOS.json
+/usr/lib/bootupd/updates/EFI.json
+--- EFI GRUB modules built in (strings)
+--- grub fonts and themes
+ls: cannot access '/usr/share/grub/themes': No such file or directory
+ls: cannot access '/boot/grub2/themes': No such file or directory
+/usr/share/grub:
+ascii.pf2
+euro.pf2
+grub-mkconfig_lib
+unicode.pf2
+/usr/sbin/grub2-mkfont
+/usr/sbin/bootupctl
+/usr/sbin/grub2-editenv
+--- ujust grub recipes
+/usr/share/ublue-os/just/00-default.just:79:      --exclude="grub" \
+/usr/share/ublue-os/just/00-default.just-80-      --exclude="system.control*" \
+/usr/share/ublue-os/just/00-default.just-81-      --exclude="cdi" \
+/usr/share/ublue-os/just/00-default.just-82-      --exclude="default.target" \
+/usr/share/ublue-os/just/00-default.just-83-      /usr/etc /etc 2>/dev/null | sed '/Binary\ files\ /d'
+/usr/share/ublue-os/just/00-default.just-84-
+/usr/share/ublue-os/just/00-default.just-85-# Gather device info to a pastebin
+/usr/share/ublue-os/just/00-default.just-86-device-info:
+/usr/share/ublue-os/just/00-default.just-87-    #!/usr/bin/bash
+/usr/share/ublue-os/just/00-default.just-88-    fpaste <(rpm-ostree status) <(fpaste --sysinfo --printonly) <(flatpak list --columns=application,version,options)
+/usr/share/ublue-os/just/00-default.just-89-
+/usr/share/ublue-os/just/00-default.just-90-# Measure Idle Power Draw
+/usr/share/ublue-os/just/00-default.just-91-check-idle-power-draw:
+/usr/share/ublue-os/just/00-default.just-92-    #!/usr/bin/bash
+/usr/share/ublue-os/just/00-default.just-93-    sudo powerstat -a -r
+--
+/usr/share/ublue-os/just/80-bazzite.just:147:# Regenerate GRUB config, useful in dual-boot scenarios where a second operating system isn't listed
+/usr/share/ublue-os/just/80-bazzite.just-148-[group("system")]
+/usr/share/ublue-os/just/80-bazzite.just:149:regenerate-grub:
+/usr/share/ublue-os/just/80-bazzite.just-150-    #!/usr/bin/bash
+/usr/share/ublue-os/just/80-bazzite.just-151-    source /usr/libexec/bazzite-boot-remount
+/usr/share/ublue-os/just/80-bazzite.just-152-    remount_boot_rw
+/usr/share/ublue-os/just/80-bazzite.just-153-    if [ -d /sys/firmware/efi ]; then
+/usr/share/ublue-os/just/80-bazzite.just:154:      sudo grub2-mkconfig -o /etc/grub2-efi.cfg
+/usr/share/ublue-os/just/80-bazzite.just-155-    else
+/usr/share/ublue-os/just/80-bazzite.just:156:      sudo grub2-mkconfig -o /etc/grub2.cfg
+/usr/share/ublue-os/just/80-bazzite.just-157-    fi
+/usr/share/ublue-os/just/80-bazzite.just-158-    remount_boot_ro
+/usr/share/ublue-os/just/80-bazzite.just-159-
+/usr/share/ublue-os/just/80-bazzite.just:160:# Set GRUB menu timeout and regenerate config. Options: no-timeout | instant | 1-second | 3-seconds | 5-seconds | 10-seconds | custom
+/usr/share/ublue-os/just/80-bazzite.just-161-[group("system")]
+/usr/share/ublue-os/just/80-bazzite.just:162:grub-timeout ACTION="":
+/usr/share/ublue-os/just/80-bazzite.just-163-    #!/usr/bin/bash
+/usr/share/ublue-os/just/80-bazzite.just-164-    set -euo pipefail
+/usr/share/ublue-os/just/80-bazzite.just-165-    source /usr/libexec/bazzite-boot-remount
+/usr/share/ublue-os/just/80-bazzite.just-166-    source /usr/lib/ujust/ujust.sh
+/usr/share/ublue-os/just/80-bazzite.just-167-
+/usr/share/ublue-os/just/80-bazzite.just:168:    GRUB_FILE="/etc/default/grub"
+/usr/share/ublue-os/just/80-bazzite.just:169:    GRUB_FILE_EXISTED="false"
+/usr/share/ublue-os/just/80-bazzite.just:170:    GRUB_FILE_BACKUP=""
+/usr/share/ublue-os/just/80-bazzite.just-171-    BOOT_REMOUNTED="false"
+/usr/share/ublue-os/just/80-bazzite.just-172-
+/usr/share/ublue-os/just/80-bazzite.just-173-    print_help() {
+/usr/share/ublue-os/just/80-bazzite.just:174:      echo "Usage: ujust grub-timeout <option>"
+/usr/share/ublue-os/just/80-bazzite.just-175-      echo "  <option>: Specify the timeout to skip the interactive prompt"
+/usr/share/ublue-os/just/80-bazzite.just:176:      echo "  Use 'no-timeout' or '-1' to keep the GRUB menu open until the user makes a choice"
+/usr/share/ublue-os/just/80-bazzite.just:177:      echo "  Use 'instant' or '0' to skip the GRUB menu. Menu appears with Shift being held."
+/usr/share/ublue-os/just/80-bazzite.just-178-      echo "  Use '1-second', '3-seconds', '5-seconds', or '10-seconds' for common timeouts"
+/usr/share/ublue-os/just/80-bazzite.just-179-      echo "  Use 'custom' to enter a custom whole number from 0 to 60 seconds"
+/usr/share/ublue-os/just/80-bazzite.just-180-    }
+/usr/share/ublue-os/just/80-bazzite.just-181-
+/usr/share/ublue-os/just/80-bazzite.just:182:    confirm_existing_grub_file() {
+/usr/share/ublue-os/just/80-bazzite.just-183-      local CONFIRM_CHOICE
+/usr/share/ublue-os/just/80-bazzite.just-184-      clear
+/usr/share/ublue-os/just/80-bazzite.just:185:      echo "${bold}Existing GRUB File${normal}"
+/usr/share/ublue-os/just/80-bazzite.just:186:      echo "$GRUB_FILE already exists."
+/usr/share/ublue-os/just/80-bazzite.just:187:      echo "Only GRUB_TIMEOUT will be changed temporarily."
+/usr/share/ublue-os/just/80-bazzite.just:188:      echo "The GRUB config will be regenerated, then the original file will be restored."
+/usr/share/ublue-os/just/80-bazzite.just-189-      echo "The existing file will not be deleted."
+/usr/share/ublue-os/just/80-bazzite.just-190-      echo ""
+/usr/share/ublue-os/just/80-bazzite.just-191-      CONFIRM_CHOICE=$(ugum choose "Continue" "Exit without changes")
+/usr/share/ublue-os/just/80-bazzite.just-192-      if [[ "$CONFIRM_CHOICE" != "Continue" ]]; then
+/usr/share/ublue-os/just/80-bazzite.just-193-        echo "No changes made."
+/usr/share/ublue-os/just/80-bazzite.just-194-        exit 0
+/usr/share/ublue-os/just/80-bazzite.just-195-      fi
+/usr/share/ublue-os/just/80-bazzite.just-196-    }
+/usr/share/ublue-os/just/80-bazzite.just-197-
+/usr/share/ublue-os/just/80-bazzite.just-198-    cleanup() {
+/usr/share/ublue-os/just/80-bazzite.just-199-      local EXIT_CODE=$?
+/usr/share/ublue-os/just/80-bazzite.just:200:      if [[ "$GRUB_FILE_EXISTED" == "true" && -n "$GRUB_FILE_BACKUP" && -f "$GRUB_FILE_BACKUP" ]]; then
+/usr/share/ublue-os/just/80-bazzite.just:201:        echo "Restoring previous $GRUB_FILE..."
+/usr/share/ublue-os/just/80-bazzite.just:202:        sudo cp -a "$GRUB_FILE_BACKUP" "$GRUB_FILE" || true
+/usr/share/ublue-os/just/80-bazzite.just:203:        sudo rm -f "$GRUB_FILE_BACKUP"
+/usr/share/ublue-os/just/80-bazzite.just-204-      else
+/usr/share/ublue-os/just/80-bazzite.just:205:        echo "Removing temporary $GRUB_FILE..."
+/usr/share/ublue-os/just/80-bazzite.just:206:        sudo rm -f "$GRUB_FILE" || true
+/usr/share/ublue-os/just/80-bazzite.just-207-      fi
+/usr/share/ublue-os/just/80-bazzite.just-208-
+/usr/share/ublue-os/just/80-bazzite.just-209-      if [[ "$BOOT_REMOUNTED" == "true" ]]; then
+/usr/share/ublue-os/just/80-bazzite.just-210-        remount_boot_ro || true
+--- /etc/default/grub
+cat: /etc/default/grub: No such file or directory
+
+===== DETAIL4 end =====
