@@ -188,12 +188,12 @@ async function flowBootScreen(info) {
   else { const end = updateEnd(r); if (end) setStatus(end, r.result === 'error'); }
 }
 // Theme Settings > Boot menu: Tessera's (a wait screen with the empty tile spots, O or F2 for Boot
-// options: Desktop Mode, safe settings, a repair console, the previous version...) or GRUB's own list.
+// options: Opus, safe settings, a repair console, the previous version...) or GRUB's own list.
 async function flowBootMenu(info) {
   const pickM = await pick('Boot menu', [
     { label: 'Tessera', sub: info.menu === 'on' ? 'current' : 'wait screen; O opens Boot options', id: 'on' },
     { label: "GRUB's menu", sub: info.menu === 'off' ? 'current' : 'the list of system versions', id: 'off' },
-  ], info.menu === 'off' ? 1 : 0, { body: "Shown for 3 seconds when the machine starts. Tessera's shows the empty tile spots; press O (or F2) on a keyboard for Boot options: Desktop Mode, safe settings, a repair console, the previous version. Needs the admin PIN." });
+  ], info.menu === 'off' ? 1 : 0, { body: "Shown for 3 seconds when the machine starts. Tessera's shows the empty tile spots; press O (or F2) on a keyboard for Boot options: Opus, safe settings, a repair console, the previous version. Needs the admin PIN." });
   if (!pickM || pickM.id === info.menu) return;
   if (!(await requirePin())) return;
   const bad = await updateStart('bootmenu', { menu: pickM.id });

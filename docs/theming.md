@@ -28,7 +28,7 @@ You don't have to start from an empty file.
 1. Open **Settings › Theme Settings** and pick the factory theme closest to what you want.
 2. Change things. Every change shows live behind the menu.
 3. Choose **Save current as a new theme…** and give it a name. Tessera writes a complete `theme.json` for you in `~/Tessera/Themes/<name>/`.
-4. Open that file in Desktop Mode (or on another computer) to fine-tune it, share it, or add the few things the console menu doesn't offer, such as narrowing a setting's choices.
+4. Open that file in Opus (or on another computer) to fine-tune it, share it, or add the few things the console menu doesn't offer, such as narrowing a setting's choices.
 
 **Rename this theme…**, **Overwrite this theme with current** and **Delete this theme…** in the same menu manage the themes you've made. Factory themes are read-only.
 
@@ -98,7 +98,7 @@ node tools/check-theme.cjs ~/Tessera/Themes/my-theme/theme.json
   ✗ default "nope" is not a setting, so it is ignored
 ```
 
-It needs Node.js 18 or newer, which Desktop Mode can install with Homebrew or a toolbox.
+It needs Node.js 18 or newer, which Opus can install with Homebrew or a toolbox.
 
 ## How Tessera reads a theme
 

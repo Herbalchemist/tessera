@@ -66,7 +66,7 @@ const visible = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAl
     let s = await state();
     assert.equal(s.open, true, 'a press opens the guide');
     assert.match(s.cls, /\bguide\b/);
-    for (const want of ['Home', 'Settings', 'Profiles', 'Power', 'Sleep', 'Restart', 'Shut down', 'Desktop Mode']) assert.ok(s.labels.includes(want), 'guide has ' + want + ': ' + s.labels);
+    for (const want of ['Home', 'Settings', 'Profiles', 'Power', 'Sleep', 'Restart', 'Shut down', 'Opus']) assert.ok(s.labels.includes(want), 'guide has ' + want + ': ' + s.labels);
     await page.screenshot({ path: path.join(output, 'guide-launcher.png') });
     await page.evaluate(() => onButton(1));
     await page.waitForTimeout(200);
@@ -232,7 +232,7 @@ const visible = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAl
     assert.equal(await visible(app), true, 'Guide shows it over the desktop');
     const s = await page.evaluate(() => ({ open: guideOpen, labels: modal.items.map((i) => i.label) }));
     assert.equal(s.open, true);
-    assert.ok(s.labels.includes('Return to Tessera') && !s.labels.includes('Desktop Mode') && !s.labels.includes('Settings'), s.labels.join(' | '));
+    assert.ok(s.labels.includes('Return to Ludus') && !s.labels.includes('Opus') && !s.labels.includes('Settings'), s.labels.join(' | '));
     await page.screenshot({ path: path.join(output, 'guide-desktop.png') });
     await page.evaluate(() => onButton(1));
     await page.waitForTimeout(400);

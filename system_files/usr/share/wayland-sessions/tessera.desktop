@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [Desktop Entry]
-Name=Tessera
-Comment=Console-style session
+Name=Ludus
+Comment=Tessera's console: games, apps and settings with a controller
 Exec=/usr/bin/tessera-session
 Type=Application

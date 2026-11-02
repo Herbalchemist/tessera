@@ -1142,7 +1142,7 @@ body[data-part-tabs="text"] > footer { margin-top: auto; }
 #modal.guide .mitem { font-size: 1.15rem; padding: 11px 16px; }
 #modal.guide .mitem.header { font-size: 0.8rem; padding-top: 16px; }
 @keyframes guide-in { from { transform: translateX(-104%); } to { transform: none; } }
-/* The Desktop Mode helper: nothing but the guide, over a see-through window. */
+/* The Opus helper: nothing but the guide, over a see-through window. */
 html:has(body.guide-only), body.guide-only { background: transparent !important; }
 body.guide-only::before, body.guide-only::after { display: none !important; }
 body.guide-only > :not(#modal):not(script) { display: none !important; }

@@ -370,7 +370,7 @@ async function flowPadMenu() {
     else if (it.op === 'guideButton') await pickChoice('The Guide button (Xbox, PS or Home button)', 'guideButton');
     else if (it.op === 'oskSize') await pickChoice('On-screen keyboard size', 'oskSize');
     else if (it.op === 'guideStyle') await pickChoice('How the guide looks (notifications sit beside it on the right)', 'guideStyle');
-    else if (it.op === 'guideDesktop') await pickChoice('The guide in Desktop Mode (Steam takes the button for itself while it runs)', 'guideDesktop');
+    else if (it.op === 'guideDesktop') await pickChoice('The guide in Opus (Steam takes the button for itself while it runs)', 'guideDesktop');
     else if (it.op === 'browserCursor') await pickChoice('In the browser, which stick moves the cursor?', 'browserCursor');
     else if (it.op === 'cursorSpeed') await pickNumber('Cursor speed · how fast the browser cursor moves', 'cursorSpeed', 10, 100, 10);
     else if (it.op === 'scrollSpeed') await pickNumber('Scroll speed · how fast pages scroll at full tilt', 'scrollSpeed', 10, 100, 10);

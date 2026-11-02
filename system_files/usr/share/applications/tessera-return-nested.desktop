@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [Desktop Entry]
 Type=Application
-Name=Open Tessera on top of the desktop
+Name=Open Ludus on top of Opus
 GenericName=Console mode
-Comment=Opens Tessera full screen and keeps your desktop and its programs running underneath
+Comment=Opens Ludus full screen and keeps Opus and its programs running underneath
 Exec=/usr/bin/tessera-return --nested
 Icon=tessera
 Terminal=false

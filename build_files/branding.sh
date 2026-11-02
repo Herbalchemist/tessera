@@ -146,7 +146,7 @@ else
 fi
 
 # ---- the busy pointer: Tessera's symbol building itself (icons/Tessera; Breeze for every other
-# pointer). The default for Desktop Mode; the console session asks for it too (tessera-session).
+# pointer). The default for Opus; the console session asks for it too (tessera-session).
 mkdir -p /etc/xdg
 if [ -f /etc/xdg/kcminputrc ] && grep -q '^\[Mouse\]' /etc/xdg/kcminputrc; then
   grep -q '^cursorTheme=' /etc/xdg/kcminputrc && sed -i 's/^cursorTheme=.*/cursorTheme=Tessera/' /etc/xdg/kcminputrc || sed -i '/^\[Mouse\]/a cursorTheme=Tessera' /etc/xdg/kcminputrc
