@@ -16,7 +16,8 @@ const LIVE_RECOVER = process.env.TESSERA_LIVE_RECOVER || '/usr/libexec/tessera/l
 const SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n'];
 const ID_RE = /^[0-9a-fA-F-]{8,40}:[A-Za-z0-9._-]{1,40}$/;
 const USER_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
-const TOOLS = ['signin', 'pin', 'shards'];
+const TOOLS = ['signin', 'pin', 'shards', 'version'];
+const VERSION_ACTIONS = ['default', 'keep', 'unkeep'];
 
 function helper(args, input) {
   const cmd = [...SUDO, LIVE_RECOVER, ...args];
@@ -42,7 +43,12 @@ async function recoveryOp(op, p) {
   if (op === 'report') return helper(['report', p.id]);
   if (op === 'fix') {
     if (!TOOLS.includes(p.tool) || !USER_RE.test(String(p.user || '')) || typeof p.password !== 'string' || !p.password || p.password.length > 256) return { ok: false, error: 'Bad request.' };
-    return helper(['fix', p.id], JSON.stringify({ tool: p.tool, user: p.user, password: p.password }));
+    const req = { tool: p.tool, user: p.user, password: p.password };
+    if (p.tool === 'version') {
+      if (!VERSION_ACTIONS.includes(p.action) || !Number.isInteger(p.index) || p.index < 0 || p.index > 20) return { ok: false, error: 'Bad request.' };
+      Object.assign(req, { action: p.action, index: p.index });
+    }
+    return helper(['fix', p.id], JSON.stringify(req));
   }
   return { ok: false, error: 'Unknown action.' };
 }

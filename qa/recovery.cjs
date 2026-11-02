@@ -86,6 +86,26 @@ esac
     assert.ok(await page.evaluate(() => modal.items.some((x) => x.header && x.label === 'What was found')));
     checks.push('A problem report is made, saved in its Tessera folder, and can be read line by line');
 
+    // Versions: undo the last update (start the one before it by default)
+    await page.evaluate(() => { if (modal) closeModal(); });
+    await page.waitForTimeout(300);
+    page.evaluate(() => { flowRecovery(); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'versions'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Versions', null, { timeout: 5000, polling: 100 });
+    const vs = await page.evaluate(() => modal.items.map((x) => [x.label, x.sub]));
+    assert.deepEqual(vs, [['Version 43.20261101.0', 'starts by default'], ['Version 43.20261031.0', 'before the last update']]);
+    await page.evaluate(() => { modal.index = 1; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Version 43.20261031.0', null, { timeout: 5000, polling: 100 });
+    assert.equal(await page.evaluate(() => modal.items[0].sub), 'undoes the last update');
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
+    const last = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
+    assert.deepEqual(last, { tool: 'version', user: 'alex', password: 'tessera1', action: 'default', index: 1 });
+    checks.push('Versions lists the kept versions; starting the one before the last update sends that exact change');
+
     assert.deepEqual(errors, [], 'no page errors');
   } finally {
     await app.close();
