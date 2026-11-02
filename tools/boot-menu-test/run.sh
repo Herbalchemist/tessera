@@ -108,5 +108,13 @@ mcopy -o -i "$I" ::/grubenv "$W/b1/grub2/grubenv"
   echo "note: $(cat "$W/run1/boot-once" 2>/dev/null)  console-once: $([ -e "$W/run1/console-once" ] && echo yes || echo no)"
   echo "left in grubenv: $(grub-editenv "$W/b1/grub2/grubenv" list | tr '\n' ' ')"
 } | tee -a "$OUT/results.txt"
+# the way past the old (hanging) wait screen, default=00, is taken out by the new boot menu, and
+# nothing else in GRUB's settings file is touched
+mkdir -p "$W/b2/grub2" "$W/e2"
+grub-editenv "$W/b2/grub2/grubenv" create
+grub-editenv "$W/b2/grub2/grubenv" set default=00 saved_entry=keep-me
+TESSERA_BOOT="$W/b2" TESSERA_SRC="$W/src" TESSERA_ETC="$W/e2" PATH="$PATH" bash "$ROOT/system_files/usr/libexec/tessera/boot-menu" | tee -a "$OUT/results.txt"
+left=$(grub-editenv "$W/b2/grub2/grubenv" list | tr '\n' ' ')
+if [ "$left" = "saved_entry=keep-me " ]; then echo "PASS default=00 removed, the rest kept" | tee -a "$OUT/results.txt"; else echo "FAIL default=00: left '$left'" | tee -a "$OUT/results.txt"; status=1; fi
 if ! grep -q "note: console  console-once: yes" "$OUT/results.txt" || grep -q "tessera_once=" <(grub-editenv "$W/b1/grub2/grubenv" list); then echo "FAIL boot-once" | tee -a "$OUT/results.txt"; status=1; else echo "PASS boot-once: read, cleared, note left" | tee -a "$OUT/results.txt"; fi
 exit "${status:-0}"

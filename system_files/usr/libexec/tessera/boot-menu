@@ -75,7 +75,15 @@ else
   same_files=1; [ -e "$DEST" ] && same_files=0
 fi
 have_custom="$( [ -f "$CUSTOM" ] && cat "$CUSTOM" || true )"
-if [ "$same_files" = 1 ] && [ "$have_custom" = "$wanted_custom" ]; then say "already $want"; exit 0; fi
+# The way past the old wait screen (it hung on Fedora's GRUB until 0.50) was "default=00" in GRUB's
+# settings file, typed at GRUB's prompt: "00" starts the newest version but isn't "0", so the old
+# wait screen stayed out. Once this version's files are in /boot, that line is taken out again.
+EDITENV=$(command -v grub2-editenv || command -v grub-editenv || true)
+clear_workaround=0
+if [ "$want" = on ] && [ -n "$EDITENV" ] && [ -f "$G/grubenv" ] && "$EDITENV" "$G/grubenv" list 2>/dev/null | grep -qx 'default=00'; then
+  clear_workaround=1
+fi
+if [ "$same_files" = 1 ] && [ "$have_custom" = "$wanted_custom" ] && [ "$clear_workaround" = 0 ]; then say "already $want"; exit 0; fi
 
 # /boot is usually mounted read-only on these systems: open it for the change, close it after.
 remounted=0
@@ -96,5 +104,6 @@ if [ -z "$wanted_custom" ]; then
 else
   printf '%s\n' "$wanted_custom" >"$CUSTOM.tmp.$$"; mv -f "$CUSTOM.tmp.$$" "$CUSTOM"
 fi
+if [ "$clear_workaround" = 1 ]; then "$EDITENV" "$G/grubenv" unset default && say "removed default=00 (the way past the old wait screen)"; fi
 sync
 say "now $want"
