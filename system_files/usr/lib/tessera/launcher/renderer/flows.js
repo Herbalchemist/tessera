@@ -630,11 +630,12 @@ async function flowReport() {
   const info = await api.report('contents');
   for (;;) {
     const it = await pick('Report a problem', [
-      { label: 'Make a report', sub: 'takes a few seconds', op: 'make', ok: true },
+      { label: 'Report it on GitHub', sub: 'opens a new issue with the report filled in; you see it first, and send it yourself', op: 'github', ok: true },
+      { label: 'Save a report', sub: 'only to your Tessera folder, to read or share later', op: 'make', plain: true },
       { label: 'What goes in it', header: true },
       ...info.contents.map((c) => ({ label: c, plain: true, info: true })),
       { label: 'Never in it: PINs, passwords, Wi-Fi names. Your account and computer names, and network and hardware addresses, are replaced with [brackets].', plain: true, info: true },
-    ], 0, { body: 'Tessera writes a report file to the Reports folder in your Tessera folder. Nothing is sent anywhere: you read it here, and you choose whether to share it.' });
+    ], 0, { body: 'Tessera writes a report file to the Reports folder in your Tessera folder. Nothing is sent by itself: on GitHub you see the issue before you send it.' });
     if (!it) return;
     if (it.info) continue;
     setStatus('Making the report…');
@@ -643,13 +644,76 @@ async function flowReport() {
     try { r = await api.report('make'); } finally { busy = false; }
     if (!r || !r.ok) { setStatus((r && r.error) || "Couldn't make the report.", true); return; }
     setStatus(`Saved ${r.folder}/${r.name}`);
+    if (it.op === 'github') return reportToGitHub(r);
     return reportMade(r);
+  }
+}
+
+// Report it on GitHub: a new issue, filled in through the page's address (GitHub's own form, so the
+// person is signed in to GitHub and presses Submit there themselves; Tessera holds no key). An
+// address can only be so long, so the issue gets the sections that matter most, trimmed to fit,
+// and says where the full file is.
+const ISSUE_URL_MAX = 7500;
+const ISSUE_SECTIONS = ['Tessera', 'System', 'Hardware', 'Crashes and errors (the start before)', 'Login screen log (the start before)', 'Login screen log (this boot)', 'Tessera session log (this session)', 'Tessera session log (the session before)', 'Controllers and Bluetooth (kernel, this boot)', 'Settings'];
+function reportSections(text) {
+  const out = new Map();
+  let cur = null;
+  for (const line of String(text).split('\n')) {
+    const m = /^== (.+)$/.exec(line);
+    if (m) { cur = m[1].trim(); out.set(cur, []); } else if (cur) out.get(cur).push(line);
+  }
+  return out;
+}
+function issueBody(r, what) {
+  const secs = reportSections(r.text);
+  const head = [
+    '**What happened**', '', what || '_(not described)_', '',
+    `_Sent from Tessera's Report a problem. The full report is \`${r.folder}/${r.name}\` on that machine: attach it here if asked._`, '',
+  ].join('\n');
+  const fence = (title, lines) => `<details><summary>${title}</summary>\n\n\`\`\`\n${lines.join('\n').trim()}\n\`\`\`\n</details>\n`;
+  let body = head;
+  const room = () => ISSUE_URL_MAX - encodeURIComponent(body).length;
+  for (const title of ISSUE_SECTIONS) {
+    const lines = secs.get(title);
+    if (!lines || !lines.join('').trim() || lines.join('').trim() === '(nothing)') continue;
+    let keep = lines.slice(-60);
+    let part = fence(title, keep);
+    while (keep.length > 3 && encodeURIComponent(part).length > room()) { keep = keep.slice(Math.ceil(keep.length / 4)); part = fence(title + ' (last lines)', keep); }
+    if (encodeURIComponent(part).length > room()) break;
+    body += '\n' + part;
+  }
+  return body;
+}
+function issueUrl(title, body) {
+  return `${ISSUES_URL}/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+async function reportToGitHub(r) {
+  const what = await ask('What happened? (optional)', '', { max: 300 });
+  if (what === null) return reportMade(r);
+  const title = (what && what.trim() ? what.trim().split('\n')[0].slice(0, 80) : `Problem report from Tessera ${(/launcher (\S+)/.exec(r.text) || [])[1] || ''}`).trim();
+  const body = issueBody(r, what && what.trim());
+  for (;;) {
+    const lines = [`Title: ${title}`, ''].concat(body.replace(/<\/?details>|<\/?summary>|```/g, '').split('\n')).slice(0, 700);
+    const it = await pick('Report it on GitHub', [
+      { label: 'Open the issue on GitHub', sub: "in the browser: sign in to GitHub if asked, look it over, then press Submit there", op: 'open', ok: true },
+      { label: 'Read what goes in it', sub: `${lines.length} lines (names and addresses already replaced)`, op: 'read', plain: true },
+      { label: 'Just keep the saved report', op: 'saved', plain: true },
+      { label: "Nothing is sent until you press Submit on GitHub's page. GitHub issues are public.", plain: true, info: true },
+    ], 0, { body: `The report is saved too: ${r.folder}/${r.name}` });
+    if (!it) return;
+    if (it.info) continue;
+    if (it.op === 'read') { await pick('What goes in the issue', lines.map((l) => ({ label: l || ' ', plain: true, info: true }))); continue; }
+    if (it.op === 'saved') return reportMade(r);
+    browserUrl = issueUrl(title, body);
+    page = hoverId = 'browser';
+    return launchBrowser(1);
   }
 }
 async function reportMade(r) {
   for (;;) {
     const it = await pick('Report saved', [
       { label: 'Read it', sub: 'every line, before you share it', op: 'read', plain: true },
+      { label: 'Report it on GitHub', sub: 'a new issue with this report filled in', op: 'github', plain: true },
       { label: 'Open the issues page', sub: 'in the browser, to describe what happened', op: 'issues', plain: true },
       { label: 'Delete it', op: 'delete', plain: true, danger: true },
       { label: 'To share it', sub: `On ${ISSUES_URL.replace('https://', '')}, start a new issue (or answer yours) and attach the file. It's in ${r.folder} (from Opus, or copy it to a USB drive).`, plain: true, info: true },
@@ -659,6 +723,8 @@ async function reportMade(r) {
     if (it.op === 'read') {
       const lines = r.text.split('\n').slice(0, 900);
       await pick(r.name, lines.map((l) => (/^== /.test(l) ? { label: l.slice(3), header: true } : { label: l || ' ', plain: true, info: true })));
+    } else if (it.op === 'github') {
+      return reportToGitHub(r);
     } else if (it.op === 'issues') {
       browserUrl = ISSUES_URL;
       page = hoverId = 'browser';
