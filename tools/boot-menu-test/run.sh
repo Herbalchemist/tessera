@@ -25,14 +25,18 @@ TESSERA_BOOT="$W/boot" TESSERA_SRC="$W/src" TESSERA_ETC="$W/etc" bash "$ROOT/sys
 
 grub-mkimage -O x86_64-efi -o "$W/BOOTX64.EFI" -p '(hd0,gpt1)/boot/grub2' \
   part_gpt fat normal configfile echo test sleep loadenv regexp gfxterm gfxmenu png font all_video efi_gop video_bochs video_cirrus search reboot halt efifwsetup minicmd
+# a GPT disk whose one partition (the EFI system partition) holds GRUB and /boot
 truncate -s 96M "$W/disk.img"
 sgdisk -q -n1:2048:0 -t1:ef00 "$W/disk.img"
-mkfs.vfat -F 32 --offset 2048 "$W/disk.img" >/dev/null
+end=$(sgdisk -i 1 "$W/disk.img" | sed -n 's/^Last sector: \([0-9]*\).*/\1/p')
+sectors=$(( end - 2048 + 1 ))
+mkfs.vfat -F 32 -C "$W/esp.img" $(( sectors / 2 )) >/dev/null
+mmd -i "$W/esp.img" ::/EFI ::/EFI/BOOT
+mcopy -i "$W/esp.img" "$W/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
+mcopy -s -i "$W/esp.img" "$W/boot" ::/
+mdir -/ -i "$W/esp.img" ::/ > "$OUT/disk-listing.txt"
+dd if="$W/esp.img" of="$W/disk.img" bs=512 seek=2048 conv=notrunc status=none
 I="$W/disk.img@@1M"
-mmd -i "$I" ::/EFI ::/EFI/BOOT
-mcopy -i "$I" "$W/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
-mcopy -s -i "$I" "$W/boot" ::/
-mdir -/ -i "$I" ::/boot/grub2 | head -40 > "$OUT/disk-listing.txt"
 cp "$W/boot/grub2/custom.cfg" "$OUT/custom.cfg"
 
 python3 "$ROOT/tools/boot-menu-test/run.py" "$W" "$OUT" || status=$?
