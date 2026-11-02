@@ -48,7 +48,7 @@ jobs:
           set +e; status=0
           export TESSERA_QA_OUTPUT=/tmp/qa-output
           (cd qa && xvfb-run -a node electron-smoke.cjs) || status=1
-          for s in browser-pointer browser-transitions guide keyboard installer graphics addons input profiles report boot-screen steam-library; do
+          for s in browser-pointer browser-transitions guide keyboard installer graphics addons input profiles report boot-screen steam-library recovery; do
             ok=0
             for try in 1 2; do xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/$s.cjs > /tmp/qa-$s.log 2>&1 && { ok=1; break; }; done
             if [ $ok = 1 ]; then echo "PASS $s"; else echo "::error title=qa/$s::$(tail -c 900 /tmp/qa-$s.log | sed 's/%/%25/g' | awk 1 ORS=%0A)"; status=1; fi

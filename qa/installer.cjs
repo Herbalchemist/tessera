@@ -70,7 +70,7 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     await choose('Welcome to Tessera', (x) => x.op === 'try');
     assert.equal(await page.evaluate(() => modal), null, 'trying closes it');
     const tiles = await page.evaluate(() => settingsRows()[0].tiles.map((t) => t.title));
-    assert.deepEqual(tiles, ['Install Tessera'], 'Settings starts with Install Tessera');
+    assert.deepEqual(tiles, ['Install Tessera', 'Recover'], 'Settings starts with Install Tessera, then Recover');
     await page.evaluate(() => { openGuide(); });
     await page.waitForTimeout(500);
     assert.ok(await page.evaluate(() => modal && modal.items[0].op === 'install'), 'the guide offers it first');
