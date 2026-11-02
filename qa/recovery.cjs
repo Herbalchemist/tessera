@@ -34,9 +34,19 @@ case "$1" in
   probe|diagnose|report) cat "$T/$1.json" ;;
   space) echo '{"ok": true, "free": 1500000000, "total": 256000000000, "versions": 2, "people": [{"name": "alex", "home": 120000000000, "games": 100000000000, "caches": 3000000000, "shaders": 2000000000, "trash": 500000000}]}' ;;
   drives) echo '{"ok": true, "drives": [{"uuid": "AB12-CD34", "fstype": "exfat", "label": "STICK", "model": "SanDisk", "size": 64000000000, "free": 50000000000}]}' ;;
-  state) n=$(cat "$T/polls" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "$T/polls"
-         if [ $n -lt 3 ]; then echo '{"ok": true, "phase": "copying", "done": 1000000, "total": 4000000, "line": "Pictures/a.png"}'; else echo '{"ok": true, "phase": "done", "copied": 42, "skipped": 1, "folder": "Tessera backup 2026-11-02 1200", "drive": "STICK"}'; fi ;;
-  backup) in=$(cat); echo "$in" >> "$T/stdin"
+  state) n=$(cat "$T/polls" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "$T/polls"; job=$(cat "$T/job" 2>/dev/null)
+         if [ "$job" = check ]; then
+           if [ $n -lt 3 ]; then echo '{"ok": true, "job": "check", "phase": "checking", "step": 3, "steps": 4, "line": "The main file system", "done": 5000000000, "total": 20000000000}'
+           else echo '{"ok": true, "job": "check", "phase": "done", "repair": false, "healthy": false, "results": [{"ok": true, "text": "The drive reports good health."}, {"ok": false, "text": "The main file system: 2 damaged blocks found (Repair rewrites what has a second copy)."}], "files": ["alex/Games/big.bin"]}'; fi
+         elif [ "$job" = repair ]; then
+           if [ $n -lt 2 ]; then echo '{"ok": true, "job": "check", "phase": "checking", "step": 1, "steps": 4, "line": "The drive health"}'
+           else echo '{"ok": true, "job": "check", "phase": "done", "repair": true, "healthy": true, "results": [{"ok": true, "text": "The main file system: 2 damaged blocks repaired from their second copy."}], "files": []}'; fi
+         elif [ $n -lt 3 ]; then echo '{"ok": true, "phase": "copying", "done": 1000000, "total": 4000000, "line": "Pictures/a.png"}'; else echo '{"ok": true, "phase": "done", "copied": 42, "skipped": 1, "folder": "Tessera backup 2026-11-02 1200", "drive": "STICK"}'; fi ;;
+  check) rm -f "$T/polls"
+       if [ "$3" = --repair ]; then in=$(cat); echo "$in" >> "$T/stdin"
+         if echo "$in" | grep -q '"password":"tessera1"'; then echo repair > "$T/job"; echo '{"ok": true, "started": true}'; else echo '{"ok": false, "needPassword": true, "error": "nope"}'; fi
+       else echo check > "$T/job"; echo '{"ok": true, "started": true}'; fi ;;
+  backup) rm -f "$T/polls" "$T/job"; in=$(cat); echo "$in" >> "$T/stdin"
        if echo "$in" | grep -q '"password":"tessera1"'; then echo '{"ok": true, "started": true}'; else echo '{"ok": false, "needPassword": true, "error": "nope"}'; fi ;;
   fix) in=$(cat); echo "$in" >> "$T/stdin"
        if echo "$in" | grep -q '"password":"tessera1"'; then echo '{"ok": true, "done": ["turned on for version 43.20261101.0"]}'; else echo '{"ok": false, "needPassword": true, "error": "That is not the password of an administrator account on this Tessera."}'; exit 1; fi ;;
@@ -128,7 +138,7 @@ esac
     await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
     await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
     await page.waitForFunction(() => modal && modal.title === 'Backing up', null, { timeout: 10000, polling: 100 });
-    assert.match(await page.evaluate(() => modal.body), /1 MB of 4 MB|Counting/);
+    await page.waitForFunction(() => modal && /1 MB of 4 MB/.test(modal.body), null, { timeout: 5000, polling: 100 });
     await page.screenshot({ path: path.join(output, 'recovery-backup.png') });
     await page.waitForFunction(() => modal && modal.title === 'Backed up', null, { timeout: 15000, polling: 200 });
     assert.match(await page.evaluate(() => modal.body), /42 files copied to the folder "Tessera backup 2026-11-02 1200" on STICK[\s\S]*1 couldn't be copied/);
@@ -136,6 +146,29 @@ esac
     assert.deepEqual(bk, { user: 'alex', password: 'tessera1', who: 'alex', drive: 'AB12-CD34', what: 'mine' });
     assert.doesNotMatch(fs.readFileSync(path.join(temp, 'args'), 'utf8'), /tessera1/);
     checks.push('Back up to a USB drive picks the person, drive and what to copy, asks for the password on input only, and follows the copy to the end');
+
+    // Check the disk: read-only first; problems found offer Repair, which needs the password
+    await page.evaluate(() => { if (modal) closeModal(); });
+    await page.waitForTimeout(300);
+    page.evaluate(() => { flowRecovery(); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'check'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Checking the disk', null, { timeout: 10000, polling: 100 });
+    await page.waitForFunction(() => modal && /Step 3 of 4: The main file system[\s\S]*5\.0 GB of 20\.0 GB/.test(modal.body), null, { timeout: 5000, polling: 100 });
+    await page.waitForFunction(() => modal && modal.title === 'Problems found', null, { timeout: 15000, polling: 200 });
+    const pf = await page.evaluate(() => modal.body);
+    assert.match(pf, /✓ The drive reports good health\.\n✗ The main file system: 2 damaged blocks found/);
+    assert.match(pf, /Damaged file:\n  alex\/Games\/big\.bin/);
+    assert.match(fs.readFileSync(path.join(temp, 'args'), 'utf8'), new RegExp(`^check ${ID.replace(/[.:]/g, '\\$&')}$`, 'm'));
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Repaired', null, { timeout: 15000, polling: 200 });
+    assert.match(await page.evaluate(() => modal.body), /✓ The main file system: 2 damaged blocks repaired/);
+    const rp = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
+    assert.deepEqual(rp, { user: 'alex', password: 'tessera1' });
+    assert.match(fs.readFileSync(path.join(temp, 'args'), 'utf8'), new RegExp(`^check ${ID.replace(/[.:]/g, '\\$&')} --repair$`, 'm'));
+    checks.push('Check the disk runs read-only first, shows what it found and the damaged files, and repairs only after the password');
 
     // Free up space: what uses the disk, then clearing caches and the trash
     await page.evaluate(() => { if (modal) closeModal(); });

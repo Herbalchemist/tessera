@@ -47,6 +47,11 @@ async function recoveryOp(op, p) {
   if (op === 'diagnose') return helper(['diagnose', p.id]);
   if (op === 'report') return helper(['report', p.id]);
   if (op === 'space') return helper(['space', p.id]);
+  if (op === 'check') {
+    if (!p.repair) return helper(['check', p.id]);
+    if (!USER_RE.test(String(p.user || '')) || typeof p.password !== 'string' || !p.password || p.password.length > 256) return { ok: false, error: 'Bad request.' };
+    return helper(['check', p.id, '--repair'], JSON.stringify({ user: p.user, password: p.password }));
+  }
   if (op === 'fix') {
     if (!TOOLS.includes(p.tool) || !USER_RE.test(String(p.user || '')) || typeof p.password !== 'string' || !p.password || p.password.length > 256) return { ok: false, error: 'Bad request.' };
     const req = { tool: p.tool, user: p.user, password: p.password };
