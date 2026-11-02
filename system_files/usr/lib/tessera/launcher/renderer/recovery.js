@@ -56,6 +56,7 @@ async function recoveryMenu(inst) {
     const diskWorry = findings.some((f) => f.key === 'fs');
     items.push({ label: 'Check the disk', sub: diskWorry ? 'suggested: errors were recorded' : 'the drive\'s health and every file system; read-only', op: 'check', ok: diskWorry, plain: !diskWorry });
     items.push({ label: 'Free up space', sub: suggested.has('clean') ? 'suggested: the disk is nearly full' : 'see what uses the disk; clear caches and the trash', op: 'space', ok: suggested.has('clean'), plain: !suggested.has('clean') });
+    items.push({ label: 'Reset Tessera', sub: "its settings, or also its layout; games and saves stay", op: 'reset', plain: true });
     items.push({ label: 'Back up to a USB drive', sub: 'copy a home folder off this computer first', op: 'backup', plain: true });
     items.push({ label: 'More', header: true });
     items.push({ label: 'Make a problem report', sub: 'saved in its Tessera folder; read it first', op: 'report', plain: true });
@@ -69,6 +70,7 @@ async function recoveryMenu(inst) {
     else if (it.op === 'space') await recoverySpace(inst);
     else if (it.op === 'check') await recoveryCheck(inst);
     else if (it.op === 'graphics') await recoveryGraphics(inst, it.gfx);
+    else if (it.op === 'reset') await recoveryReset(inst);
   }
 }
 
@@ -157,6 +159,24 @@ async function recoveryGraphics(inst, g) {
   const it = await pick('Graphics and how it starts', items, 0, { body });
   if (!it) return;
   await recoveryFix(inst, 'graphics', { action: it.action, ...(it.to ? { to: it.to } : {}) }, it.label);
+}
+
+// Reset Tessera: one person's (or everyone's) Tessera settings, or also its layout and game list.
+// Games, saves and other files stay; the old files are kept in ~/Tessera/Reset <date>.
+async function recoveryReset(inst) {
+  const people = inst.users;
+  let who = people.length ? people[0].name : '*';
+  if (people.length > 1) {
+    const it = await pick('Whose Tessera?', [...people.map((u) => ({ label: u.name, sub: u.admin ? 'administrator' : '', who: u.name })), { label: 'Everyone', who: '*', plain: true }]);
+    if (!it) return;
+    who = it.who;
+  }
+  const lv = await pick('Reset Tessera', [
+    { label: 'Settings', sub: 'PIN, theme, shards, display calibration', level: 'settings', ok: true },
+    { label: 'Settings and layout', sub: 'also the pages and the game list; games are found again', level: 'all', plain: true },
+  ], 0, { body: 'Games, saves and other files are not touched. The old settings are kept in Tessera\'s folder (Reset and the date), in case you want something back.' });
+  if (!lv) return;
+  await recoveryFix(inst, 'reset', { level: lv.level, who }, `Reset Tessera (${lv.label.toLowerCase()})`);
 }
 
 // Check the disk: the drive's own health report, the start-up and boot partitions, and every block
