@@ -137,6 +137,11 @@ async function buildReport() {
   sec('Joy-Con helper (joycond)', await run('systemctl', ['is-active', 'joycond.service']));
   sec('Steam running', await run('sh', ['-c', 'pgrep -x steam >/dev/null && echo yes || echo no']));
   sec('Login screen log (this boot)', await run('journalctl', ['-b', '-u', 'plasmalogin', '-u', 'sddm', '--no-pager', '-n', '80', '-o', 'short-monotonic'], 8000));
+  // Problems that a restart clears (a blank login screen on the first start after an update):
+  // the report is made after that restart, so the start before is where they show.
+  sec('Recent starts', await run('journalctl', ['--list-boots', '--no-pager', '-q'], 8000).then((t) => String(t).trim().split('\n').slice(-4).join('\n')));
+  sec('Login screen log (the start before)', await run('journalctl', ['-b', '-1', '-u', 'plasmalogin', '-u', 'sddm', '--no-pager', '-n', '80', '-o', 'short-monotonic'], 8000));
+  sec('Crashes and errors (the start before)', await run('journalctl', ['-b', '-1', '--no-pager', '-o', 'short-monotonic', '-p', 'err', '-g', 'plasma|kwin|greeter|login|gamescope|tessera|dumped core|segfault|Failed to start', '-n', '80'], 8000));
 
   // Settings that change behaviour: no PIN (not even its hash), no profile names, no folders
   sec('Settings', [
