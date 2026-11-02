@@ -1,26 +1,3 @@
 [2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
 BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
-[H[J[1;1Htest: root=cd0 prefix=(cd0)/boot/grubtest: root=cd0 prefix=(cd0)/boot/grub
-
-test: loading (cd0)/boot/grub2/grub.cfgtest: loading (cd0)/boot/grub2/grub.cfg
-
-error: file `/boot/grub2/x86_64-efi/configfile.mod' not found.
-error: file `/boot/grub2/x86_64-efi/configfile.mod' not found.
-test: back from (cd0)/boot/grub2/grub.cfgtest: back from (cd0)/boot/grub2/grub.cfg
-
-[H[J[1;1H[2;30HGNU GRUB  version 2.12
-
-[?25h   Minimal BASH-like line editing is supported. For the first word, TAB   
-   lists possible command completions. Anywhere else TAB lists possible   
-   device or file completions. To enable less(1)-like paging, "set        
-   pager=1".                                                              
-
-
-[0m[30m[40m[2J[01;01H[0m[37m[40m[02;40HGNU GRUB  version 2.12
-
-   Minimal BASH-like line editing is supported. For the first word, TAB lists possible        
-   command completions. Anywhere else TAB lists possible device or file completions. To       
-   enable less(1)-like paging, "set pager=1".                                                 
-
-
-grub>grub>  
+[H[J[1;1H[H[J[1;1H
