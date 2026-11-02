@@ -34,7 +34,17 @@ rm -f "$W/boot/grub2/grubenv"
 # the system: a CD image made by GRUB's own tool, with /boot/grub2 as the installed config has it
 mkdir -p "$W/iso/boot/grub"
 cp -a "$W/boot/grub2" "$W/iso/boot/grub2"
-printf 'set prefix=($root)/boot/grub2\nconfigfile $prefix/grub.cfg\n' > "$W/iso/boot/grub/grub.cfg"
+# GRUB's text output also goes to the serial port (a log file per scenario), so its messages show
+cat > "$W/iso/boot/grub/grub.cfg" <<'GRUBCFG'
+serial --unit=0 --speed=115200
+terminal_input --append serial
+terminal_output --append serial
+echo "test: root=$root prefix=$prefix"
+set prefix=($root)/boot/grub2
+echo "test: loading $prefix/grub.cfg"
+configfile $prefix/grub.cfg
+echo "test: back from $prefix/grub.cfg"
+GRUBCFG
 grub-mkrescue -o "$W/system.iso" "$W/iso"
 find "$W/iso" -type f | sed "s#$W/iso##" | sort > "$OUT/disk-listing.txt"
 I="$W/env.img"
