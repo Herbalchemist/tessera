@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('./config');
+const steamLaunch = require('../steam-launch');
 
 // ---------------------------------------------------------------- library
 
@@ -84,7 +85,7 @@ function loadState() {
     if (!ok) { skipped++; continue; }
     ids.add(g.id);
     const it = { id: g.id, kind: g.kind || 'game', title: g.title, path: g.path };
-    if (g.args && g.args.length) it.args = g.args;
+    if (g.args && g.args.length) it.args = steamLaunch.upgrade(g.path, g.args); // older Steam entries launch quietly too
     if (typeof g.art === 'string' && path.isAbsolute(g.art)) it.art = g.art; // a picture the person chose
     items.push(it);
   }
