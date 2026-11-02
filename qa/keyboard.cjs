@@ -107,6 +107,18 @@ const hints = (page) => page.evaluate(() => ({
     await page.keyboard.press('PageUp');
     checks.push('PgDn / [ / Esc+Right switch tabs');
 
+    // The selection follows the mouse: hovering a tile selects it, so the wheel carries on from there.
+    await page.evaluate(() => { page = 'settings'; hoverId = 'settings'; render(); });
+    await page.waitForTimeout(300);
+    const cards = await page.evaluate(() => [...document.querySelectorAll('.card')].map((c) => { const b = c.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2, c.textContent]; }));
+    const target = cards.find((c) => /Profiles/.test(c[2]));
+    assert.ok(target, 'Settings has a Profiles tile');
+    await page.mouse.move(target[0] - 3, target[1] - 3);
+    await page.mouse.move(target[0], target[1]);
+    await page.waitForTimeout(300);
+    assert.match(await page.evaluate(() => document.querySelector('.card.active').textContent), /Profiles/, 'the tile under the mouse is selected');
+    checks.push('Hovering a tile with the mouse selects it');
+
     // The Settings tile and its menu.
     await page.evaluate(() => { page = 'settings'; hoverId = 'settings'; render(); flowKeyboardMenu(); });
     await page.waitForTimeout(300);

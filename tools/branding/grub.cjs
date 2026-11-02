@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { slotsBody } = require('./slots.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const OUT = path.join(ROOT, 'system_files/usr/share/tessera/grub');
@@ -15,11 +16,8 @@ const BR = path.join(ROOT, 'system_files/usr/share/tessera/branding');
 const SYM = JSON.parse(fs.readFileSync(path.join(__dirname, 'symbol.json'), 'utf8'));
 const ACCENT = '#b4a7ff';
 
-// the four spots, dashed, in each tile's colour; same 128 px frame as the boot animation (motion.cjs)
-const slots = () => `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-10 -10 84 84">${SYM.tiles.map(([x, y, w, r], i) => {
-  const s = w - 1.4;
-  return `<rect x="${-s / 2}" y="${-s / 2}" width="${s}" height="${s}" rx="${s * 0.23}" fill="${SYM.colors[i]}" fill-opacity="0.06" stroke="${SYM.colors[i]}" stroke-opacity="0.55" stroke-width="1.4" stroke-dasharray="3.2 2.6" stroke-linecap="round" transform="translate(${x} ${y}) rotate(${r})"/>`;
-}).join('')}</svg>`;
+// the four spots (slots.cjs); same 128 px frame as the boot animation (motion.cjs)
+const slots = () => `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-10 -10 84 84">${slotsBody()}</svg>`;
 
 // the highlight: a rounded box, R px corners
 const R = 10;

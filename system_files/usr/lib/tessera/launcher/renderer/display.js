@@ -76,7 +76,7 @@ async function flowScreens() {
       let r = await api.display('try', payload);
       if (r && r.needPin) { if (!(await requirePin('Enter the admin PIN to change screens'))) continue; r = await api.display('try', payload); }
       if (!r || !r.ok) { await pick("Can't use that", [{ label: 'OK', plain: true }], 0, { body: (r && r.error) || 'Something went wrong.' }); d = await displayList(); continue; }
-      if (r.restarted) { setStatus('Starting Ludus again on the new settings…'); return; }
+      if (r.restarted) { setStatus('Starting Ludus again on the new settings…'); return 'restarted'; }
       return void (await pick('Saved', [{ label: 'OK', plain: true }], 0, { body: 'These are used the next time Ludus starts. You will be asked to keep them.' }));
     }
   }
@@ -134,3 +134,23 @@ async function displayNew(e) {
 }
 if (api.onDisplayNew) api.onDisplayNew((e) => { displayNew(e); });
 if (api.display) api.onInit(() => { setTimeout(() => { displayKeepCountdown(); }, 1200); });
+
+// Settings > Appearance: the theme, the screens and the display calibration, under one tile.
+async function flowAppearance() {
+  let index = 0;
+  for (;;) {
+    const items = [
+      { label: 'Theme Settings', sub: calmNote('_theme') || 'colors, layout, motion, boot screen', op: '_theme', plain: true },
+      { label: 'Screens', sub: 'which screen, resolution, refresh rate', op: '_screens', plain: true },
+      { label: 'Display calibration', sub: calmNote('_display'), op: '_display', plain: true },
+    ];
+    const it = await pick('Appearance', items, index);
+    if (!it) return;
+    index = items.indexOf(it);
+    let r;
+    if (it.op === '_theme') r = await flowTheme();
+    else if (it.op === '_screens') r = await flowScreens();
+    else r = await flowCalMenu();
+    if (r === 'restarted' || modal) return; // Ludus is starting again (Screens > Apply), or something else is open
+  }
+}

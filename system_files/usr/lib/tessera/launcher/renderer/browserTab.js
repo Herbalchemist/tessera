@@ -518,6 +518,7 @@ function runAction(id) {
   else if (id === '_keyboard') flowKeyboardMenu();
   else if (id === '_install') flowInstaller();
   else if (id === '_recover') flowRecovery();
+  else if (id === '_appearance') flowAppearance();
   else if (id === '_theme') flowTheme();
   else if (id === '_profiles') flowProfiles();
   else if (id === '_display') flowCalMenu();

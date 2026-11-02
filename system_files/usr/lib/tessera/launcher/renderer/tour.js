@@ -24,7 +24,7 @@ function tourSteps() {
     { tab: 'new', target: () => tabEl('new'), title: 'Make your own tabs', text: '+ Mosaic builds a tab of your own, with games, apps, widgets and folders arranged the way you like.',
       doLabel: 'make one now', do: () => flowNewMosaic({}) },
     { tab: 'browser', target: () => tabEl('browser'), title: 'The browser', text: kb ? 'A full web page, full screen. The mouse and keyboard work as usual; Esc + ← / → leaves it.' : `A full web page, full screen. One stick moves a cursor and the other scrolls; ${g(7)} clicks, ${g(3)} types an address, ${g(1)} leaves.` },
-    { tab: 'settings', target: () => tabEl('settings'), title: 'Settings', text: 'Wi-Fi, Bluetooth, sound, controllers, keyboard & mouse, the look (Theme Settings), profiles, storage and updates.' },
+    { tab: 'settings', target: () => tabEl('settings'), title: 'Settings', text: 'Wi-Fi, Bluetooth, sound, controllers, keyboard & mouse, the look and screens (Appearance), profiles, storage and updates.' },
     { target: () => document.querySelector('footer'), title: 'Button hints', text: 'These follow what you hold: controller buttons, keyboard keys or mouse clicks. Change keys in Settings > Keyboard & mouse.' },
     { title: 'The guide', text: `Press ${g(16)} any time, even in the middle of a game, for quick settings, profiles, notifications and power. You can take this tour again from there.` },
   ];

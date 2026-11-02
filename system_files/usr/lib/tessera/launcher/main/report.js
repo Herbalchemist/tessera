@@ -78,7 +78,19 @@ async function buildReport() {
   try { version = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version; } catch { /* unknown */ }
 
   // Tessera, and the build the machine runs
-  let image = await run('bootc', ['status', '--format', 'json'], 10000);
+  // bootc only answers root: the status Tessera's update service last read (as root) comes first,
+  // then rpm-ostree's, which anyone may read.
+  let image = '';
+  try { image = fs.readFileSync('/run/tessera-update/status.json', 'utf8'); JSON.parse(image); } catch { image = ''; }
+  if (!image) image = await run('bootc', ['status', '--format', 'json'], 10000);
+  if (!/^\s*\{/.test(image)) {
+    const ro = await run('rpm-ostree', ['status', '--json'], 10000);
+    try {
+      const d = JSON.parse(ro).deployments || [];
+      const one = (x) => (x ? `${x['container-image-reference'] || x.origin || '?'} version ${x.version || '?'}` : 'none');
+      image = `booted: ${one(d.find((x) => x.booted))}\nwaiting to start: ${one(d.find((x) => x.staged))}\nother: ${one(d.find((x) => !x.booted && !x.staged))}`;
+    } catch { /* keep what bootc said */ }
+  }
   try {
     const j = JSON.parse(image);
     const pick = (d) => d && d.image ? `${d.image.image && d.image.image.image} version ${d.image.version || '?'} (${d.image.timestamp || '?'})` : 'none';
@@ -137,6 +149,7 @@ async function buildReport() {
   sec('Joy-Con helper (joycond)', await run('systemctl', ['is-active', 'joycond.service']));
   sec('Steam running', await run('sh', ['-c', 'pgrep -x steam >/dev/null && echo yes || echo no']));
   sec('Login screen log (this boot)', await run('journalctl', ['-b', '-u', 'plasmalogin', '-u', 'sddm', '--no-pager', '-n', '80', '-o', 'short-monotonic'], 8000));
+  sec('Update service, last error', readTail('/run/tessera-update/status.err', 20));
   // Problems that a restart clears (a blank login screen on the first start after an update):
   // the report is made after that restart, so the start before is where they show.
   sec('Recent starts', await run('journalctl', ['--list-boots', '--no-pager', '-q'], 8000).then((t) => String(t).trim().split('\n').slice(-4).join('\n')));

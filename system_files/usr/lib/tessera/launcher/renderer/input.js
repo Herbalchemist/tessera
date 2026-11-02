@@ -411,7 +411,38 @@ window.addEventListener('mousemove', (e) => {
   mouseAt = at;
   setInputMode('mouse');
   showMouse();
+  hoverSelect(e.target instanceof Element ? e.target : null);
 }, { passive: true });
+// The selection follows the pointer: the tile or menu line under it gets the highlight, so the
+// wheel and the keys carry on from where the mouse is. (Only on real movement, above: when the
+// grid scrolls to follow the wheel, the tile that slides under a still pointer isn't chosen.)
+function hoverSelect(t) {
+  if (!t || suspended || busy) return;
+  if (modal) {
+    if (modal.kind !== 'list') return;
+    const it = t.closest('.mitem');
+    if (!it || it.dataset.i === undefined) return;
+    const i = Number(it.dataset.i);
+    const item = modal.items[i];
+    if (!item || item.disabled || (item.header && !item.fold) || modal.index === i) return;
+    modal.index = i;
+    renderModal();
+    return;
+  }
+  if (reorderId || place) return; // moving something: that follows the controller
+  const card = t.closest('.card');
+  if (!card || !rowsEl.contains(card)) return;
+  const r = [...rowsEl.querySelectorAll('.row')].indexOf(card.closest('.row'));
+  const n = [...card.parentElement.children].indexOf(card);
+  const rows = currentRows();
+  if (r < 0 || n < 0 || !rows[r]) return;
+  const c = cur();
+  if (focus === 'content' && c.row === r && c.cols[rows[r].id] === n) return;
+  c.row = r;
+  c.cols[rows[r].id] = n;
+  focus = 'content';
+  update();
+}
 window.addEventListener('contextmenu', (e) => { e.preventDefault(); setInputMode('mouse'); showMouse(); if (!suspended && !busy) press('b'); });
 let wheelAt = 0;
 window.addEventListener('wheel', (e) => {
