@@ -34,7 +34,7 @@ class VM:
         shutil.copy(VARS, f'{WORK}/vars-{name}.fd')
         self.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35', '-m', '512', '-display', 'none', '-vga', 'std',
             '-drive', f'if=pflash,format=raw,readonly=on,file={CODE}', '-drive', f'if=pflash,format=raw,file={WORK}/vars-{name}.fd',
-            '-cdrom', f'{WORK}/system.iso', '-drive', f'file={WORK}/env.img,format=raw,if=virtio', '-monitor', f'unix:{self.sock},server,nowait', '-no-reboot'] +
+            '-cdrom', f'{WORK}/system.iso', '-drive', f'file={WORK}/env.img,format=raw,if=virtio', '-monitor', f'unix:{self.sock},server,nowait', '-serial', f'file:{OUT}/{name}-serial.log', '-no-reboot'] +
             (['-enable-kvm'] if os.path.exists('/dev/kvm') and os.access('/dev/kvm', os.W_OK) else []),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(100):
