@@ -17,7 +17,7 @@ const SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n
 const ID_RE = /^[0-9a-fA-F-]{8,40}:[A-Za-z0-9._-]{1,40}$/;
 const USER_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
 const UUID_RE = /^[0-9A-Za-z-]{4,64}$/;
-const TOOLS = ['signin', 'pin', 'shards', 'version', 'clean'];
+const TOOLS = ['signin', 'pin', 'shards', 'version', 'clean', 'boot'];
 const CLEAN = ['caches', 'shaders', 'trash'];
 const VERSION_ACTIONS = ['default', 'keep', 'unkeep'];
 
