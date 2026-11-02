@@ -1,9 +1,9 @@
-+ cp -a /home/runner/work/tessera/tessera/system_files/usr/share/tessera/grub /tmp/tmp.Tb812p15gt/src
-+ mkdir -p /tmp/tmp.Tb812p15gt/src/fonts
++ cp -a /home/runner/work/tessera/tessera/system_files/usr/share/tessera/grub /tmp/tmp.9zO0dEMPOd/src
++ mkdir -p /tmp/tmp.9zO0dEMPOd/src/fonts
 + range=0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193
 + '[' -n 1 ']'
-+ mkdir -p /tmp/tmp.Tb812p15gt/fedora
-+ docker run --rm -v /tmp/tmp.Tb812p15gt:/w registry.fedoraproject.org/fedora:44 bash -c '
++ mkdir -p /tmp/tmp.9zO0dEMPOd/fedora
++ docker run --rm -v /tmp/tmp.9zO0dEMPOd:/w registry.fedoraproject.org/fedora:44 bash -c '
     set -e
     dnf -y -q install grub2-efi-x64 shim-x64 grub2-tools-minimal grub2-tools-extra google-noto-sans-fonts >/dev/null
     rpm -q grub2-efi-x64 shim-x64 > /w/fedora/versions.txt
@@ -22,45 +22,45 @@ Unable to find image 'registry.fedoraproject.org/fedora:44' locally
 21d1b51c1ab3: Pull complete
 Digest: sha256:9b53c238bb4e9f6221b4820bbdfa61c1bd8273d386dacaaed429a81dd7362085
 Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
-[ 1/68] Verify package files            100% | 464.0   B/s |  66.0   B |  00m00s
-[ 2/68] Prepare transaction             100% |   1.1 KiB/s |  66.0   B |  00m00s
-[ 3/68] Installing systemd-shared-0:259 100% | 340.9 MiB/s |   5.5 MiB |  00m00s
-[ 4/68] Installing grub2-common-1:2.12- 100% | 771.4 MiB/s |   6.2 MiB |  00m00s
+[ 1/68] Verify package files            100% | 404.0   B/s |  66.0   B |  00m00s
+[ 2/68] Prepare transaction             100% | 929.0   B/s |  66.0   B |  00m00s
+[ 3/68] Installing systemd-shared-0:259 100% | 287.0 MiB/s |   5.5 MiB |  00m00s
+[ 4/68] Installing grub2-common-1:2.12- 100% | 617.1 MiB/s |   6.2 MiB |  00m00s
 [ 5/68] Installing libfdisk-0:2.41.6-1. 100% | 126.8 MiB/s | 389.4 KiB |  00m00s
-[ 6/68] Installing file-0:5.46-10.fc44. 100% |   8.3 MiB/s | 101.6 KiB |  00m00s
-[ 7/68] Installing kmod-libs-0:34.2-4.f 100% | 800.6 KiB/s | 140.1 KiB |  00m00s
+[ 6/68] Installing file-0:5.46-10.fc44. 100% |   6.6 MiB/s | 101.6 KiB |  00m00s
+[ 7/68] Installing kmod-libs-0:34.2-4.f 100% |  45.6 MiB/s | 140.1 KiB |  00m00s
 [ 8/68] Installing efi-filesystem-0:6-6 100% | 625.0 KiB/s | 640.0   B |  00m00s
-[ 9/68] Installing expat-0:2.9.0-1.fc44 100% |  26.4 MiB/s | 351.7 KiB |  00m00s
-[10/68] Installing tpm2-tss-fapi-0:4.1. 100% |  42.4 MiB/s | 910.9 KiB |  00m00s
+[ 9/68] Installing expat-0:2.9.0-1.fc44 100% |  21.5 MiB/s | 351.7 KiB |  00m00s
+[10/68] Installing tpm2-tss-fapi-0:4.1. 100% |  34.2 MiB/s | 910.9 KiB |  00m00s
 >>> Running sysusers scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
 >>> Finished sysusers scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
 >>> Scriptlet output:
 >>> Creating group 'dbus' with GID 81.
 >>> Creating user 'dbus' (System Message Bus) with UID 81 and GID 81.
 >>> 
-[11/68] Installing dbus-common-1:1.16.2 100% | 589.2 KiB/s |  13.6 KiB |  00m00s
-[12/68] Installing dbus-broker-0:37-8.f 100% |  15.5 MiB/s | 397.5 KiB |  00m00s
-[13/68] Installing libbpf-2:1.6.3-2.fc4 100% | 144.4 MiB/s | 443.5 KiB |  00m00s
-[14/68] Installing xkeyboard-config-0:2 100% | 179.6 MiB/s |   6.5 MiB |  00m00s
-[15/68] Installing procps-ng-0:4.0.6-1. 100% |  55.0 MiB/s |   1.1 MiB |  00m00s
-[16/68] Installing libpng-2:1.6.58-1.fc 100% | 122.5 MiB/s | 250.9 KiB |  00m00s
-[17/68] Installing graphite2-0:1.3.14-2 100% |  14.5 MiB/s | 193.6 KiB |  00m00s
-[18/68] Installing freetype-0:2.14.3-1. 100% | 179.7 MiB/s | 920.0 KiB |  00m00s
-[19/68] Installing harfbuzz-0:14.1.0-2. 100% | 312.5 MiB/s |   2.8 MiB |  00m00s
-[20/68] Installing cpio-0:2.15-9.fc44.x 100% |  84.9 MiB/s |   1.1 MiB |  00m00s
-[21/68] Installing libtextstyle-0:0.26- 100% | 186.9 MiB/s | 382.8 KiB |  00m00s
-[22/68] Installing gettext-libs-0:0.26- 100% | 295.6 MiB/s |   2.4 MiB |  00m00s
-[23/68] Installing gettext-envsubst-0:0 100% |   6.7 MiB/s |  88.9 KiB |  00m00s
-[24/68] Installing gettext-runtime-0:0. 100% |  52.2 MiB/s | 748.8 KiB |  00m00s
+[11/68] Installing dbus-common-1:1.16.2 100% | 467.3 KiB/s |  13.6 KiB |  00m00s
+[12/68] Installing dbus-broker-0:37-8.f 100% |  12.5 MiB/s | 397.5 KiB |  00m00s
+[13/68] Installing libbpf-2:1.6.3-2.fc4 100% | 108.3 MiB/s | 443.5 KiB |  00m00s
+[14/68] Installing xkeyboard-config-0:2 100% | 134.7 MiB/s |   6.5 MiB |  00m00s
+[15/68] Installing procps-ng-0:4.0.6-1. 100% |  44.0 MiB/s |   1.1 MiB |  00m00s
+[16/68] Installing libpng-2:1.6.58-1.fc 100% |  81.7 MiB/s | 250.9 KiB |  00m00s
+[17/68] Installing graphite2-0:1.3.14-2 100% |  12.6 MiB/s | 193.6 KiB |  00m00s
+[18/68] Installing freetype-0:2.14.3-1. 100% | 149.7 MiB/s | 920.0 KiB |  00m00s
+[19/68] Installing harfbuzz-0:14.1.0-2. 100% | 255.7 MiB/s |   2.8 MiB |  00m00s
+[20/68] Installing cpio-0:2.15-9.fc44.x 100% |  64.9 MiB/s |   1.1 MiB |  00m00s
+[21/68] Installing libtextstyle-0:0.26- 100% | 124.6 MiB/s | 382.8 KiB |  00m00s
+[22/68] Installing gettext-libs-0:0.26- 100% | 236.4 MiB/s |   2.4 MiB |  00m00s
+[23/68] Installing gettext-envsubst-0:0 100% |   5.8 MiB/s |  88.9 KiB |  00m00s
+[24/68] Installing gettext-runtime-0:0. 100% |  43.0 MiB/s | 748.8 KiB |  00m00s
 [25/68] Installing fuse3-libs-0:3.18.3- 100% |  97.3 MiB/s | 298.9 KiB |  00m00s
 [26/68] Installing libseccomp-0:2.6.1-2 100% |  54.7 MiB/s | 224.0 KiB |  00m00s
-[27/68] Installing kbd-misc-0:2.9.0-4.f 100% |  42.5 MiB/s |   2.5 MiB |  00m00s
-[28/68] Installing kbd-legacy-0:2.9.0-4 100% |  23.8 MiB/s | 610.1 KiB |  00m00s
-[29/68] Installing kbd-0:2.9.0-4.fc44.x 100% |  42.0 MiB/s |   1.5 MiB |  00m00s
-[30/68] Installing liblastlog2-0:2.41.6 100% |   3.3 MiB/s |  43.8 KiB |  00m00s
-[31/68] Installing util-linux-0:2.41.6- 100% |  56.0 MiB/s |   3.6 MiB |  00m00s
-[32/68] Installing device-mapper-libs-0 100% | 140.4 MiB/s | 431.3 KiB |  00m00s
-[33/68] Installing cryptsetup-libs-0:2. 100% |  10.4 MiB/s |   3.0 MiB |  00m00s
+[27/68] Installing kbd-misc-0:2.9.0-4.f 100% |  30.8 MiB/s |   2.5 MiB |  00m00s
+[28/68] Installing kbd-legacy-0:2.9.0-4 100% |  17.0 MiB/s | 610.1 KiB |  00m00s
+[29/68] Installing kbd-0:2.9.0-4.fc44.x 100% |  54.4 MiB/s |   1.5 MiB |  00m00s
+[30/68] Installing liblastlog2-0:2.41.6 100% |   2.5 MiB/s |  43.8 KiB |  00m00s
+[31/68] Installing util-linux-0:2.41.6- 100% |  43.7 MiB/s |   3.6 MiB |  00m00s
+[32/68] Installing device-mapper-libs-0 100% |  84.2 MiB/s | 431.3 KiB |  00m00s
+[33/68] Installing cryptsetup-libs-0:2. 100% |  46.6 MiB/s |   3.0 MiB |  00m00s
 >>> Running sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
 >>> Finished sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
 >>> Scriptlet output:
@@ -77,17 +77,17 @@ Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
 >>> Creating group 'systemd-oom' with GID 998.
 >>> Creating user 'systemd-oom' (systemd Userspace OOM Killer) with UID 998 and GID 998.
 >>> 
-[34/68] Installing systemd-0:259.10-1.f 100% |  44.4 MiB/s |  13.1 MiB |  00m00s
-[35/68] Installing device-mapper-0:1.02 100% |  22.8 MiB/s | 350.3 KiB |  00m00s
-[36/68] Installing grub2-tools-minimal- 100% | 194.5 MiB/s |   4.1 MiB |  00m00s
-[37/68] Installing libkcapi-0:1.5.0-7.f 100% |  32.9 MiB/s | 101.0 KiB |  00m00s
-[38/68] Installing libkcapi-hasher-0:1. 100% |   3.3 MiB/s |  40.6 KiB |  00m00s
-[39/68] Installing libkcapi-hmaccalc-0: 100% |  97.3 KiB/s |   1.1 KiB |  00m00s
+[34/68] Installing systemd-0:259.10-1.f 100% |  38.2 MiB/s |  13.1 MiB |  00m00s
+[35/68] Installing device-mapper-0:1.02 100% |  18.0 MiB/s | 350.3 KiB |  00m00s
+[36/68] Installing grub2-tools-minimal- 100% | 163.4 MiB/s |   4.1 MiB |  00m00s
+[37/68] Installing libkcapi-0:1.5.0-7.f 100% |  24.6 MiB/s | 101.0 KiB |  00m00s
+[38/68] Installing libkcapi-hasher-0:1. 100% |   2.6 MiB/s |  40.6 KiB |  00m00s
+[39/68] Installing libkcapi-hmaccalc-0: 100% |  76.5 KiB/s |   1.1 KiB |  00m00s
 [40/68] Installing libpkgconf-0:2.5.1-1 100% |  44.6 MiB/s |  91.3 KiB |  00m00s
-[41/68] Installing pkgconf-0:2.5.1-1.fc 100% |   1.6 MiB/s |  95.2 KiB |  00m00s
-[42/68] Installing pkgconf-m4-0:2.5.1-1 100% | 213.4 KiB/s |  14.7 KiB |  00m00s
-[43/68] Installing pkgconf-pkg-config-0 100% | 147.8 KiB/s |   1.8 KiB |  00m00s
-[44/68] Installing kmod-0:34.2-4.fc44.x 100% |   1.6 MiB/s | 256.9 KiB |  00m00s
+[41/68] Installing pkgconf-0:2.5.1-1.fc 100% |   5.8 MiB/s |  95.2 KiB |  00m00s
+[42/68] Installing pkgconf-m4-0:2.5.1-1 100% |  14.4 MiB/s |  14.7 KiB |  00m00s
+[43/68] Installing pkgconf-pkg-config-0 100% | 126.7 KiB/s |   1.8 KiB |  00m00s
+[44/68] Installing kmod-0:34.2-4.fc44.x 100% |   4.0 MiB/s | 256.9 KiB |  00m00s
 >>> Running sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
 >>> Finished sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
 >>> Scriptlet output:
@@ -100,7 +100,7 @@ Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
 >>> Creating group 'systemd-timesync' with GID 996.
 >>> Creating user 'systemd-timesync' (systemd Time Synchronization) with UID 996 and GID 996.
 >>> 
-[45/68] Installing systemd-udev-0:259.1 100% |  24.7 MiB/s |  13.2 MiB |  00m01s
+[45/68] Installing systemd-udev-0:259.1 100% |  23.7 MiB/s |  13.2 MiB |  00m01s
 >>> Running %post scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
 >>> Finished %post scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
 >>> Scriptlet output:
@@ -116,23 +116,23 @@ Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
 >>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-oomd.socket' → '/usr/lib/systemd/system/systemd-oomd.socket'.
 >>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-pstore.service' → '/usr/lib/systemd/system/systemd-pstore.service'.
 >>> 
-[46/68] Installing os-prober-0:1.81-11. 100% |   6.7 MiB/s | 117.3 KiB |  00m00s
-[47/68] Installing dracut-0:108-8.fc44. 100% |  25.5 MiB/s |   1.6 MiB |  00m00s
-[48/68] Installing grub2-tools-1:2.12-6 100% | 159.0 MiB/s |   7.8 MiB |  00m00s
+[46/68] Installing os-prober-0:1.81-11. 100% |   5.5 MiB/s | 117.3 KiB |  00m00s
+[47/68] Installing dracut-0:108-8.fc44. 100% |  19.7 MiB/s |   1.6 MiB |  00m00s
+[48/68] Installing grub2-tools-1:2.12-6 100% | 129.9 MiB/s |   7.8 MiB |  00m00s
 >>> Running %post scriptlet: grub2-tools-1:2.12-66.fc44.x86_64
 >>> Finished %post scriptlet: grub2-tools-1:2.12-66.fc44.x86_64
 >>> Scriptlet output:
 >>> Created symlink '/etc/systemd/user/timers.target.wants/grub-boot-success.timer' → '/usr/lib/systemd/user/grub-boot-success.timer'.
 >>> 
-[49/68] Installing grub2-efi-x64-1:2.12 100% | 215.5 MiB/s |   6.2 MiB |  00m00s
-[50/68] Installing glibc-gconv-extra-0: 100% | 110.3 MiB/s |   7.5 MiB |  00m00s
-[51/68] Installing mtools-0:4.0.49-3.fc 100% |  20.9 MiB/s | 364.3 KiB |  00m00s
-[52/68] Installing efivar-libs-0:39-12. 100% |  97.4 MiB/s | 399.1 KiB |  00m00s
-[53/68] Installing mokutil-2:0.7.2-3.fc 100% |   5.4 MiB/s | 100.1 KiB |  00m00s
+[49/68] Installing grub2-efi-x64-1:2.12 100% | 178.5 MiB/s |   6.2 MiB |  00m00s
+[50/68] Installing glibc-gconv-extra-0: 100% |  86.2 MiB/s |   7.5 MiB |  00m00s
+[51/68] Installing mtools-0:4.0.49-3.fc 100% |  17.8 MiB/s | 364.3 KiB |  00m00s
+[52/68] Installing efivar-libs-0:39-12. 100% |  77.9 MiB/s | 399.1 KiB |  00m00s
+[53/68] Installing mokutil-2:0.7.2-3.fc 100% |   6.5 MiB/s | 100.1 KiB |  00m00s
 [54/68] Installing google-noto-fonts-co 100% |  18.1 MiB/s |  18.5 KiB |  00m00s
-[55/68] Installing fonts-filesystem-1:5 100% | 769.5 KiB/s | 788.0   B |  00m00s
-[56/68] Installing google-noto-sans-fon 100% | 464.0 MiB/s |  43.2 MiB |  00m00s
-[57/68] Installing shim-x64-0:16.1-7.x8 100% | 322.8 MiB/s |   1.9 MiB |  00m00s
+[55/68] Installing fonts-filesystem-1:5 100% | 384.8 KiB/s | 788.0   B |  00m00s
+[56/68] Installing google-noto-sans-fon 100% | 392.3 MiB/s |  43.2 MiB |  00m00s
+[57/68] Installing shim-x64-0:16.1-7.x8 100% | 242.1 MiB/s |   1.9 MiB |  00m00s
 [58/68] Installing grub2-tools-extra-1: 100% | 102.0 MiB/s |   5.1 MiB |  00m00s
 >>> Running sysusers scriptlet: systemd-networkd-0:259.10-1.fc44.x86_64
 >>> Finished sysusers scriptlet: systemd-networkd-0:259.10-1.fc44.x86_64
@@ -140,14 +140,14 @@ Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
 >>> Creating group 'systemd-network' with GID 192.
 >>> Creating user 'systemd-network' (systemd Network Management) with UID 192 and GID 192.
 >>> 
-[59/68] Installing systemd-networkd-0:2 100% |  37.3 MiB/s |   2.3 MiB |  00m00s
+[59/68] Installing systemd-networkd-0:2 100% |  31.3 MiB/s |   2.3 MiB |  00m00s
 >>> Running sysusers scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
 >>> Finished sysusers scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
 >>> Scriptlet output:
 >>> Creating group 'systemd-resolve' with GID 193.
 >>> Creating user 'systemd-resolve' (systemd Resolver) with UID 193 and GID 193.
 >>> 
-[60/68] Installing systemd-resolved-0:2 100% |  17.9 MiB/s | 659.7 KiB |  00m00s
+[60/68] Installing systemd-resolved-0:2 100% |  14.6 MiB/s | 659.7 KiB |  00m00s
 >>> Running %post scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
 >>> Finished %post scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
 >>> Scriptlet output:
@@ -156,14 +156,14 @@ Status: Downloaded newer image for registry.fedoraproject.org/fedora:44
 >>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-varlink.socket' → '/usr/lib/systemd/system/systemd-resolved-varlink.socket'.
 >>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-monitor.socket' → '/usr/lib/systemd/system/systemd-resolved-monitor.socket'.
 >>> 
-[61/68] Installing systemd-pam-0:259.10 100% | 244.4 MiB/s |   1.2 MiB |  00m00s
-[62/68] Installing kpartx-0:0.13.1-1.fc 100% |   3.4 MiB/s |  89.4 KiB |  00m00s
-[63/68] Installing libxkbcommon-0:1.13. 100% | 141.2 MiB/s | 433.9 KiB |  00m00s
+[61/68] Installing systemd-pam-0:259.10 100% | 174.6 MiB/s |   1.2 MiB |  00m00s
+[62/68] Installing kpartx-0:0.13.1-1.fc 100% |   5.5 MiB/s |  89.4 KiB |  00m00s
+[63/68] Installing libxkbcommon-0:1.13. 100% | 105.9 MiB/s | 433.9 KiB |  00m00s
 [64/68] Installing dbus-1:1.16.2-1.fc44 100% | 121.1 KiB/s | 124.0   B |  00m00s
-[65/68] Installing tpm2-tools-0:5.7-5.f 100% |  52.5 MiB/s |   1.6 MiB |  00m00s
-[66/68] Installing memstrack-0:0.2.5-8. 100% |   9.9 MiB/s | 121.1 KiB |  00m00s
-[67/68] Installing qrencode-libs-0:4.1. 100% |  81.3 MiB/s | 166.5 KiB |  00m00s
-[68/68] Installing diffutils-0:3.12-5.f 100% | 807.5 KiB/s |   1.6 MiB |  00m02s
+[65/68] Installing tpm2-tools-0:5.7-5.f 100% |  40.4 MiB/s |   1.6 MiB |  00m00s
+[66/68] Installing memstrack-0:0.2.5-8. 100% |   7.9 MiB/s | 121.1 KiB |  00m00s
+[67/68] Installing qrencode-libs-0:4.1. 100% |  54.2 MiB/s | 166.5 KiB |  00m00s
+[68/68] Installing diffutils-0:3.12-5.f 100% |   1.5 MiB/s |   1.6 MiB |  00m01s
 >>> Running %posttrans scriptlet: grub2-common-1:2.12-66.fc44.noarch
 >>> Finished %posttrans scriptlet: grub2-common-1:2.12-66.fc44.noarch
 >>> Scriptlet output:
@@ -190,55 +190,55 @@ WARNING: unsupported font feature parameters: 6e2
 WARNING: unsupported font feature parameters: 6e0
 WARNING: unsupported font feature parameters: 6de
 WARNING: unsupported font feature parameters: 6dc
-+ cat /tmp/tmp.Tb812p15gt/fedora/versions.txt
++ cat /tmp/tmp.9zO0dEMPOd/fedora/versions.txt
 grub2-efi-x64-2.12-66.fc44.x86_64
 shim-x64-16.1-7.x86_64
 + mkdir -p /tmp/boot-menu-out
-+ cp /tmp/tmp.Tb812p15gt/fedora/versions.txt /tmp/boot-menu-out/fedora-versions.txt
-+ cp /usr/share/grub/unicode.pf2 /tmp/tmp.Tb812p15gt/boot/grub2/
-+ mkdir -p /tmp/tmp.Tb812p15gt/boot/grub2/fonts
-+ cp /usr/share/grub/unicode.pf2 /tmp/tmp.Tb812p15gt/boot/grub2/fonts/
++ cp /tmp/tmp.9zO0dEMPOd/fedora/versions.txt /tmp/boot-menu-out/fedora-versions.txt
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.9zO0dEMPOd/boot/grub2/
++ mkdir -p /tmp/tmp.9zO0dEMPOd/boot/grub2/fonts
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.9zO0dEMPOd/boot/grub2/fonts/
 + '[' -n 1 ']'
 + python3 -c 'import re,sys; s=open(sys.argv[1]).read(); print(re.sub(r'\''function blscfg \{.*?\n\}\n'\'', '\'''\'', s, flags=re.S), end='\'''\'')' /home/runner/work/tessera/tessera/tools/boot-menu-test/grub.cfg
-+ grub-editenv /tmp/tmp.Tb812p15gt/boot/grub2/grubenv create
-+ TESSERA_BOOT=/tmp/tmp.Tb812p15gt/boot
-+ TESSERA_SRC=/tmp/tmp.Tb812p15gt/src
-+ TESSERA_ETC=/tmp/tmp.Tb812p15gt/etc
++ grub-editenv /tmp/tmp.9zO0dEMPOd/boot/grub2/grubenv create
++ TESSERA_BOOT=/tmp/tmp.9zO0dEMPOd/boot
++ TESSERA_SRC=/tmp/tmp.9zO0dEMPOd/src
++ TESSERA_ETC=/tmp/tmp.9zO0dEMPOd/etc
 + bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-menu
 tessera-boot-menu: now on
 + '[' -n 1 ']'
-+ sed -i 's/^terminal_output gfxterm$/terminal_output gfxterm serial/' /tmp/tmp.Tb812p15gt/boot/grub2/tessera/splash.cfg
-+ mkfs.vfat -C /tmp/tmp.Tb812p15gt/env.img 4096
-+ touch /tmp/tmp.Tb812p15gt/tessera-env-disk
-+ mcopy -i /tmp/tmp.Tb812p15gt/env.img /tmp/tmp.Tb812p15gt/tessera-env-disk ::/tessera-env-disk
-+ mcopy -i /tmp/tmp.Tb812p15gt/env.img /tmp/tmp.Tb812p15gt/boot/grub2/grubenv ::/grubenv
-+ rm -f /tmp/tmp.Tb812p15gt/boot/grub2/grubenv
-+ mkdir -p /tmp/tmp.Tb812p15gt/iso/boot
-+ cp -a /tmp/tmp.Tb812p15gt/boot/grub2 /tmp/tmp.Tb812p15gt/iso/boot/grub
++ sed -i 's/^terminal_output gfxterm$/terminal_output gfxterm serial/' /tmp/tmp.9zO0dEMPOd/boot/grub2/tessera/splash.cfg
++ mkfs.vfat -C /tmp/tmp.9zO0dEMPOd/env.img 4096
++ touch /tmp/tmp.9zO0dEMPOd/tessera-env-disk
++ mcopy -i /tmp/tmp.9zO0dEMPOd/env.img /tmp/tmp.9zO0dEMPOd/tessera-env-disk ::/tessera-env-disk
++ mcopy -i /tmp/tmp.9zO0dEMPOd/env.img /tmp/tmp.9zO0dEMPOd/boot/grub2/grubenv ::/grubenv
++ rm -f /tmp/tmp.9zO0dEMPOd/boot/grub2/grubenv
++ mkdir -p /tmp/tmp.9zO0dEMPOd/iso/boot
++ cp -a /tmp/tmp.9zO0dEMPOd/boot/grub2 /tmp/tmp.9zO0dEMPOd/iso/boot/grub
 + printf 'serial --unit=0 --speed=115200\nterminal_input --append serial\nterminal_output --append serial\n'
-+ cat /tmp/tmp.Tb812p15gt/boot/grub2/grub.cfg
++ cat /tmp/tmp.9zO0dEMPOd/boot/grub2/grub.cfg
 + '[' -n 1 ']'
-+ cp /tmp/tmp.Tb812p15gt/fedora/unicode.pf2 /tmp/tmp.Tb812p15gt/iso/boot/grub/fonts/
++ cp /tmp/tmp.9zO0dEMPOd/fedora/unicode.pf2 /tmp/tmp.9zO0dEMPOd/iso/boot/grub/fonts/
 + printf 'search --no-floppy --file --set=root /boot/grub/grub.cfg\nset prefix=($root)/boot/grub\nconfigfile $prefix/grub.cfg\n'
-+ mkfs.vfat -C /tmp/tmp.Tb812p15gt/iso/efiboot.img 20480
-+ mmd -i /tmp/tmp.Tb812p15gt/iso/efiboot.img ::/EFI ::/EFI/BOOT ::/EFI/fedora
-+ mcopy -i /tmp/tmp.Tb812p15gt/iso/efiboot.img /tmp/tmp.Tb812p15gt/fedora/shimx64.efi ::/EFI/BOOT/BOOTX64.EFI
++ mkfs.vfat -C /tmp/tmp.9zO0dEMPOd/iso/efiboot.img 20480
++ mmd -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img ::/EFI ::/EFI/BOOT ::/EFI/fedora
++ mcopy -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img /tmp/tmp.9zO0dEMPOd/fedora/shimx64.efi ::/EFI/BOOT/BOOTX64.EFI
 + for d in BOOT fedora
-+ mcopy -i /tmp/tmp.Tb812p15gt/iso/efiboot.img /tmp/tmp.Tb812p15gt/fedora/grubx64.efi ::/EFI/BOOT/grubx64.efi
-+ mcopy -i /tmp/tmp.Tb812p15gt/iso/efiboot.img /tmp/tmp.Tb812p15gt/stub.cfg ::/EFI/BOOT/grub.cfg
++ mcopy -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img /tmp/tmp.9zO0dEMPOd/fedora/grubx64.efi ::/EFI/BOOT/grubx64.efi
++ mcopy -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img /tmp/tmp.9zO0dEMPOd/stub.cfg ::/EFI/BOOT/grub.cfg
 + for d in BOOT fedora
-+ mcopy -i /tmp/tmp.Tb812p15gt/iso/efiboot.img /tmp/tmp.Tb812p15gt/fedora/grubx64.efi ::/EFI/fedora/grubx64.efi
-+ mcopy -i /tmp/tmp.Tb812p15gt/iso/efiboot.img /tmp/tmp.Tb812p15gt/stub.cfg ::/EFI/fedora/grub.cfg
-+ mkdir -p /tmp/tmp.Tb812p15gt/iso/EFI/BOOT /tmp/tmp.Tb812p15gt/iso/EFI/fedora
-+ cp /tmp/tmp.Tb812p15gt/stub.cfg /tmp/tmp.Tb812p15gt/iso/EFI/BOOT/grub.cfg
-+ cp /tmp/tmp.Tb812p15gt/stub.cfg /tmp/tmp.Tb812p15gt/iso/EFI/fedora/grub.cfg
-+ cp /tmp/tmp.Tb812p15gt/fedora/vmlinuz /tmp/tmp.Tb812p15gt/iso/vmlinuz
-+ mkdir -p /tmp/tmp.Tb812p15gt/initrd/bin /tmp/tmp.Tb812p15gt/iso/loader/entries
++ mcopy -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img /tmp/tmp.9zO0dEMPOd/fedora/grubx64.efi ::/EFI/fedora/grubx64.efi
++ mcopy -i /tmp/tmp.9zO0dEMPOd/iso/efiboot.img /tmp/tmp.9zO0dEMPOd/stub.cfg ::/EFI/fedora/grub.cfg
++ mkdir -p /tmp/tmp.9zO0dEMPOd/iso/EFI/BOOT /tmp/tmp.9zO0dEMPOd/iso/EFI/fedora
++ cp /tmp/tmp.9zO0dEMPOd/stub.cfg /tmp/tmp.9zO0dEMPOd/iso/EFI/BOOT/grub.cfg
++ cp /tmp/tmp.9zO0dEMPOd/stub.cfg /tmp/tmp.9zO0dEMPOd/iso/EFI/fedora/grub.cfg
++ cp /tmp/tmp.9zO0dEMPOd/fedora/vmlinuz /tmp/tmp.9zO0dEMPOd/iso/vmlinuz
++ mkdir -p /tmp/tmp.9zO0dEMPOd/initrd/bin /tmp/tmp.9zO0dEMPOd/iso/loader/entries
 ++ command -v busybox
-+ cp /usr/bin/busybox /tmp/tmp.Tb812p15gt/initrd/bin/busybox
++ cp /usr/bin/busybox /tmp/tmp.9zO0dEMPOd/initrd/bin/busybox
 + printf '#!/bin/busybox sh\n/bin/busybox mkdir -p /proc /dev\n/bin/busybox mount -t proc proc /proc\n/bin/busybox mount -t devtmpfs dev /dev\necho "TESSERA-BOOTED $(/bin/busybox cat /proc/cmdline)" > /dev/ttyS0\n/bin/busybox sleep 2\n/bin/busybox poweroff -f\n'
-+ chmod 755 /tmp/tmp.Tb812p15gt/initrd/init
-+ cd /tmp/tmp.Tb812p15gt/initrd
++ chmod 755 /tmp/tmp.9zO0dEMPOd/initrd/init
++ cd /tmp/tmp.9zO0dEMPOd/initrd
 + gzip
 + find .
 + cpio -o -H newc --quiet
@@ -246,15 +246,15 @@ tessera-boot-menu: now on
 + printf 'title Tessera 43.2026110%s.0 (ostree:%s)\nversion %s\noptions console=ttyS0,115200 tessera_booted=ostree:%s\nlinux /vmlinuz\ninitrd /initrd.img\n' 1 0 2 0
 + for n in 0 1
 + printf 'title Tessera 43.2026110%s.0 (ostree:%s)\nversion %s\noptions console=ttyS0,115200 tessera_booted=ostree:%s\nlinux /vmlinuz\ninitrd /initrd.img\n' 0 1 1 1
-+ xorriso -as mkisofs -quiet -R -J -o /tmp/tmp.Tb812p15gt/system.iso -e efiboot.img -no-emul-boot /tmp/tmp.Tb812p15gt/iso
++ xorriso -as mkisofs -quiet -R -J -o /tmp/tmp.9zO0dEMPOd/system.iso -e efiboot.img -no-emul-boot /tmp/tmp.9zO0dEMPOd/iso
 xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
 
-+ find /tmp/tmp.Tb812p15gt/iso -type f
-+ sed s#/tmp/tmp.Tb812p15gt/iso##
++ find /tmp/tmp.9zO0dEMPOd/iso -type f
++ sed s#/tmp/tmp.9zO0dEMPOd/iso##
 + sort
-+ I=/tmp/tmp.Tb812p15gt/env.img
-+ cp /tmp/tmp.Tb812p15gt/boot/grub2/custom.cfg /tmp/boot-menu-out/custom.cfg
-+ python3 /home/runner/work/tessera/tessera/tools/boot-menu-test/run.py /tmp/tmp.Tb812p15gt /tmp/boot-menu-out
++ I=/tmp/tmp.9zO0dEMPOd/env.img
++ cp /tmp/tmp.9zO0dEMPOd/boot/grub2/custom.cfg /tmp/boot-menu-out/custom.cfg
++ python3 /home/runner/work/tessera/tessera/tools/boot-menu-test/run.py /tmp/tmp.9zO0dEMPOd /tmp/boot-menu-out
 PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS desktop-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
@@ -267,37 +267,37 @@ PASS all-versions: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 PASS full-boot-menu: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS failed-update-fallback: {'tessera_booted': 'ostree:1', 'tessera_once': None}
-+ mkdir -p /tmp/tmp.Tb812p15gt/b1/grub2 /tmp/tmp.Tb812p15gt/run1
-+ mcopy -o -i /tmp/tmp.Tb812p15gt/env.img ::/grubenv /tmp/tmp.Tb812p15gt/b1/grub2/grubenv
++ mkdir -p /tmp/tmp.9zO0dEMPOd/b1/grub2 /tmp/tmp.9zO0dEMPOd/run1
++ mcopy -o -i /tmp/tmp.9zO0dEMPOd/env.img ::/grubenv /tmp/tmp.9zO0dEMPOd/b1/grub2/grubenv
 + echo '--- boot-once on the settings file GRUB left after the last '\''this time'\'' scenario:'
-+ grub-editenv /tmp/tmp.Tb812p15gt/b1/grub2/grubenv set tessera_once=console
++ grub-editenv /tmp/tmp.9zO0dEMPOd/b1/grub2/grubenv set tessera_once=console
 + tee -a /tmp/boot-menu-out/results.txt
 --- boot-once on the settings file GRUB left after the last 'this time' scenario:
-+ TESSERA_BOOT=/tmp/tmp.Tb812p15gt/b1
-+ TESSERA_RUN=/tmp/tmp.Tb812p15gt/run1
++ TESSERA_BOOT=/tmp/tmp.9zO0dEMPOd/b1
++ TESSERA_RUN=/tmp/tmp.9zO0dEMPOd/run1
 + bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-once
 tessera-boot-once: this start: repair console (no login screen)
-++ cat /tmp/tmp.Tb812p15gt/run1/boot-once
-++ '[' -e /tmp/tmp.Tb812p15gt/run1/console-once ']'
+++ cat /tmp/tmp.9zO0dEMPOd/run1/boot-once
+++ '[' -e /tmp/tmp.9zO0dEMPOd/run1/console-once ']'
 ++ echo yes
 + echo 'note: console  console-once: yes'
 note: console  console-once: yes
-++ grub-editenv /tmp/tmp.Tb812p15gt/b1/grub2/grubenv list
+++ grub-editenv /tmp/tmp.9zO0dEMPOd/b1/grub2/grubenv list
 ++ tr '\n' ' '
 + echo 'left in grubenv: test_default=1 '
 left in grubenv: test_default=1 
-+ mkdir -p /tmp/tmp.Tb812p15gt/b2/grub2 /tmp/tmp.Tb812p15gt/e2
-+ grub-editenv /tmp/tmp.Tb812p15gt/b2/grub2/grubenv create
-+ grub-editenv /tmp/tmp.Tb812p15gt/b2/grub2/grubenv set default=00 saved_entry=keep-me
-+ TESSERA_BOOT=/tmp/tmp.Tb812p15gt/b2
-+ TESSERA_SRC=/tmp/tmp.Tb812p15gt/src
-+ TESSERA_ETC=/tmp/tmp.Tb812p15gt/e2
++ mkdir -p /tmp/tmp.9zO0dEMPOd/b2/grub2 /tmp/tmp.9zO0dEMPOd/e2
++ grub-editenv /tmp/tmp.9zO0dEMPOd/b2/grub2/grubenv create
++ grub-editenv /tmp/tmp.9zO0dEMPOd/b2/grub2/grubenv set default=00 saved_entry=keep-me
++ TESSERA_BOOT=/tmp/tmp.9zO0dEMPOd/b2
++ TESSERA_SRC=/tmp/tmp.9zO0dEMPOd/src
++ TESSERA_ETC=/tmp/tmp.9zO0dEMPOd/e2
 + PATH=/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 + bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-menu
 + tee -a /tmp/boot-menu-out/results.txt
 tessera-boot-menu: removed default=00 (the way past the old wait screen)
 tessera-boot-menu: now on
-++ grub-editenv /tmp/tmp.Tb812p15gt/b2/grub2/grubenv list
+++ grub-editenv /tmp/tmp.9zO0dEMPOd/b2/grub2/grubenv list
 ++ tr '\n' ' '
 + left='saved_entry=keep-me '
 + '[' 'saved_entry=keep-me ' = 'saved_entry=keep-me ' ']'
@@ -306,7 +306,7 @@ tessera-boot-menu: now on
 PASS default=00 removed, the rest kept
 + grep -q 'note: console  console-once: yes' /tmp/boot-menu-out/results.txt
 + grep -q tessera_once= /dev/fd/63
-++ grub-editenv /tmp/tmp.Tb812p15gt/b1/grub2/grubenv list
+++ grub-editenv /tmp/tmp.9zO0dEMPOd/b1/grub2/grubenv list
 + echo 'PASS boot-once: read, cleared, note left'
 + tee -a /tmp/boot-menu-out/results.txt
 PASS boot-once: read, cleared, note left
