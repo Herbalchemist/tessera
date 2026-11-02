@@ -473,7 +473,7 @@ function calmNote(id) {
 function settingsRows() {
   const low = (prefs.storage && prefs.storage.low) || [];
   const all = layoutCfg().notes;
-  const rows = isLive() ? [{ id: '_cat_usb', title: 'Tessera USB', cat: true, tiles: [{ id: '_install', title: 'Install Tessera', kind: 'action', icon: 'update', sub: 'on this computer' }] }, ...SETTINGS_ROWS] : SETTINGS_ROWS;
+  const rows = isLive() ? [{ id: '_cat_usb', title: 'Tessera USB', cat: true, tiles: [{ id: '_install', title: 'Install Tessera', kind: 'action', icon: 'update', sub: 'on this computer' }, { id: '_recover', title: 'Recover', kind: 'action', icon: 'report', sub: "a Tessera that won't start" }] }, ...SETTINGS_ROWS] : SETTINGS_ROWS;
   return rows.map((r) => ({
     ...r,
     tiles: r.tiles.map((t) => {

@@ -52,8 +52,10 @@ async function flowInstaller() {
   const first = await pick('Welcome to Tessera', [
     { label: 'Install Tessera', sub: 'on this computer', op: 'install', ok: true },
     { label: 'Try it first', sub: 'nothing is changed', op: 'try', plain: true },
+    { label: 'Recover', sub: "a Tessera on this computer that won't start", op: 'recover', plain: true },
   ], 0, { welcome: true, body: 'This USB installs Tessera, a gaming console for your PC, with no internet needed. You can also try it first: nothing on this computer changes until you choose Erase and install. Settings, and the guide, have Install Tessera whenever you\'re ready.' });
   reveal();
+  if (first && first.op === 'recover') return flowRecovery();
   if (!first || first.op !== 'install') return;
   setStatus('Looking at this computer…');
   busy = true;
