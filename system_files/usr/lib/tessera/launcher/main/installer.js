@@ -122,7 +122,9 @@ function readGpus() {
 // Card names, from lspci when it's there (it is on Bazzite). Without it the ids are shown instead.
 function nameGpus(gpus) {
   return Promise.all(gpus.map((g) => new Promise((resolve) => {
-    if (!/^[0-9a-f:.]+$/i.test(g.slot)) return resolve(g);
+    // Stand-in cards (TESSERA_PCI_DIR, the tests) aren't on this machine's bus: lspci would name
+    // whatever really sits at that slot.
+    if (process.env.TESSERA_PCI_DIR || !/^[0-9a-f:.]+$/i.test(g.slot)) return resolve(g);
     execFile('lspci', ['-mm', '-s', g.slot], { timeout: 4000, encoding: 'utf8' }, (err, stdout) => {
       const parts = err ? [] : [...String(stdout).matchAll(/"([^"]*)"/g)].map((m) => m[1]);
       resolve(parts.length >= 3 ? { ...g, name: updates.shortText(`${parts[1]} ${parts[2]}`.replace(/Advanced Micro Devices, Inc\. \[AMD\/ATI\]/, 'AMD').replace(/NVIDIA Corporation/, 'NVIDIA').replace(/Intel Corporation/, 'Intel'), 80) } : g);
