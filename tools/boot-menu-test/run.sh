@@ -10,6 +10,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="$(realpath -m "${1:-boot-menu-out}")"
 W="$(mktemp -d)"
 mkdir -p "$OUT" "$W/boot/grub2" "$W/etc"
+exec > >(tee "$OUT/run.log") 2>&1   # the log goes to the reports branch too
+set -x
 
 # the menu's files, with fonts made the way build.sh makes them (DejaVu here)
 cp -a "$ROOT/system_files/usr/share/tessera/grub" "$W/src"
@@ -30,7 +32,7 @@ truncate -s 96M "$W/disk.img"
 sgdisk -q -n1:2048:0 -t1:ef00 "$W/disk.img"
 end=$(sgdisk -i 1 "$W/disk.img" | sed -n 's/^Last sector: \([0-9]*\).*/\1/p')
 sectors=$(( end - 2048 + 1 ))
-mkfs.vfat -F 32 -C "$W/esp.img" $(( sectors / 2 )) >/dev/null
+mkfs.vfat -F 32 -S 512 -s 1 -C "$W/esp.img" $(( sectors / 2 ))
 mmd -i "$W/esp.img" ::/EFI ::/EFI/BOOT
 mcopy -i "$W/esp.img" "$W/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
 mcopy -s -i "$W/esp.img" "$W/boot" ::/
