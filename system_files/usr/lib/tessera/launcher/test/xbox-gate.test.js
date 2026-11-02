@@ -3,6 +3,9 @@
 // Electron (xbox-harness.js) and a small test shard that offers games the way the Xbox add-on does.
 // No real window, Steam, Xodus Nexus or game is involved.
 const test = require('node:test');
+// The real main process starts timers that repeat for ever (the guide's scan, the drive check): once
+// the tests are done the file must end by itself, or `node --test` waits on it (for ever on CI).
+test.after(() => { setImmediate(() => process.exit()); });
 const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
