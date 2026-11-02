@@ -250,7 +250,7 @@ function sendPointerEvent(event) {
 function ensureBrowserCursorView() {
   if (browserCursorView && !browserCursorView.webContents.isDestroyed()) return browserCursorView;
   browserCursorView = new WebContentsView({
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: config.DEV },
   });
   browserCursorView.setBackgroundColor('#00000000');
   browserCursorView.setVisible(false);

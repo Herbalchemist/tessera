@@ -1,0 +1,18 @@
+Tessera is a Linux gaming OS (an image built on Bazzite/Fedora with bootc) with an Electron launcher.
+Pay particular attention to:
+- The launcher's main process (system_files/usr/lib/tessera/launcher/main/*.js) handles requests from
+  its page over IPC. Every request is checked for its sender (main/ipcGuard.js); handlers must
+  validate every field, and anything privileged must require the admin PIN (pinLock.pinOk) and,
+  for Guest, guestDenies(). Flag handlers that trust renderer input, paths that can escape the
+  Tessera folder, and new privileged operations without the PIN check.
+- Programs are started with execFile/spawn and argument lists, never a shell.
+- Root-run scripts (system_files/usr/libexec/tessera/*, usr/bin/*) and the systemd units and polkit
+  rule (usr/share/polkit-1/rules.d/49-tessera-update.rules) that let the console start them:
+  arguments must be fixed or whitelisted; nothing a user controls may reach a root command.
+- The boot menu (usr/share/tessera/grub/*.cfg, GRUB script) must never skip a password or the
+  admin PIN, and must leave GRUB's failed-update fallback alone.
+- Renderer code must not build HTML from text that came from outside (game titles, web pages,
+  add-ons, Wi-Fi names); index.html's Content-Security-Policy must stay strict.
+- Add-on packages and signatures (addon-package.js, addon-verify.js): nothing unsigned may be
+  treated as Official; unpacking must refuse links, unsafe names and oversized content.
+- Secrets: the add-on signing key must never be in the repository or in CI.

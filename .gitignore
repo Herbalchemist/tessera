@@ -7,3 +7,12 @@ _build-*/**
 node_modules/
 qa-output/
 __pycache__/
+# Secrets never go in Git (signing keys, API keys, environment files)
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
