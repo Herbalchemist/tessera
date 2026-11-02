@@ -3,7 +3,8 @@
 # Boots GRUB with Tessera's boot menu in QEMU (UEFI) and drives it with key presses, the way a
 # person at the machine would. Screenshots go to OUT; what each start chose is read back from
 # GRUB's settings file (the stand-in boot entries save tessera_booted there).
-import os, socket, subprocess, sys, time, shutil
+import os, re, socket, subprocess, sys, time, shutil
+FEDORA = bool(os.environ.get('FEDORA'))
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -110,6 +111,10 @@ def scenario(name, steps, expect):
         time.sleep(1.5)
         vm.stop()
     env = grubenv()
+    if FEDORA:  # the real kernel says which entry started it, on the serial port
+        log = open(f'{OUT}/{name}-serial.log', errors='replace').read()
+        m = re.search(r'TESSERA-BOOTED .*?tessera_booted=(\S+)', log)
+        env['tessera_booted'] = m.group(1) if m else None
     got = {k: env.get(k) for k in ('tessera_booted', 'tessera_once')}
     want = {'tessera_booted': expect['booted'], 'tessera_once': expect.get('once')}
     ok = got == want
@@ -117,43 +122,67 @@ def scenario(name, steps, expect):
     print(results[-1], flush=True)
 
 def wait_boot(vm, label='booted'):
+    if FEDORA:  # a real kernel: it reports on the serial port, then powers the machine off
+        end = time.time() + 60
+        while time.time() < end and vm.p.poll() is None:
+            if 'TESSERA-BOOTED' in open(f'{OUT}/{vm.name}-serial.log', errors='replace').read(): break
+            time.sleep(0.5)
+        try: vm.shot(label)
+        except Exception: pass
+        if 'TESSERA-BOOTED' not in open(f'{OUT}/{vm.name}-serial.log', errors='replace').read():
+            raise AssertionError(f'{vm.name}: no started system within 60s')
+        return
     try: vm.wait(is_booted, 'started system', 30)
     finally: vm.shot(label)
 
 def s_wait(vm):
     vm.wait(is_splash, 'wait screen'); time.sleep(0.6); vm.shot('wait-screen'); wait_boot(vm)
+# Boot options is a look of GRUB's own menu: the system versions first (newest at the top), then
+# Boot options (O, F2), the login screen, safe settings, repair console, GRUB's own look, firmware
+# settings, restart, power off, back to the wait screen.
 def s_desktop(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.shot('boot-options')
-    vm.key('down', 2); vm.shot('boot-options-desktop'); vm.key('ret'); wait_boot(vm)
+    vm.key('down', 4); vm.shot('boot-options-desktop'); vm.key('ret')
+    # the mode is chosen; Boot options says so, the newest version is selected: Enter starts it
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.shot('boot-options-desktop-chosen'); vm.key('ret'); wait_boot(vm)
 def s_previous(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down'); vm.key('ret'); wait_boot(vm)
 def s_f2(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('f2'); vm.wait(is_options, 'Boot options'); vm.shot('boot-options-f2')
     vm.key('down', 6); vm.shot('boot-options-lower'); vm.key('up', 6); vm.key('ret'); wait_boot(vm)
 def s_safe(vm):
-    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 3); vm.key('ret'); wait_boot(vm)
-def s_console(vm):
-    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 4); vm.key('ret'); wait_boot(vm)
-def s_versions(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 5); vm.key('ret')
-    time.sleep(2); vm.shot('all-versions'); vm.key('down'); time.sleep(0.5); vm.shot('all-versions-second'); vm.key('ret'); wait_boot(vm)
-def s_full(vm):
-    # Boot options > Full boot menu: GRUB's own list (anything else on the machine is there too)
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.key('ret'); wait_boot(vm)
+def s_console(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 6); vm.key('ret')
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.key('ret'); wait_boot(vm)
+def s_versions(vm):
+    # the versions are the top of Boot options: the second is the one before the last update
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); time.sleep(0.5); vm.shot('all-versions')
+    vm.key('down'); time.sleep(0.5); vm.shot('all-versions-second'); vm.key('ret'); wait_boot(vm)
+def s_full(vm):
+    # Boot options > GRUB's own menu: every entry in GRUB's own look, waiting
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 7); vm.key('ret')
     vm.wait(is_plain, 'full menu', 15); time.sleep(3); vm.shot('full-menu-still-waiting'); vm.key('down'); vm.key('ret'); wait_boot(vm)
 def s_options_back(vm):
-    # Esc in Boot options goes back to the wait screen's menu; Enter there starts Tessera
-    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('esc')
+    # Back to the wait screen (the last entry); Enter there starts Tessera
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('end'); time.sleep(0.4); vm.shot('options-back-entry'); vm.key('ret')
     vm.wait(is_splash, 'wait screen again', 15); vm.shot('back-from-options'); vm.key('ret'); wait_boot(vm)
+def s_login_key(vm):
+    # L on the wait screen chooses the login screen for this start; it says so; Enter starts
+    vm.wait(is_splash, 'wait screen'); vm.key('l'); time.sleep(1); vm.wait(is_splash, 'wait screen with the login screen chosen')
+    vm.shot('login-screen-chosen'); vm.key('ret'); wait_boot(vm)
 def s_enter(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('ret'); wait_boot(vm)
 def s_fallback(vm):
     # after a failed update GRUB's own fallback picks entry 1: Tessera's menu stays out of the way
+    if FEDORA: return wait_boot(vm)
     vm.wait(lambda im: is_plain(im) or is_booted(im), 'GRUB menu', 60); vm.shot('fallback-menu'); wait_boot(vm)
 
 scenario('wait', s_wait, {'booted': 'ostree:0'})
 scenario('enter', s_enter, {'booted': 'ostree:0'})
 scenario('desktop-this-time', s_desktop, {'booted': 'ostree:0', 'once': 'desktop'})
+scenario('login-screen-key', s_login_key, {'booted': 'ostree:0', 'once': 'desktop'})
 scenario('safe-this-time', s_safe, {'booted': 'ostree:0', 'once': 'safe'})
 scenario('console-this-time', s_console, {'booted': 'ostree:0', 'once': 'console'})
 scenario('previous-version', s_previous, {'booted': 'ostree:1'})

@@ -14,14 +14,20 @@ permissions:
 jobs:
   boot-menu:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        grub: [ubuntu, fedora]   # fedora: the shim and GRUB a real Tessera install starts with
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q qemu-system-x86 ovmf grub-efi-amd64-bin grub-common mtools dosfstools xorriso fonts-dejavu-core python3-pil
+          sudo apt-get install -y -q qemu-system-x86 ovmf grub-efi-amd64-bin grub-common mtools dosfstools xorriso fonts-dejavu-core python3-pil busybox-static cpio
           sudo chmod 666 /dev/kvm || true
       - name: Boot and drive the menu
+        env:
+          FEDORA: ${{ matrix.grub == 'fedora' && '1' || '' }}
         run: tools/boot-menu-test/run.sh /tmp/boot-menu-out
       - name: Publish to the reports branch
         if: always()
@@ -30,7 +36,8 @@ jobs:
           for i in 1 2 3 4 5; do
             rm -rf /tmp/rep; git worktree prune
             if git fetch -q origin reports; then git worktree add -q --detach /tmp/rep FETCH_HEAD; else git worktree add -q --orphan -b reports-new /tmp/rep; fi
-            rm -rf /tmp/rep/reports/boot-menu && mkdir -p /tmp/rep/reports/boot-menu && cp -r /tmp/boot-menu-out/. /tmp/rep/reports/boot-menu/ 2>/dev/null || true
+            d=/tmp/rep/reports/boot-menu${{ matrix.grub == 'fedora' && '-fedora' || '' }}
+            rm -rf "$d" && mkdir -p "$d" && cp -r /tmp/boot-menu-out/. "$d/" 2>/dev/null || true
             (cd /tmp/rep && git add -A reports && git commit -qm "boot menu test: ${GITHUB_SHA::7}" && git push -q origin HEAD:refs/heads/reports) && exit 0
             sleep $((RANDOM % 10 + 3))
           done
