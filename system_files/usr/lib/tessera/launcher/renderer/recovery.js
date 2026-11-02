@@ -143,7 +143,7 @@ async function recoveryCheck(inst) {
   let r;
   try { r = await api.recovery('check', { id: inst.id }); } finally { busy = false; setStatus(''); }
   if (!r || !r.ok) return void (await pick("Can't check", [{ label: 'OK', plain: true }], 0, { body: (r && r.error) || 'The check could not start.' }));
-  let end = await recoveryJobProgress('Checking the disk');
+  let end = await recoveryJobProgress('Checking the disk', 'check');
   if (end.phase === 'done' && !end.ok) {
     const it = await pick('Problems found', [
       { label: 'Repair', sub: 'only repairs that are safe to run on their own', op: 'repair', ok: true },
@@ -153,7 +153,7 @@ async function recoveryCheck(inst) {
     const user = await recoveryAdmin(inst);
     if (!user) return;
     if (!(await recoveryWithPassword(user, 'Starting the repair…', (password) => api.recovery('check', { id: inst.id, repair: true, user, password })))) return;
-    end = await recoveryJobProgress('Repairing the disk');
+    end = await recoveryJobProgress('Repairing the disk', 'check');
   }
   if (end.phase === 'done') await pick(end.ok ? (end.repair ? 'Repaired' : 'No problems found') : "Some problems remain", [{ label: 'OK', plain: true }], 0, { body: recoveryCheckBody(end) });
   else if (end.phase === 'canceled') await pick('Stopped', [{ label: 'OK', plain: true }], 0, { body: 'The check was stopped. Nothing was changed by stopping it.' });
@@ -168,9 +168,9 @@ function recoveryCheckBody(end) {
 }
 
 // Follows a long job of the helper's (a backup or a disk check) until it ends; B stops it.
-function recoveryJobProgress(title) {
+function recoveryJobProgress(title, job) {
   return new Promise((resolve) => {
-    let st = { done: 0, total: 0, line: '' };
+    let st = { job, done: 0, total: 0, line: job === 'check' ? 'Starting' : '' };
     const t0 = Date.now();
     const pc = () => (st.total ? Math.min(100, Math.floor((st.done / st.total) * 100)) : 0);
     const bar = (p) => { const n = Math.round(p / 5); return '▰'.repeat(n) + '▱'.repeat(20 - n); };
@@ -257,7 +257,7 @@ async function recoveryBackup(inst) {
   if (!user) return;
   const r = await recoveryWithPassword(user, 'Starting the backup…', (password) => api.recovery('backup', { id: inst.id, user, password, who, drive: drive.uuid, what: what.what }));
   if (!r) return;
-  const end = await recoveryJobProgress('Backing up');
+  const end = await recoveryJobProgress('Backing up', 'backup');
   if (end.phase === 'done') {
     await pick('Backed up', [{ label: 'OK', plain: true }], 0, { body: `${end.copied || 0} files copied to the folder "${end.folder}" on ${end.drive}.${end.skipped ? `\n\n${end.skipped} couldn't be copied; they're listed in "not copied.txt" in that folder.` : ''}\n\nWait for this screen before unplugging the drive. It's done now.` });
   } else if (end.phase === 'canceled') {

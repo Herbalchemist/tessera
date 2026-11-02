@@ -138,7 +138,7 @@ esac
     await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
     await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
     await page.waitForFunction(() => modal && modal.title === 'Backing up', null, { timeout: 10000, polling: 100 });
-    assert.match(await page.evaluate(() => modal.body), /1 MB of 4 MB|Counting/);
+    await page.waitForFunction(() => modal && /1 MB of 4 MB/.test(modal.body), null, { timeout: 5000, polling: 100 });
     await page.screenshot({ path: path.join(output, 'recovery-backup.png') });
     await page.waitForFunction(() => modal && modal.title === 'Backed up', null, { timeout: 15000, polling: 200 });
     assert.match(await page.evaluate(() => modal.body), /42 files copied to the folder "Tessera backup 2026-11-02 1200" on STICK[\s\S]*1 couldn't be copied/);
@@ -154,7 +154,7 @@ esac
     await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
     await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'check'); modalPress('a'); });
     await page.waitForFunction(() => modal && modal.title === 'Checking the disk', null, { timeout: 10000, polling: 100 });
-    assert.match(await page.evaluate(() => modal.body), /Step 3 of 4: The main file system[\s\S]*5\.0 GB of 20\.0 GB/);
+    await page.waitForFunction(() => modal && /Step 3 of 4: The main file system[\s\S]*5\.0 GB of 20\.0 GB/.test(modal.body), null, { timeout: 5000, polling: 100 });
     await page.waitForFunction(() => modal && modal.title === 'Problems found', null, { timeout: 15000, polling: 200 });
     const pf = await page.evaluate(() => modal.body);
     assert.match(pf, /✓ The drive reports good health\.\n✗ The main file system: 2 damaged blocks found/);
