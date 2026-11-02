@@ -26,6 +26,7 @@ const path = require('path');
 const crypto = require('crypto');
 const config = require('./config');
 const steamLaunch = require('../steam-launch');
+const xboxGate = require('../xbox-gate');
 
 // ---------------------------------------------------------------- library
 
@@ -87,6 +88,7 @@ function loadState() {
     const it = { id: g.id, kind: g.kind || 'game', title: g.title, path: g.path };
     if (g.args && g.args.length) it.args = steamLaunch.upgrade(g.path, g.args); // older Steam entries launch quietly too
     if (typeof g.art === 'string' && path.isAbsolute(g.art)) it.art = g.art; // a picture the person chose
+    if (g.xbox === true) it.xbox = true; // an Xbox game: starting it needs the PIN
     items.push(it);
   }
   const itemIds = new Set(items.map((i) => i.id));
@@ -221,7 +223,7 @@ const catById = (id) => state.categories.find((c) => c.id === id);
 function buildView() {
   const roots = addons.vaultRoots(); // looked up once for the whole list, not for every tile
   const byId = new Map(state.items.map((i) => [i.id, i]));
-  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(art.resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(addons.itemDeleteTarget(it, roots)), offline: storage.offlineKind(it) });
+  const tileOf = (it) => ({ id: it.id, title: it.title, kind: it.kind, art: Boolean(art.resolveArt(it)), custom: Boolean(it.art), deletable: Boolean(addons.itemDeleteTarget(it, roots)), offline: storage.offlineKind(it), xbox: xboxGate.isXbox(it) });
   const tileFor = (ref, selfId) => {
     if (ref === selfId) return null;
     const it = byId.get(ref);
@@ -495,7 +497,7 @@ function libraryOp(op, p) {
   }
 }
 
-function addItem({ title, kind, file, args }) {
+function addItem({ title, kind, file, args, xbox }) {
   const dup = state.items.some(
     (i) => i.path === file && JSON.stringify(i.args || []) === JSON.stringify(args || [])
   );
@@ -503,6 +505,7 @@ function addItem({ title, kind, file, args }) {
   const t = cleanTitle(title, 60) || path.basename(file);
   const item = { id: newId(t, 'game'), kind, title: t, path: file };
   if (args && args.length) item.args = args;
+  if (xbox === true) item.xbox = true;
   state.items.push(item);
   return item;
 }

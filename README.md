@@ -155,6 +155,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 - **Official** means the Tessera project signed that shard's exact files. Tessera checks the signature every time the shard starts. **Shard safety** decides whether unverified shards may run at all, and whether turning shards on or off needs the PIN.
 - The first shard is **Xbox PC Games Setup**. It helps you set up software to play Xbox PC games you own, and shows which ways this machine can really do it (Xodus Nexus on Linux, Xbox Cloud Gaming, streaming, a Windows VM with its own graphics chip, or Windows on its own drive) and what each still needs. It only looks, and changes nothing. You need your own games and accounts; it isn't made by or affiliated with Microsoft.
 - Games other launchers add to Steam (Steam's "non-Steam games", which is where Xodus Nexus puts its own) now show up in **Find games** too.
+- **Xbox games need a PIN.** The Xbox PC Games Setup shard finds games made with Xodus Nexus and offers them in **Find games**, but Tessera only lets them in once a PIN is set and **Settings › PIN › Allow Xbox games** is on. Until then the scan only says how many it saw. Starting an Xbox game asks for the PIN (the same five-minute unlock), including a Nexus game added by hand. Tessera's own scans never offer Nexus games as ordinary games. Removing the PIN, or running `tessera-reset-pin`, turns Xbox games off, and setting a new PIN does not turn them back on. Shards mark an Xbox game with `xbox: true` when they offer it.
 
 ## Install
 
@@ -217,7 +218,7 @@ After the restart the machine signs in to Tessera by itself.
 - If automatic sign-in is switched off, or someone else is signed in, *Return to Ludus* opens Ludus on top of the running desktop instead and closes nothing. *Open Ludus on top of Opus* in the application menu does that on purpose.
 - Prefer to boot to the desktop? `sudo touch /etc/tessera/no-autologin`, then restart. Delete that file to turn it back on.
 
-**Forgot the PIN?** From Opus, run `tessera-reset-pin` in a terminal. It removes the PIN so you can set a new one.
+**Forgot the PIN?** From Opus, run `tessera-reset-pin` in a terminal. It removes the PIN so you can set a new one, and turns Xbox games off.
 
 ## Good to know
 
