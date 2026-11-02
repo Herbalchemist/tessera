@@ -1,5 +1,5 @@
-FAIL wait: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [wait: no started system within 60s]
-FAIL enter: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [enter: no started system within 60s]
+PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 FAIL desktop-this-time: {'tessera_booted': None, 'tessera_once': 'desktop'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}) [desktop-this-time: no started system within 60s]
 FAIL safe-this-time: {'tessera_booted': None, 'tessera_once': 'safe'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'safe'}) [safe-this-time: no started system within 60s]
 FAIL console-this-time: {'tessera_booted': None, 'tessera_once': 'console'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'console'}) [console-this-time: no started system within 60s]
@@ -7,10 +7,10 @@ FAIL previous-version: {'tessera_booted': None, 'tessera_once': None} (expected 
 FAIL f2-and-scroll: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [f2-and-scroll: no started system within 60s]
 FAIL all-versions: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [all-versions: no started system within 60s]
 FAIL full-boot-menu: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [full-boot-menu: no started system within 60s]
-FAIL options-esc-back: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [options-esc-back: no started system within 60s]
+PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS failed-update-fallback: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 --- boot-once on the settings file GRUB left after the last 'this time' scenario:
 tessera-boot-once: this start: repair console (no login screen)
 note: console  console-once: yes
-left in grubenv: test_default=1 
+left in grubenv: tessera_pick= test_default=1 
 PASS boot-once: read, cleared, note left
