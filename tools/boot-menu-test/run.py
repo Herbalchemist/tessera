@@ -17,15 +17,15 @@ def sh(*a, **k):
     return subprocess.run(a, check=True, capture_output=True, text=True, **k).stdout
 
 def grubenv():
-    sh('mcopy', '-o', '-i', f'{WORK}/disk.img@@1M', '::/boot/grub2/grubenv', f'{WORK}/grubenv.out')
+    sh('mcopy', '-o', '-i', f'{WORK}/env.img', '::/grubenv', f'{WORK}/grubenv.out')
     return dict(l.split('=', 1) for l in sh('grub-editenv', f'{WORK}/grubenv.out', 'list').splitlines() if '=' in l)
 
 def set_env(**kv):
-    sh('mcopy', '-o', '-i', f'{WORK}/disk.img@@1M', '::/boot/grub2/grubenv', f'{WORK}/grubenv.tmp')
+    sh('mcopy', '-o', '-i', f'{WORK}/env.img', '::/grubenv', f'{WORK}/grubenv.tmp')
     for k, v in kv.items():
         if v is None: sh('grub-editenv', f'{WORK}/grubenv.tmp', 'unset', k)
         else: sh('grub-editenv', f'{WORK}/grubenv.tmp', 'set', f'{k}={v}')
-    sh('mcopy', '-o', '-i', f'{WORK}/disk.img@@1M', f'{WORK}/grubenv.tmp', '::/boot/grub2/grubenv')
+    sh('mcopy', '-o', '-i', f'{WORK}/env.img', f'{WORK}/grubenv.tmp', '::/grubenv')
 
 class VM:
     def __init__(self, name):
@@ -34,7 +34,7 @@ class VM:
         shutil.copy(VARS, f'{WORK}/vars-{name}.fd')
         self.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35', '-m', '512', '-display', 'none', '-vga', 'std',
             '-drive', f'if=pflash,format=raw,readonly=on,file={CODE}', '-drive', f'if=pflash,format=raw,file={WORK}/vars-{name}.fd',
-            '-drive', f'file={WORK}/disk.img,format=raw,if=virtio', '-monitor', f'unix:{self.sock},server,nowait', '-no-reboot'] +
+            '-cdrom', f'{WORK}/system.iso', '-drive', f'file={WORK}/env.img,format=raw,if=virtio', '-monitor', f'unix:{self.sock},server,nowait', '-no-reboot'] +
             (['-enable-kvm'] if os.path.exists('/dev/kvm') and os.access('/dev/kvm', os.W_OK) else []),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(100):

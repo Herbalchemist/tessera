@@ -4,7 +4,7 @@
 # Boot options > "this time" starts: the boot menu leaves tessera_once=desktop|safe|console in
 # GRUB's settings file (grubenv). Early in the start, before the login screen, this reads it,
 # clears it (so the next start is normal again) and leaves a note in /run/tessera/boot-once:
-#   desktop  tessera-autologin signs in to the desktop instead of Tessera
+#   desktop  no automatic sign-in this start: the login screen, where the desktop needs the password
 #   safe     tessera-session starts Tessera without display calibration and shards
 #   console  the login screen doesn't start (sddm/plasmalogin drop-ins check /run/tessera/console-once):
 #            a text login on the screen, for repairs
