@@ -110,13 +110,14 @@ const hints = (page) => page.evaluate(() => ({
     // The selection follows the mouse: hovering a tile selects it, so the wheel carries on from there.
     await page.evaluate(() => { page = 'settings'; hoverId = 'settings'; render(); });
     await page.waitForTimeout(300);
-    const cards = await page.evaluate(() => [...document.querySelectorAll('.card')].map((c) => { const b = c.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2, c.textContent]; }));
-    const target = cards.find((c) => /Profiles/.test(c[2]));
-    assert.ok(target, 'Settings has a Profiles tile');
-    await page.mouse.move(target[0] - 3, target[1] - 3);
-    await page.mouse.move(target[0], target[1]);
-    await page.waitForTimeout(300);
-    assert.match(await page.evaluate(() => document.querySelector('.card.active').textContent), /Profiles/, 'the tile under the mouse is selected');
+    const spots = await page.evaluate(() => [...document.querySelectorAll('.card')].map((c) => { const b = c.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, on: b.width > 20 && b.height > 20 && b.x > 0 && b.y > 60 && b.x + b.width < innerWidth && b.y + b.height < innerHeight - 40, active: c.classList.contains('active'), text: c.textContent.trim() }; }));
+    const target = spots.filter((c) => c.on && !c.active).pop();
+    assert.ok(target, 'a visible tile that is not selected: ' + JSON.stringify(spots.map((c) => [c.text, c.on, c.active])));
+    await page.mouse.move(target.x - 3, target.y - 3);
+    await page.mouse.move(target.x, target.y);
+    await page.waitForTimeout(400);
+    const now = await page.evaluate(() => { const c = document.querySelector('.card.active'); return c ? c.textContent.trim() : null; });
+    assert.equal(now, target.text, 'the tile under the mouse is selected');
     checks.push('Hovering a tile with the mouse selects it');
 
     // The Settings tile and its menu.
