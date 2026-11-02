@@ -8,6 +8,9 @@
 /boot/grub/tessera/fonts/tessera-20.pf2
 /boot/grub/tessera/fonts/tessera-28.pf2
 /boot/grub/tessera/fonts/tessera-bold-28.pf2
+/boot/grub/tessera/options-console.txt
+/boot/grub/tessera/options-desktop.txt
+/boot/grub/tessera/options-safe.txt
 /boot/grub/tessera/options.txt
 /boot/grub/tessera/select_c.png
 /boot/grub/tessera/select_e.png
