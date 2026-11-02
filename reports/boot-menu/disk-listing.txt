@@ -1,0 +1,40 @@
+ Volume in drive : has no label
+ Volume Serial Number is ACB5-B747
+Directory for ::/boot/grub2
+
+.            <DIR>     2026-11-02   1:43 
+..           <DIR>     2026-11-02   1:43 
+grubenv           1024 2026-11-02   1:43 
+fonts        <DIR>     2026-11-02   1:43 
+grub     cfg       909 2026-11-02   1:43 
+unicode  pf2   2411806 2026-11-02   1:43 
+tessera      <DIR>     2026-11-02   1:43 
+custom   cfg       521 2026-11-02   1:43 
+        8 files           2 414 260 bytes
+
+Directory for ::/boot/grub2/fonts
+
+.            <DIR>     2026-11-02   1:43 
+..           <DIR>     2026-11-02   1:43 
+unicode  pf2   2411806 2026-11-02   1:43 
+        3 files           2 411 806 bytes
+
+Directory for ::/boot/grub2/tessera
+
+.            <DIR>     2026-11-02   1:43 
+..           <DIR>     2026-11-02   1:43 
+splash   txt      1209 2026-11-02   1:43 
+fonts        <DIR>     2026-11-02   1:43 
+SELECT~1 PNG       230 2026-11-02   1:43  select_ne.png
+boot     cfg       376 2026-11-02   1:43 
+select_n png       104 2026-11-02   1:43 
+options  cfg      1453 2026-11-02   1:43 
+select_c png        89 2026-11-02   1:43 
+SELECT~2 PNG       213 2026-11-02   1:43  select_se.png
+select_s png       104 2026-11-02   1:43 
+select_w png        90 2026-11-02   1:43 
+SELECT~3 PNG       222 2026-11-02   1:43  select_sw.png
+blank    txt       273 2026-11-02   1:43 
+symbol   png      1709 2026-11-02   1:43 
+common   cfg       742 2026-11-02   1:43 
+SELECT~4 PNG       239 2026-11-02   1:43  select_nw.png
