@@ -19,7 +19,7 @@ jobs:
       - name: Tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q qemu-system-x86 ovmf grub-efi-amd64-bin grub-common mtools dosfstools gdisk fonts-dejavu-core python3-pil
+          sudo apt-get install -y -q qemu-system-x86 ovmf grub-efi-amd64-bin grub-common mtools dosfstools xorriso fonts-dejavu-core python3-pil
           sudo chmod 666 /dev/kvm || true
       - name: Boot and drive the menu
         run: tools/boot-menu-test/run.sh /tmp/boot-menu-out

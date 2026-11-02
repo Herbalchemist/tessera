@@ -4,7 +4,7 @@
 # menu (installed by the real boot-menu script), boots it in QEMU and runs run.py's scenarios.
 # Then boot-once (the real script) reads a "this time" choice back out of GRUB's settings file.
 #   tools/boot-menu-test/run.sh OUTDIR      (needs qemu-system-x86, ovmf, grub-efi-amd64-bin,
-#                                            grub-common, mtools, dosfstools, gdisk, fonts-dejavu-core, python3-pil)
+#                                            grub-common, mtools, dosfstools, xorriso, fonts-dejavu-core, python3-pil)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="$(realpath -m "${1:-boot-menu-out}")"
@@ -25,25 +25,26 @@ cp "$ROOT/tools/boot-menu-test/grub.cfg" "$W/boot/grub2/grub.cfg"
 grub-editenv "$W/boot/grub2/grubenv" create
 TESSERA_BOOT="$W/boot" TESSERA_SRC="$W/src" TESSERA_ETC="$W/etc" bash "$ROOT/system_files/usr/libexec/tessera/boot-menu"
 
-grub-mkimage -O x86_64-efi -o "$W/BOOTX64.EFI" -p '(hd0,gpt1)/boot/grub2' \
-  part_gpt fat normal configfile echo test sleep loadenv regexp gfxterm gfxmenu png font all_video efi_gop video_bochs video_cirrus search reboot halt efifwsetup minicmd
-# a GPT disk whose one partition (the EFI system partition) holds GRUB and /boot
-truncate -s 96M "$W/disk.img"
-sgdisk -q -n1:2048:+90M -t1:ef00 "$W/disk.img"   # 90 MiB = 184320 sectors from 1 MiB in
-mkfs.vfat -F 32 -S 512 -s 1 -C "$W/esp.img" 92160    # the same 90 MiB, in KiB
-mmd -i "$W/esp.img" ::/EFI ::/EFI/BOOT
-mcopy -i "$W/esp.img" "$W/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
-mcopy -s -i "$W/esp.img" "$W/boot" ::/
-mdir -/ -i "$W/esp.img" ::/ > "$OUT/disk-listing.txt"
-dd if="$W/esp.img" of="$W/disk.img" bs=512 seek=2048 conv=notrunc status=none
-I="$W/disk.img@@1M"
+# GRUB's settings file lives on its own small writable disk (FAT, no partitions)
+mkfs.vfat -C "$W/env.img" 4096 >/dev/null
+touch "$W/tessera-env-disk"
+mcopy -i "$W/env.img" "$W/tessera-env-disk" ::/tessera-env-disk
+mcopy -i "$W/env.img" "$W/boot/grub2/grubenv" ::/grubenv
+rm -f "$W/boot/grub2/grubenv"
+# the system: a CD image made by GRUB's own tool, with /boot/grub2 as the installed config has it
+mkdir -p "$W/iso/boot/grub"
+cp -a "$W/boot/grub2" "$W/iso/boot/grub2"
+printf 'set prefix=($root)/boot/grub2\nconfigfile $prefix/grub.cfg\n' > "$W/iso/boot/grub/grub.cfg"
+grub-mkrescue -o "$W/system.iso" "$W/iso" -- -quiet
+find "$W/iso" -type f | sed "s#$W/iso##" | sort > "$OUT/disk-listing.txt"
+I="$W/env.img"
 cp "$W/boot/grub2/custom.cfg" "$OUT/custom.cfg"
 
 python3 "$ROOT/tools/boot-menu-test/run.py" "$W" "$OUT" || status=$?
 
 # boot-once, the real script, on a settings file that GRUB itself wrote ("this time": console)
 mkdir -p "$W/b1/grub2" "$W/run1"
-mcopy -o -i "$I" ::/boot/grub2/grubenv "$W/b1/grub2/grubenv"
+mcopy -o -i "$I" ::/grubenv "$W/b1/grub2/grubenv"
 {
   echo "--- boot-once on the settings file GRUB left after the last 'this time' scenario:"
   grub-editenv "$W/b1/grub2/grubenv" set tessera_once=console
