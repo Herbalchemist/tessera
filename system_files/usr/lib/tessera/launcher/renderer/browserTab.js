@@ -521,6 +521,7 @@ function runAction(id) {
   else if (id === '_theme') flowTheme();
   else if (id === '_profiles') flowProfiles();
   else if (id === '_display') flowCalMenu();
+  else if (id === '_screens') flowScreens();
   else if (id === '_controls') flowControls();
   else if (id === '_desktop') flowDesktop();
   else if (id === '_addons') flowAddons();

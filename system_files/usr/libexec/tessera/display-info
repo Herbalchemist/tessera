@@ -1,0 +1,278 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Screens for Ludus: what is connected and what each screen can do, and the gamescope options
+for the screen settings chosen in Settings > Screens.
+
+  display-info list     the connected screens (JSON): name (DP-1...), the monitor's own name, whether
+                        it is built in, its modes (width, height, refresh, which one it prefers), and
+                        the mode it shows now
+  display-info args     gamescope options for the next start of Ludus, one per line (tessera-session)
+  display-info confirm  keep the settings being tried
+  display-info revert   drop the settings being tried
+
+The screens are read from the graphics driver itself (DRM: the same lists gamescope picks from),
+nothing is hardcoded. Settings are in ~/.local/share/tessera/display.json:
+  {"output": "DP-1", "width": 3440, "height": 1440, "refresh": 144, "orientation": "normal",
+   "trying": {...the same, being tried...}, "tried": false}
+A setting being tried is used for one start only: if Ludus doesn't confirm it (the person said
+keep, within 15 seconds), the next start drops it. A screen that isn't connected is never asked
+for. TESSERA_DISPLAY_FILE / TESSERA_DRM_FIXTURE / TESSERA_DRM_SYS are only for tests.
+"""
+import ctypes
+import fcntl
+import glob
+import json
+import os
+import re
+import struct
+import sys
+
+TYPES = ["Unknown", "VGA", "DVI-I", "DVI-D", "DVI-A", "Composite", "SVIDEO", "LVDS", "Component", "DIN", "DP", "HDMI-A",
+         "HDMI-B", "TV", "eDP", "Virtual", "DSI", "DPI", "Writeback", "SPI", "USB"]
+INTERNAL = {"LVDS", "eDP", "DSI"}
+ORIENTATIONS = ("normal", "left", "right", "upsidedown")
+NAME_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")
+SYS = os.environ.get("TESSERA_DRM_SYS", "/sys/class/drm")
+
+
+def iowr(nr, size):
+    return (3 << 30) | (size << 16) | (ord("d") << 8) | nr
+
+
+MODEINFO = struct.Struct("<I5H5HIII32s")  # 68 bytes
+CARD_RES = struct.Struct("<4Q8I")         # 64
+CONNECTOR = struct.Struct("<4Q12I")       # 80
+ENCODER = struct.Struct("<5I")            # 20
+CRTC = struct.Struct("<QIIIIIII68s")      # 104
+GETRESOURCES, GETCRTC, GETENCODER, GETCONNECTOR = iowr(0xA0, 64), iowr(0xA1, 104), iowr(0xA6, 20), iowr(0xA7, 80)
+
+
+def ioctl(fd, req, buf):
+    fcntl.ioctl(fd, req, buf, True)
+    return buf
+
+
+def ids(n):
+    a = (ctypes.c_uint32 * max(n, 1))()
+    return a, ctypes.addressof(a)
+
+
+def mode_of(raw):
+    clock, hd, hss, hse, ht, hsk, vd, vss, vse, vt, vscan, vrefresh, flags, typ, name = MODEINFO.unpack(raw)
+    hz = round(clock * 1000.0 / (ht * vt), 2) if ht and vt else float(vrefresh)
+    if flags & 0x10:   # interlaced
+        hz *= 2
+    if flags & 0x20:   # doublescan
+        hz /= 2
+    if vscan > 1:
+        hz /= vscan
+    return {"width": hd, "height": vd, "refresh": vrefresh or round(hz), "hz": round(hz, 2), "preferred": bool(typ & 0x8),
+            "interlaced": bool(flags & 0x10)}
+
+
+def card_screens(path):
+    """Connected screens of one graphics card, from the driver."""
+    fd = os.open(path, os.O_RDWR | os.O_CLOEXEC)
+    try:
+        res = bytearray(CARD_RES.size)
+        ioctl(fd, GETRESOURCES, res)
+        n_conn = CARD_RES.unpack(res)[6]
+        conns, conns_p = ids(n_conn)
+        crtcs, crtcs_p = ids(CARD_RES.unpack(res)[5])
+        encs, encs_p = ids(CARD_RES.unpack(res)[7])
+        fbs, fbs_p = ids(CARD_RES.unpack(res)[4])
+        res2 = bytearray(CARD_RES.pack(fbs_p, crtcs_p, conns_p, encs_p, *CARD_RES.unpack(res)[4:]))
+        ioctl(fd, GETRESOURCES, res2)
+        out = []
+        for cid in list(conns)[:n_conn]:
+            c = bytearray(CONNECTOR.size)
+            struct.pack_into("<I", c, 32 + 4 * 4, cid)  # connector_id
+            ioctl(fd, GETCONNECTOR, c)
+            f = CONNECTOR.unpack(c)
+            count_modes, count_props, count_encoders = f[4], f[5], f[6]
+            if f[11] != 1 or not count_modes:  # 1 = connected
+                continue
+            modes = (ctypes.c_char * (MODEINFO.size * count_modes))()
+            props, props_p = ids(count_props)
+            vals = (ctypes.c_uint64 * max(count_props, 1))()
+            encl, encl_p = ids(count_encoders)
+            c2 = bytearray(CONNECTOR.pack(encl_p, ctypes.addressof(modes), props_p, ctypes.addressof(vals), count_modes, count_props,
+                                          count_encoders, 0, cid, 0, 0, 0, 0, 0, 0, 0))
+            ioctl(fd, GETCONNECTOR, c2)
+            f = CONNECTOR.unpack(c2)
+            count_modes = min(count_modes, f[4])
+            raw = bytes(modes)
+            ms = [mode_of(raw[i * MODEINFO.size:(i + 1) * MODEINFO.size]) for i in range(count_modes)]
+            typ = TYPES[f[9]] if f[9] < len(TYPES) else "Unknown"
+            current = None
+            if f[7]:  # encoder -> crtc -> mode shown now
+                try:
+                    e = bytearray(ENCODER.pack(f[7], 0, 0, 0, 0))
+                    ioctl(fd, GETENCODER, e)
+                    crtc_id = ENCODER.unpack(e)[2]
+                    if crtc_id:
+                        cr = bytearray(CRTC.size)
+                        struct.pack_into("<I", cr, 12, crtc_id)
+                        ioctl(fd, GETCRTC, cr)
+                        u = CRTC.unpack(cr)
+                        if u[7]:
+                            current = mode_of(u[8])
+                except OSError:
+                    pass
+            out.append({"name": f"{typ}-{f[10]}", "type": typ, "internal": typ in INTERNAL, "mm": [f[12], f[13]],
+                        "modes": ms, "current": current})
+        return out
+    finally:
+        os.close(fd)
+
+
+def edid_name(card, name):
+    """The monitor's own name (EDID), or its maker's code."""
+    try:
+        with open(os.path.join(SYS, f"{os.path.basename(card)}-{name}", "edid"), "rb") as f:
+            e = f.read(256)
+    except OSError:
+        return ""
+    if len(e) < 128 or e[:8] != b"\x00\xff\xff\xff\xff\xff\xff\x00":
+        return ""
+    for off in (54, 72, 90, 108):
+        d = e[off:off + 18]
+        if d[:3] == b"\x00\x00\x00" and d[3] == 0xFC:
+            return d[5:18].split(b"\n")[0].decode("ascii", "replace").strip()
+    v = (e[8] << 8) | e[9]
+    return "".join(chr(((v >> s) & 0x1F) + 64) for s in (10, 5, 0))
+
+
+def screens():
+    fx = os.environ.get("TESSERA_DRM_FIXTURE")
+    if fx:
+        with open(fx) as f:
+            return json.load(f)
+    out = []
+    for card in sorted(glob.glob("/dev/dri/card[0-9]*")):
+        try:
+            for s in card_screens(card):
+                s["label"] = edid_name(card, s["name"])
+                s["card"] = os.path.basename(card)
+                out.append(s)
+        except OSError:
+            continue
+    for s in out:  # one entry per size and refresh, highest refresh first within a size
+        seen, ms = set(), []
+        for m in sorted(s["modes"], key=lambda m: (-m["width"] * m["height"], -m["hz"])):
+            k = (m["width"], m["height"], m["refresh"], m["interlaced"])
+            if k not in seen:
+                seen.add(k)
+                ms.append(m)
+        s["modes"] = ms
+    return out
+
+
+# ---------------------------------------------------------------- the settings
+def settings_file():
+    return os.environ.get("TESSERA_DISPLAY_FILE") or os.path.join(
+        os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share"), "tessera", "display.json")
+
+
+def load():
+    try:
+        with open(settings_file()) as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save(d):
+    p = settings_file()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(d, f)
+    os.replace(tmp, p)
+
+
+def clean(s):
+    """Only well-formed values pass; anything else is left to gamescope's own choice."""
+    out = {}
+    if isinstance(s.get("output"), str) and NAME_RE.match(s["output"]):
+        out["output"] = s["output"]
+    for k, lo, hi in (("width", 320, 16384), ("height", 200, 16384), ("refresh", 20, 1000)):
+        v = s.get(k)
+        if isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi:
+            out[k] = v
+    if s.get("orientation") in ORIENTATIONS:
+        out["orientation"] = s["orientation"]
+    return out
+
+
+def args_for(s, connected):
+    s = clean(s)
+    a = []
+    if s.get("output"):
+        a += ["--prefer-output", s["output"]]
+    screen = next((x for x in connected if x["name"] == s.get("output")), None)
+    if screen is None and connected and not s.get("output"):
+        screen = connected[0] if len(connected) == 1 else None
+    if screen is None:
+        return a  # the chosen screen isn't here: gamescope picks, at that screen's own best mode
+    if s.get("width") and s.get("height") and any(m["width"] == s["width"] and m["height"] == s["height"] for m in screen["modes"]):
+        a += ["-W", str(s["width"]), "-H", str(s["height"])]
+        if s.get("refresh") and any(m["width"] == s["width"] and m["height"] == s["height"] and m["refresh"] == s["refresh"] for m in screen["modes"]):
+            a += ["-r", str(s["refresh"])]
+    if s.get("orientation") and s["orientation"] != "normal" and screen.get("internal"):
+        a += ["--force-orientation", s["orientation"]]
+    return a
+
+
+def cmd_args():
+    d = load()
+    if d.get("trying"):
+        if d.get("tried"):  # tried at the last start and not kept: back to the settings before
+            d.pop("trying", None)
+            d.pop("tried", None)
+            save(d)
+            use = d
+        else:
+            d["tried"] = True
+            save(d)
+            use = d["trying"]
+    else:
+        use = d
+    try:
+        connected = screens()
+    except OSError:
+        connected = []
+    for a in args_for(use, connected):
+        print(a)
+    return 0
+
+
+def main(argv):
+    cmd = argv[0] if argv else ""
+    if cmd == "list":
+        print(json.dumps({"ok": True, "screens": screens(), "settings": {k: v for k, v in clean(load()).items()},
+                          "trying": clean(load().get("trying") or {}) or None, "tried": bool(load().get("tried"))}))
+        return 0
+    if cmd == "args":
+        return cmd_args()
+    if cmd == "confirm":
+        d = load()
+        if d.get("trying"):
+            keep = clean(d["trying"])
+            d = {k: v for k, v in d.items() if k not in ("trying", "tried", "output", "width", "height", "refresh", "orientation")}
+            d.update(keep)
+            save(d)
+        return 0
+    if cmd == "revert":
+        d = load()
+        d.pop("trying", None)
+        d.pop("tried", None)
+        save(d)
+        return 0
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
