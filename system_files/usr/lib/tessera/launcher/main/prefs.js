@@ -44,9 +44,9 @@ const inputActions = require('../input-actions');
 // Controller preferences. Deadzone and trigger threshold are percentages.
 const PAD_DEFAULTS = {
   deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together',
-  // Which face button confirms: 'position' (the bottom one, on every controller) or 'label'
-  // (Nintendo controllers follow their printed A/B/X/Y). See input-actions.js.
-  confirm: 'position',
+  // Which face button confirms, by position: 'auto' (right on Switch controllers, bottom on the
+  // others), 'bottom' or 'right'. See input-actions.js.
+  confirm: 'auto',
   repeat: 'standard', // how fast a held direction repeats, in the launcher and the browser (input-actions.js)
   // The browser pointer: which stick moves the cursor (the other one scrolls), and how fast.
   browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,

@@ -269,7 +269,7 @@ const PAD_LABELS = {
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
   joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
   repeat: { slow: 'Slower', standard: 'Standard', fast: 'Faster' },
-  confirm: { position: 'The bottom button, on every controller', label: 'Nintendo controllers: A (right) confirms, B goes back' },
+  confirm: { auto: 'Automatic: the right button on Switch controllers, the bottom one on others', bottom: 'The bottom button confirms, the right one goes back (every controller)', right: 'The right button confirms, the bottom one goes back (every controller)' },
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
   guideButton: { 'menu-home': 'Press opens the guide, hold goes Home', 'home-menu': 'Press goes Home, hold opens the guide', menu: 'Press or hold opens the guide' },
   guideDesktop: { auto: 'On, except while Steam is running', on: 'Always on', off: 'Off' },
@@ -350,7 +350,7 @@ async function flowPadMenu() {
       { label: 'Vibration style', sub: PAD_LABELS.style[prefs.pad.style], op: 'style' },
       { label: 'Labels', header: true },
       { label: 'Button labels', sub: PAD_LABELS.glyphs[prefs.pad.glyphs].split('  (')[0], op: 'glyphs' },
-      { label: 'Confirm button', sub: prefs.pad.remap && prefs.pad.remap.nintendo ? 'Nintendo: your own (Button mapping)' : prefs.pad.confirm === 'label' ? 'Nintendo: A confirms' : 'Bottom button', op: 'confirm' },
+      { label: 'Confirm button', sub: Object.keys(prefs.pad.remap || {}).length ? 'Your own (Button mapping) where set' : (PAD_LABELS.confirm[prefs.pad.confirm] || PAD_LABELS.confirm.auto).split(':')[0].split(' confirms')[0], op: 'confirm' },
       { label: 'On-screen keyboard', sub: (PAD_LABELS.oskSize[prefs.pad.oskSize] || PAD_LABELS.oskSize.dock).split(':')[0], op: 'oskSize' },
       { label: 'Joy-Con', header: true },
       { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
@@ -381,7 +381,7 @@ async function flowPadMenu() {
     else if (it.op === 'style') await pickChoice('Vibration style (the test uses this)', 'style');
     else if (it.op === 'glyphs') await pickChoice('Button labels', 'glyphs');
     else if (it.op === 'repeat') await pickChoice('How fast a held stick or D-pad keeps moving (in menus, on tiles and in the browser)', 'repeat');
-    else if (it.op === 'confirm') await pickChoice('Which button confirms? (B, X and Y follow it; the launcher, browser and dialogs all use this)', 'confirm');
+    else if (it.op === 'confirm') await pickChoice('Which button confirms? By position: the other of the two goes back; the left and top buttons stay. The launcher, browser and dialogs all use this.', 'confirm');
     else if (it.op === 'grip') await flowGrip();
     else if (it.op === 'joycons') await pickChoice('When a left and a right Joy-Con are both connected', 'joycons');
   }

@@ -63,37 +63,39 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     const NINTENDO = 'Nintendo Switch Pro Controller'; // as pads.js names the ones it reads (native ones with Nintendo's vendor id are left to it)
     const XBOX = 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)';
 
-    // The default: the bottom button confirms on every controller, as it always has.
-    assert.equal(await page.evaluate(() => prefs.pad.confirm), 'position');
+    // The default, Automatic: by position. Xbox and others confirm with the bottom button; a Switch
+    // controller with the right one (as on the Switch), going back with the bottom one.
+    assert.equal(await page.evaluate(() => prefs.pad.confirm), 'auto');
     await usePad(XBOX);
     await page.waitForTimeout(200);
     assert.equal(await menuAnswer(0), 'chose');
     assert.equal(await menuAnswer(1), 'left');
     await usePad(NINTENDO);
     await page.waitForTimeout(200);
-    assert.equal(await menuAnswer(0), 'chose', 'Nintendo, by position: the bottom button (B) confirms');
-    assert.equal(await menuAnswer(1), 'left');
+    assert.equal(await menuAnswer(1), 'chose', 'a Switch controller: the right button (A) confirms');
+    assert.equal(await menuAnswer(0), 'left', 'the bottom button (B) goes back');
     await page.evaluate(() => applyGlyphs());
-    assert.deepEqual(await hints(), ['B', 'A', 'X'], 'the hints name the buttons that do those jobs');
-    checks.push('Default unchanged: the bottom button confirms on Xbox and Nintendo controllers, and the hints say so');
+    assert.deepEqual(await hints(), ['A', 'B', 'X'], 'Open says A, Back says B; Options stays on the top button (X)');
+    await page.screenshot({ path: path.join(output, 'input-nintendo-auto.png') });
+    checks.push('Automatic: the bottom button confirms on Xbox controllers, the right one on Switch controllers (left and top stay), and the hints say so');
 
-    // "A confirms" on Nintendo controllers: A (right) confirms, B (bottom) goes back, X and Y follow.
-    await setConfirm('label');
-    assert.equal(await menuAnswer(1), 'chose', 'A, on the right, confirms');
-    assert.equal(await menuAnswer(0), 'left', 'B, at the bottom, goes back');
-    await page.evaluate(() => applyGlyphs());
-    assert.deepEqual(await hints(), ['A', 'B', 'Y'], 'Open says A, Back says B, Options says Y');
-    await page.screenshot({ path: path.join(output, 'input-nintendo-label.png') });
-    checks.push('With "A confirms", a Nintendo controller confirms with A and goes back with B, and the hints follow');
-
-    // Other controllers are never affected by the Nintendo setting.
-    await usePad(XBOX);
-    await page.waitForTimeout(200);
+    // "Bottom confirms" on every controller: the Switch controller confirms with B.
+    await setConfirm('bottom');
     assert.equal(await menuAnswer(0), 'chose');
     assert.equal(await menuAnswer(1), 'left');
     await page.evaluate(() => applyGlyphs());
-    assert.deepEqual(await hints(), ['A', 'B', 'Y']);
-    checks.push('The Nintendo setting leaves Xbox controllers as they are');
+    assert.deepEqual(await hints(), ['B', 'A', 'X']);
+    // "Right confirms" on every controller, Xbox included.
+    await setConfirm('right');
+    await usePad(XBOX);
+    await page.waitForTimeout(200);
+    assert.equal(await menuAnswer(1), 'chose', 'Xbox, right confirms: B');
+    assert.equal(await menuAnswer(0), 'left');
+    await page.evaluate(() => applyGlyphs());
+    assert.deepEqual(await hints(), ['B', 'A', 'Y']);
+    await setConfirm('auto');
+    assert.equal(await menuAnswer(0), 'chose', 'Automatic: Xbox back to the bottom button');
+    checks.push('Bottom or right confirms on every controller, as chosen; Automatic puts it back');
 
     // Every menu shows what it takes, under it, named for what's in use.
     const menuHints = async (extra) => {
@@ -111,10 +113,10 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.evaluate(() => setInputMode('pad'));
     await usePad(NINTENDO);
     await page.waitForTimeout(200);
-    assert.deepEqual(await menuHints(true), ['ASelect', 'BBack', 'YRename'], 'Nintendo with A confirms: A selects, B goes back, Y does Y');
-    await setConfirm('position');
-    assert.deepEqual(await menuHints(false), ['BSelect', 'ABack'], 'Nintendo by position: the bottom button (B) selects');
-    await setConfirm('label');
+    assert.deepEqual(await menuHints(true), ['ASelect', 'BBack', 'XRename'], 'Switch controller, Automatic: A (right) selects, B goes back, the top button does the rest');
+    await setConfirm('bottom');
+    assert.deepEqual(await menuHints(false), ['BSelect', 'ABack'], 'bottom confirms: B selects');
+    await setConfirm('auto');
     await usePad(XBOX);
     await page.waitForTimeout(200);
     checks.push('Every menu shows its own hints (Select, Back, and its Y action) for the controller, keyboard or Nintendo setting in use');
@@ -141,11 +143,12 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
 
     // The setting is kept, and Settings shows it.
     const saved = JSON.parse(fs.readFileSync(path.join(temp, 'data', 'settings.json'), 'utf8'));
-    assert.equal(saved.pad.confirm, 'label');
-    const bad = await page.evaluate(() => api.settings('padSet', { key: 'confirm', value: 'sideways' }));
-    assert.equal(bad.ok, false);
-    await setConfirm('position');
-    checks.push('The choice is saved, and only its two values are accepted');
+    assert.equal(saved.pad.confirm, 'auto');
+    for (const value of ['sideways', 'label', 'position']) {
+      const bad = await page.evaluate((value) => api.settings('padSet', { key: 'confirm', value }), value);
+      assert.equal(bad.ok, false, value);
+    }
+    checks.push('The choice is saved, and only Automatic, bottom and right are accepted');
 
     // Settings > Button mapping: Select onto RB, on Xbox controllers only.
     await usePad(XBOX);
@@ -169,7 +172,7 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     assert.deepEqual(await menuHints(false), ['RBSelect', 'BBack']);
     await usePad(NINTENDO);
     await page.waitForTimeout(200);
-    assert.equal(await menuAnswer(0), 'chose', 'Nintendo controllers keep their own layout');
+    assert.equal(await menuAnswer(1), 'chose', 'Switch controllers keep their own layout (the right button confirms)');
     checks.push('Button mapping: Select moved to RB on Xbox controllers (it trades jobs with A); menus and hints follow; Nintendo untouched');
 
     // Only full rearrangements are taken, and it all goes back.
@@ -179,9 +182,9 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     assert.equal(r2.ok, false);
     const r3 = await page.evaluate(() => api.settings('padRemap', { family: 'nintendo', map: [2, 1, 0, 3, 4, 5] }));
     assert.equal(r3.ok, true);
-    await page.evaluate(() => padSet('confirm', 'label'));
+    await page.evaluate(() => padSet('confirm', 'right'));
     assert.equal(await page.evaluate(() => prefs.pad.remap.nintendo), undefined, 'choosing a confirm button replaces a Nintendo remap');
-    await page.evaluate(() => padSet('confirm', 'position'));
+    await page.evaluate(() => padSet('confirm', 'auto'));
     await usePad(XBOX);
     await page.waitForTimeout(200);
     page.evaluate(() => { flowControls(); });
@@ -204,15 +207,17 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
       setInputMode('pad');
     });
     await page.waitForTimeout(200);
-    for (const confirm of ['position', 'label']) {
-      await setConfirm(confirm);
-      assert.equal(await menuAnswer(0), 'chose', `sideways, ${confirm}: the bottom button (A) selects`);
-      assert.equal(await menuAnswer(1), 'left', `sideways, ${confirm}: the right button (X) goes back`);
-      assert.deepEqual(await menuHints(false), ['ASelect', 'XBack']);
-    }
-    await setConfirm('position');
+    // As on the Switch: the right-hand button (X on a right Joy-Con) confirms, A (now at the bottom) goes back
+    await setConfirm('auto');
+    assert.equal(await menuAnswer(1), 'chose', 'sideways, Automatic: the right-hand button (X) selects');
+    assert.equal(await menuAnswer(0), 'left', 'sideways, Automatic: the bottom button (A) goes back');
+    assert.deepEqual(await menuHints(false), ['XSelect', 'ABack']);
+    await setConfirm('bottom');
+    assert.equal(await menuAnswer(0), 'chose', 'sideways, bottom confirms: A selects');
+    assert.deepEqual(await menuHints(false), ['ASelect', 'XBack']);
+    await setConfirm('auto');
     await page.evaluate(() => applyPadList({ ok: true, grip: false, mode: 'separate', pads: [] }));
-    checks.push('A single Joy-Con held sideways: the bottom button (A) selects and the hints say A / X, with either Confirm setting');
+    checks.push('A single Joy-Con held sideways confirms with its right-hand button under Automatic (as on the Switch), the bottom one under Bottom, with hints by the letters where they are');
     await usePad(XBOX);
     await page.waitForTimeout(200);
 
