@@ -1,0 +1,16 @@
+FAIL wait: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [wait: no started system within 30s]
+FAIL enter: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [enter: no started system within 30s]
+FAIL desktop-this-time: {'tessera_booted': None, 'tessera_once': 'desktop'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}) [desktop-this-time: no started system within 30s]
+FAIL safe-this-time: {'tessera_booted': None, 'tessera_once': 'safe'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'safe'}) [safe-this-time: no started system within 30s]
+FAIL console-this-time: {'tessera_booted': None, 'tessera_once': 'console'} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'console'}) [console-this-time: no started system within 30s]
+FAIL previous-version: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [previous-version: no started system within 30s]
+FAIL f2-and-scroll: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [f2-and-scroll: no started system within 30s]
+FAIL all-versions: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [all-versions: no started system within 30s]
+FAIL full-boot-menu: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [full-boot-menu: no started system within 30s]
+FAIL options-esc-back: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': None}) [options-esc-back: no started system within 30s]
+FAIL failed-update-fallback: {'tessera_booted': None, 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [failed-update-fallback: no started system within 30s]
+--- boot-once on the settings file GRUB left after the last 'this time' scenario:
+tessera-boot-once: this start: repair console (no login screen)
+note: console  console-once: yes
+left in grubenv: test_default=1 
+PASS boot-once: read, cleared, note left
