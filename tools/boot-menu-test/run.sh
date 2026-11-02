@@ -31,20 +31,13 @@ touch "$W/tessera-env-disk"
 mcopy -i "$W/env.img" "$W/tessera-env-disk" ::/tessera-env-disk
 mcopy -i "$W/env.img" "$W/boot/grub2/grubenv" ::/grubenv
 rm -f "$W/boot/grub2/grubenv"
-# the system: a CD image made by GRUB's own tool, with /boot/grub2 as the installed config has it
-mkdir -p "$W/iso/boot/grub"
-cp -a "$W/boot/grub2" "$W/iso/boot/grub2"
-# GRUB's text output also goes to the serial port (a log file per scenario), so its messages show
-cat > "$W/iso/boot/grub/grub.cfg" <<'GRUBCFG'
-serial --unit=0 --speed=115200
-terminal_input --append serial
-terminal_output --append serial
-echo "test: root=$root prefix=$prefix"
-set prefix=($root)/boot/grub2
-echo "test: loading $prefix/grub.cfg"
-configfile $prefix/grub.cfg
-echo "test: back from $prefix/grub.cfg"
-GRUBCFG
+# the system: a CD image made by GRUB's own tool. Its GRUB loads modules from /boot/grub, so the
+# installed tree goes there (on Fedora the modules are built into GRUB and the folder is grub2;
+# Tessera's files only ever use ${prefix}, so either works). GRUB's text also goes to the serial
+# port (a log file per scenario).
+mkdir -p "$W/iso/boot"
+cp -a "$W/boot/grub2" "$W/iso/boot/grub"
+{ printf 'serial --unit=0 --speed=115200\nterminal_input --append serial\nterminal_output --append serial\n'; cat "$W/boot/grub2/grub.cfg"; } > "$W/iso/boot/grub/grub.cfg"
 grub-mkrescue -o "$W/system.iso" "$W/iso"
 find "$W/iso" -type f | sed "s#$W/iso##" | sort > "$OUT/disk-listing.txt"
 I="$W/env.img"
