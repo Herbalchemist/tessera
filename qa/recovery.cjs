@@ -25,7 +25,7 @@ const ID = '1234abcd-0000:default';
 const INST = { id: ID, disk: { name: 'nvme0n1', model: 'Samsung SSD 980', size: 1000204886016 }, hostname: 'x', versions: [{ index: 0, version: '43.20261101.0', image: 'ghcr.io/herbalchemist/tessera:latest' }, { index: 1, version: '43.20261031.0', image: '' }], users: [{ name: 'alex', admin: true }, { name: 'kid', admin: false }] };
 const helper = path.join(temp, 'live-recover');
 fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify({ ok: true, installs: [INST] }));
-fs.writeFileSync(path.join(temp, 'diagnose.json'), JSON.stringify({ ok: true, install: INST, findings: [{ key: 'signin', text: "Tessera isn't set to start at boot.", fix: 'signin' }, { key: 'versions', text: 'An earlier version is kept.', fix: null }] }));
+fs.writeFileSync(path.join(temp, 'diagnose.json'), JSON.stringify({ ok: true, install: INST, findings: [{ key: 'signin', text: "Tessera isn't set to start at boot.", fix: 'signin' }, { key: 'firmware', text: 'Another system starts first (Windows Boot Manager).', fix: 'boot' }, { key: 'versions', text: 'An earlier version is kept.', fix: null }] }));
 fs.writeFileSync(path.join(temp, 'report.json'), JSON.stringify({ ok: true, text: 'Tessera recovery report\n== What was found\n- sign-in off\n', saved: '~/Tessera/Reports/tessera-recovery-report-1.txt (alex)' }));
 fs.writeFileSync(helper, `#!/bin/bash
 T=${JSON.stringify(temp)}
@@ -74,6 +74,7 @@ esac
     assert.match(menu.body, /Samsung SSD 980/);
     assert.match(menu.body, /isn't set to start at boot/);
     assert.deepEqual(menu.items.find((x) => x.label === 'Start in Tessera at boot again'), { label: 'Start in Tessera at boot again', sub: 'suggested', ok: true });
+    assert.deepEqual(menu.items.find((x) => x.label === 'Repair the boot menu'), { label: 'Repair the boot menu', sub: 'suggested', ok: true });
     await page.screenshot({ path: path.join(output, 'recovery-menu.png') });
     checks.push("Recover is on the USB's welcome screen; it finds the install and shows what's wrong with the suggested repair");
 
@@ -121,6 +122,16 @@ esac
     const last = fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop();
     assert.deepEqual(last, { tool: 'version', user: 'alex', password: 'tessera1', action: 'default', index: 1 });
     checks.push('Versions lists the kept versions; starting the one before the last update sends that exact change');
+
+    // Repair the boot menu (suggested, since another system starts first)
+    await page.evaluate(() => { modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.tool === 'boot'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
+    assert.deepEqual(fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop(), { tool: 'boot', user: 'alex', password: 'tessera1' });
+    checks.push('Repair the boot menu is suggested when another system starts first and sends only that repair');
 
     // Back up to a USB drive: whose files, which drive, what, the password, then progress to done
     await page.evaluate(() => { if (modal) closeModal(); });
