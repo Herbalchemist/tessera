@@ -1,6 +1,7 @@
 PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS desktop-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
+PASS login-screen-key: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
 PASS safe-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'safe'}
 PASS console-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'console'}
 PASS previous-version: {'tessera_booted': 'ostree:1', 'tessera_once': None}

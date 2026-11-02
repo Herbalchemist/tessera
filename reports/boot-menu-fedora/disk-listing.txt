@@ -22,6 +22,7 @@
 /boot/grub/tessera/select_sw.png
 /boot/grub/tessera/select_w.png
 /boot/grub/tessera/slots.png
+/boot/grub/tessera/splash-desktop.txt
 /boot/grub/tessera/splash.cfg
 /boot/grub/tessera/splash.txt
 /boot/grub/tessera/symbol.png
