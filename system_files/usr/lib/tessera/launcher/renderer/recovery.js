@@ -50,6 +50,7 @@ async function recoveryMenu(inst) {
     const items = [{ label: 'Repairs', header: true }];
     for (const [tool, t] of Object.entries(RECOVERY_TOOLS)) items.push({ label: t.label, sub: suggested.has(tool) ? 'suggested' : t.sub, op: 'fix', tool, ok: suggested.has(tool), plain: !suggested.has(tool) });
     if (inst.versions.length) items.push({ label: 'Versions', sub: inst.versions.length > 1 ? `${inst.versions.length} kept: start another, keep one for good` : 'keep this one for good', op: 'versions', plain: true });
+    items.push({ label: 'Free up space', sub: suggested.has('clean') ? 'suggested: the disk is nearly full' : 'see what uses the disk; clear caches and the trash', op: 'space', ok: suggested.has('clean'), plain: !suggested.has('clean') });
     items.push({ label: 'Back up to a USB drive', sub: 'copy a home folder off this computer first', op: 'backup', plain: true });
     items.push({ label: 'More', header: true });
     items.push({ label: 'Make a problem report', sub: 'saved in its Tessera folder; read it first', op: 'report', plain: true });
@@ -60,6 +61,7 @@ async function recoveryMenu(inst) {
     if (it.op === 'versions') { const fresh = await recoveryVersions(inst); if (fresh) inst = fresh; } else if (it.op === 'report') await recoveryReport(inst);
     else if (it.op === 'fix') await recoveryFix(inst, it.tool);
     else if (it.op === 'backup') await recoveryBackup(inst);
+    else if (it.op === 'space') await recoverySpace(inst);
   }
 }
 
@@ -127,6 +129,28 @@ async function recoveryFix(inst, tool, extra = {}, title = '') {
   if (!r) return false;
   await pick('Done', [{ label: 'OK', plain: true }], 0, { body: `${t.label}:\n${(r.done || []).map((x) => `• ${x}`).join('\n')}\n\nRestart without the USB to see if Tessera starts.` });
   return true;
+}
+
+// Free up space: what uses the disk, per person, and clearing what comes back by itself (caches,
+// shader caches) or was thrown away (the trash). Games and files are never deleted here.
+async function recoverySpace(inst) {
+  setStatus('Measuring what uses the disk…');
+  busy = true;
+  let u;
+  try { u = await api.recovery('space', { id: inst.id }); } finally { busy = false; setStatus(''); }
+  if (!u || !u.ok) return void (await pick("Can't look", [{ label: 'OK', plain: true }], 0, { body: (u && u.error) || "Couldn't measure the disk." }));
+  const sum = (k) => u.people.reduce((n, x) => n + (x[k] || 0), 0);
+  const lines = u.people.map((x) => `• ${x.name}: ${fmtBackupSize(x.home)} (games ${fmtBackupSize(x.games)}, caches ${fmtBackupSize(x.caches + x.shaders)}, trash ${fmtBackupSize(x.trash)})`);
+  const body = [`${fmtBackupSize(u.free)} free of ${fmtBackupSize(u.total)}.`, lines.join('\n'), `The system keeps ${u.versions} version${u.versions === 1 ? '' : 's'} (see Versions). Games can be uninstalled from Steam once Tessera starts.`].filter(Boolean).join('\n\n');
+  const all = ['caches', 'shaders', 'trash'];
+  const it = await pick('Free up space', [
+    { label: 'Clear all three', sub: fmtBackupSize(sum('caches') + sum('shaders') + sum('trash')), what: all, ok: true },
+    { label: 'Clear caches', sub: `${fmtBackupSize(sum('caches'))} · made again as needed`, what: ['caches'], plain: true },
+    { label: 'Clear shader caches', sub: `${fmtBackupSize(sum('shaders'))} · games rebuild them (first starts are slower)`, what: ['shaders'], plain: true },
+    { label: 'Empty the trash', sub: fmtBackupSize(sum('trash')), what: ['trash'], plain: true },
+  ], 0, { body });
+  if (!it) return;
+  await recoveryFix(inst, 'clean', { what: it.what }, it.label);
 }
 
 // Back up to a USB drive: one person's home folder, copied in the background with progress. "My
