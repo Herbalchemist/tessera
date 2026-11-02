@@ -79,3 +79,10 @@ echo "--- grub fonts and themes"; ls /usr/share/grub /usr/share/grub/themes /boo
 echo "--- ujust grub recipes"; grep -n -i -A25 "configure-grub\|grub" /usr/share/ublue-os/just/*.just 2>/dev/null | head -80
 echo "--- /etc/default/grub"; cat /etc/default/grub 2>&1 | head -20
 sec "DETAIL4 end"
+sec "DETAIL5 Tessera's boot menu, boot screens and pointer in the image"
+echo "--- boot menu files"; ls -la /usr/share/tessera/grub /usr/share/tessera/grub/fonts 2>&1
+echo "--- services"; for u in tessera-boot-menu.service tessera-boot-once.service tessera-autologin.service; do echo "$u: $(systemctl is-enabled $u 2>&1)"; done
+echo "--- plymouth default"; grep -n '^Theme' /usr/share/plymouth/plymouthd.defaults /etc/plymouth/plymouthd.conf 2>&1
+echo "--- boot screens in the initramfs"; for img in /usr/lib/modules/*/initramfs.img; do lsinitrd "$img" 2>/dev/null | grep -E 'plymouth/themes/(tessera|bgrt|spinner|details)/[^/]+\.(plymouth|png)$' | awk '{print $NF}' | sed 's#.*/themes/##' | awk -F/ '{c[$1]++} END{for(k in c) print k": "c[k]" files"}'; done
+echo "--- pointer theme"; ls -la /usr/share/icons/Tessera/cursors 2>&1 | head; cat /etc/xdg/kcminputrc 2>&1 | head
+sec "DETAIL5 end"
