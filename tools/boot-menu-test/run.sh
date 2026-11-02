@@ -60,7 +60,7 @@ if [ -n "${FEDORA:-}" ]; then
   # finds the installed tree and hands over to it (as bootupd's grub.cfg on the start-up partition does).
   cp "$W/fedora/unicode.pf2" "$W/iso/boot/grub/fonts/" 2>/dev/null || true
   printf 'search --no-floppy --file --set=root /boot/grub/grub.cfg\nset prefix=($root)/boot/grub\nconfigfile $prefix/grub.cfg\n' > "$W/stub.cfg"
-  mkfs.vfat -C "$W/iso/efiboot.img" 8192 >/dev/null
+  mkfs.vfat -C "$W/iso/efiboot.img" 20480 >/dev/null
   mmd -i "$W/iso/efiboot.img" ::/EFI ::/EFI/BOOT ::/EFI/fedora
   mcopy -i "$W/iso/efiboot.img" "$W/fedora/shimx64.efi" ::/EFI/BOOT/BOOTX64.EFI
   for d in BOOT fedora; do mcopy -i "$W/iso/efiboot.img" "$W/fedora/grubx64.efi" ::/EFI/$d/grubx64.efi; mcopy -i "$W/iso/efiboot.img" "$W/stub.cfg" ::/EFI/$d/grub.cfg; done
