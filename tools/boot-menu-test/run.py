@@ -87,28 +87,38 @@ def centre(im, s=160):
 
 SLOT = (99, 92, 140)      # the lavender dashes at 55% on black
 ACCENT = (180, 167, 255)  # the highlight in Boot options
-is_splash = lambda im: count(im, SLOT, 30, centre(im)) > 40 and count(im, ACCENT, 12) < 1500
+def band(im, top, bottom):
+    w, h = im.size
+    return (0, int(h * top), w, int(h * bottom))
+# the wait screen: the dashed spots in the middle and the white wordmark near the bottom, nothing else
+is_splash = lambda im: count(im, SLOT, 30, centre(im)) > 40 and count(im, (255, 255, 255), 30, band(im, 0.88, 1)) > 150 and count(im, (170, 170, 170), 40, band(im, 0, 0.3)) < 50
 is_options = lambda im: count(im, ACCENT, 12) > 4000
-is_booted = lambda im: count(im, (170, 170, 170), 60) > 80 and count(im, SLOT, 30, centre(im)) < 10 and count(im, ACCENT, 12) < 500
+is_booted = lambda im: count(im, (170, 170, 170), 60, band(im, 0, 0.15)) > 40 and count(im, SLOT, 30, centre(im)) < 10 and count(im, ACCENT, 12) < 500 and count(im, (255, 255, 255), 30, band(im, 0.88, 1)) < 50
 is_plain = lambda im: count(im, ACCENT, 12) < 500 and count(im, SLOT, 30, centre(im)) < 10 and count(im, (170, 170, 170), 60) > 300
 
 def scenario(name, steps, expect):
     set_env(tessera_booted=None, tessera_once=None, test_default=expect.get('default'))
     vm = VM(name)
+    note = ''
     try:
         steps(vm)
-        time.sleep(1.5)
-        env = grubenv()
+    except Exception as e:  # keep going: the settings file says what was actually started
+        note = f' [{e}]'
+        try: vm.shot('end')
+        except Exception: pass
     finally:
+        time.sleep(1.5)
         vm.stop()
+    env = grubenv()
     got = {k: env.get(k) for k in ('tessera_booted', 'tessera_once')}
     want = {'tessera_booted': expect['booted'], 'tessera_once': expect.get('once')}
     ok = got == want
-    results.append(f"{'PASS' if ok else 'FAIL'} {name}: {got}" + ('' if ok else f' (expected {want})'))
+    results.append(f"{'PASS' if ok else 'FAIL'} {name}: {got}" + ('' if ok else f' (expected {want})') + note)
     print(results[-1], flush=True)
 
 def wait_boot(vm, label='booted'):
-    vm.wait(is_booted, 'started system', 40); vm.shot(label)
+    try: vm.wait(is_booted, 'started system', 30)
+    finally: vm.shot(label)
 
 def s_wait(vm):
     vm.wait(is_splash, 'wait screen'); time.sleep(0.6); vm.shot('wait-screen'); wait_boot(vm)
