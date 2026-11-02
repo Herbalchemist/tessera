@@ -17,7 +17,9 @@ const SUDO = process.env.TESSERA_LIVE_INSTALL_NOSUDO === '1' ? [] : ['sudo', '-n
 const ID_RE = /^[0-9a-fA-F-]{8,40}:[A-Za-z0-9._-]{1,40}$/;
 const USER_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
 const UUID_RE = /^[0-9A-Za-z-]{4,64}$/;
-const TOOLS = ['signin', 'pin', 'shards', 'version', 'clean', 'boot'];
+const TOOLS = ['signin', 'pin', 'shards', 'version', 'clean', 'boot', 'graphics'];
+const GFX_ACTIONS = ['safe', 'desktop', 'console', 'switch'];
+const BUILDS = ['standard', 'nvidia', 'nvidia-open'];
 const CLEAN = ['caches', 'shaders', 'trash'];
 const VERSION_ACTIONS = ['default', 'keep', 'unkeep'];
 
@@ -58,6 +60,11 @@ async function recoveryOp(op, p) {
     if (p.tool === 'version') {
       if (!VERSION_ACTIONS.includes(p.action) || !Number.isInteger(p.index) || p.index < 0 || p.index > 20) return { ok: false, error: 'Bad request.' };
       Object.assign(req, { action: p.action, index: p.index });
+    }
+    if (p.tool === 'graphics') {
+      if (!GFX_ACTIONS.includes(p.action) || (p.to !== undefined && !BUILDS.includes(p.to))) return { ok: false, error: 'Bad request.' };
+      req.action = p.action;
+      if (p.to) req.to = p.to;
     }
     if (p.tool === 'clean') {
       if (!Array.isArray(p.what) || !p.what.length || p.what.length > CLEAN.length || !p.what.every((w) => CLEAN.includes(w))) return { ok: false, error: 'Bad request.' };

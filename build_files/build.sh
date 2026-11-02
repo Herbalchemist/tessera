@@ -80,7 +80,7 @@ systemctl is-enabled tessera-autologin.service
 
 ### The boot menu: tessera-boot-menu puts Tessera's wait screen and Boot options in /boot (and keeps
 ### them up to date), tessera-boot-once carries out a "this time" start chosen there. Also in the preset.
-systemctl enable tessera-boot-menu.service tessera-boot-once.service
+systemctl enable tessera-boot-menu.service tessera-boot-once.service tessera-graphics-switch-once.service
 ### GRUB draws text with its own font format (.pf2): made here from the launcher's font (Inter, or the
 ### system's sans-serif if Inter isn't installed), Latin letters and punctuation only. Without them the
 ### menu falls back to GRUB's built-in font, so a failure here is reported but doesn't stop the build.

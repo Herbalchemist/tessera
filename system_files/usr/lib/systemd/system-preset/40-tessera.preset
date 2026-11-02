@@ -5,3 +5,5 @@ enable tessera-autologin.service
 # The boot menu (wait screen, Boot options) and its "this time" starts: see boot-menu and boot-once.
 enable tessera-boot-menu.service
 enable tessera-boot-once.service
+# Recover > Graphics: a build switch asked for from the USB, done at the next start (see graphics-switch-once).
+enable tessera-graphics-switch-once.service
