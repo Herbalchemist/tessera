@@ -1,54 +1,54 @@
-+ cp -a /home/runner/work/tessera/tessera/system_files/usr/share/tessera/grub /tmp/tmp.WMBzsRQ14z/src
-+ mkdir -p /tmp/tmp.WMBzsRQ14z/src/fonts
++ cp -a /home/runner/work/tessera/tessera/system_files/usr/share/tessera/grub /tmp/tmp.FJM0D7dbyR/src
++ mkdir -p /tmp/tmp.FJM0D7dbyR/src/fonts
 + range=0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193
 + for s in 16 20 28
-+ grub-mkfont -n Tessera -s 16 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.WMBzsRQ14z/src/fonts/tessera-16.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ grub-mkfont -n Tessera -s 16 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.FJM0D7dbyR/src/fonts/tessera-16.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 + for s in 16 20 28
-+ grub-mkfont -n Tessera -s 20 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.WMBzsRQ14z/src/fonts/tessera-20.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ grub-mkfont -n Tessera -s 20 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.FJM0D7dbyR/src/fonts/tessera-20.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 + for s in 16 20 28
-+ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.WMBzsRQ14z/src/fonts/tessera-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
-+ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.WMBzsRQ14z/src/fonts/tessera-bold-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
-+ cp /usr/share/grub/unicode.pf2 /tmp/tmp.WMBzsRQ14z/boot/grub2/
-+ mkdir -p /tmp/tmp.WMBzsRQ14z/boot/grub2/fonts
-+ cp /usr/share/grub/unicode.pf2 /tmp/tmp.WMBzsRQ14z/boot/grub2/fonts/
-+ cp /home/runner/work/tessera/tessera/tools/boot-menu-test/grub.cfg /tmp/tmp.WMBzsRQ14z/boot/grub2/grub.cfg
-+ grub-editenv /tmp/tmp.WMBzsRQ14z/boot/grub2/grubenv create
-+ TESSERA_BOOT=/tmp/tmp.WMBzsRQ14z/boot
-+ TESSERA_SRC=/tmp/tmp.WMBzsRQ14z/src
-+ TESSERA_ETC=/tmp/tmp.WMBzsRQ14z/etc
++ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.FJM0D7dbyR/src/fonts/tessera-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.FJM0D7dbyR/src/fonts/tessera-bold-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.FJM0D7dbyR/boot/grub2/
++ mkdir -p /tmp/tmp.FJM0D7dbyR/boot/grub2/fonts
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.FJM0D7dbyR/boot/grub2/fonts/
++ cp /home/runner/work/tessera/tessera/tools/boot-menu-test/grub.cfg /tmp/tmp.FJM0D7dbyR/boot/grub2/grub.cfg
++ grub-editenv /tmp/tmp.FJM0D7dbyR/boot/grub2/grubenv create
++ TESSERA_BOOT=/tmp/tmp.FJM0D7dbyR/boot
++ TESSERA_SRC=/tmp/tmp.FJM0D7dbyR/src
++ TESSERA_ETC=/tmp/tmp.FJM0D7dbyR/etc
 + bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-menu
 tessera-boot-menu: now on
-+ mkfs.vfat -C /tmp/tmp.WMBzsRQ14z/env.img 4096
-+ touch /tmp/tmp.WMBzsRQ14z/tessera-env-disk
-+ mcopy -i /tmp/tmp.WMBzsRQ14z/env.img /tmp/tmp.WMBzsRQ14z/tessera-env-disk ::/tessera-env-disk
-+ mcopy -i /tmp/tmp.WMBzsRQ14z/env.img /tmp/tmp.WMBzsRQ14z/boot/grub2/grubenv ::/grubenv
-+ rm -f /tmp/tmp.WMBzsRQ14z/boot/grub2/grubenv
-+ mkdir -p /tmp/tmp.WMBzsRQ14z/iso/boot
-+ cp -a /tmp/tmp.WMBzsRQ14z/boot/grub2 /tmp/tmp.WMBzsRQ14z/iso/boot/grub
++ mkfs.vfat -C /tmp/tmp.FJM0D7dbyR/env.img 4096
++ touch /tmp/tmp.FJM0D7dbyR/tessera-env-disk
++ mcopy -i /tmp/tmp.FJM0D7dbyR/env.img /tmp/tmp.FJM0D7dbyR/tessera-env-disk ::/tessera-env-disk
++ mcopy -i /tmp/tmp.FJM0D7dbyR/env.img /tmp/tmp.FJM0D7dbyR/boot/grub2/grubenv ::/grubenv
++ rm -f /tmp/tmp.FJM0D7dbyR/boot/grub2/grubenv
++ mkdir -p /tmp/tmp.FJM0D7dbyR/iso/boot
++ cp -a /tmp/tmp.FJM0D7dbyR/boot/grub2 /tmp/tmp.FJM0D7dbyR/iso/boot/grub
 + printf 'serial --unit=0 --speed=115200\nterminal_input --append serial\nterminal_output --append serial\n'
-+ cat /tmp/tmp.WMBzsRQ14z/boot/grub2/grub.cfg
-+ grub-mkrescue -o /tmp/tmp.WMBzsRQ14z/system.iso /tmp/tmp.WMBzsRQ14z/iso
++ cat /tmp/tmp.FJM0D7dbyR/boot/grub2/grub.cfg
++ grub-mkrescue -o /tmp/tmp.FJM0D7dbyR/system.iso /tmp/tmp.FJM0D7dbyR/iso
 xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
 
-Drive current: -outdev 'stdio:/tmp/tmp.WMBzsRQ14z/system.iso'
+Drive current: -outdev 'stdio:/tmp/tmp.FJM0D7dbyR/system.iso'
 Media current: stdio file, overwriteable
 Media status : is blank
 Media summary: 0 sessions, 0 data blocks, 0 data, 85.2g free
-Added to ISO image: directory '/'='/tmp/grub.RzI2q3'
+Added to ISO image: directory '/'='/tmp/grub.DlanSE'
 xorriso : UPDATE :     588 files added in 1 seconds
-Added to ISO image: directory '/'='/tmp/tmp.WMBzsRQ14z/iso'
+Added to ISO image: directory '/'='/tmp/tmp.FJM0D7dbyR/iso'
 xorriso : UPDATE :     620 files added in 1 seconds
 xorriso : NOTE : Copying to System Area: 512 bytes from file '/usr/lib/grub/i386-pc/boot_hybrid.img'
 ISO image produced: 7042 sectors
 Written to medium : 7042 sectors at LBA 0
-Writing to 'stdio:/tmp/tmp.WMBzsRQ14z/system.iso' completed successfully.
+Writing to 'stdio:/tmp/tmp.FJM0D7dbyR/system.iso' completed successfully.
 
-+ find /tmp/tmp.WMBzsRQ14z/iso -type f
-+ sed s#/tmp/tmp.WMBzsRQ14z/iso##
++ find /tmp/tmp.FJM0D7dbyR/iso -type f
++ sed s#/tmp/tmp.FJM0D7dbyR/iso##
 + sort
-+ I=/tmp/tmp.WMBzsRQ14z/env.img
-+ cp /tmp/tmp.WMBzsRQ14z/boot/grub2/custom.cfg /tmp/boot-menu-out/custom.cfg
-+ python3 /home/runner/work/tessera/tessera/tools/boot-menu-test/run.py /tmp/tmp.WMBzsRQ14z /tmp/boot-menu-out
++ I=/tmp/tmp.FJM0D7dbyR/env.img
++ cp /tmp/tmp.FJM0D7dbyR/boot/grub2/custom.cfg /tmp/boot-menu-out/custom.cfg
++ python3 /home/runner/work/tessera/tessera/tools/boot-menu-test/run.py /tmp/tmp.FJM0D7dbyR /tmp/boot-menu-out
 PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS desktop-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
@@ -57,32 +57,32 @@ PASS console-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'console'
 PASS previous-version: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 PASS f2-and-scroll: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS all-versions: {'tessera_booted': 'ostree:1', 'tessera_once': None}
-PASS full-boot-menu: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS full-boot-menu: {'tessera_booted': 'ostree:0', 'tessera_once': None} [full-boot-menu: no full menu within 15s]
 PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS failed-update-fallback: {'tessera_booted': 'ostree:1', 'tessera_once': None}
-+ mkdir -p /tmp/tmp.WMBzsRQ14z/b1/grub2 /tmp/tmp.WMBzsRQ14z/run1
-+ mcopy -o -i /tmp/tmp.WMBzsRQ14z/env.img ::/grubenv /tmp/tmp.WMBzsRQ14z/b1/grub2/grubenv
++ mkdir -p /tmp/tmp.FJM0D7dbyR/b1/grub2 /tmp/tmp.FJM0D7dbyR/run1
++ mcopy -o -i /tmp/tmp.FJM0D7dbyR/env.img ::/grubenv /tmp/tmp.FJM0D7dbyR/b1/grub2/grubenv
 + echo '--- boot-once on the settings file GRUB left after the last '\''this time'\'' scenario:'
-+ grub-editenv /tmp/tmp.WMBzsRQ14z/b1/grub2/grubenv set tessera_once=console
++ grub-editenv /tmp/tmp.FJM0D7dbyR/b1/grub2/grubenv set tessera_once=console
 + tee -a /tmp/boot-menu-out/results.txt
 --- boot-once on the settings file GRUB left after the last 'this time' scenario:
-+ TESSERA_BOOT=/tmp/tmp.WMBzsRQ14z/b1
-+ TESSERA_RUN=/tmp/tmp.WMBzsRQ14z/run1
++ TESSERA_BOOT=/tmp/tmp.FJM0D7dbyR/b1
++ TESSERA_RUN=/tmp/tmp.FJM0D7dbyR/run1
 + bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-once
 tessera-boot-once: this start: repair console (no login screen)
-++ cat /tmp/tmp.WMBzsRQ14z/run1/boot-once
-++ '[' -e /tmp/tmp.WMBzsRQ14z/run1/console-once ']'
+++ cat /tmp/tmp.FJM0D7dbyR/run1/boot-once
+++ '[' -e /tmp/tmp.FJM0D7dbyR/run1/console-once ']'
 ++ echo yes
 + echo 'note: console  console-once: yes'
 note: console  console-once: yes
-++ grub-editenv /tmp/tmp.WMBzsRQ14z/b1/grub2/grubenv list
+++ grub-editenv /tmp/tmp.FJM0D7dbyR/b1/grub2/grubenv list
 ++ tr '\n' ' '
 + echo 'left in grubenv: test_default=1 tessera_booted=ostree:1 '
 left in grubenv: test_default=1 tessera_booted=ostree:1 
 + grep -q 'note: console  console-once: yes' /tmp/boot-menu-out/results.txt
 + grep -q tessera_once= /dev/fd/63
-++ grub-editenv /tmp/tmp.WMBzsRQ14z/b1/grub2/grubenv list
-+ echo 'PASS boot-once: read, cleared, note left'
+++ grub-editenv /tmp/tmp.FJM0D7dbyR/b1/grub2/grubenv list
 + tee -a /tmp/boot-menu-out/results.txt
++ echo 'PASS boot-once: read, cleared, note left'
 PASS boot-once: read, cleared, note left
 + exit 0

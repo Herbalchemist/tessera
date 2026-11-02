@@ -6,7 +6,7 @@ PASS console-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'console'
 PASS previous-version: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 PASS f2-and-scroll: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS all-versions: {'tessera_booted': 'ostree:1', 'tessera_once': None}
-PASS full-boot-menu: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS full-boot-menu: {'tessera_booted': 'ostree:0', 'tessera_once': None} [full-boot-menu: no full menu within 15s]
 PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS failed-update-fallback: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 --- boot-once on the settings file GRUB left after the last 'this time' scenario:
