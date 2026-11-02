@@ -89,6 +89,7 @@ let settings = {
   driveNames: {}, // drive key -> the name the person gave it
   pin: null, // { salt, hash } for the PIN (never the PIN itself)
   pinBrowser: true, // the PIN also guards the browser
+  xboxEnabled: false, // Xbox games (through Xodus Nexus) are allowed; only ever true while a PIN is set
   firstRunDone: false, // the welcome page is shown once
   pageGrid: {}, // page key -> { cols, rows } for pages that differ from the theme's grid size
   calibration: null, // display calibration made by eye (see "display calibration" below), or null
@@ -189,6 +190,7 @@ function loadSettings() {
     settings.firstRunDone = !d || d.firstRunDone === undefined ? true : d.firstRunDone === true;
     if (d && d.pin && /^[0-9a-f]{32}$/.test(d.pin.salt || '') && /^[0-9a-f]{64}$/.test(d.pin.hash || '')) settings.pin = { salt: d.pin.salt, hash: d.pin.hash };
     settings.pinBrowser = !d || d.pinBrowser !== false;
+    settings.xboxEnabled = Boolean(d && d.xboxEnabled === true && settings.pin);
     settings.codeAddons = {
       pinRequired: !d || !d.codeAddons || d.codeAddons.pinRequired !== false,
       allowUnverified: !d || !d.codeAddons || d.codeAddons.allowUnverified !== false,

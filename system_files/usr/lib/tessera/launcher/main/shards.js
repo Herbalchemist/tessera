@@ -23,8 +23,12 @@
 //   action(name)    -> { body, items } to show next, { message } for the status line,
 //                      or { openUrl: 'https://...' } to open Tessera's browser there (may be async)
 //   scan(offer)     -> calls offer({ title, kind: 'game' | 'app', file, args }) for each one found;
+//                      xbox: true marks an Xbox game: offered only while Xbox games are allowed
+//                      (a PIN set, Settings > PIN > Allow Xbox games), and it needs the PIN to start;
 //                      must not be async (the scan is not)
 //   tessera.dataDir -> a folder of the shard's own, kept across updates
+//   tessera.features-> what this Tessera supports beyond API 1 ('xbox-pin': offers marked xbox: true are
+//                      held behind the PIN; a shard should offer Xbox games only when this is listed)
 //   tessera.log(...)-> a line in Tessera's log folder (shards.log)
 
 module.exports = {
@@ -44,6 +48,7 @@ const library = require('./library');
 const prefs = require('./prefs');
 const theming = require('./theming');
 const addons = require('./addons');
+const xboxGate = require('../xbox-gate');
 
 const API_VERSION = 1;
 const CATALOG_URL = process.env.TESSERA_ADDON_CATALOG || 'https://raw.githubusercontent.com/Herbalchemist/tessera-addons/main/catalog.json';
@@ -110,6 +115,7 @@ function startShard(id) {
     apiVersion: API_VERSION,
     id,
     tesseraVersion: require('./updates').LAUNCHER_VERSION,
+    features: Object.freeze(['xbox-pin']), // what this Tessera supports beyond API 1: offer({ xbox: true }) is held behind the PIN
     dataDir,
     log: (...a) => shardLog(id, ...a),
     addPanel(def) {
@@ -174,7 +180,7 @@ function statusOf(id) {
 }
 
 // Library sources, for the scanner: each shard's games and apps, checked before they're offered.
-function scanSources(offer, notes) {
+function scanSources(offer, notes, ctx = { xboxHeld: 0 }) {
   for (const [id, r] of running) {
     for (const src of r.sources) {
       let count = 0;
@@ -184,7 +190,10 @@ function scanSources(offer, notes) {
         const kind = c.kind === 'app' ? 'app' : c.kind === 'game' ? 'game' : null;
         const file = typeof c.file === 'string' && path.isAbsolute(c.file) && c.file.length < 4096 && !c.file.includes('\0') ? c.file : null;
         const args = Array.isArray(c.args) && c.args.length <= 32 && c.args.every((a) => typeof a === 'string' && a.length < 2048 && !a.includes('\0')) ? c.args.slice() : null;
-        if (title && kind && file && args) offer({ title, source: src.name, kind, file, args });
+        if (!(title && kind && file && args)) return;
+        if (c.xbox !== true) return offer({ title, source: src.name, kind, file, args });
+        if (!xboxGate.xboxOn(prefs.settings)) { ctx.xboxHeld++; return; } // only counted until Xbox games are allowed
+        offer({ title, source: src.name, kind: 'game', file, args, xbox: true });
       };
       try {
         const r2 = src.scan(check);

@@ -44,7 +44,9 @@ async function flowPin() {
       items.push({ label: 'Remove PIN', op: 'remove', plain: true });
       items.push({ label: 'Lock now', sub: 'ask for the PIN again right away', op: 'lock', plain: true });
       items.push({ label: 'Also protect the browser', sub: st.browser ? 'On' : 'Off', op: 'browser', plain: true });
+      items.push({ label: 'Allow Xbox games', sub: st.xbox ? 'On. Starting one asks for the PIN' : 'Off', op: 'xbox', plain: true });
     }
+    if (!st.set) items.push({ label: 'Xbox games', sub: 'Need a PIN: set one first', info: true, plain: true });
     items.push({ label: 'Good to know', header: true });
     items.push({ label: 'Forgot it?', sub: 'Opus, then run tessera-reset-pin (needs your login)', info: true, plain: true });
     const it = await pick('PIN', items, index);
@@ -60,11 +62,16 @@ async function flowPin() {
       if (pin !== null) {
         const r = await api.settings('pinRemove', { pin });
         if (r.prefs) applyPrefs(r.prefs);
-        setStatus(r.ok ? 'PIN removed.' : r.error, !r.ok);
+        setStatus(r.ok ? (st.xbox ? 'PIN removed. Xbox games are off.' : 'PIN removed.') : r.error, !r.ok);
       }
     } else if (it.op === 'lock') {
       await api.settings('pinLock');
       setStatus('Locked.');
+    } else if (it.op === 'xbox') {
+      let r = await api.settings('xboxEnabled', { value: !st.xbox });
+      if (r && r.needPin && (await requirePin())) r = await api.settings('xboxEnabled', { value: !st.xbox });
+      if (r && r.prefs) applyPrefs(r.prefs);
+      else if (r && r.error) setStatus(r.error, true);
     } else if (it.op === 'browser') {
       const r = await api.settings('pinBrowser', { value: !st.browser });
       if (r.prefs) applyPrefs(r.prefs);

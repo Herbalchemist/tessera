@@ -501,7 +501,7 @@ function activate() {
   } else if (t.offline) {
     setStatus(t.offline === 'drive' ? `${t.title} is on a drive that isn't plugged in.` : `${t.title}'s files can't be found. Settings > Storage > Clean up can remove broken entries.`, true);
   } else {
-    guestAllowed({ id: t.id }).then((ok) => {
+    guestAllowed({ id: t.id }).then((ok) => (ok && t.xbox ? requirePin('Xbox games need the PIN') : ok)).then((ok) => {
       if (!ok) return;
       suspended = true;
       dropAllArt(); // the launcher sits hidden while a game runs: don't hold the pictures in memory meanwhile

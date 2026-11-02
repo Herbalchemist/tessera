@@ -29,6 +29,7 @@ const driveList = require('./driveList');
 const scanner = require('./scanner');
 const ipc = require('./ipc');
 const system = require('./system');
+const xboxGate = require('../xbox-gate');
 
 // ------------------------------------------------------------ PIN
 // Only a salted hash is kept. A PIN keeps whoever is holding the controller out
@@ -66,7 +67,7 @@ function pinMatches(pin) {
   return crypto.timingSafeEqual(a, b);
 }
 function pinInfo() {
-  return { set: pinIsSet(), browser: prefs.settings.pinBrowser !== false, firstRun: !prefs.settings.firstRunDone, unlocked: pinOk() };
+  return { set: pinIsSet(), browser: prefs.settings.pinBrowser !== false, firstRun: !prefs.settings.firstRunDone, unlocked: pinOk(), xbox: xboxGate.xboxOn(prefs.settings) };
 }
 // Checks the admin PIN. It never makes anyone wait: the admin PIN is the owner's, and a wait on it
 // could leave the device unusable for them. (Profile PINs do have a wait, which the admin PIN skips.)
@@ -119,6 +120,14 @@ ipcMain.handle('settings', ipc.safe((op, p) => {
     const t = pinTry(p.pin);
     if (!t.ok) return t;
     prefs.settings.pin = null;
+    prefs.settings.xboxEnabled = false; // Xbox games need a PIN: they stay off, even if a new PIN is set later
+    prefs.saveSettings();
+    return { ok: true, prefs: theming.prefsPayload() };
+  }
+  if (op === 'xboxEnabled') {
+    if (!pinIsSet()) return { ok: false, error: 'Set a PIN first. Xbox games need one.' };
+    if (!pinOk()) return NEED_PIN;
+    prefs.settings.xboxEnabled = p.value === true;
     prefs.saveSettings();
     return { ok: true, prefs: theming.prefsPayload() };
   }
@@ -319,11 +328,17 @@ ipcMain.handle('scan', ipc.safe((op, p) => {
   if (op === 'add') {
     if (library.state.locked) return { ok: false, error: `Can't edit: ${library.state.locked}`, view: library.buildView() };
     const cids = Array.isArray(p.cids) ? p.cids.filter((c) => typeof c === 'string') : [];
+    // Xbox games are added only while they are allowed, and only with the PIN unlocked.
+    if (cids.some((cid) => { const c = scanner.found.get(cid); return c && c.xbox; })) {
+      const why = xboxGate.xboxGate({ isXbox: true, enabled: prefs.settings.xboxEnabled === true, pinSet: pinIsSet(), pinOk: true });
+      if (why) return { ok: false, error: why, view: library.buildView() };
+      if (!pinOk()) return { ...NEED_PIN, view: library.buildView() };
+    }
     const into = typeof p.into === 'string' ? library.catById(p.into) : null;
     let n = 0;
     for (const cid of cids) {
       const c = scanner.found.get(cid);
-      const it = c && library.addItem({ title: c.title, kind: c.kind, file: c.file, args: c.args });
+      const it = c && library.addItem({ title: c.title, kind: c.kind, file: c.file, args: c.args, xbox: c.xbox });
       if (it) {
         n++;
         if (into) into.entries.push(it.id);

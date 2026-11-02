@@ -19,6 +19,7 @@ const prefs = require('./prefs');
 const folderBrowser = require('./folderBrowser');
 const steamShortcuts = require('../steam-shortcuts');
 const steamLaunch = require('../steam-launch');
+const xboxGate = require('../xbox-gate');
 
 // ---------------------------------------------------------------- scanner
 // Looks for things Tessera recognizes, not for "any .exe": installers and
@@ -88,11 +89,12 @@ function scanDesktopGames(offer) {
           if (m && kv[m[1]] === undefined) kv[m[1]] = m[2].trim();
         }
       }
+      if (kv['X-Xodus-Nexus-Game']) continue; // an Xbox game: the Xbox add-on offers it, behind the PIN
       if (kv.Type !== 'Application' || !/(^|;)Game(;|$)/.test(kv.Categories || '')) continue;
       if (kv.NoDisplay === 'true' || kv.Hidden === 'true' || kv.Terminal === 'true') continue;
       const cmd = web.parseDesktopExec(kv.Exec || '');
       const file = cmd && web.whichOnPath(cmd.file);
-      if (!file || skipExec.test(file) || cmd.args.some((a) => /^(steam:|lutris:|heroic:)/.test(a))) continue;
+      if (!file || skipExec.test(file) || cmd.args.some((a) => /^(steam:|lutris:|heroic:)/.test(a)) || xboxGate.looksLikeNexus(cmd.args)) continue;
       const title = library.cleanTitle(kv.Name || '', 60);
       if (title) offer({ title, source: 'Installed app', kind: 'game', file, args: cmd.args, optional: true });
     }
@@ -174,6 +176,7 @@ function scanSteamShortcuts(offer) {
   if (!steam) return;
   for (const s of steamShortcuts.read(os.homedir())) {
     if (s.hidden || /heroic|lutris/i.test(`${s.exe} ${s.options}`)) continue;
+    if (xboxGate.nexusSteamOptions(s.options)) continue; // made by Xodus Nexus: an Xbox game, offered by the Xbox add-on behind the PIN
     const title = library.cleanTitle(s.name, 60);
     if (title && !STEAM_SKIP.test(title)) offer({ title, source: 'Steam (added game)', kind: 'game', file: steam.file, args: [...steam.pre, ...steamLaunch.shortcutArgs(s.launchId)] });
   }
@@ -253,9 +256,11 @@ function runScan() {
   if (steamSeen && !steam) notes.add('Found Steam games but no Steam launcher is installed.');
   if (visits > config.SCAN_MAX_VISITS) notes.add('Scan stopped early: that is a lot of files. Try a more specific folder.');
   // Launchers that keep their own game lists are read from their usual places.
+  const ctx = { xboxHeld: 0 }; // Xbox games an add-on found while they're not allowed
   for (const source of [scanHeroic, scanLutris, scanSteamShortcuts, scanDesktopGames, shards.scanSources]) {
-    try { source(offer, notes); } catch { /* one broken source never stops the rest */ }
+    try { source(offer, notes, ctx); } catch { /* one broken source never stops the rest */ }
   }
+  if (ctx.xboxHeld) notes.add(`${ctx.xboxHeld} Xbox game${ctx.xboxHeld === 1 ? '' : 's'} found. Turn on Xbox games in Settings > PIN to add ${ctx.xboxHeld === 1 ? 'it' : 'them'}.`);
 
   return {
     found: [...found].map(([cid, c]) => ({ cid, title: c.title, source: c.source, optional: Boolean(c.optional) })),

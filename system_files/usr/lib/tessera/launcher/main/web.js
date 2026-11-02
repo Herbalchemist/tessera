@@ -32,6 +32,7 @@ const browserNavigation = require('../browser-navigation');
 const config = require('./config');
 const library = require('./library');
 const prefs = require('./prefs');
+const xboxGate = require('../xbox-gate');
 const inputActions = require('../input-actions');
 const calibration = require('./calibration');
 const appWindow = require('./appWindow');
@@ -458,6 +459,10 @@ ipcMain.on('launch', (_event, id) => {
   if (!game) return appWindow.send('launch-failed', 'Unknown game.');
   const guest = require('./profiles').guestDenies(game.kind === 'app' ? 'apps' : 'games');
   if (guest) return appWindow.send('launch-failed', guest.error);
+  if (xboxGate.isXbox(game)) {
+    const blocked = xboxGate.xboxGate({ isXbox: true, enabled: prefs.settings.xboxEnabled === true, pinSet: pinLock.pinIsSet(), pinOk: pinLock.pinOk() });
+    if (blocked) return appWindow.send('launch-failed', blocked);
+  }
   try {
     fs.accessSync(game.path, fs.constants.X_OK);
   } catch {
