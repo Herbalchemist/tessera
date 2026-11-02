@@ -1,0 +1,38 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Run by tessera-graphics-switch-once.service when Recover left a build name in
+# /etc/tessera/switch-graphics: switches to that build (tessera-fix-graphics --to, the same as
+# Settings > Update software), then removes the request. The result goes to
+# /var/lib/tessera/graphics-switch.json, which Settings shows; the new build starts after a restart.
+# A failed switch (often: not online) is tried again at the next start, at most 5 times.
+# TESSERA_ETC / TESSERA_STATE / TESSERA_FIX are only for tests.
+set -u
+ETC="${TESSERA_ETC:-/etc/tessera}"
+STATE="${TESSERA_STATE:-/var/lib/tessera}"
+FIX="${TESSERA_FIX:-/usr/bin/tessera-fix-graphics}"
+req="$ETC/switch-graphics"
+say() { echo "tessera-graphics-switch-once: $*"; }
+[ -f "$req" ] || exit 0
+to=$(head -c 32 "$req" | tr -cd 'a-z-')
+mkdir -p "$STATE"
+result() { printf '{"to": "%s", "ok": %s, "tries": %s, "at": %s}\n' "$to" "$1" "$2" "$(date +%s)" >"$STATE/graphics-switch.json"; }
+case "$to" in
+  standard|nvidia|nvidia-open) ;;
+  *) say "unknown build '$to': request removed"; rm -f "$req"; exit 0 ;;
+esac
+tries=$(( $(cat "$STATE/graphics-switch.tries" 2>/dev/null || echo 0) + 1 ))
+echo "$tries" >"$STATE/graphics-switch.tries"
+say "switching to the $to build (try $tries)"
+if "$FIX" --to "$to"; then
+  rm -f "$req" "$STATE/graphics-switch.tries"
+  result true "$tries"
+  say "done: the $to build starts after a restart"
+  exit 0
+fi
+result false "$tries"
+if [ "$tries" -ge 5 ]; then
+  rm -f "$req" "$STATE/graphics-switch.tries"
+  say "gave up after $tries tries"
+fi
+exit 0

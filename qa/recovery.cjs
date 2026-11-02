@@ -25,7 +25,7 @@ const ID = '1234abcd-0000:default';
 const INST = { id: ID, disk: { name: 'nvme0n1', model: 'Samsung SSD 980', size: 1000204886016 }, hostname: 'x', versions: [{ index: 0, version: '43.20261101.0', image: 'ghcr.io/herbalchemist/tessera:latest' }, { index: 1, version: '43.20261031.0', image: '' }], users: [{ name: 'alex', admin: true }, { name: 'kid', admin: false }] };
 const helper = path.join(temp, 'live-recover');
 fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify({ ok: true, installs: [INST] }));
-fs.writeFileSync(path.join(temp, 'diagnose.json'), JSON.stringify({ ok: true, install: INST, findings: [{ key: 'signin', text: "Tessera isn't set to start at boot.", fix: 'signin' }, { key: 'firmware', text: 'Another system starts first (Windows Boot Manager).', fix: 'boot' }, { key: 'versions', text: 'An earlier version is kept.', fix: null }] }));
+fs.writeFileSync(path.join(temp, 'diagnose.json'), JSON.stringify({ ok: true, install: INST, findings: [{ key: 'signin', text: "Tessera isn't set to start at boot.", fix: 'signin' }, { key: 'firmware', text: 'Another system starts first (Windows Boot Manager).', fix: 'boot' }, { key: 'graphics', text: 'This Tessera is the AMD / Intel build, but this computer needs the NVIDIA GTX 16 / RTX build.', fix: 'graphics' }, { key: 'versions', text: 'An earlier version is kept.', fix: null }], graphics: { have: 'standard', want: 'nvidia-open', cards: ['NVIDIA'] } }));
 fs.writeFileSync(path.join(temp, 'report.json'), JSON.stringify({ ok: true, text: 'Tessera recovery report\n== What was found\n- sign-in off\n', saved: '~/Tessera/Reports/tessera-recovery-report-1.txt (alex)' }));
 fs.writeFileSync(helper, `#!/bin/bash
 T=${JSON.stringify(temp)}
@@ -132,6 +132,22 @@ esac
     await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
     assert.deepEqual(fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop(), { tool: 'boot', user: 'alex', password: 'tessera1' });
     checks.push('Repair the boot menu is suggested when another system starts first and sends only that repair');
+
+    // Graphics: the wrong build for this card is suggested; switching sends exactly that build
+    await page.evaluate(() => { modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    assert.equal(await page.evaluate(() => modal.items.find((x) => x.op === 'graphics').sub), 'suggested: the wrong build for this graphics card');
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'graphics'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Graphics and how it starts', null, { timeout: 5000, polling: 100 });
+    const gx = await page.evaluate(() => ({ body: modal.body, items: modal.items.map((x) => x.label) }));
+    assert.match(gx.body, /Graphics in this computer: NVIDIA\.\nThis Tessera is the AMD \/ Intel build; these graphics need the NVIDIA GTX 16 \/ RTX build\./);
+    assert.deepEqual(gx.items, ['Switch to the NVIDIA GTX 16 / RTX build', 'Next start: safe settings', 'Next start: the login screen', 'Next start: a repair console']);
+    await page.evaluate(() => { modal.index = 0; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
+    assert.deepEqual(fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop(), { tool: 'graphics', user: 'alex', password: 'tessera1', action: 'switch', to: 'nvidia-open' });
+    checks.push('Graphics suggests the build for this card when the installed one is wrong, and sends exactly that switch');
 
     // Back up to a USB drive: whose files, which drive, what, the password, then progress to done
     await page.evaluate(() => { if (modal) closeModal(); });

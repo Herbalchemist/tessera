@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Recover (on the Tessera USB) > Graphics > Switch to the build for this card: Recover can't download
+# the new build itself, so it leaves the build's name in /etc/tessera/switch-graphics and this does
+# the switch at the next start, once the machine is online. See /usr/libexec/tessera/graphics-switch-once.
+[Unit]
+Description=Tessera: switch to the graphics build chosen in Recover
+ConditionPathExists=/etc/tessera/switch-graphics
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tessera/graphics-switch-once
+TimeoutStartSec=infinity
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

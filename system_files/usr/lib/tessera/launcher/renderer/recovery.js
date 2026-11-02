@@ -51,6 +51,8 @@ async function recoveryMenu(inst) {
     const items = [{ label: 'Repairs', header: true }];
     for (const [tool, t] of Object.entries(RECOVERY_TOOLS)) items.push({ label: t.label, sub: suggested.has(tool) ? 'suggested' : t.sub, op: 'fix', tool, ok: suggested.has(tool), plain: !suggested.has(tool) });
     if (inst.versions.length) items.push({ label: 'Versions', sub: inst.versions.length > 1 ? `${inst.versions.length} kept: start another, keep one for good` : 'keep this one for good', op: 'versions', plain: true });
+    const gfxWrong = findings.some((f) => f.key === 'graphics');
+    items.push({ label: 'Graphics and how it starts', sub: gfxWrong ? 'suggested: the wrong build for this graphics card' : 'safe settings, the login screen or a repair console, next start only', op: 'graphics', gfx: d.graphics || {}, ok: gfxWrong, plain: !gfxWrong });
     const diskWorry = findings.some((f) => f.key === 'fs');
     items.push({ label: 'Check the disk', sub: diskWorry ? 'suggested: errors were recorded' : 'the drive\'s health and every file system; read-only', op: 'check', ok: diskWorry, plain: !diskWorry });
     items.push({ label: 'Free up space', sub: suggested.has('clean') ? 'suggested: the disk is nearly full' : 'see what uses the disk; clear caches and the trash', op: 'space', ok: suggested.has('clean'), plain: !suggested.has('clean') });
@@ -66,6 +68,7 @@ async function recoveryMenu(inst) {
     else if (it.op === 'backup') await recoveryBackup(inst);
     else if (it.op === 'space') await recoverySpace(inst);
     else if (it.op === 'check') await recoveryCheck(inst);
+    else if (it.op === 'graphics') await recoveryGraphics(inst, it.gfx);
   }
 }
 
@@ -133,6 +136,27 @@ async function recoveryFix(inst, tool, extra = {}, title = '') {
   if (!r) return false;
   await pick('Done', [{ label: 'OK', plain: true }], 0, { body: `${t.label}:\n${(r.done || []).map((x) => `• ${x}`).join('\n')}\n\nRestart without the USB to see if Tessera starts.` });
   return true;
+}
+
+// Graphics and how it starts: switch to the build for this machine's graphics card (done at the next
+// start, once online), or choose how the next start goes (safe settings, the login screen, a text
+// repair console); the start after that is normal again.
+const GFX_NAMES = { standard: 'AMD / Intel', nvidia: 'NVIDIA GTX 900-1000', 'nvidia-open': 'NVIDIA GTX 16 / RTX' };
+async function recoveryGraphics(inst, g) {
+  const items = [];
+  const wrong = g.have && g.want && g.have !== g.want;
+  if (wrong) items.push({ label: `Switch to the ${GFX_NAMES[g.want]} build`, sub: 'at the next start, once online; games and saves stay', action: 'switch', to: g.want, ok: true });
+  items.push({ label: 'Next start: safe settings', sub: 'no display calibration, no shards', action: 'safe', plain: wrong, ok: !wrong });
+  items.push({ label: 'Next start: the login screen', sub: 'Desktop Mode, with the password', action: 'desktop', plain: true });
+  items.push({ label: 'Next start: a repair console', sub: 'text only, for experts', action: 'console', plain: true });
+  const body = [
+    g.cards && g.cards.length ? `Graphics in this computer: ${g.cards.join(', ')}.` : '',
+    g.have ? `This Tessera is the ${GFX_NAMES[g.have] || g.have} build${wrong ? `; these graphics need the ${GFX_NAMES[g.want]} build.` : '.'}` : '',
+    'Each choice is for the next start only.',
+  ].filter(Boolean).join('\n');
+  const it = await pick('Graphics and how it starts', items, 0, { body });
+  if (!it) return;
+  await recoveryFix(inst, 'graphics', { action: it.action, ...(it.to ? { to: it.to } : {}) }, it.label);
 }
 
 // Check the disk: the drive's own health report, the start-up and boot partitions, and every block
