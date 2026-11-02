@@ -94,10 +94,17 @@ function describe(node) {
   return { node, name: name.replace(/\s*\(IMU\)\s*$/, ''), product, kind, imu, uniq: uniq || node, hid: realOrNull(path.join(base, 'device')) };
 }
 
+// While tessera-joycons.service runs it holds the Joy-Cons and shows them to the whole system as
+// ordinary controllers (the ones Ludus then sees through the normal gamepad list), so this file
+// leaves Joy-Cons alone. (libexec/tessera/joycons; TESSERA_JOYCONS_STATE is for tests.)
+function joyconsServiceActive() {
+  try { return JSON.parse(fs.readFileSync(process.env.TESSERA_JOYCONS_STATE || '/run/tessera/joycons.json', 'utf8')).active === true; } catch { return false; }
+}
 function scan() {
   let nodes = [];
   try { nodes = fs.readdirSync(SYS).filter((n) => /^event\d+$/.test(n)); } catch { /* no input class (tests, containers) */ }
-  return nodes.map(describe).filter(Boolean);
+  const all = nodes.map(describe).filter(Boolean);
+  return joyconsServiceActive() ? all.filter((d) => d.kind !== 'jl' && d.kind !== 'jr') : all;
 }
 
 // Battery: hid_nintendo registers a power supply whose device is the controller's HID device.
