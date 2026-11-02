@@ -33,6 +33,7 @@ xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/input.cjs               
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/profiles.cjs             # profiles: each person's own pages, controls, browser logins and theme; switching, restart, removing
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/report.cjs               # Report a problem: made only when asked, readable on screen, nothing personal in it
 xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/boot-screen.cjs          # Theme Settings > Boot screen: the four choices, the job it starts, refused while an update waits
+xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/steam-library.cjs        # Steam games saved before quiet launches load with quiet arguments; a rescan adds no duplicates
 ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
 ```
 
