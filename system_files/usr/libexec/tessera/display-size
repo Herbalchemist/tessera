@@ -65,7 +65,7 @@ def main():
     if not size:
         xr = os.environ.get("TESSERA_XRANDR")
         size = from_xrandr(open(xr).read() if xr else run(["xrandr", "--current"]))
-    if size and 320 <= size[0] <= 16384 and 240 <= size[1] <= 16384:
+    if size and size[0] > 0 and size[1] > 0:  # any real size; nothing printed only when nothing was read
         print(f"{size[0]} {size[1]}")
         return 0
     return 1

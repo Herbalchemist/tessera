@@ -37,4 +37,6 @@ contextBridge.exposeInMainWorld('launcherAPI', {
   guide: (op, payload) => ipcRenderer.invoke('guide', op, payload),
   onGuide: (cb) => ipcRenderer.on('guide', (_e, msg) => cb(msg)),
   onGraphics: (cb) => ipcRenderer.on('graphics', (_e, g) => cb(g)),
+  display: (op, payload) => ipcRenderer.invoke('display', op, payload),
+  onDisplayNew: (cb) => ipcRenderer.on('display-new', (_e, d) => cb(d)),
 });

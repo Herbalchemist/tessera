@@ -75,13 +75,39 @@ if [ -n "${TESSERA_NESTED:-}" ] && read -r W H < <(/usr/libexec/tessera/display-
   echo "on top of the desktop: ${W}x${H}" >>"$LOG"
 fi
 
+RESTART="$STATE/restart-requested"
+export TESSERA_RESTART_FILE="$RESTART"
+NO_DISPLAY=""
 fails=0
 while true; do
   started=$(date +%s)
-  rm -f "$LEAVE"
-  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  rm -f "$LEAVE" "$RESTART"
+  # Settings > Screens: which screen, its resolution and refresh, a built-in screen's orientation
+  # (display-info reads the screens from the driver; a setting being tried is used for one start).
+  DISPLAY_ARGS=()
+  if [ -z "${TESSERA_NESTED:-}" ] && [ -z "$NO_DISPLAY" ] && [ -z "$SAFE" ]; then
+    mapfile -t DISPLAY_ARGS < <(/usr/libexec/tessera/display-info args 2>>"$LOG")
+    [ "${#DISPLAY_ARGS[@]}" -gt 0 ] && echo "screen settings: ${DISPLAY_ARGS[*]}" >>"$LOG"
+  fi
+  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
+
+  # Ludus asked to start again (new screen settings): no failure, no leaving.
+  if [ -e "$RESTART" ]; then
+    echo "restart asked for" >>"$LOG"
+    rm -f "$RESTART"
+    fails=0
+    continue
+  fi
+
+  # Failed quickly with screen settings: start again with the screen's own choice. (A setting
+  # being tried was already dropped by display-info for the next start.)
+  if [ "$code" -ne 0 ] && [ "${#DISPLAY_ARGS[@]}" -gt 0 ] && [ $(( $(date +%s) - started )) -lt "$QUICK_SECS" ]; then
+    echo "screen settings failed, starting with the screen's own choice" >>"$LOG"
+    NO_DISPLAY=1
+    continue
+  fi
 
   # The person chose Opus: leave, whatever the exit code was.
   if [ -e "$LEAVE" ]; then

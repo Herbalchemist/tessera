@@ -416,6 +416,7 @@ const SETTINGS_ROWS = [
     tiles: [
       { id: '_theme', title: 'Theme Settings', kind: 'action', icon: 'theme' },
       { id: '_profiles', title: 'Profiles', kind: 'action', icon: 'profiles' },
+      { id: '_screens', title: 'Screens', kind: 'action', icon: 'display' },
       { id: '_display', title: 'Display calibration', kind: 'action', icon: 'display' },
     ],
   },

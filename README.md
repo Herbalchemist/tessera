@@ -12,7 +12,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.50.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.51.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -114,7 +114,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 |---|---|
 | Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
 | Controllers | **Controller**: live test, Guide button, button mapping, dead zones, rumble, button labels, browser cursor and scroll. **Keyboard & mouse**: key layouts, every key rebindable, hint style, pointer and scroll wheel |
-| Appearance | Theme settings, profiles, display calibration |
+| Appearance | Theme settings, profiles, **Screens** (which screen Ludus uses, its resolution and refresh rate from what the screen reports, a built-in screen's orientation; tried for 15 seconds before it's kept; a new screen is offered), display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, PIN |
 | Power | Sleep, restart, shut down, Opus |
 
