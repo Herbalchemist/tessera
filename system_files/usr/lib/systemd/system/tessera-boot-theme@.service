@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Theme Settings > Boot screen: set the picture shown while the machine starts (%i is tessera, bgrt,
+# spinner or details; anything else is refused by boot-theme). Started on demand by Tessera (see
+# 49-tessera-update.rules), runs a fixed command, and leaves what it printed in
+# /run/tessera-update/boot.log.
+[Unit]
+Description=Tessera: set the boot screen to %i
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tessera/boot-theme %i
+StandardOutput=truncate:/run/tessera-update/boot.log
+StandardError=inherit
+TimeoutStartSec=infinity
+Nice=10

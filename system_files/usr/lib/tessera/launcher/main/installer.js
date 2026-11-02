@@ -146,9 +146,24 @@ async function graphicsCheck() {
   const g = await graphicsFor(st);
   if (g && g.mismatch && !g.switching) appWindow.send('graphics', g);
 }
+// ---- the boot screen (Theme Settings > Boot screen)
+// Which Plymouth theme shows while the machine starts: a kernel argument (plymouth.splash=), set by
+// tessera-boot-theme@<name>.service (usr/libexec/tessera/boot-theme). Takes effect after a restart.
+const BOOT_THEMES = ['tessera', 'bgrt', 'spinner', 'details'];
+const BOOT_UNIT = (t) => `tessera-boot-theme@${t}.service`;
+const CMDLINE = process.env.TESSERA_CMDLINE || '/proc/cmdline';
+let bootPending = null; // set this run, shows after the restart
+function bootInfo() {
+  let cmd = '';
+  try { cmd = fs.readFileSync(CMDLINE, 'utf8'); } catch { /* unknown: the default */ }
+  const m = /(?:^|\s)plymouth\.splash=(\S+)/.exec(cmd);
+  const current = m && BOOT_THEMES.includes(m[1]) ? m[1] : 'tessera';
+  return { ok: true, themes: BOOT_THEMES, current, pending: bootPending && bootPending !== current ? bootPending : null };
+}
 async function startUpdate(kind, p = {}) {
-  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback' && kind !== 'graphics') return { ok: false, error: 'Unknown action.' };
+  if (kind !== 'check' && kind !== 'apply' && kind !== 'rollback' && kind !== 'graphics' && kind !== 'boot') return { ok: false, error: 'Unknown action.' };
   if (kind === 'graphics' && !gpuMatch.VARIANTS.includes(p.variant)) return { ok: false, error: 'Unknown action.' };
+  if (kind === 'boot' && !BOOT_THEMES.includes(p.theme)) return { ok: false, error: 'Unknown action.' };
   if (config.running) return { ok: false, error: 'Close the game first.' };
   const cur = await updates.runningJob();
   if (cur) return { ok: true, job: cur.kind };
@@ -160,12 +175,17 @@ async function startUpdate(kind, p = {}) {
     if (st.staged) return { ok: false, error: 'An update is waiting for a restart. Restart first, then you can go back if you need to.' };
     if (!st.rollback) return { ok: false, error: "There's no earlier version to go back to." };
   }
-  const unit = kind === 'graphics' ? GRAPHICS_UNIT(p.variant) : updates.UPDATE_UNIT[kind];
+  if (kind === 'boot') {
+    // a new boot entry now would be made from the running version and drop a waiting update
+    const st = await updates.fetchStatus();
+    if (st.ok && st.staged) return { ok: false, error: 'An update is waiting for a restart. Restart first, then change the boot screen.' };
+  }
+  const unit = kind === 'graphics' ? GRAPHICS_UNIT(p.variant) : kind === 'boot' ? BOOT_UNIT(p.theme) : updates.UPDATE_UNIT[kind];
   const before = await updates.unitProps(unit);
   if (!before || before.LoadState === 'not-found') return { ok: false, error: updates.UPDATE_PROBLEM.missing };
   const r = await updates.sysctl(['start', '--no-block', unit], 15000);
   if (!r.ok) return { ok: false, error: updates.UPDATE_PROBLEM[updates.ctlWhy(r)] };
-  updates.upJob = { kind, unit, before: before.InvocationID || '', startedAt: Date.now(), seen: false, canceled: false };
+  updates.upJob = { kind, unit, before: before.InvocationID || '', startedAt: Date.now(), seen: false, canceled: false, theme: p.theme };
   return { ok: true, job: kind };
 }
 // Called about once a second while the progress screen is up.
@@ -190,6 +210,11 @@ async function pollUpdate() {
   updates.upJob = null;
   const done = { ok: true, phase: 'done', job: job.kind };
   if (job.canceled) return { ...done, result: 'canceled' };
+  if (job.kind === 'boot') {
+    if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: updates.lastLine(log) || "Couldn't change the boot screen.", detail: '' };
+    bootPending = job.theme;
+    return { ...done, result: 'bootset', theme: job.theme };
+  }
   if (p.Result !== 'success' || p.ActiveState === 'failed') return { ...done, result: 'error', error: job.kind === 'rollback' ? "Couldn't go back to the previous version." : updates.updateErrorText(log), detail: updates.lastLine(log) };
   if (job.kind === 'rollback') {
     updates.rolledBackNow = true;
@@ -225,6 +250,7 @@ async function updateOp(op, p) {
     if (['start', 'reboot'].includes(op) && !pinLock.pinOk()) return pinLock.NEED_PIN;
     switch (op) {
       case 'info': return await updates.updateInfo();
+      case 'bootInfo': return bootInfo();
       case 'start': return await startUpdate(p.job, p);
       case 'poll': return await pollUpdate();
       case 'cancel': return await cancelUpdate();

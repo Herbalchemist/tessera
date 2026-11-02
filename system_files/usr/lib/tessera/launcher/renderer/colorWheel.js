@@ -168,6 +168,25 @@ async function themeSet(id, value) {
     if (!r.ok) setStatus(r.error, true);
   } finally { busy = false; }
 }
+// Theme Settings > Boot screen: the picture while the machine starts and shuts down.
+const BOOT_SCREENS = {
+  tessera: { name: 'Tessera', sub: 'The Tessera symbol building itself' },
+  bgrt: { name: 'Bazzite', sub: "Your computer maker's logo and a spinner" },
+  spinner: { name: 'Spinner', sub: 'A plain spinner' },
+  details: { name: 'Text', sub: 'Startup messages, handy for troubleshooting' },
+};
+async function flowBootScreen(info) {
+  const shown = info.pending || info.current;
+  const pickB = await pick('Boot screen', info.themes.map((id) => ({
+    label: BOOT_SCREENS[id].name, sub: id === shown ? (info.pending ? 'after the next restart' : 'current') : BOOT_SCREENS[id].sub, id,
+  })), Math.max(0, info.themes.indexOf(shown)), { body: 'Shown while the machine starts and shuts down, for everyone. It changes after a restart, and needs the admin PIN.' });
+  if (!pickB || pickB.id === shown) return;
+  if (!(await requirePin())) return;
+  const bad = await updateStart('boot', { theme: pickB.id });
+  const r = bad || (await updateWatch('boot', { name: BOOT_SCREENS[pickB.id].name }));
+  if (r.result === 'bootset') setStatus(`Done. The ${BOOT_SCREENS[pickB.id].name} boot screen shows from the next restart.`);
+  else { const end = updateEnd(r); if (end) setStatus(end, r.result === 'error'); }
+}
 async function flowTheme() {
   if (modal || busy) return;
   let index = 1;
@@ -186,6 +205,14 @@ async function flowTheme() {
       if (s.group !== group) { group = s.group; items.push(sizes[group] > 1 ? { label: group, header: true, fold: 'theme.' + group } : { label: group, header: true }); }
       items.push({ label: s.label, sub: themeValueText(s), op: 'set', s, plain: true });
     }
+    // the boot screen is the machine's, not this theme's: one for everyone, set with the admin PIN
+    let boot = null;
+    try { boot = await api.update('bootInfo', {}); } catch { /* not on this system */ }
+    if (boot && boot.ok) {
+      const shown = boot.pending || boot.current;
+      items.push({ label: 'Boot screen', header: true });
+      items.push({ label: BOOT_SCREENS[shown].name, sub: boot.pending ? 'shows after the next restart' : 'for everyone on this machine', op: 'boot', boot, plain: true });
+    }
     items.push({ label: 'Your themes', header: true });
     items.push({ label: 'Save current as a new theme…', op: 'saveNew', plain: true });
     if (active && !active.builtin) {
@@ -198,6 +225,10 @@ async function flowTheme() {
     const it = await pick('Theme Settings', items, index);
     if (!it) return;
     index = items.indexOf(it);
+    if (it.op === 'boot') {
+      await flowBootScreen(it.boot);
+      continue;
+    }
     if (it.op === 'reset') {
       if (await confirm('Reset every Theme Setting to its default?')) {
         busy = true;
