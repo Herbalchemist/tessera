@@ -1,0 +1,41 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Theme Settings > Boot screen: which picture shows while the machine starts and shuts down.
+#
+#   boot-theme tessera   Tessera's symbol building itself (the default)
+#   boot-theme bgrt      Bazzite's: the computer maker's logo and a spinner
+#   boot-theme spinner   a plain spinner
+#   boot-theme details   text: the startup messages scroll by
+#
+# The splash starts before the system does, so the choice is a boot setting (plymouth.splash=, a
+# kernel argument), not a file. All four are in the startup image (initramfs; see
+# usr/lib/dracut/dracut.conf.d/50-tessera-boot-screens.conf). Changing a kernel argument makes a new
+# boot entry, like an update does: it takes effect after a restart, and the previous entry stays in
+# the boot menu. Run as root by tessera-boot-theme@.service, which Tessera starts (see
+# 49-tessera-update.rules); it leaves what it printed in /run/tessera-update/boot.log.
+set -euo pipefail
+want="${1:-}"
+case "$want" in tessera|bgrt|spinner|details) ;; *) echo "Unknown boot screen: $want" >&2; exit 2 ;; esac
+[ -f "/usr/share/plymouth/themes/$want/$want.plymouth" ] || { echo "That boot screen isn't installed." >&2; exit 1; }
+
+# Changing kernel arguments while an update waits for a restart would start again from the running
+# version and drop the update. Tessera says so before it gets here; this is the safety net.
+if rpm-ostree status --json 2>/dev/null | grep -Eq '"staged" *: *true'; then
+  echo "An update is waiting for a restart. Restart first, then change the boot screen." >&2
+  exit 1
+fi
+
+have=$(rpm-ostree kargs | tr ' ' '\n' | grep '^plymouth\.splash=' || true)
+target=""
+[ "$want" != tessera ] && target="plymouth.splash=$want"
+if [ "$have" = "$target" ]; then
+  echo "The boot screen is already set to $want."
+  exit 0
+fi
+args=()
+while read -r k; do [ -n "$k" ] && args+=("--delete=$k"); done <<<"$have"
+[ -n "$target" ] && args+=("--append=$target")
+echo "Setting the boot screen to $want"
+rpm-ostree kargs "${args[@]}"
+echo "Done: it shows from the next restart."
