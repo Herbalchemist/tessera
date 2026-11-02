@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera's boot menu: the wait screen (GRUB theme). The empty tile spots sit where the boot
-# animation's tiles land; a thin line under them counts the three seconds down. The menu itself
+# animation's tiles land, for three seconds. The menu itself
 # is there but not drawn: Enter starts, O or F2 opens Boot options.
 title-text: ""
 desktop-color: "#000000"
@@ -12,17 +12,6 @@ terminal-font: "Tessera Regular 16"
   width = 128
   height = 128
   file = "slots.png"
-}
-+ progress_bar {
-  id = "__timeout__"
-  left = 50%-40
-  top = 50%+84
-  width = 80
-  height = 3
-  fg_color = "#b4a7ff"
-  bg_color = "#24202f"
-  border_color = "#000000"
-  text = ""
 }
 + label {
   left = 0

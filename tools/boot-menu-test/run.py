@@ -140,7 +140,7 @@ def s_versions(vm):
 def s_full(vm):
     # Boot options > Full boot menu: GRUB's own list (anything else on the machine is there too)
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 6); vm.key('ret')
-    vm.wait(is_plain, 'full menu', 15); vm.shot('full-menu'); vm.key('ret'); wait_boot(vm)
+    vm.wait(is_plain, 'full menu', 15); time.sleep(0.8); vm.shot('full-menu'); vm.key('ret'); wait_boot(vm)
 def s_options_back(vm):
     # Esc in Boot options goes back to the wait screen's menu; Enter there starts Tessera
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('esc')
