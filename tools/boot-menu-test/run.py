@@ -168,6 +168,10 @@ def s_options_back(vm):
     # Back to the wait screen (the last entry); Enter there starts Tessera
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('end'); time.sleep(0.4); vm.shot('options-back-entry'); vm.key('ret')
     vm.wait(is_splash, 'wait screen again', 15); vm.shot('back-from-options'); vm.key('ret'); wait_boot(vm)
+def s_login_key(vm):
+    # L on the wait screen chooses the login screen for this start; it says so; Enter starts
+    vm.wait(is_splash, 'wait screen'); vm.key('l'); time.sleep(1); vm.wait(is_splash, 'wait screen with the login screen chosen')
+    vm.shot('login-screen-chosen'); vm.key('ret'); wait_boot(vm)
 def s_enter(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('ret'); wait_boot(vm)
 def s_fallback(vm):
@@ -178,6 +182,7 @@ def s_fallback(vm):
 scenario('wait', s_wait, {'booted': 'ostree:0'})
 scenario('enter', s_enter, {'booted': 'ostree:0'})
 scenario('desktop-this-time', s_desktop, {'booted': 'ostree:0', 'once': 'desktop'})
+scenario('login-screen-key', s_login_key, {'booted': 'ostree:0', 'once': 'desktop'})
 scenario('safe-this-time', s_safe, {'booted': 'ostree:0', 'once': 'safe'})
 scenario('console-this-time', s_console, {'booted': 'ostree:0', 'once': 'console'})
 scenario('previous-version', s_previous, {'booted': 'ostree:1'})
