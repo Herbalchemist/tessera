@@ -138,7 +138,12 @@ def s_versions(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 5); vm.key('ret')
     time.sleep(1.2); vm.shot('all-versions'); vm.key('down'); vm.key('ret'); wait_boot(vm)
 def s_esc(vm):
-    vm.wait(is_splash, 'wait screen'); vm.key('esc'); vm.wait(is_plain, 'full menu', 15); vm.shot('full-menu-after-esc'); vm.key('ret'); wait_boot(vm)
+    # the first key stops the countdown; Esc again leaves Tessera's menu for GRUB's full list
+    vm.wait(is_splash, 'wait screen'); vm.key('esc'); time.sleep(0.5); vm.key('esc'); vm.wait(is_plain, 'full menu', 15); vm.shot('full-menu-after-esc'); vm.key('ret'); wait_boot(vm)
+def s_options_back(vm):
+    # Esc in Boot options goes back to the wait screen's menu; Enter there starts Tessera
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('esc')
+    vm.wait(is_splash, 'wait screen again', 15); vm.shot('back-from-options'); vm.key('ret'); wait_boot(vm)
 def s_enter(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('ret'); wait_boot(vm)
 def s_fallback(vm):
@@ -154,6 +159,7 @@ scenario('previous-version', s_previous, {'booted': 'ostree:1'})
 scenario('f2-and-scroll', s_f2, {'booted': 'ostree:0'})
 scenario('all-versions', s_versions, {'booted': 'ostree:1'})
 scenario('esc-full-menu', s_esc, {'booted': 'ostree:0'})
+scenario('options-esc-back', s_options_back, {'booted': 'ostree:0'})
 scenario('failed-update-fallback', s_fallback, {'booted': 'ostree:1', 'default': '1'})
 
 open(f'{OUT}/results.txt', 'w').write('\n'.join(results) + '\n')
