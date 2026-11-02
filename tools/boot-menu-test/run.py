@@ -142,16 +142,20 @@ def s_wait(vm):
 # settings, restart, power off, back to the wait screen.
 def s_desktop(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.shot('boot-options')
-    vm.key('down', 4); vm.shot('boot-options-desktop'); vm.key('ret'); wait_boot(vm)
+    vm.key('down', 4); vm.shot('boot-options-desktop'); vm.key('ret')
+    # the mode is chosen; Boot options says so, the newest version is selected: Enter starts it
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.shot('boot-options-desktop-chosen'); vm.key('ret'); wait_boot(vm)
 def s_previous(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down'); vm.key('ret'); wait_boot(vm)
 def s_f2(vm):
     vm.wait(is_splash, 'wait screen'); vm.key('f2'); vm.wait(is_options, 'Boot options'); vm.shot('boot-options-f2')
     vm.key('down', 6); vm.shot('boot-options-lower'); vm.key('up', 6); vm.key('ret'); wait_boot(vm)
 def s_safe(vm):
-    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 5); vm.key('ret'); wait_boot(vm)
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 5); vm.key('ret')
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.key('ret'); wait_boot(vm)
 def s_console(vm):
-    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 6); vm.key('ret'); wait_boot(vm)
+    vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); vm.key('down', 6); vm.key('ret')
+    time.sleep(1); vm.wait(is_options, 'Boot options with the mode'); vm.key('ret'); wait_boot(vm)
 def s_versions(vm):
     # the versions are the top of Boot options: the second is the one before the last update
     vm.wait(is_splash, 'wait screen'); vm.key('o'); vm.wait(is_options, 'Boot options'); time.sleep(0.5); vm.shot('all-versions')
