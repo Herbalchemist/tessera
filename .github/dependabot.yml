@@ -12,3 +12,8 @@ updates:
     directory: "/qa"
     schedule:
       interval: "weekly"
+    # Electron stays on the line the image ships (electron-version); moving to a new major line is a
+    # tested change of its own, made before the line's end of support.
+    ignore:
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
