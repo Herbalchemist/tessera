@@ -47,13 +47,14 @@ async function recoveryMenu(inst) {
     ].join('\n\n');
     const items = [{ label: 'Repairs', header: true }];
     for (const [tool, t] of Object.entries(RECOVERY_TOOLS)) items.push({ label: t.label, sub: suggested.has(tool) ? 'suggested' : t.sub, op: 'fix', tool, ok: suggested.has(tool), plain: !suggested.has(tool) });
+    if (inst.versions.length) items.push({ label: 'Versions', sub: inst.versions.length > 1 ? `${inst.versions.length} kept: start another, keep one for good` : 'keep this one for good', op: 'versions', plain: true });
     items.push({ label: 'More', header: true });
     items.push({ label: 'Make a problem report', sub: 'saved in its Tessera folder; read it first', op: 'report', plain: true });
     items.push({ label: 'Done', sub: 'restart without the USB to try it', op: 'done', plain: true });
     const it = await pick('Recover', items, index, { body });
     if (!it || it.op === 'done') return;
     index = items.indexOf(it);
-    if (it.op === 'report') await recoveryReport(inst);
+    if (it.op === 'versions') { const fresh = await recoveryVersions(inst); if (fresh) inst = fresh; } else if (it.op === 'report') await recoveryReport(inst);
     else if (it.op === 'fix') await recoveryFix(inst, it.tool);
   }
 }
@@ -68,7 +69,28 @@ async function recoveryReport(inst) {
   await pick(r.saved ? `Saved: ${r.saved}` : 'Report (not saved)', lines.map((l) => (/^== /.test(l) ? { label: l.slice(3), header: true } : { label: l || ' ', plain: true, info: true })));
 }
 
-async function recoveryFix(inst, tool) {
+// Versions: the system versions this Tessera keeps (newest first). Start another by default (to undo
+// an update that broke something), or keep one for good so updates never remove it.
+async function recoveryVersions(inst) {
+  const vs = inst.versions;
+  const vit = await pick('Versions', vs.map((v, i) => ({
+    label: v.version ? `Version ${v.version}` : `Version ${i + 1}`,
+    sub: [i === 0 ? 'starts by default' : i === 1 ? 'before the last update' : 'older', v.kept ? 'kept for good' : ''].filter(Boolean).join(' · '),
+    v, i,
+  })), 0, { body: 'Tessera keeps the version before each update, so a bad update can be undone. Keeping one for good means updates never remove it.' });
+  if (!vit) return null;
+  const actions = [];
+  if (vit.i !== 0) actions.push({ label: 'Start this version by default', sub: vit.i === 1 ? 'undoes the last update' : '', action: 'default', ok: true });
+  actions.push(vit.v.kept ? { label: 'Stop keeping it for good', action: 'unkeep', plain: true } : { label: 'Keep it for good', sub: 'updates never remove it', action: 'keep', plain: true });
+  const a = await pick(vit.label, actions);
+  if (!a) return null;
+  const ok = await recoveryFix(inst, 'version', { action: a.action, index: vit.v.index }, a.label);
+  if (!ok) return null;
+  const r = await api.recovery('probe', {});
+  return (r && r.ok && r.installs.find((x) => x.id === inst.id)) || null;
+}
+
+async function recoveryFix(inst, tool, extra = {}, title = '') {
   const admins = inst.users.filter((u) => u.admin);
   if (!admins.length) return void (await pick('No administrator', [{ label: 'OK', plain: true }], 0, { body: "This Tessera has no administrator account, so its repairs can't be confirmed." }));
   let user = admins[0].name;
@@ -77,16 +99,16 @@ async function recoveryFix(inst, tool) {
     if (!it) return;
     user = it.user;
   }
-  const t = RECOVERY_TOOLS[tool];
+  const t = RECOVERY_TOOLS[tool] || { label: title || 'Change' };
   for (;;) {
     const password = await ask(`Password for ${user}`, '', { secret: true, max: 128 });
-    if (password === null || password === '') return;
+    if (password === null || password === '') return false;
     setStatus(`${t.label}…`);
     busy = true;
     let r;
-    try { r = await api.recovery('fix', { id: inst.id, tool, user, password }); } finally { busy = false; setStatus(''); }
-    if (r && r.ok) return void (await pick('Done', [{ label: 'OK', plain: true }], 0, { body: `${t.label}:\n${(r.done || []).map((x) => `• ${x}`).join('\n')}\n\nRestart without the USB to see if Tessera starts.` }));
+    try { r = await api.recovery('fix', { id: inst.id, tool, user, password, ...extra }); } finally { busy = false; setStatus(''); }
+    if (r && r.ok) { await pick('Done', [{ label: 'OK', plain: true }], 0, { body: `${t.label}:\n${(r.done || []).map((x) => `• ${x}`).join('\n')}\n\nRestart without the USB to see if Tessera starts.` }); return true; }
     const again = await pick(r && r.needPassword ? 'Wrong password' : "Didn't work", [{ label: r && r.needPassword ? 'Try again' : 'OK', op: 'again', plain: true }, { label: 'Cancel', plain: true }], 0, { body: (r && r.error) || 'Something went wrong.' });
-    if (!again || again.op !== 'again' || !(r && r.needPassword)) return;
+    if (!again || again.op !== 'again' || !(r && r.needPassword)) return false;
   }
 }
