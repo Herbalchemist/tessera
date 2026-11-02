@@ -28,3 +28,7 @@
 /boot/grub/tessera/wordmark.png
 /boot/grub/unicode.pf2
 /efiboot.img
+/initrd.img
+/loader/entries/ostree-1-default.conf
+/loader/entries/ostree-2-default.conf
+/vmlinuz
