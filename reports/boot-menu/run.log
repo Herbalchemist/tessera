@@ -1,0 +1,64 @@
++ cp -a /home/runner/work/tessera/tessera/system_files/usr/share/tessera/grub /tmp/tmp.n24B9RWOb5/src
++ mkdir -p /tmp/tmp.n24B9RWOb5/src/fonts
++ range=0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193
++ for s in 16 20 28
++ grub-mkfont -n Tessera -s 16 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.n24B9RWOb5/src/fonts/tessera-16.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ for s in 16 20 28
++ grub-mkfont -n Tessera -s 20 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.n24B9RWOb5/src/fonts/tessera-20.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ for s in 16 20 28
++ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.n24B9RWOb5/src/fonts/tessera-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
++ grub-mkfont -n Tessera -s 28 -r 0x20-0x7E,0xA0-0x17F,0x2010-0x2027,0x2190-0x2193 -o /tmp/tmp.n24B9RWOb5/src/fonts/tessera-bold-28.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.n24B9RWOb5/boot/grub2/
++ mkdir -p /tmp/tmp.n24B9RWOb5/boot/grub2/fonts
++ cp /usr/share/grub/unicode.pf2 /tmp/tmp.n24B9RWOb5/boot/grub2/fonts/
++ cp /home/runner/work/tessera/tessera/tools/boot-menu-test/grub.cfg /tmp/tmp.n24B9RWOb5/boot/grub2/grub.cfg
++ grub-editenv /tmp/tmp.n24B9RWOb5/boot/grub2/grubenv create
++ TESSERA_BOOT=/tmp/tmp.n24B9RWOb5/boot
++ TESSERA_SRC=/tmp/tmp.n24B9RWOb5/src
++ TESSERA_ETC=/tmp/tmp.n24B9RWOb5/etc
++ bash /home/runner/work/tessera/tessera/system_files/usr/libexec/tessera/boot-menu
+tessera-boot-menu: now on
++ grub-mkimage -O x86_64-efi -o /tmp/tmp.n24B9RWOb5/BOOTX64.EFI -p '(hd0,gpt1)/boot/grub2' part_gpt fat normal configfile echo test sleep loadenv regexp gfxterm gfxmenu png font all_video efi_gop video_bochs video_cirrus search reboot halt efifwsetup minicmd
++ truncate -s 96M /tmp/tmp.n24B9RWOb5/disk.img
++ sgdisk -q -n1:2048:0 -t1:ef00 /tmp/tmp.n24B9RWOb5/disk.img
+++ sgdisk -i 1 /tmp/tmp.n24B9RWOb5/disk.img
+++ sed -n 's/^Last sector: \([0-9]*\).*/\1/p'
++ end=
++ sectors=-2047
++ mkfs.vfat -F 32 -S 512 -s 1 -C /tmp/tmp.n24B9RWOb5/esp.img -1023
+mkfs.vfat: invalid option -- '1'
+Usage: mkfs.vfat [OPTIONS] TARGET [BLOCKS]
+Create FAT filesystem in TARGET, which can be a block device or file. Use only
+up to BLOCKS 1024 byte blocks if specified. With the -C option, file TARGET will be
+created with a size of 1024 bytes times BLOCKS, which must be specified.
+
+Options:
+  -a              Disable alignment of data structures
+  -A              Toggle Atari variant of the filesystem
+  -b SECTOR       Select SECTOR as location of the FAT32 backup boot sector
+  -c              Check device for bad blocks before creating the filesystem
+  -C              Create file TARGET then create filesystem in it
+  -D NUMBER       Write BIOS drive number NUMBER to boot sector
+  -f COUNT        Create COUNT file allocation tables
+  -F SIZE         Select FAT size SIZE (12, 16 or 32)
+  -g GEOM         Select disk geometry: heads/sectors_per_track
+  -h NUMBER       Write hidden sectors NUMBER to boot sector
+  -i VOLID        Set volume ID to VOLID (a 32 bit hexadecimal number)
+  -I              Ignore and disable safety checks
+  -l FILENAME     Read bad blocks list from FILENAME
+  -m FILENAME     Replace default error message in boot block with contents of FILENAME
+  -M TYPE         Set media type in boot sector to TYPE
+  --mbr[=y|n|a]   Fill (fake) MBR table with one partition which spans whole disk
+  -n LABEL        Set volume name to LABEL (up to 11 characters long)
+  --codepage=N    use DOS codepage N to encode label (default: 850)
+  -r COUNT        Make room for at least COUNT entries in the root directory
+  -R COUNT        Set minimal number of reserved sectors to COUNT
+  -s COUNT        Set number of sectors per cluster to COUNT
+  -S SIZE         Select a sector size of SIZE (a power of two, at least 512)
+  -v              Verbose execution
+  --variant=TYPE  Select variant TYPE of filesystem (standard or Atari)
+
+  --invariant     Use constants for randomly generated or time based values
+  --offset=SECTOR Write the filesystem at a specific sector into the device file.
+  --help          Show this help message and exit
+mkfs.fat 4.2 (2021-01-31)
