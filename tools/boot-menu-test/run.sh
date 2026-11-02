@@ -47,6 +47,12 @@ else
 fi
 grub-editenv "$W/boot/grub2/grubenv" create
 TESSERA_BOOT="$W/boot" TESSERA_SRC="$W/src" TESSERA_ETC="$W/etc" bash "$ROOT/system_files/usr/libexec/tessera/boot-menu"
+if [ -n "${FEDORA:-}" ]; then
+  # (test only) GRUB's text keeps going to the serial log after the wait screen turns graphics on,
+  # and loader messages are printed, so what happens when a version starts is on record
+  sed -i 's/^terminal_output gfxterm$/terminal_output gfxterm serial/' "$W/boot/grub2/tessera/splash.cfg"
+  sed -i '1i set debug=linux,loader,efi,chain' "$W/boot/grub2/tessera/boot.cfg"
+fi
 
 # GRUB's settings file lives on its own small writable disk (FAT, no partitions)
 mkfs.vfat -C "$W/env.img" 4096 >/dev/null
