@@ -12,7 +12,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.39.1-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.39.2-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -227,6 +227,10 @@ After the restart the machine signs in to Tessera by itself.
 ## Reporting a problem
 
 *Settings › Report a problem* (or *Help* in the guide) writes a text file about the machine and Tessera's recent logs to `~/Tessera/Reports`: the Tessera build, the system, the hardware (processor, memory, graphics card and driver, screens, controllers by name), how it starts up, Tessera's logs and the login screen's log, and the settings that change how things work. It is **not telemetry**: nothing is sent anywhere. It is made only when you ask, you can read every line on screen first, and you choose whether to attach it to an [issue](https://github.com/Herbalchemist/tessera/issues). PINs, passwords and Wi-Fi names are never in it, and your account and computer names, network and hardware addresses and e-mail addresses are replaced with `[brackets]`.
+
+## Security
+
+Tessera's security standards, how each is met and how they're checked, are in [SECURITY.md](SECURITY.md). Please report security problems privately (Security tab › Report a vulnerability), not in a public issue.
 
 ## Roadmap
 

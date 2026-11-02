@@ -285,7 +285,8 @@ function cleanPageGrid(key, cols, rows) {
 function saveSettings() {
   fs.mkdirSync(config.DATA_DIR, { recursive: true });
   const tmp = config.SETTINGS_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify({ v: SETTINGS_VERSION, ...settings }, null, 2));
+  try { fs.unlinkSync(tmp); } catch { /* none left over */ } // a new file, so the mode below applies
+  fs.writeFileSync(tmp, JSON.stringify({ v: SETTINGS_VERSION, ...settings }, null, 2), { mode: 0o600 }); // holds the PIN's hash: this account only
   fs.renameSync(tmp, config.SETTINGS_FILE);
 }
 

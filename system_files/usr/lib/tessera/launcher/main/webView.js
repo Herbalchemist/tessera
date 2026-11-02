@@ -65,6 +65,7 @@ function ensureBrowserView() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      devTools: config.DEV, // no inspector for web pages either, outside development
     },
   });
   // The remote browser has no preload bridge. Its dedicated session is denied

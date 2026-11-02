@@ -13,6 +13,7 @@ process.on('uncaughtException', (e) => {
   } catch { /* nowhere to write it */ }
 });
 require('./main/config'); // Where Tessera keeps its files, built-in widget presets, and limits used everywhere.
+require('./main/ipcGuard'); // Requests from anything but the launcher's own page are refused (before any handler is added).
 require('./main/library'); // The library: games, apps, pages (mosaics) and where entries sit on the grid.
 require('./main/prefs'); // Settings: loading, cleaning and saving settings.json.
 require('./main/theming'); // Themes: the factory themes, custom theme.json files and their settings.
