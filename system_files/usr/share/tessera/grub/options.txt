@@ -38,7 +38,7 @@ terminal-font: "Tessera Regular 16"
   selected_item_pixmap_style = "select_*.png"
   scrollbar = true
   scrollbar_width = 6
-  scrollbar_thumb = "select_c.png"
+  scrollbar_thumb = "select_*.png"
 }
 + label {
   left = 0
