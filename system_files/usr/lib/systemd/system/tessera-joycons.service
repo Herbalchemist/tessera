@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Joy-Cons as real controllers for the whole system (Ludus, Opus, Steam, games): joins a left and a
+# right Joy-Con into one controller, or turns one held sideways into its own. See libexec/tessera/joycons.
+[Unit]
+Description=Tessera: Joy-Cons as controllers
+ConditionPathExists=/dev/uinput
+
+[Service]
+ExecStart=/usr/libexec/tessera/joycons run
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=tessera
+RuntimeDirectoryPreserve=yes
+# it only needs the input devices and /etc/tessera
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

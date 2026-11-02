@@ -7,3 +7,5 @@ enable tessera-boot-menu.service
 enable tessera-boot-once.service
 # Recover > Graphics: a build switch asked for from the USB, done at the next start (see graphics-switch-once).
 enable tessera-graphics-switch-once.service
+# Joy-Cons as one controller for the whole system (Ludus, Opus, games): see libexec/tessera/joycons.
+enable tessera-joycons.service

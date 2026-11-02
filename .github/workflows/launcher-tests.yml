@@ -38,6 +38,8 @@ jobs:
         run: |
           npm --prefix system_files/usr/lib/tessera/launcher test
           npm --prefix system_files/usr/lib/tessera/launcher run check
+      - name: Joy-Con service tests
+        run: python3 -m unittest discover tools/joycons-test
       - name: Test tools, with the Electron the image ships
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q xvfb

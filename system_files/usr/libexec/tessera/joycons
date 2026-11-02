@@ -1,0 +1,430 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Tessera's Joy-Con service: Joy-Cons as real controllers for the whole system (Ludus, Opus, Steam, games).
+
+The kernel (hid_nintendo) shows every Joy-Con as its own half-controller. Like a Switch, this joins a
+left and a right Joy-Con into one controller, or turns a single Joy-Con held sideways into a
+controller of its own, and shows each result to the system as an ordinary Xbox-style gamepad
+(a virtual device made through /dev/uinput). The Joy-Cons themselves are grabbed, so nothing sees
+two half-controllers as well. Buttons are mapped by POSITION, never by printed letter.
+
+  joycons run                the service (tessera-joycons.service)
+  joycons status             what it is doing now (JSON)
+  joycons set-mode together|separate
+  joycons single UNIQ        make this Joy-Con its own player      joycons pair LEFT RIGHT
+  joycons forget             clear manual choices
+  joycons order UNIQ...      player order (first listed = player 1)
+
+Settings live in /etc/tessera/joycons.json; what is running is written to /run/tessera/joycons.json,
+which Ludus reads (and, while it says "active", Ludus leaves the Joy-Cons to this service).
+TESSERA_JOYCONS_* variables are only for tests.
+"""
+import fcntl
+import json
+import os
+import select
+import struct
+import sys
+import time
+
+SYS = os.environ.get('TESSERA_JOYCONS_SYS', '/sys/class/input')
+DEV = os.environ.get('TESSERA_JOYCONS_DEV', '/dev/input')
+CONFIG = os.environ.get('TESSERA_JOYCONS_CONFIG', '/etc/tessera/joycons.json')
+STATE = os.environ.get('TESSERA_JOYCONS_STATE', '/run/tessera/joycons.json')
+UINPUT = os.environ.get('TESSERA_JOYCONS_UINPUT', '/dev/uinput')
+
+VENDOR = '057e'
+EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
+SYN_REPORT = 0
+EVENT = struct.Struct('llHHi')  # struct input_event on 64-bit Linux
+
+# input codes, as hid_nintendo reports them (named by position)
+SOUTH, EAST, NORTH, WEST, Z = 0x130, 0x131, 0x133, 0x134, 0x135
+TL, TR, TL2, TR2, SELECT, START, MODE, THUMBL, THUMBR = 0x136, 0x137, 0x138, 0x139, 0x13a, 0x13b, 0x13c, 0x13d, 0x13e
+DUP, DDOWN, DLEFT, DRIGHT = 0x220, 0x221, 0x222, 0x223
+ABS_X, ABS_Y, ABS_Z, ABS_RX, ABS_RY, ABS_RZ, ABS_HAT0X, ABS_HAT0Y = 0, 1, 2, 3, 4, 5, 0x10, 0x11
+STICK = 32767  # hid_nintendo: -32767..32767, up is negative
+
+# what the virtual gamepad shows (an Xbox 360 pad's codes, which every game and Steam understand).
+# On an Xbox pad the LEFT face button is 0x133 and the TOP one 0x134: the reverse of hid_nintendo.
+OUT_BOTTOM, OUT_RIGHT, OUT_LEFT, OUT_TOP = 0x130, 0x131, 0x133, 0x134
+POS_OUT = {SOUTH: OUT_BOTTOM, EAST: OUT_RIGHT, WEST: OUT_LEFT, NORTH: OUT_TOP}
+OUT_KEYS = [OUT_BOTTOM, OUT_RIGHT, OUT_LEFT, OUT_TOP, TL, TR, SELECT, START, MODE, THUMBL, THUMBR]
+
+# standard gamepad button number -> what it becomes on the virtual pad
+# ('k', code) a button, ('t', axis) a trigger, ('d', dir) the D-pad
+STD = {
+    0: ('k', OUT_BOTTOM), 1: ('k', OUT_RIGHT), 2: ('k', OUT_LEFT), 3: ('k', OUT_TOP),
+    4: ('k', TL), 5: ('k', TR), 6: ('t', ABS_Z), 7: ('t', ABS_RZ),
+    8: ('k', SELECT), 9: ('k', START), 10: ('k', THUMBL), 11: ('k', THUMBR),
+    12: ('d', 'u'), 13: ('d', 'd'), 14: ('d', 'l'), 15: ('d', 'r'), 16: ('k', MODE),
+}
+# one Joy-Con held sideways, rail up, stick on the left (the Switch's way): hid_nintendo code -> standard button
+SIDE_L = {DLEFT: 0, DDOWN: 1, DUP: 2, DRIGHT: 3, TR: 4, TR2: 5, TL: 6, TL2: 7, SELECT: 9, THUMBL: 10, Z: 16}
+SIDE_R = {EAST: 0, NORTH: 1, SOUTH: 2, WEST: 3, TL: 4, TL2: 5, TR: 6, TR2: 7, START: 9, THUMBR: 10, MODE: 16}
+# two Joy-Cons together: the left one brings its half, the right one its half (SL / SR are left out)
+JOIN_L = {TL: 4, TL2: 6, SELECT: 8, THUMBL: 10, DUP: 12, DDOWN: 13, DLEFT: 14, DRIGHT: 15}
+JOIN_R = {SOUTH: 0, EAST: 1, NORTH: 3, WEST: 2, TR: 5, TR2: 7, START: 9, THUMBR: 11, MODE: 16}
+# (the join table's NORTH/WEST are by position: the top button is the standard pad's 3, the left one its 2)
+
+BUTTON_TABLE = {('joined', 'jl'): JOIN_L, ('joined', 'jr'): JOIN_R, ('jl', 'jl'): SIDE_L, ('jr', 'jr'): SIDE_R}
+
+
+def read_text(path):
+    try:
+        with open(path, 'r', errors='replace') as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
+def describe(node):
+    """What one eventN is: {'node','kind','uniq','name'} for a Joy-Con's buttons, else None."""
+    base = os.path.join(SYS, node, 'device')
+    if read_text(os.path.join(base, 'id', 'vendor')).lower() != VENDOR:
+        return None
+    name = read_text(os.path.join(base, 'name'))
+    if name.endswith('(IMU)'):
+        return None
+    kind = 'jl' if name.startswith('Joy-Con (L)') else 'jr' if name.startswith('Joy-Con (R)') else None
+    if not kind:
+        return None  # a Pro Controller and the like are already a whole controller
+    uniq = ''.join(c for c in read_text(os.path.join(base, 'uniq')).lower() if c in '0123456789abcdef:') or node
+    return {'node': node, 'kind': kind, 'uniq': uniq + '/' + kind, 'name': name}
+
+
+def scan():
+    try:
+        nodes = sorted((n for n in os.listdir(SYS) if n.startswith('event') and n[5:].isdigit()), key=lambda n: int(n[5:]))
+    except OSError:
+        return []
+    return [d for d in (describe(n) for n in nodes) if d]
+
+
+# ------------------------------------------------------------------ who plays as which controller
+
+def plan_groups(devices, order, mode='together', singles=(), pairs=()):
+    """devices: {uniq: kind}. Returns [{'kind': 'joined'|'jl'|'jr', 'members': [uniq, ...]}] in player order.
+    A pair is [left, right]; 'singles' never join; mode 'separate' joins nothing on its own."""
+    live = [k for k in order if k in devices]
+    live += [k for k in devices if k not in live]
+    used, groups = set(), []
+    for pair in pairs:
+        left, right = pair
+        if left in devices and right in devices and devices[left] == 'jl' and devices[right] == 'jr' \
+                and left not in used and right not in used and left not in singles and right not in singles:
+            groups.append({'kind': 'joined', 'members': [left, right]})
+            used.update(pair)
+    if mode == 'together':
+        lefts = [k for k in live if k not in used and k not in singles and devices[k] == 'jl']
+        rights = [k for k in live if k not in used and k not in singles and devices[k] == 'jr']
+        while lefts and rights:
+            groups.append({'kind': 'joined', 'members': [lefts.pop(0), rights.pop(0)]})
+            used.update(groups[-1]['members'])
+    for k in live:
+        if k not in used:
+            groups.append({'kind': devices[k], 'members': [k]})
+    first = lambda g: min(live.index(m) for m in g['members'])
+    groups.sort(key=first)
+    return groups
+
+
+# ------------------------------------------------------------------ turning Joy-Con events into gamepad events
+
+def clamp(v):
+    return max(-1.0, min(1.0, v))
+
+
+class Pad:
+    """One virtual gamepad's state: takes Joy-Con events, gives the events for the virtual device."""
+
+    def __init__(self, kind, members):
+        self.kind = kind          # 'joined' | 'jl' | 'jr'
+        self.members = members    # uniq keys; for 'joined': [left, right]
+        self.abs = {m: {} for m in members}
+        self.keys = {}            # output key code -> 0/1
+        self.dpad = set()
+        self.trig = {ABS_Z: 0, ABS_RZ: 0}
+        self.axes = [0, 0, 0, 0]  # X Y RX RY, in -32767..32767
+
+    def kind_of(self, member):
+        return 'jl' if member == self.members[0] and self.kind in ('joined', 'jl') else 'jr'
+
+    def axis_values(self):
+        def a(m, c):
+            return clamp((self.abs[m].get(c, 0)) / STICK)
+        if self.kind == 'joined':
+            l, r = self.members
+            v = [a(l, ABS_X), a(l, ABS_Y), a(r, ABS_RX), a(r, ABS_RY)]
+        elif self.kind == 'jl':   # held sideways: the stick turns a quarter
+            m = self.members[0]
+            v = [a(m, ABS_Y), clamp(-a(m, ABS_X)), 0, 0]
+        else:
+            m = self.members[0]
+            v = [clamp(-a(m, ABS_RY)), a(m, ABS_RX), 0, 0]
+        return [int(round(x * STICK)) for x in v]
+
+    def feed(self, member, etype, code, value):
+        """Returns the list of (type, code, value) for the virtual pad (empty if nothing changed)."""
+        out = []
+        side = self.kind_of(member)
+        if etype == EV_KEY:
+            table = BUTTON_TABLE.get((self.kind, side))
+            idx = table.get(code) if table else None
+            if idx is None:
+                return out
+            what, target = STD[idx]
+            down = 1 if value else 0
+            if what == 'k':
+                if self.keys.get(target, 0) != down:
+                    self.keys[target] = down
+                    out.append((EV_KEY, target, down))
+            elif what == 't':
+                v = 255 if down else 0
+                if self.trig[target] != v:
+                    self.trig[target] = v
+                    out.append((EV_ABS, target, v))
+            else:
+                before = self.hat()
+                (self.dpad.add if down else self.dpad.discard)(target)
+                after = self.hat()
+                if after != before:
+                    out.extend([(EV_ABS, ABS_HAT0X, after[0]), (EV_ABS, ABS_HAT0Y, after[1])])
+        elif etype == EV_ABS and code in (ABS_X, ABS_Y, ABS_RX, ABS_RY):
+            self.abs[member][code] = value
+            now = self.axis_values()
+            for i, code_out in enumerate((ABS_X, ABS_Y, ABS_RX, ABS_RY)):
+                if now[i] != self.axes[i]:
+                    self.axes[i] = now[i]
+                    out.append((EV_ABS, code_out, now[i]))
+        return out
+
+    def hat(self):
+        return (('r' in self.dpad) - ('l' in self.dpad), ('d' in self.dpad) - ('u' in self.dpad))
+
+    def release_all(self):
+        out = [(EV_KEY, c, 0) for c, v in self.keys.items() if v]
+        out += [(EV_ABS, a, 0) for a, v in self.trig.items() if v]
+        if self.dpad:
+            out += [(EV_ABS, ABS_HAT0X, 0), (EV_ABS, ABS_HAT0Y, 0)]
+        out += [(EV_ABS, c, 0) for c, v in zip((ABS_X, ABS_Y, ABS_RX, ABS_RY), self.axes) if v]
+        return out
+
+
+# ------------------------------------------------------------------ the system side: uinput and the Joy-Cons
+
+# ioctl numbers (x86-64 / arm64 Linux)
+UI_SET_EVBIT, UI_SET_KEYBIT, UI_SET_ABSBIT = 0x40045564, 0x40045565, 0x40045567
+UI_DEV_SETUP, UI_ABS_SETUP, UI_DEV_CREATE, UI_DEV_DESTROY = 0x405C5503, 0x401C5504, 0x5501, 0x5502
+EVIOCGRAB = 0x40044590
+AXES_SETUP = [(ABS_X, -STICK, STICK, 16, 128), (ABS_Y, -STICK, STICK, 16, 128), (ABS_RX, -STICK, STICK, 16, 128),
+              (ABS_RY, -STICK, STICK, 16, 128), (ABS_Z, 0, 255, 0, 0), (ABS_RZ, 0, 255, 0, 0),
+              (ABS_HAT0X, -1, 1, 0, 0), (ABS_HAT0Y, -1, 1, 0, 0)]
+
+
+def make_virtual(name):
+    fd = os.open(UINPUT, os.O_WRONLY | os.O_NONBLOCK)
+    fcntl.ioctl(fd, UI_SET_EVBIT, EV_KEY)
+    fcntl.ioctl(fd, UI_SET_EVBIT, EV_ABS)
+    fcntl.ioctl(fd, UI_SET_EVBIT, EV_SYN)
+    for code in OUT_KEYS:
+        fcntl.ioctl(fd, UI_SET_KEYBIT, code)
+    for code, lo, hi, fuzz, flat in AXES_SETUP:
+        fcntl.ioctl(fd, UI_SET_ABSBIT, code)
+        fcntl.ioctl(fd, UI_ABS_SETUP, struct.pack('HHiiiiii', code, 0, 0, lo, hi, fuzz, flat, 0))
+    # an Xbox 360 pad's identity, so Steam, SDL and Chromium treat it as a standard gamepad
+    fcntl.ioctl(fd, UI_DEV_SETUP, struct.pack('HHHH80sI', 0x03, 0x045E, 0x028E, 0x0110, name.encode()[:79], 0))
+    fcntl.ioctl(fd, UI_DEV_CREATE)
+    return fd
+
+
+def write_events(fd, events):
+    if not events:
+        return
+    now = time.time()
+    sec, usec = int(now), int((now % 1) * 1e6)
+    data = b''.join(EVENT.pack(sec, usec, t, c, v) for t, c, v in events) + EVENT.pack(sec, usec, EV_SYN, SYN_REPORT, 0)
+    try:
+        os.write(fd, data)
+    except OSError:
+        pass
+
+
+def load_config():
+    try:
+        with open(CONFIG) as f:
+            c = json.load(f)
+    except (OSError, ValueError):
+        c = {}
+    return {
+        'mode': 'separate' if c.get('mode') == 'separate' else 'together',
+        'singles': [s for s in c.get('singles', []) if isinstance(s, str)],
+        'pairs': [p for p in c.get('pairs', []) if isinstance(p, list) and len(p) == 2 and all(isinstance(x, str) for x in p)],
+        'order': [s for s in c.get('order', []) if isinstance(s, str)],
+    }
+
+
+def save_config(c):
+    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+    tmp = CONFIG + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(c, f, indent=2)
+    os.replace(tmp, CONFIG)
+
+
+def write_state(active, groups, names):
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    tmp = STATE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump({'active': active, 'pads': [{'player': i + 1, 'kind': g['kind'], 'members': g['members'],
+                                              'names': [names.get(m, m) for m in g['members']]} for i, g in enumerate(groups)]}, f)
+    os.replace(tmp, STATE)
+
+
+class Service:
+    def __init__(self):
+        self.devs = {}      # uniq -> {'info', 'fd'}
+        self.pads = []      # [{'group', 'pad', 'fd'}]
+        self.arrival = []   # uniq keys in order of arrival (player numbers)
+        self.cfg_mtime = None
+        self.cfg = load_config()
+
+    def open_dev(self, info):
+        try:
+            fd = os.open(os.path.join(DEV, info['node']), os.O_RDONLY | os.O_NONBLOCK)
+            fcntl.ioctl(fd, EVIOCGRAB, 1)  # nothing else sees the half-controller
+        except OSError:
+            return None
+        return fd
+
+    def sync_devices(self):
+        seen = {d['uniq']: d for d in scan()}
+        changed = False
+        for key in [k for k in self.devs if k not in seen or seen[k]['node'] != self.devs[k]['info']['node']]:
+            try:
+                os.close(self.devs[key]['fd'])
+            except OSError:
+                pass
+            del self.devs[key]
+            changed = True
+        for key, info in seen.items():
+            if key in self.devs:
+                continue
+            fd = self.open_dev(info)
+            if fd is None:
+                continue
+            self.devs[key] = {'info': info, 'fd': fd}
+            if key not in self.arrival:
+                self.arrival.append(key)
+            changed = True
+        return changed
+
+    def rebuild(self):
+        kinds = {k: d['info']['kind'] for k, d in self.devs.items()}
+        order = self.cfg['order'] + [k for k in self.arrival if k not in self.cfg['order']]
+        groups = plan_groups(kinds, order, self.cfg['mode'], self.cfg['singles'], self.cfg['pairs'])
+        old = {tuple(p['group']['members']): p for p in self.pads}
+        pads = []
+        for g in groups:
+            key = tuple(g['members'])
+            if key in old and old[key]['group']['kind'] == g['kind']:
+                pads.append(old.pop(key))
+                continue
+            try:
+                fd = make_virtual('Tessera Joy-Con' + (' (L+R)' if g['kind'] == 'joined' else ''))
+            except OSError as e:
+                print('joycons: cannot make a controller (is /dev/uinput there?):', e, file=sys.stderr)
+                continue
+            pads.append({'group': g, 'pad': Pad(g['kind'], g['members']), 'fd': fd})
+        for p in old.values():   # groups that no longer exist: let go of their buttons, then remove them
+            write_events(p['fd'], p['pad'].release_all())
+            try:
+                fcntl.ioctl(p['fd'], UI_DEV_DESTROY)
+                os.close(p['fd'])
+            except OSError:
+                pass
+        for i, p in enumerate(pads):
+            p['group'] = groups[[g['members'] for g in groups].index(p['group']['members'])]
+        self.pads = pads
+        # "active" only while every Joy-Con group really has its virtual controller: otherwise Ludus keeps reading them itself
+        write_state(len(pads) == len(groups) and bool(pads), [p['group'] for p in pads], {k: d['info']['name'] for k, d in self.devs.items()})
+
+    def handle(self, key, data):
+        pad = next((p for p in self.pads if key in p['group']['members']), None)
+        if not pad:
+            return
+        events = []
+        for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
+            _, _, t, c, v = EVENT.unpack_from(data, off)
+            if t in (EV_KEY, EV_ABS):
+                events.extend(pad['pad'].feed(key, t, c, v))
+        write_events(pad['fd'], events)
+
+    def run(self):
+        last_scan = 0
+        write_state(False, [], {})
+        try:
+            while True:
+                now = time.time()
+                if now - last_scan >= 1.0:
+                    last_scan = now
+                    try:
+                        m = os.stat(CONFIG).st_mtime
+                    except OSError:
+                        m = None
+                    new_cfg = m != self.cfg_mtime
+                    if new_cfg:
+                        self.cfg_mtime = m
+                        self.cfg = load_config()
+                    if self.sync_devices() or new_cfg:
+                        self.rebuild()
+                fds = {d['fd']: k for k, d in self.devs.items()}
+                ready = select.select(list(fds), [], [], 0.25)[0] if fds else (time.sleep(0.25) or [])
+                for fd in ready:
+                    try:
+                        data = os.read(fd, EVENT.size * 64)
+                    except OSError:
+                        last_scan = 0   # it went away: look again at once
+                        continue
+                    self.handle(fds[fd], data)
+        finally:
+            for p in self.pads:
+                write_events(p['fd'], p['pad'].release_all())
+            write_state(False, [], {})
+
+
+# ------------------------------------------------------------------ the command line
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else 'run'
+    if cmd == 'run':
+        Service().run()
+    elif cmd == 'status':
+        print(json.dumps({'config': load_config(), 'state': json.loads(read_text(STATE) or '{"active": false, "pads": []}'),
+                          'joycons': [{'uniq': d['uniq'], 'name': d['name']} for d in scan()]}))
+    elif cmd in ('set-mode', 'single', 'pair', 'forget', 'order'):
+        c = load_config()
+        if cmd == 'set-mode' and len(argv) == 3 and argv[2] in ('together', 'separate'):
+            c['mode'] = argv[2]
+        elif cmd == 'single' and len(argv) == 3:
+            c['singles'] = sorted(set(c['singles']) | {argv[2]})
+            c['pairs'] = [p for p in c['pairs'] if argv[2] not in p]
+        elif cmd == 'pair' and len(argv) == 4:
+            c['pairs'] = [p for p in c['pairs'] if not set(p) & {argv[2], argv[3]}] + [[argv[2], argv[3]]]
+            c['singles'] = [s for s in c['singles'] if s not in argv[2:4]]
+        elif cmd == 'forget':
+            c['singles'], c['pairs'], c['order'] = [], [], []
+        elif cmd == 'order' and len(argv) > 2:
+            c['order'] = argv[2:]
+        else:
+            print(__doc__, file=sys.stderr)
+            return 2
+        save_config(c)
+    else:
+        print(__doc__, file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
