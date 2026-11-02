@@ -1,5 +1,5 @@
 'use strict';
-// The one input system's button meanings: the positional default, and Nintendo's label profile.
+// The one input system's button meanings: by position; which of bottom and right confirms.
 const test = require('node:test');
 const assert = require('node:assert');
 const I = require('../input-actions');
@@ -18,49 +18,66 @@ test('controller families', () => {
   assert.strictEqual(I.familyOf(''), 'xbox');
 });
 
-test('default: positional on every controller (nothing changes)', () => {
-  for (const fam of ['xbox', 'playstation', 'nintendo']) {
-    const swap = I.swaps(fam, 'position');
-    assert.strictEqual(swap, false);
+test('automatic (the default): Switch controllers confirm with the right button, the others with the bottom one', () => {
+  assert.strictEqual(I.swaps('xbox', 'auto'), false);
+  assert.strictEqual(I.swaps('playstation', 'auto'), false);
+  assert.strictEqual(I.swaps('nintendo', 'auto'), true);
+  for (const fam of ['xbox', 'playstation']) {
+    const swap = I.swaps(fam, 'auto');
     for (let n = 0; n <= 16; n++) assert.strictEqual(I.physicalFor(n, swap), n);
     assert.strictEqual(I.actionFor(0, swap), 'a');
-    assert.strictEqual(I.actionFor(1, swap), 'b');
     assert.strictEqual(I.roleBits(0b1011, swap), 0b1011);
   }
 });
 
-test('label profile: only Nintendo controllers, only the four face buttons trade places', () => {
-  assert.strictEqual(I.swaps('xbox', 'label'), false);
-  assert.strictEqual(I.swaps('playstation', 'label'), false);
-  const swap = I.swaps('nintendo', 'label');
-  assert.strictEqual(swap, true);
-  assert.strictEqual(I.actionFor(1, swap), 'a'); // A, on the right, confirms
-  assert.strictEqual(I.actionFor(0, swap), 'b'); // B, at the bottom, goes back
-  assert.strictEqual(I.actionFor(3, swap), 'x');
-  assert.strictEqual(I.actionFor(2, swap), 'y');
-  for (const n of [4, 5, 12, 13, 14, 15, 16]) assert.strictEqual(I.physicalFor(n, swap), n);
+test('by position, never by letter: only the bottom and right buttons trade jobs; left and top stay', () => {
+  const swap = I.swaps('nintendo', 'auto');
+  assert.strictEqual(I.actionFor(1, swap), 'a'); // the right button confirms
+  assert.strictEqual(I.actionFor(0, swap), 'b'); // the bottom one goes back
+  assert.strictEqual(I.actionFor(2, swap), 'x'); // left stays left (a sideways Joy-Con has no letters to follow)
+  assert.strictEqual(I.actionFor(3, swap), 'y'); // top stays top
+  for (const n of [2, 3, 4, 5, 12, 13, 14, 15, 16]) assert.strictEqual(I.physicalFor(n, swap), n);
   assert.strictEqual(I.buttonFor('a', swap), 1);
-  assert.strictEqual(I.buttonFor('y', swap), 2);
+  assert.strictEqual(I.buttonFor('y', swap), 3);
   assert.strictEqual(I.buttonFor('nope', swap), null);
   for (let n = 0; n <= 16; n++) assert.strictEqual(I.roleOf(I.physicalFor(n, swap), swap), n, 'the swap undoes itself');
 });
 
+test('a Joy-Con held sideways confirms with its right-hand button too, as on the Switch', () => {
+  assert.strictEqual(I.swaps('sideways', 'auto'), true);
+  assert.strictEqual(I.swaps('sideways', 'bottom'), false);
+  assert.strictEqual(I.actionFor(1, I.mapFor('sideways', { confirm: 'auto' })), 'a');
+  assert.strictEqual(I.mapFor('sideways', { confirm: 'auto', remap: { nintendo: [2, 1, 0, 3, 4, 5] } }), true, 'Nintendo remaps leave it alone');
+});
+
+test('bottom or right on every controller; old or unknown settings are automatic', () => {
+  for (const fam of ['xbox', 'playstation', 'nintendo']) {
+    assert.strictEqual(I.swaps(fam, 'bottom'), false);
+    assert.strictEqual(I.swaps(fam, 'right'), true);
+  }
+  assert.deepStrictEqual(I.CONFIRM_CHOICES, ['auto', 'bottom', 'right']);
+  for (const old of ['position', 'label', undefined, 'nonsense']) {
+    assert.strictEqual(I.swaps('nintendo', old), true, String(old));
+    assert.strictEqual(I.swaps('xbox', old), false, String(old));
+  }
+});
+
 test('bit masks follow the same rule', () => {
   const swap = true;
-  assert.strictEqual(I.roleBits(1 << 1, swap), 1 << 0);     // physical A -> confirm role
+  assert.strictEqual(I.roleBits(1 << 1, swap), 1 << 0);     // the right button -> confirm
   assert.strictEqual(I.roleBits(1 << 0, swap), 1 << 1);
-  assert.strictEqual(I.roleBits(1 << 2, swap), 1 << 3);
-  assert.strictEqual(I.roleBits((1 << 4) | (1 << 12) | (1 << 3), swap), (1 << 4) | (1 << 12) | (1 << 2));
+  assert.strictEqual(I.roleBits(1 << 2, swap), 1 << 2);     // left stays
+  assert.strictEqual(I.roleBits((1 << 4) | (1 << 12) | (1 << 3), swap), (1 << 4) | (1 << 12) | (1 << 3));
   assert.strictEqual(I.roleBits(0b1111, swap), 0b1111);
 });
 
-test('in the browser, a Nintendo A confirms (Enter) and B goes back, under "A confirms"', () => {
+test('in the browser, a Switch controller confirms (Enter) with the right button and goes back with the bottom one', () => {
   const B = require('../browser-gamepad');
-  const swap = I.swaps('nintendo', 'label');
+  const swap = I.swaps('nintendo', 'auto');
   const press = (physical, s) => B.standardButtonActions(I.roleBits(1 << physical, s));
-  assert.deepStrictEqual(press(1, swap).keys, ['ENTER']);         // A (right)
-  assert.deepStrictEqual(press(0, swap).browserActions, ['b']);   // B (bottom)
-  assert.deepStrictEqual(press(0, false).keys, ['ENTER']);        // by position (the default): bottom confirms
+  assert.deepStrictEqual(press(1, swap).keys, ['ENTER']);         // right
+  assert.deepStrictEqual(press(0, swap).browserActions, ['b']);   // bottom
+  assert.deepStrictEqual(press(0, false).keys, ['ENTER']);        // other controllers: bottom confirms
   assert.deepStrictEqual(press(1, false).browserActions, ['b']);
 });
 
@@ -104,11 +121,11 @@ test('remaps: a rearrangement of the face buttons and bumpers, per family, winni
   assert.ok(!I.validRemap([0, 1, 2, 3, 4, 6]));
   assert.ok(!I.validRemap('012345'));
   const swapAB = [1, 0, 2, 3, 4, 5];
-  const pad = { confirm: 'label', remap: { xbox: swapAB, playstation: [0, 0, 0, 0, 0, 0] } };
+  const pad = { confirm: 'auto', remap: { xbox: swapAB, playstation: [0, 0, 0, 0, 0, 0] } };
   assert.strictEqual(I.mapFor('xbox', pad), swapAB);
   assert.strictEqual(I.mapFor('playstation', pad), false, 'a broken remap is ignored');
   assert.strictEqual(I.mapFor('nintendo', pad), true, 'no remap: the confirm setting');
-  assert.deepStrictEqual(I.mapFor('nintendo', { confirm: 'label', remap: { nintendo: [0, 1, 2, 3, 4, 5] } }), [0, 1, 2, 3, 4, 5], 'a remap wins over confirm');
+  assert.deepStrictEqual(I.mapFor('nintendo', { confirm: 'auto', remap: { nintendo: [0, 1, 2, 3, 4, 5] } }), [0, 1, 2, 3, 4, 5], 'a remap wins over confirm');
   assert.strictEqual(I.actionFor(1, swapAB), 'a');
   assert.strictEqual(I.buttonFor('b', swapAB), 0);
   assert.strictEqual(I.physicalFor(12, swapAB), 12, 'the D-pad and the rest are never remapped');
@@ -120,10 +137,10 @@ test('assigning a job swaps it with the button that had it, so every job stays o
   let m = I.assign(false, 0, 5);
   assert.deepStrictEqual(m, [5, 1, 2, 3, 4, 0]);
   assert.ok(I.validRemap(m));
-  // Starting from the Nintendo letters, the list says what's in use now.
-  assert.deepStrictEqual(I.asRemap(true), [1, 0, 3, 2, 4, 5]);
+  // Starting from "the right button confirms", the list says what's in use now.
+  assert.deepStrictEqual(I.asRemap(true), [1, 0, 2, 3, 4, 5]);
   m = I.assign(true, 1, 1); // back on the right button again
-  assert.deepStrictEqual(m, [0, 1, 3, 2, 4, 5]);
+  assert.deepStrictEqual(m, [0, 1, 2, 3, 4, 5]);
   assert.ok(I.isIdentity(I.assign(I.assign(false, 2, 3), 2, 2)));
   assert.deepStrictEqual(I.assign(false, 9, 0), [0, 1, 2, 3, 4, 5], 'out of range does nothing');
   for (let r = 0; r < 6; r++) for (let p = 0; p < 6; p++) {
