@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Tessera"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-eed54bcbf900cat: /etc/machine-info: No such file or directory
+7d2330a27c41cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="tessera"
 /etc/os-release:12:DEFAULT_HOSTNAME="tessera"
 
@@ -250,7 +250,7 @@ eed54bcbf900cat: /etc/machine-info: No such file or directory
 /usr/share/wallpapers/ublue.png
 
 ===== text files mentioning Bazzite (per folder counts) =====
-456
+458
 /etc/bazzite-updater/KAboutData_OS.json
 /etc/bazzite-updater/config.ini
 /etc/bazzite-updater/rebase-targets.json
@@ -284,6 +284,7 @@ eed54bcbf900cat: /etc/machine-info: No such file or directory
 /usr/lib/systemd/user/bazzite-user-setup.service
 /usr/lib/tessera/launcher/gpu-match.js
 /usr/lib/tessera/launcher/main/installer.js
+/usr/lib/tessera/launcher/renderer/colorWheel.js
 /usr/lib/tuned/profiles/balanced-battery-bazzite/tuned.conf
 /usr/lib/tuned/profiles/balanced-bazzite/tuned.conf
 /usr/lib/tuned/profiles/powersave-battery-bazzite/tuned.conf
@@ -297,6 +298,7 @@ eed54bcbf900cat: /etc/machine-info: No such file or directory
 /usr/libexec/ntfs-exfat-monitor-script
 /usr/libexec/sunshine-start-vmon
 /usr/libexec/sunshine-stop-vmon
+/usr/libexec/tessera/boot-theme
 /usr/libexec/tessera/desktop-wallpaper
 /usr/share/applications/bazzite-documentation.desktop
 /usr/share/applications/bazzite-steam-bpm.desktop
@@ -1909,7 +1911,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Nov  2 01:29 ..
+drwxr-xr-x 1 root root 4096 Nov  2 03:11 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1931,7 +1933,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Nov  2 01:29 ..
+dr-xr-xr-x 1 root root 4096 Nov  2 03:11 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2150,7 +2152,7 @@ for (i = 0; i < pids.length; ++i) {
 ===== DETAIL3 boot splash inside the initramfs (what is actually shown at boot) =====
 initramfs: /usr/lib/modules/7.2.11-ogc4.1.fc44.x86_64/initramfs.img
   usr/share/plymouth/themes/tessera/watermark.png md5=4ab002cce371fa69e6333041c0482cd1
-  usr/share/plymouth/themes/spinner/watermark.png md5=d41d8cd98f00b204e9800998ecf8427e
+  usr/share/plymouth/themes/spinner/watermark.png md5=96b652507b2d464bc484b76c2bf2640e
   usr/share/plymouth/themes/bgrt/watermark.png md5=d41d8cd98f00b204e9800998ecf8427e
   tessera watermark md5=4ab002cce371fa69e6333041c0482cd1
   on-disk spinner watermark md5=96b652507b2d464bc484b76c2bf2640e
@@ -2463,3 +2465,65 @@ unicode.pf2
 cat: /etc/default/grub: No such file or directory
 
 ===== DETAIL4 end =====
+
+===== DETAIL5 Tessera's boot menu, boot screens and pointer in the image =====
+--- boot menu files
+/usr/share/tessera/grub:
+total 96
+drwxr-xr-x 1 root root 4096 Jan  1  1970 .
+drwxr-xr-x 1 root root 4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root  273 Jan  1  1970 blank.txt
+-rw-r--r-- 2 root root  376 Jan  1  1970 boot.cfg
+-rw-r--r-- 2 root root  742 Jan  1  1970 common.cfg
+drwxr-xr-x 1 root root 4096 Jan  1  1970 fonts
+-rw-r--r-- 2 root root 1648 Jan  1  1970 options.cfg
+-rw-r--r-- 2 root root 1052 Jan  1  1970 options.txt
+-rw-r--r-- 2 root root   89 Jan  1  1970 select_c.png
+-rw-r--r-- 3 root root   90 Jan  1  1970 select_e.png
+-rw-r--r-- 3 root root  104 Jan  1  1970 select_n.png
+-rw-r--r-- 2 root root  230 Jan  1  1970 select_ne.png
+-rw-r--r-- 2 root root  239 Jan  1  1970 select_nw.png
+-rw-r--r-- 3 root root  104 Jan  1  1970 select_s.png
+-rw-r--r-- 2 root root  213 Jan  1  1970 select_se.png
+-rw-r--r-- 2 root root  222 Jan  1  1970 select_sw.png
+-rw-r--r-- 3 root root   90 Jan  1  1970 select_w.png
+-rw-r--r-- 2 root root 6150 Jan  1  1970 slots.png
+-rw-r--r-- 2 root root 1486 Jan  1  1970 splash.cfg
+-rw-r--r-- 2 root root  992 Jan  1  1970 splash.txt
+-rw-r--r-- 4 root root 1709 Jan  1  1970 symbol.png
+-rw-r--r-- 4 root root 4512 Jan  1  1970 wordmark.png
+
+/usr/share/tessera/grub/fonts:
+total 76
+drwxr-xr-x 1 root root  4096 Jan  1  1970 .
+drwxr-xr-x 1 root root  4096 Jan  1  1970 ..
+-rw-r--r-- 2 root root 10506 Jan  1  1970 tessera-16.pf2
+-rw-r--r-- 2 root root 12408 Jan  1  1970 tessera-20.pf2
+-rw-r--r-- 2 root root 17832 Jan  1  1970 tessera-28.pf2
+-rw-r--r-- 2 root root 19355 Jan  1  1970 tessera-bold-28.pf2
+--- services
+tessera-boot-menu.service: enabled
+tessera-boot-once.service: enabled
+tessera-autologin.service: enabled
+--- plymouth default
+/usr/share/plymouth/plymouthd.defaults:4:Theme=tessera
+--- boot screens in the initramfs
+spinner: 74 files
+details: 1 files
+tessera: 92 files
+bgrt: 1 files
+--- pointer theme
+total 2024
+drwxr-xr-x  1 root root    4096 Jan  1  1970 .
+drwxr-xr-x  1 root root    4096 Jan  1  1970 ..
+lrwxrwxrwx 25 root root       8 Jan  1  1970 08e8e1c95fe2fc01f976f1e063a24ccd -> progress
+lrwxrwxrwx 25 root root       8 Jan  1  1970 3ecb610c1bf2410f44200f48c40d3599 -> progress
+lrwxrwxrwx 25 root root       8 Jan  1  1970 half-busy -> progress
+lrwxrwxrwx 25 root root       8 Jan  1  1970 left_ptr_watch -> progress
+-rw-r--r--  2 root root 1030160 Jan  1  1970 progress
+-rw-r--r--  2 root root 1030160 Jan  1  1970 wait
+lrwxrwxrwx 17 root root       4 Jan  1  1970 watch -> wait
+[Mouse]
+cursorTheme=Tessera
+
+===== DETAIL5 end =====
