@@ -149,6 +149,22 @@ esac
     assert.deepEqual(fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop(), { tool: 'graphics', user: 'alex', password: 'tessera1', action: 'switch', to: 'nvidia-open' });
     checks.push('Graphics suggests the build for this card when the installed one is wrong, and sends exactly that switch');
 
+    // Reset Tessera: whose, how much, then the password
+    await page.evaluate(() => { modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Recover', null, { timeout: 10000, polling: 100 });
+    await page.evaluate(() => { modal.index = modal.items.findIndex((x) => x.op === 'reset'); modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Whose Tessera?', null, { timeout: 5000, polling: 100 });
+    assert.deepEqual(await page.evaluate(() => modal.items.map((x) => x.label)), ['alex', 'kid', 'Everyone']);
+    await page.evaluate(() => { modal.index = 1; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.title === 'Reset Tessera', null, { timeout: 5000, polling: 100 });
+    await page.evaluate(() => { modal.index = 1; modalPress('a'); });
+    await page.waitForFunction(() => modal && modal.kind === 'keys', null, { timeout: 5000, polling: 100 });
+    assert.match(await page.evaluate(() => modal.title), /Password for alex/);  // the administrator confirms, for the kid's Tessera
+    await page.evaluate(() => { modal.text = 'tessera1'; finishKeys(true); });
+    await page.waitForFunction(() => modal && modal.title === 'Done', null, { timeout: 10000, polling: 100 });
+    assert.deepEqual(fs.readFileSync(path.join(temp, 'stdin'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).pop(), { tool: 'reset', user: 'alex', password: 'tessera1', level: 'all', who: 'kid' });
+    checks.push("Reset Tessera picks whose and how much; an administrator's password confirms it");
+
     // Back up to a USB drive: whose files, which drive, what, the password, then progress to done
     await page.evaluate(() => { if (modal) closeModal(); });
     await page.waitForTimeout(300);
