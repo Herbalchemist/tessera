@@ -12,7 +12,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.48.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.49.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -22,7 +22,9 @@ Controller-first, themeable down to the layout, built on [Bazzite](https://bazzi
 
 </div>
 
-Turn the PC on and you're in a console-style launcher: pick a game, press A, play. Everything else a gaming PC needs (Wi-Fi, Bluetooth, sound, updates, storage) lives in the same controller-friendly Settings. A keyboard and mouse work just as well. The full KDE desktop is one menu away when you want it.
+Turn the PC on and you're in **Ludus**, Tessera's console: pick a game, press A, play. Everything else a gaming PC needs (Wi-Fi, Bluetooth, sound, updates, storage) lives in the same controller-friendly Settings. A keyboard and mouse work just as well. **Opus**, the full KDE desktop, is one menu away when you want it.
+
+The names are Latin: *ludus* is play, *opus* is work, and *opus tessellatum* is the Romans' word for a mosaic of tesserae.
 
 > **Status: early preview.** Tessera is a one-person project tested on one machine so far. It works, but expect rough edges, and keep a backup of anything you care about. Anything marked *Not yet* is planned, not built.
 
@@ -93,7 +95,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 **A launcher made for a controller**
 - Tabs: Browser, Home, Library, Apps, your own *mosaics* (tabs you build yourself) and Settings.
 - **Home** is a page of widgets: a clock, recently played, six system widgets (CPU, Memory, Storage, Battery, Network, Uptime) and community widgets from Add-ons.
-- Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game. Steam games launch quietly through Steam so Steam's Big Picture shell does not cover Tessera; use **Guide → Desktop Mode** when you actually want to end Tessera and reach the login screen.
+- Add games from Steam, Lutris, Heroic and installed apps with one scan, or pick them from your folders. Box art is found automatically and can be replaced per game. Steam games launch quietly through Steam so Steam's Big Picture shell does not cover Tessera; use **Guide → Opus** when you actually want to end Tessera and reach the login screen.
 - **The guide**: press Guide from anywhere, even in the middle of a game, for:
   - what's running (resume or close it);
   - volume, Wi-Fi and Bluetooth;
@@ -101,7 +103,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
   - recent notifications and power;
   - *Take the tour*.
 
-  Holding Guide goes straight Home (swap press and hold in *Settings › Controller*). In Desktop Mode the same guide comes up over the desktop with *Return to Tessera*. It steps aside while Steam is running, since Steam takes the button for itself.
+  Holding Guide goes straight Home (swap press and hold in *Settings › Controller*). In Opus the same guide comes up over the desktop with *Return to Ludus*. It steps aside while Steam is running, since Steam takes the button for itself.
 - **First-run setup**: who's playing (a profile), pick a look with the whole launcher previewing behind it, an optional PIN, and an optional **guided tour** that lights up each part of the screen in turn and lets you try it: switch tabs with the bumpers, add a widget to Home, link a library drive or folder, and make your own tab, each right from its step.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN. With a real keyboard you just type.
 - Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
@@ -114,7 +116,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 | Controllers | **Controller**: live test, Guide button, button mapping, dead zones, rumble, button labels, browser cursor and scroll. **Keyboard & mouse**: key layouts, every key rebindable, hint style, pointer and scroll wheel |
 | Appearance | Theme settings, profiles, display calibration |
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, PIN |
-| Power | Sleep, restart, shut down, Desktop Mode |
+| Power | Sleep, restart, shut down, Opus |
 
 ![Settings, in groups](docs/screenshots/settings.jpg)
 
@@ -209,13 +211,13 @@ After the restart the machine signs in to Tessera by itself.
 - Or pick the previous entry in the boot menu.
 - Or return to stock Bazzite for good: `sudo bootc switch ghcr.io/ublue-os/bazzite:stable` (on NVIDIA, `bazzite-nvidia-open:stable` or `bazzite-nvidia:stable`), then restart.
 
-**Desktop Mode**
-- In Tessera: *Settings > Power > Desktop Mode*. You land on the login screen, so you need your account password; choose the desktop session there.
-- To come back, open *Return to Tessera* in the application menu. It asks first, then closes the desktop (your open programs ask to save their work) and starts Tessera, so nothing of the desktop is left running. Or log out and pick *Tessera* at the login screen.
-- If automatic sign-in is switched off, or someone else is signed in, *Return to Tessera* opens Tessera on top of the running desktop instead and closes nothing. *Open Tessera on top of the desktop* in the application menu does that on purpose.
+**Opus (the desktop)**
+- In Ludus: *Settings > Power > Opus*. You land on the login screen, so you need your account password; choose *Opus* there (Plasma's own entry starts the same desktop).
+- To come back, open *Return to Ludus* in the application menu. It asks first, then closes Opus (your open programs ask to save their work) and starts Ludus, so nothing of the desktop is left running. Or log out and pick *Ludus* at the login screen.
+- If automatic sign-in is switched off, or someone else is signed in, *Return to Ludus* opens Ludus on top of the running desktop instead and closes nothing. *Open Ludus on top of Opus* in the application menu does that on purpose.
 - Prefer to boot to the desktop? `sudo touch /etc/tessera/no-autologin`, then restart. Delete that file to turn it back on.
 
-**Forgot the PIN?** From Desktop Mode, run `tessera-reset-pin` in a terminal. It removes the PIN so you can set a new one.
+**Forgot the PIN?** From Opus, run `tessera-reset-pin` in a terminal. It removes the PIN so you can set a new one.
 
 ## Good to know
 
@@ -251,7 +253,7 @@ Tessera's security standards, how each is met and how they're checked, are in [S
 
 - `Containerfile`: starts from `ghcr.io/ublue-os/bazzite:stable` and adds Tessera.
 - `system_files/`: files copied into the image. The launcher is plain Electron + HTML/CSS/JavaScript in `system_files/usr/lib/tessera/launcher`, run inside [Gamescope](https://github.com/ValveSoftware/gamescope) by `tessera-session`. Its main process is split into parts in `main/` (library, settings, themes, add-ons, shards, updates, the browser and so on; `main.js` lists them in load order), and the page into `renderer/` (`index.html` loads them in order).
-- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools. Every logo file is drawn by `tools/branding/make-logos.py` and `render.cjs`, so they stay alike; `motion.cjs` makes the boot animation (Tessera's own Plymouth theme, the symbol building itself tile by tile above the wordmark) and the busy pointer (the same build, small, in the `Tessera` pointer theme). **The boot menu**: instead of GRUB's list of system versions, the machine shows the empty tile spots of the Tessera symbol for three seconds (the boot animation then places the tiles). On a keyboard, **O** or **F2** opens **Boot options**: start Tessera, the version before the last update, the login screen (Desktop Mode, with the account password as always), Tessera with safe settings (no display calibration or shards, this time), a text-only repair console (this time), every system version, GRUB's full menu (other systems too), firmware settings, restart and power off. It's installed in `/boot` by `tessera-boot-menu.service` (one marked block in `custom.cfg`; GRUB's own fallback after a failed update is left alone), and **Theme Settings › Boot menu** switches back to GRUB's list. `tools/boot-menu-test` boots it in a virtual machine and tries every entry. **Theme Settings › Boot screen** picks the boot screen for everyone (Tessera, Bazzite's, a plain spinner, or text): a `plymouth.splash=` boot setting made by `tessera-boot-theme@.service`, shown from the next restart; every choice is in the initramfs.
+- `build_files/build.sh`: the image build steps. `build_files/branding.sh` puts Tessera's name and look over Bazzite's: the boot menu, About this system, the logos, splash, wallpaper and lock screen, the terminal banner, and the computer's name. Under the hood the system still identifies as Bazzite to Bazzite's own tools. Every logo file is drawn by `tools/branding/make-logos.py` and `render.cjs`, so they stay alike; `motion.cjs` makes the boot animation (Tessera's own Plymouth theme, the symbol building itself tile by tile above the wordmark) and the busy pointer (the same build, small, in the `Tessera` pointer theme). **The boot menu**: instead of GRUB's list of system versions, the machine shows the empty tile spots of the Tessera symbol for three seconds (the boot animation then places the tiles). On a keyboard, **O** or **F2** opens **Boot options**: start Tessera, the version before the last update, the login screen (Opus, with the account password as always), Tessera with safe settings (no display calibration or shards, this time), a text-only repair console (this time), every system version, GRUB's full menu (other systems too), firmware settings, restart and power off. It's installed in `/boot` by `tessera-boot-menu.service` (one marked block in `custom.cfg`; GRUB's own fallback after a failed update is left alone), and **Theme Settings › Boot menu** switches back to GRUB's list. `tools/boot-menu-test` boots it in a virtual machine and tries every entry. **Theme Settings › Boot screen** picks the boot screen for everyone (Tessera, Bazzite's, a plain spinner, or text): a `plymouth.splash=` boot setting made by `tessera-boot-theme@.service`, shown from the next restart; every choice is in the initramfs.
 - GitHub Actions builds the image and publishes it to `ghcr.io/herbalchemist/tessera`. This repo started from the [Universal Blue image template](https://github.com/ublue-os/image-template).
 - Want your own spin? Fork the repo, enable Actions, and `bootc switch` to your fork's image.
 

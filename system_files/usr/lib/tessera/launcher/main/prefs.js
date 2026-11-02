@@ -52,7 +52,7 @@ const PAD_DEFAULTS = {
   browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50,
   // The Guide button: what a quick press and a long hold do (see guide-button.js).
   guideButton: 'menu-home',
-  guideDesktop: 'auto', // the guide in Desktop Mode: 'auto' (not while Steam runs), 'on', 'off'
+  guideDesktop: 'auto', // the guide in Opus: 'auto' (not while Steam runs), 'on', 'off'
   guideStyle: 'side', // how the guide looks: a panel from the side, a floating card, or compact
   oskSize: 'dock', // the on-screen keyboard: a docked panel in the middle, or wide (bigger keys, the whole width)
 };

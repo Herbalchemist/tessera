@@ -160,7 +160,7 @@ ipcMain.handle('guide', (_e, op, p) => {
 // Integration tests (TESSERA_DEV=1 only) press the Guide button through this, standing in for a pad.
 if (config.DEV) globalThis.__tesseraGuide = { down: (s) => guideButton.down(s || 'qa'), up: (s) => guideButton.up(s || 'qa') };
 
-// Desktop Mode. tessera-session has to tell "the person chose Desktop Mode" from "Tessera crashed"
+// Opus. tessera-session has to tell "the person chose Opus" from "Tessera crashed"
 // (which it restarts). Gamescope's exit code cannot tell it: at shutdown it is not reliable, and a
 // non-zero code on a normal exit made Tessera start again instead of leaving. So leaving writes a
 // note first and the session goes by the note. tessera-session sets TESSERA_LEAVE_FILE.

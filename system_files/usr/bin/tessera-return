@@ -1,12 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# "Return to Tessera" in the application menu.
+# "Return to Ludus" in the application menu.
 #
 #   tessera-return            asks first, then closes the desktop (its programs get the usual chance
 #                             to ask about unsaved work) and signs in to the Tessera console, so
 #                             nothing of the desktop is left running.
 #   tessera-return --nested   the other way: Tessera full screen on top of the running desktop.
-#                             Leaving it again (Settings > Power > Desktop Mode) shows the desktop.
+#                             Leaving it again (Settings > Power > Opus) shows the desktop.
 #
 # The nested way is also what happens when the real switch cannot be used (automatic sign-in is
 # switched off, another account is signed in, no dialog program is installed, or the switch could
@@ -42,14 +42,14 @@ run_nested() {
 
 # 0 = go ahead, 1 = stay, 9 = there is no dialog program to ask with
 ask() {
-  local text="Tessera will close your desktop first. Your open programs will ask to save their work, then Tessera starts.
+  local text="Opus, the desktop, closes first. Your open programs will ask to save their work, then Ludus starts.
 
-Return to Tessera now?"
+Return to Ludus now?"
   if command -v kdialog >/dev/null 2>&1; then
-    kdialog --title "Return to Tessera" --warningcontinuecancel "$text" --continue-label "Return to Tessera" --cancel-label "Stay on the desktop"
+    kdialog --title "Return to Ludus" --warningcontinuecancel "$text" --continue-label "Return to Ludus" --cancel-label "Stay in Opus"
     [ $? -eq 0 ] && return 0 || return 1
   elif command -v zenity >/dev/null 2>&1; then
-    zenity --question --title="Return to Tessera" --text="$text" --ok-label="Return to Tessera" --cancel-label="Stay on the desktop"
+    zenity --question --title="Return to Ludus" --text="$text" --ok-label="Return to Ludus" --cancel-label="Stay in Opus"
     [ $? -eq 0 ] && return 0 || return 1
   fi
   return 9

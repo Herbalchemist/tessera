@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings > Update software, and "Return to Tessera" on the desktop: the administrator sitting at
+// Settings > Update software, and "Return to Ludus" on the desktop: the administrator sitting at
 // the console may start and stop these five jobs (plus the graphics-build switch and the boot screen
 // choice below) without a
 // password, and nothing else. What each job

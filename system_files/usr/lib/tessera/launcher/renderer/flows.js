@@ -652,7 +652,7 @@ async function reportMade(r) {
       { label: 'Read it', sub: 'every line, before you share it', op: 'read', plain: true },
       { label: 'Open the issues page', sub: 'in the browser, to describe what happened', op: 'issues', plain: true },
       { label: 'Delete it', op: 'delete', plain: true, danger: true },
-      { label: 'To share it', sub: `On ${ISSUES_URL.replace('https://', '')}, start a new issue (or answer yours) and attach the file. It's in ${r.folder} (from Desktop Mode, or copy it to a USB drive).`, plain: true, info: true },
+      { label: 'To share it', sub: `On ${ISSUES_URL.replace('https://', '')}, start a new issue (or answer yours) and attach the file. It's in ${r.folder} (from Opus, or copy it to a USB drive).`, plain: true, info: true },
     ], 0, { body: `${r.folder}/${r.name}` });
     if (!it) return;
     if (it.info) continue;

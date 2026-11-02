@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [Desktop Entry]
 Type=Application
-Name=Return to Tessera
+Name=Return to Ludus
 GenericName=Console mode
-Comment=Close the desktop and start Tessera
+Comment=Close Opus (the desktop) and start Ludus, Tessera's console
 Exec=/usr/bin/tessera-return
 Icon=tessera
 Terminal=false

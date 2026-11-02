@@ -111,7 +111,7 @@ async function flowInstaller() {
       c.fullName = full.trim();
       let user = (c.fullName.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || 'player').replace(/^[0-9]+/, '').slice(0, 24) || 'player';
       if (['root', 'liveuser', 'tessera'].includes(user)) user = `${user}1`;
-      const u = await pick('Your account', [{ label: `User name: ${user}`, sub: 'used for the desktop and settings', op: 'ok', ok: true }, { label: 'Change the user name', op: 'edit', plain: true }], 0, { body: 'Tessera starts by itself with this account. The password is for Desktop Mode and for system changes.' });
+      const u = await pick('Your account', [{ label: `User name: ${user}`, sub: 'used for the desktop and settings', op: 'ok', ok: true }, { label: 'Change the user name', op: 'edit', plain: true }], 0, { body: 'Tessera starts by itself with this account. The password is for Opus and for system changes.' });
       if (!u) continue;
       if (u.op === 'edit') {
         const typed = await ask('User name (lowercase letters and numbers)', user, { max: 24 });

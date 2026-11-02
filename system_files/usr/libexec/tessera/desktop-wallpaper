@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Desktop Mode's wallpaper and lock screen for an account that was set up before it ran Tessera.
+# Opus's wallpaper and lock screen for an account that was set up before it ran Tessera.
 #
 # The image makes Tessera's wallpaper the default, but Plasma only reads defaults when it builds a
 # desktop for the first time. An account that started out on Bazzite keeps the picture Bazzite gave

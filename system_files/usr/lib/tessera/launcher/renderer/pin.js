@@ -46,7 +46,7 @@ async function flowPin() {
       items.push({ label: 'Also protect the browser', sub: st.browser ? 'On' : 'Off', op: 'browser', plain: true });
     }
     items.push({ label: 'Good to know', header: true });
-    items.push({ label: 'Forgot it?', sub: 'Desktop Mode, then run tessera-reset-pin (needs your login)', info: true, plain: true });
+    items.push({ label: 'Forgot it?', sub: 'Opus, then run tessera-reset-pin (needs your login)', info: true, plain: true });
     const it = await pick('PIN', items, index);
     if (!it) return;
     index = items.indexOf(it);
