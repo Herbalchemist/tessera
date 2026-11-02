@@ -70,3 +70,12 @@ echo "  on-disk spinner watermark md5=$(md5sum < /usr/share/plymouth/themes/spin
 sec "DETAIL2 plymouth watermarks"; ls -la /usr/share/plymouth/themes/spinner/ /usr/share/plymouth/themes/bgrt/ | grep -i -e water -e logo; cat /usr/share/plymouth/themes/bgrt/bgrt.plymouth | head -30
 sec "DETAIL2 sddm / login screen"; ls /usr/share/sddm 2>&1; ls /etc/sddm* 2>&1; systemctl get-default 2>&1; ls -la /etc/systemd/system/display-manager.service 2>&1
 sec "DETAIL2 end"
+sec "DETAIL4 boot menu (GRUB via bootupd)"
+ls -laR /usr/lib/bootupd 2>&1 | head -60
+for f in $(find /usr/lib/bootupd/grub2-static -type f 2>/dev/null); do echo "--- $f"; cat "$f"; done
+echo "--- bootupd update payloads"; find /usr/lib/bootupd/updates -maxdepth 3 2>/dev/null | head -40
+echo "--- EFI GRUB modules built in (strings)"; for e in /usr/lib/bootupd/updates/EFI/fedora/grubx64.efi /boot/efi/EFI/fedora/grubx64.efi; do [ -f "$e" ] && { echo "$e"; strings "$e" | grep -o -E '^(gfxmenu|gfxterm|gfxterm_background|png|jpeg|font|efifwsetup|sleep|blscfg|configfile|loadenv|regexp|echo|test|search|keystatus|videoinfo|all_video)$' | sort -u | tr '\n' ' '; echo; }; done
+echo "--- grub fonts and themes"; ls /usr/share/grub /usr/share/grub/themes /boot/grub2/themes 2>&1 | head; command -v grub2-mkfont bootupctl grub2-editenv 2>&1
+echo "--- ujust grub recipes"; grep -n -i -A25 "configure-grub\|grub" /usr/share/ublue-os/just/*.just 2>/dev/null | head -80
+echo "--- /etc/default/grub"; cat /etc/default/grub 2>&1 | head -20
+sec "DETAIL4 end"
