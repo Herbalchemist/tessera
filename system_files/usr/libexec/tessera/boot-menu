@@ -48,6 +48,12 @@ $BEGIN
 # It only steps in when the normal choice is the newest version (not after a failed update).
 if [ -z "\${tessera_plain}" -a -f "\${prefix}/tessera/splash.cfg" ]; then
   if [ -z "\${default}" -o "\${default}" = "0" ]; then
+    # GRUB's settings file, the one this config loaded (worked out here: GRUB changes
+    # config_directory for every file it opens)
+    if [ -z "\${tessera_env}" ]; then
+      if [ -f "\${config_directory}/grubenv" ]; then set tessera_env="\${config_directory}/grubenv"; else set tessera_env="\${prefix}/grubenv"; fi
+    fi
+    export tessera_env
     configfile "\${prefix}/tessera/splash.cfg"
   fi
 fi
