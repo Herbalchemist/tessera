@@ -4,6 +4,7 @@
 // Tessera. The work is done in the main process (main/recovery.js) by the USB's root helper.
 
 const RECOVERY_TOOLS = {
+  boot: { label: 'Repair the boot menu', sub: 'when Windows starts instead, or start-up stops at "grub>" or a black screen' },
   signin: { label: 'Start in Tessera at boot again', sub: 'for a computer stuck at a login or text screen' },
   pin: { label: 'Remove the admin PIN', sub: 'for a forgotten PIN; set a new one in Settings' },
   shards: { label: 'Turn off all shards', sub: 'in case an add-on stops Tessera from starting' },
