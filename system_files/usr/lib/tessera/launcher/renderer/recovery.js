@@ -144,7 +144,7 @@ async function recoveryCheck(inst) {
   try { r = await api.recovery('check', { id: inst.id }); } finally { busy = false; setStatus(''); }
   if (!r || !r.ok) return void (await pick("Can't check", [{ label: 'OK', plain: true }], 0, { body: (r && r.error) || 'The check could not start.' }));
   let end = await recoveryJobProgress('Checking the disk', 'check');
-  if (end.phase === 'done' && !end.ok) {
+  if (end.phase === 'done' && !end.healthy) {
     const it = await pick('Problems found', [
       { label: 'Repair', sub: 'only repairs that are safe to run on their own', op: 'repair', ok: true },
       { label: 'Not now', plain: true },
@@ -155,7 +155,7 @@ async function recoveryCheck(inst) {
     if (!(await recoveryWithPassword(user, 'Starting the repair…', (password) => api.recovery('check', { id: inst.id, repair: true, user, password })))) return;
     end = await recoveryJobProgress('Repairing the disk', 'check');
   }
-  if (end.phase === 'done') await pick(end.ok ? (end.repair ? 'Repaired' : 'No problems found') : "Some problems remain", [{ label: 'OK', plain: true }], 0, { body: recoveryCheckBody(end) });
+  if (end.phase === 'done') await pick(end.healthy ? (end.repair ? 'Repaired' : 'No problems found') : "Some problems remain", [{ label: 'OK', plain: true }], 0, { body: recoveryCheckBody(end) });
   else if (end.phase === 'canceled') await pick('Stopped', [{ label: 'OK', plain: true }], 0, { body: 'The check was stopped. Nothing was changed by stopping it.' });
   else await pick("The check didn't finish", [{ label: 'OK', plain: true }], 0, { body: end.error || 'Something went wrong.' });
 }

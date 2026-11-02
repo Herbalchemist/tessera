@@ -37,10 +37,10 @@ case "$1" in
   state) n=$(cat "$T/polls" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "$T/polls"; job=$(cat "$T/job" 2>/dev/null)
          if [ "$job" = check ]; then
            if [ $n -lt 3 ]; then echo '{"ok": true, "job": "check", "phase": "checking", "step": 3, "steps": 4, "line": "The main file system", "done": 5000000000, "total": 20000000000}'
-           else echo '{"ok": true, "job": "check", "phase": "done", "repair": false, "ok": false, "results": [{"ok": true, "text": "The drive reports good health."}, {"ok": false, "text": "The main file system: 2 damaged blocks found (Repair rewrites what has a second copy)."}], "files": ["alex/Games/big.bin"]}'; fi
+           else echo '{"ok": true, "job": "check", "phase": "done", "repair": false, "healthy": false, "results": [{"ok": true, "text": "The drive reports good health."}, {"ok": false, "text": "The main file system: 2 damaged blocks found (Repair rewrites what has a second copy)."}], "files": ["alex/Games/big.bin"]}'; fi
          elif [ "$job" = repair ]; then
            if [ $n -lt 2 ]; then echo '{"ok": true, "job": "check", "phase": "checking", "step": 1, "steps": 4, "line": "The drive health"}'
-           else echo '{"ok": true, "job": "check", "phase": "done", "repair": true, "ok": true, "results": [{"ok": true, "text": "The main file system: 2 damaged blocks repaired from their second copy."}], "files": []}'; fi
+           else echo '{"ok": true, "job": "check", "phase": "done", "repair": true, "healthy": true, "results": [{"ok": true, "text": "The main file system: 2 damaged blocks repaired from their second copy."}], "files": []}'; fi
          elif [ $n -lt 3 ]; then echo '{"ok": true, "phase": "copying", "done": 1000000, "total": 4000000, "line": "Pictures/a.png"}'; else echo '{"ok": true, "phase": "done", "copied": 42, "skipped": 1, "folder": "Tessera backup 2026-11-02 1200", "drive": "STICK"}'; fi ;;
   check) rm -f "$T/polls"
        if [ "$3" = --repair ]; then in=$(cat); echo "$in" >> "$T/stdin"
