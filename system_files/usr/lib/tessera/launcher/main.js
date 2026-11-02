@@ -38,3 +38,4 @@ require('./main/guide'); // The Guide button: over a running game, over the brow
 require('./main/webView'); // The embedded browser view.
 require('./main/report'); // "Report a problem": a report file, made only when asked, never sent anywhere.
 require('./main/recovery'); // Recover (on the Tessera USB): repair a Tessera on this computer that won't start.
+require('./main/display'); // Settings > Screens: which screen, resolution, refresh rate, orientation; new screens.
