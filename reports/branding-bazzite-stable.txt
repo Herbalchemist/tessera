@@ -25,7 +25,7 @@ BOOTLOADER_NAME="Bazzite Stable (F44.20261026)"
 IMAGE_ID="bazzite-44.20261026"
 
 ===== hostname / machine-info =====
-c2a73db21732cat: /etc/machine-info: No such file or directory
+1571b85e0613cat: /etc/machine-info: No such file or directory
 /usr/lib/os-release:12:DEFAULT_HOSTNAME="bazzite"
 /etc/os-release:12:DEFAULT_HOSTNAME="bazzite"
 
@@ -1924,7 +1924,7 @@ if [[ $BASE_IMAGE_NAME =~ "kinoite" ]]; then
 /etc/skel:
 total 28
 drwxr-xr-x 1 root root 4096 Jan  1  1970 .
-drwxr-xr-x 1 root root 4096 Nov  2 01:29 ..
+drwxr-xr-x 1 root root 4096 Nov  2 03:12 ..
 -rw-r--r-- 2 root root   18 Jan  1  1970 .bash_logout
 -rw-r--r-- 2 root root  144 Jan  1  1970 .bash_profile
 -rw-r--r-- 2 root root  522 Jan  1  1970 .bashrc
@@ -1946,7 +1946,7 @@ cat: /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc: No such file or 
 /boot:
 total 8
 drwxr-xr-x 2 root root 4096 Jan  1  1970 .
-dr-xr-xr-x 1 root root 4096 Nov  2 01:29 ..
+dr-xr-xr-x 1 root root 4096 Nov  2 03:12 ..
 
 /usr/lib/bootupd/grub2-static:
 total 20
@@ -2487,3 +2487,23 @@ unicode.pf2
 cat: /etc/default/grub: No such file or directory
 
 ===== DETAIL4 end =====
+
+===== DETAIL5 Tessera's boot menu, boot screens and pointer in the image =====
+--- boot menu files
+ls: cannot access '/usr/share/tessera/grub': No such file or directory
+ls: cannot access '/usr/share/tessera/grub/fonts': No such file or directory
+--- services
+tessera-boot-menu.service: not-found
+tessera-boot-once.service: not-found
+tessera-autologin.service: not-found
+--- plymouth default
+/usr/share/plymouth/plymouthd.defaults:4:Theme=bgrt
+--- boot screens in the initramfs
+spinner: 74 files
+details: 1 files
+bgrt: 1 files
+--- pointer theme
+ls: cannot access '/usr/share/icons/Tessera/cursors': No such file or directory
+cat: /etc/xdg/kcminputrc: No such file or directory
+
+===== DETAIL5 end =====
