@@ -26,19 +26,20 @@ const GLYPH_SETS = {
   // Left Joy-Con: its arrow buttons are the face buttons, pointing the way they now face.
   jl: { 0: '▼', 1: '▶', 2: '◀', 3: '▲', 4: 'SL', 5: 'SR', 6: 'L', 7: 'ZL', 9: '−', 10: 'LS', 16: 'Capture' },
 };
-const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'position', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', guideStyle: 'side', oskSize: 'dock', remap: {} };
+const PAD_DEFAULTS = { deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together', confirm: 'auto', repeat: 'standard', browserCursor: 'right', cursorSpeed: 50, scrollSpeed: 50, guideButton: 'menu-home', guideDesktop: 'auto', guideStyle: 'side', oskSize: 'dock', remap: {} };
 const KB_DEFAULTS = { preset: 'standard', hints: 'auto', mouseHide: 3, wheel: 'move', bindings: null };
 let prefs = { pad: { ...PAD_DEFAULTS }, kb: { ...KB_DEFAULTS }, calib: {}, theme: null, pageGrid: {}, pin: { set: false, browser: true, firstRun: false, unlocked: true }, vault: '~/Tessera', storage: { low: [] }, calibration: { cal: null } };
 // "Automatic" looks at who made the connected controller (USB vendor id, then the name).
 // What each button means comes from the one input system (input-actions.js).
 const IA = window.TesseraInputActions;
 const detectFamily = (id) => IA.familyOf(id);
-// How the controller in use is read: by position, Nintendo letters ("A confirms"), or its family's
-// remap from Settings > Button mapping (input-actions.js).
+// How the controller in use is read: which of the bottom and right buttons confirms, or its
+// family's remap from Settings > Button mapping (input-actions.js).
 // (Menus can open while the page is still loading, before input.js has defined activePad.)
 const padInUse = () => (typeof activePad === 'function' ? activePad() : null);
-// A Joy-Con held sideways on its own is its own kind: read by position, as the Switch does, so
-// the Nintendo "A confirms" setting and Nintendo remaps leave it alone.
+// A Joy-Con held sideways on its own is its own kind: turned by pads.js and read by position, as
+// the Switch does (the right-hand button confirms, like any Switch controller under Automatic);
+// Nintendo remaps leave it alone.
 const sidewaysKind = (p) => (p && p.tessera && p.info && p.info.sideways ? p.info.kind : '');
 const padFamilyOf = (p) => (sidewaysKind(p) ? 'sideways' : detectFamily(p ? p.id : ''));
 const padMap = (p = padInUse()) => IA.mapFor(padFamilyOf(p), prefs.pad);

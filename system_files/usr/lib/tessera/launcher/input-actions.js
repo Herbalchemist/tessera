@@ -8,10 +8,11 @@
 //
 // Buttons are Standard Gamepad API positions (0 bottom, 1 right, 2 left, 3 top, 4 LB, 5 RB, 6 LT,
 // 7 RT, 8 View, 9 Menu, 10 left stick, 11 right stick, 12-15 D-pad, 16 Guide). A "role" is the
-// position whose job a button does: role 0 confirms, role 1 goes back, and so on. Tessera's
-// long-standing rule (the default) is positional: the bottom face button confirms on every
-// controller. The one other profile, for Nintendo controllers, follows the printed letters: A (on
-// the right) confirms and B (at the bottom) goes back, with X and Y swapped to match.
+// position whose job a button does: role 0 confirms, role 1 goes back, and so on. Everything is by
+// POSITION, never by printed letter (a Joy-Con held sideways has no letters): the one choice is
+// which of the bottom and right buttons confirms; the other goes back, and the left and top
+// buttons never move. By default a Switch controller confirms with the right button, as on the
+// Switch, and every other controller with the bottom one.
 //
 // Pure data and helpers: used by the page (window.TesseraInputActions) and the main process
 // (require), and by node:test.
@@ -20,10 +21,11 @@ const ACTIONS = ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'lb', 'rb', 
 const ACTION_OF_ROLE = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 12: 'up', 13: 'down', 14: 'left', 15: 'right', 16: 'guide' };
 const ROLE_OF_ACTION = Object.fromEntries(Object.entries(ACTION_OF_ROLE).map(([r, a]) => [a, Number(r)]));
 
-// Settings > Controller > "Confirm button": 'position' (bottom confirms, every controller; the
-// default) or 'label' (Nintendo controllers follow their printed A/B/X/Y).
-const CONFIRM_CHOICES = ['position', 'label'];
-const NINTENDO_LABEL_SWAP = { 0: 1, 1: 0, 2: 3, 3: 2 };
+// Settings > Controller > "Confirm button": 'auto' (the right button on Switch controllers, the
+// bottom one on the others; the default), 'bottom' or 'right' (on every controller).
+// (Before 0.52 it was 'position' / 'label': both fall back to 'auto' when settings are read.)
+const CONFIRM_CHOICES = ['auto', 'bottom', 'right'];
+const RIGHT_CONFIRMS = { 0: 1, 1: 0 }; // the bottom and right buttons trade jobs; left and top stay
 
 // Who made a controller, from its Gamepad API id (USB vendor id, then the name).
 function familyOf(id) {
@@ -35,8 +37,10 @@ function familyOf(id) {
   return 'xbox';
 }
 
-// Whether this controller's face buttons trade places under this setting.
-const swaps = (family, confirm) => family === 'nintendo' && confirm === 'label';
+// Whether the right button confirms on this controller under this setting.
+// ('sideways': a single Joy-Con held sideways, already turned by pads.js. The Switch confirms with
+// its right-hand button too: on a right Joy-Con that's X, and A, now at the bottom, goes back.)
+const swaps = (family, confirm) => confirm === 'right' || ((confirm === 'auto' || !CONFIRM_CHOICES.includes(confirm)) && (family === 'nintendo' || family === 'sideways'));
 
 // Settings > Button mapping can also rearrange the four face buttons and the two bumpers, per
 // controller family. A remap is a list: entry n is the role physical button n does. It is always
@@ -48,8 +52,8 @@ function validRemap(m) {
   return Array.isArray(m) && m.length === REMAP_BUTTONS && m.every((r) => Number.isInteger(r) && r >= 0 && r < REMAP_BUTTONS) && new Set(m).size === REMAP_BUTTONS;
 }
 
-// A "map" says how a controller's buttons are read: false (by position), true (Nintendo letters,
-// the "A confirms" setting) or a remap list. pad: the controller settings ({ confirm, remap:
+// A "map" says how a controller's buttons are read: false (the bottom button confirms), true (the
+// right button confirms) or a remap list. pad: the controller settings ({ confirm, remap:
 // { family: list } }); a family's remap wins over "confirm".
 function mapFor(family, pad) {
   const r = pad && pad.remap && pad.remap[family];
@@ -60,18 +64,18 @@ function mapFor(family, pad) {
 // The role physical button n does.
 function roleOf(physical, map) {
   if (Array.isArray(map)) return physical >= 0 && physical < map.length ? map[physical] : physical;
-  return map && Object.prototype.hasOwnProperty.call(NINTENDO_LABEL_SWAP, physical) ? NINTENDO_LABEL_SWAP[physical] : physical;
+  return map && Object.prototype.hasOwnProperty.call(RIGHT_CONFIRMS, physical) ? RIGHT_CONFIRMS[physical] : physical;
 }
 // The physical button that does `role`'s job.
 function physicalFor(role, map) {
   if (Array.isArray(map)) { const i = map.indexOf(role); return role >= 0 && role < map.length && i >= 0 ? i : role; }
-  return roleOf(role, map); // the Nintendo swap is its own inverse
+  return roleOf(role, map); // trading the bottom and right buttons is its own inverse
 }
 
 // A pressed-buttons bit mask (bit n = physical button n), as roles.
 function roleBits(bits, map) {
   if (!map) return bits;
-  const n = Array.isArray(map) ? REMAP_BUTTONS : 4;
+  const n = Array.isArray(map) ? REMAP_BUTTONS : 2;
   let out = bits & ~((1 << n) - 1);
   for (let k = 0; k < n; k++) if (bits & (1 << k)) out |= 1 << roleOf(k, map);
   return out;

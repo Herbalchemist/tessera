@@ -12,7 +12,7 @@
 Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/launcher-0.51.0-6a58d8)
+![Version](https://img.shields.io/badge/launcher-0.52.0-6a58d8)
 ![License](https://img.shields.io/badge/license-GPL--3.0-12a37f)
 ![Status](https://img.shields.io/badge/status-early%20preview-ff8a3d)
 
@@ -72,7 +72,7 @@ Every keyboard action can be rebound in **Settings › Keyboard & mouse**. Bindi
 
 You can also keep the hints on controller buttons, or hide the pointer sooner or never.
 
-**Nintendo controllers:** by default the bottom button confirms on every controller (so on a Switch pad, B opens and A goes back, by position). In **Settings › Controller › Confirm button** you can have Nintendo controllers follow their letters instead: A confirms and B goes back, with X and Y to match. It applies everywhere (menus, the browser, the on-screen keyboard), the hints follow it, and other controllers are never affected.
+**Confirm and back, by position:** a Switch controller confirms with the right button and goes back with the bottom one, as on the Switch, a single Joy-Con held sideways included (the button on its right as you hold it); every other controller confirms with the bottom button. **Settings › Controller › Confirm button** can make it the bottom or the right button on every controller instead. Only those two ever trade jobs; the left and top buttons stay. It applies everywhere (menus, the browser, the on-screen keyboard), and the hints name the buttons that do each job.
 
 **Your own button layout:** in **Settings › Button mapping**, the face buttons and bumpers of the kind of controller you're holding (Xbox, PlayStation or Nintendo) can trade jobs: pick a job, press the button you want for it, and that button's old job moves to the one you replaced. Every job always stays on exactly one button, so you can't lose Select or Back, and **Put these buttons back** undoes it. Menus, hints, the on-screen keyboard and the browser all follow it.
 
@@ -240,7 +240,7 @@ Tessera's security standards, how each is met and how they're checked, are in [S
 - Typing into a web page's own text fields with the on-screen keyboard, and a controller-friendly prompt for website permissions.
 - Profiles: limits for younger players (which games and pages they see, play time).
 - NVIDIA builds: test on real hardware and drop the *experimental* label.
-- Controllers on real hardware: a single Joy-Con held sideways (left and right), a Switch Pro Controller and Joy-Cons with **Confirm button** set to "A confirms" and with a remap (0.28 fixes them being swapped twice in the launcher's menus), and an Xbox and a PlayStation controller remapped in the browser.
+- Controllers on real hardware: a single Joy-Con held sideways (left and right), a Switch Pro Controller and Joy-Cons with the right button confirming (0.52) and with a remap, and an Xbox and a PlayStation controller remapped in the browser.
 - Wi-Fi: hand the password to NetworkManager without putting it on `nmcli`'s command line, where other accounts on the machine can briefly see it while it joins. Needs a test on real Wi-Fi before it ships.
 - The recovery system ([plan](https://github.com/Herbalchemist/tessera-mortar/blob/main/docs/recovery.md)): Recover on the Tessera USB has what's wrong, a report, sign-in at boot, the admin PIN, shards, versions, back up to a USB drive, free up space, check the disk and repair the boot menu. Next: graphics, files, reset and reinstall, and undo for files; then Recovery on the machine itself (its own partition on new installs, a file on existing ones, in Boot options).
 - Ideas from CachyOS, beside Bazzite rather than instead of it:
