@@ -418,14 +418,37 @@ function hideMouse() {
 }
 // Only real movement counts: Chromium also sends mousemove when the page moves under a still pointer.
 let mouseAt = null;
+let pointer = { x: 0, y: 0 };
+// When choosing a tile at the edge makes the grid scroll away under a still pointer, the pointer is
+// suddenly over another tile, and the next twitch would choose that one and scroll again, round and
+// round. So after such a scroll the pointer is left alone for a couple of seconds (or until it is
+// back over the tile that was chosen): time to move the mouse to where the tile went.
+let hoverHold = null; // { until, card }
+const HOVER_HOLD_MS = 2400;
 window.addEventListener('mousemove', (e) => {
   const at = `${e.screenX},${e.screenY}`;
   if (at === mouseAt) return;
   mouseAt = at;
+  pointer = { x: e.clientX, y: e.clientY };
   setInputMode('mouse');
   showMouse();
-  hoverSelect(e.target instanceof Element ? e.target : null);
+  const t = e.target instanceof Element ? e.target : null;
+  if (hoverHold) {
+    if (performance.now() > hoverHold.until || !hoverHold.card.isConnected || (t && hoverHold.card.contains(t))) hoverHold = null;
+    else return;
+  }
+  hoverSelect(t);
 }, { passive: true });
+// Did choosing this tile move it out from under the pointer? (Looked at once the scroll has had
+// time to start.)
+function watchHoverScroll(card) {
+  setTimeout(() => {
+    if (!card.isConnected) return;
+    const b = card.getBoundingClientRect();
+    const over = pointer.x >= b.left && pointer.x <= b.right && pointer.y >= b.top && pointer.y <= b.bottom;
+    if (!over) hoverHold = { until: performance.now() + HOVER_HOLD_MS, card };
+  }, 220);
+}
 // The selection follows the pointer: the tile or menu line under it gets the highlight, so the
 // wheel and the keys carry on from where the mouse is. (Only on real movement, above: when the
 // grid scrolls to follow the wheel, the tile that slides under a still pointer isn't chosen.)
@@ -455,6 +478,7 @@ function hoverSelect(t) {
   c.cols[rows[r].id] = n;
   focus = 'content';
   update();
+  watchHoverScroll(card);
 }
 window.addEventListener('contextmenu', (e) => { e.preventDefault(); setInputMode('mouse'); showMouse(); if (!suspended && !busy) press('b'); });
 let wheelAt = 0;
