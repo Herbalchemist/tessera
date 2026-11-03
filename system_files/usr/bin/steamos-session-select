@@ -1,0 +1,32 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# What Steam runs for "Switch to Desktop" in Big Picture (steamos-session-select plasma ...).
+# Bazzite's desktop image has nothing there, so Steam waited for a session switch that never came
+# and Big Picture hung on top of Ludus. In Tessera "the desktop" is Opus, which is a different
+# session: this does what Settings > Power > Opus does. It leaves a note for tessera-session that
+# the person asked to leave (not a crash), asks Steam to close, and ends Ludus, so Gamescope
+# ends, the session ends, and the login screen comes up (choose Opus there).
+# Switching "to game mode" (no argument, or gamescope) is a no-op: this already is Ludus.
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
+LEAVE="${TESSERA_LEAVE_FILE:-$STATE/leave-requested}"
+APP=/usr/lib/tessera/launcher
+
+case "${1:-gamescope}" in
+  gamescope|game|gamemode) exit 0 ;;
+  plasma|plasma-wayland|plasma-x11|plasma-wayland-persistent|plasma-x11-persistent|desktop|gnome|gnome-wayland|gnome-wayland-persistent) ;;
+  *) echo "steamos-session-select: unknown session '$1'" >&2; exit 1 ;;
+esac
+
+mkdir -p "$(dirname "$LEAVE")"
+: >"$LEAVE"
+[ -n "$TESSERA_DRY_RUN" ] && exit 0
+
+# Steam first (it saves its state and closes its windows), without waiting for it for long
+if command -v steam >/dev/null 2>&1; then
+  timeout 8 steam -shutdown >/dev/null 2>&1 &
+fi
+sleep 1
+# then Ludus: its end is the end of Gamescope, and the note above says it was asked for
+pkill -TERM -f "$APP/node_modules/electron/dist/electron $APP" 2>/dev/null
+exit 0

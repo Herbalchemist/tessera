@@ -217,6 +217,7 @@ After the restart the machine signs in to Tessera by itself.
 - Or return to stock Bazzite for good: `sudo bootc switch ghcr.io/ublue-os/bazzite:stable` (on NVIDIA, `bazzite-nvidia-open:stable` or `bazzite-nvidia:stable`), then restart.
 
 **Opus (the desktop)**
+- From Steam: Big Picture's *Switch to Desktop* does the same (`steamos-session-select`, which Steam runs, ends Ludus's session so you land on the login screen). Bazzite's desktop image has no such script, so Steam used to wait for a switch that never came.
 - In Ludus: *Settings > Power > Opus*. You land on the login screen, so you need your account password; choose *Opus* there (Plasma's own entry starts the same desktop).
 - To come back, open *Return to Ludus* in the application menu. It asks first, then closes Opus (your open programs ask to save their work) and starts Ludus, so nothing of the desktop is left running. Or log out and pick *Ludus* at the login screen.
 - If automatic sign-in is switched off, or someone else is signed in, *Return to Ludus* opens Ludus on top of the running desktop instead and closes nothing. *Open Ludus on top of Opus* in the application menu does that on purpose.
