@@ -5,7 +5,7 @@
 // ------------------------------------------------------------ Install Tessera (from the USB)
 // On the Tessera USB the launcher starts here instead of the first-run setup. Each step is an ordinary
 // menu, so a controller, a keyboard or a mouse all work. The disk work is done by the USB's root helper
-// (live-install, through main.js); nothing on the computer changes before "Erase and install".
+// (live-install, through main.js); nothing on the computer changes before the last step's Install.
 let installerShown = false;
 const isLive = () => Boolean(prefs.live);
 const fmtSize = (b) => (b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : `${Math.round(b / 1e9)} GB`);
@@ -46,6 +46,89 @@ function installWatch() {
     })();
   });
 }
+// ---- next to other systems: what the USB's helper found on a disk (live-install's disk_layout)
+// The least room Tessera goes into next to something else (the helper checks it again).
+const ALONG_MIN = 40e9 + 1024 ** 3;
+const NEW_ESP = 600 * 1024 ** 2;
+const MIB = 1024 ** 2;
+const roomNeeded = (d) => ALONG_MIN + (d.esp ? 0 : NEW_ESP);
+// The biggest single stretch Tessera could have: free space plus the partitions picked, where they join.
+function roomWith(d, remove) {
+  const t = d.table && d.table.partitiontable;
+  if (!t) return d.free || 0;
+  const sector = Number(t.sectorsize) || 512;
+  const spans = [];
+  // free stretches (whole MiB), as the helper counts them
+  const used = (t.partitions || []).map((q) => [Number(q.start), Number(q.start) + Number(q.size)]).sort((a, b) => a[0] - b[0]);
+  let at = Number(t.firstlba) || 2048;
+  for (const [a, b] of [...used, [Number(t.lastlba) + 1, Number(t.lastlba) + 1]]) {
+    if (a > at) {
+      const lo = Math.ceil((at * sector) / MIB) * MIB, hi = Math.floor((a * sector) / MIB) * MIB;
+      if (hi - lo >= MIB) spans.push([lo, hi]);
+    }
+    at = Math.max(at, b);
+  }
+  for (const q of t.partitions || []) if (remove.includes(q.node)) spans.push([Number(q.start) * sector, (Number(q.start) + Number(q.size)) * sector]);
+  spans.sort((a, b) => a[0] - b[0]);
+  let best = 0, cur = null;
+  for (const [a, b] of spans) {
+    if (cur && a <= cur[1] + MIB) cur[1] = Math.max(cur[1], b);
+    else { if (cur) best = Math.max(best, cur[1] - cur[0]); cur = [a, b]; }
+  }
+  if (cur) best = Math.max(best, cur[1] - cur[0]);
+  return best;
+}
+const othersOn = (d) => (d.systems && d.systems.length ? d.systems.join(' and ') : 'what is on it');
+const partLine = (q) => `${q.what}${q.label ? ` "${q.label}"` : ''}`;
+
+// How to use the chosen disk. Returns { layout, remove } or null (go back).
+async function chooseLayout(d) {
+  const parts = Array.isArray(d.partitions) ? d.partitions : [];
+  if (!parts.length) return { layout: 'erase', remove: [] }; // an empty disk: nothing to keep
+  const al = d.alongside || { ok: false, why: '' };
+  const need = roomNeeded(d);
+  for (;;) {
+    const fits = al.ok && (d.free || 0) >= need;
+    const it = await pick('How should Tessera use this disk?', [
+      { label: `Install next to ${othersOn(d)}`, sub: !al.ok ? al.why : fits ? `uses the ${fmtSize(d.free)} of free space · nothing else changes` : `only ${fmtSize(d.free || 0)} free in one piece: Tessera needs ${fmtSize(need)}`, op: 'alongside', ok: fits },
+      { label: 'Replace partitions…', sub: al.ok ? 'pick the ones to remove; everything else stays' : al.why, op: 'replace', plain: true },
+      { label: 'Erase the whole disk', sub: `everything on it is removed, including ${othersOn(d)}`, op: 'erase', danger: true },
+    ], fits ? 0 : 1, { body: `On this disk: ${parts.filter((q) => !q.esp).map((q) => `${partLine(q)} (${fmtSize(q.size)})`).join(', ') || 'a boot partition'}${d.free >= 1e9 ? `, and ${fmtSize(d.free)} free` : ''}.\n\nNothing is shrunk or moved. ${d.esp ? 'The boot partition other systems start from is shared, never erased.' : ''}`.trim() });
+    if (!it) return null;
+    if (it.op === 'erase') return { layout: 'erase', remove: [] };
+    if (!al.ok) { await pick("Can't share this disk", [{ label: 'OK', plain: true }], 0, { body: al.why }); continue; }
+    if (it.op === 'alongside') {
+      if (fits) return { layout: 'alongside', remove: [] };
+      await pick('Not enough free space', [{ label: 'OK', plain: true }], 0, { body: `Tessera needs at least ${fmtSize(need)} of free space in one piece, and this disk has ${fmtSize(d.free || 0)}. Make room in Windows (Disk Management > Shrink Volume), or replace partitions you don't need.` });
+      continue;
+    }
+    const picked = await pickPartitions(d, need);
+    if (picked) return { layout: 'replace', remove: picked };
+  }
+}
+
+// Tick the partitions to remove. Returns their paths, or null (back).
+async function pickPartitions(d, need) {
+  const parts = d.partitions.filter((q) => !q.esp);
+  const chosen = new Set();
+  let index = 0;
+  for (;;) {
+    const room = roomWith(d, [...chosen]);
+    const items = parts.map((q) => ({ label: `${chosen.has(q.path) ? '☑' : '☐'}  ${partLine(q)}`, sub: `${fmtSize(q.size)} · ${q.path.replace('/dev/', '')}`, q, plain: true }));
+    items.push({ label: 'Continue', sub: !chosen.size ? 'pick at least one' : room >= need ? `Tessera gets ${fmtSize(room)}` : `${fmtSize(room)} in one piece: not enough (${fmtSize(need)})`, op: 'go', ok: chosen.size > 0 && room >= need });
+    const it = await pick('Which partitions should go?', items, index, { body: 'Everything on the ones you tick is erased. The boot partition other systems start from always stays. Pick partitions next to each other, or next to free space, so the room is in one piece.' });
+    if (!it) return null;
+    if (it.q) { if (chosen.has(it.q.path)) chosen.delete(it.q.path); else chosen.add(it.q.path); index = items.indexOf(it); continue; }
+    if (!chosen.size || room < need) { index = items.length - 1; continue; }
+    const list = parts.filter((q) => chosen.has(q.path));
+    const sure = await pick('Erase these partitions?', [
+      { label: `Yes, erase ${list.length === 1 ? 'it' : `these ${list.length}`}`, op: 'yes', danger: true },
+      { label: 'Go back', plain: true },
+    ], 1, { body: list.map((q) => `${partLine(q)}, ${fmtSize(q.size)} (${q.path.replace('/dev/', '')})`).join('\n') + '\n\nThis happens when you press Install at the end, not now.' });
+    if (sure && sure.op === 'yes') return list.map((q) => q.path);
+  }
+}
+
 async function flowInstaller() {
   if (busy) return;
   installerShown = true;
@@ -53,7 +136,7 @@ async function flowInstaller() {
     { label: 'Install Tessera', sub: 'on this computer', op: 'install', ok: true },
     { label: 'Try it first', sub: 'nothing is changed', op: 'try', plain: true },
     { label: 'Recover', sub: "a Tessera on this computer that won't start", op: 'recover', plain: true },
-  ], 0, { welcome: true, body: 'This USB installs Tessera, a gaming console for your PC, with no internet needed. You can also try it first: nothing on this computer changes until you choose Erase and install. Settings, and the guide, have Install Tessera whenever you\'re ready.' });
+  ], 0, { welcome: true, body: 'This USB installs Tessera, a gaming console for your PC, with no internet needed. You can also try it first: nothing on this computer changes until you press Install at the very end. Settings, and the guide, have Install Tessera whenever you\'re ready.' });
   reveal();
   if (first && first.op === 'recover') return flowRecovery();
   if (!first || first.op !== 'install') return;
@@ -88,9 +171,13 @@ async function flowInstaller() {
     if (step < 0) return;
     if (step === 0) { // the disk
       const it = await pick('Where should Tessera go?', probe.disks.map((d) => ({ label: d.model, sub: [fmtSize(d.size), d.transport ? d.transport.toUpperCase() : '', d.removable ? 'removable' : ''].filter(Boolean).join(' · '), disk: d }))
-        , Math.max(0, probe.disks.findIndex((d) => d.path === c.disk)), { body: 'Everything on the disk you pick will be erased, including any other system on it. (Installing next to Windows comes later.)' });
+        , Math.max(0, probe.disks.findIndex((d) => d.path === c.disk)), { body: 'Next you choose whether Tessera erases the disk or goes next to what is already on it.' });
       if (!it) { step--; continue; }
-      c.disk = it.disk.path; c.diskLabel = `${it.disk.model} (${fmtSize(it.disk.size)})`; step++; continue;
+      const how = await chooseLayout(it.disk);
+      if (!how) continue; // back to the disks
+      c.disk = it.disk.path; c.diskLabel = `${it.disk.model} (${fmtSize(it.disk.size)})`;
+      c.layout = how.layout; c.remove = how.remove; c.others = othersOn(it.disk);
+      step++; continue;
     }
     if (step === 1) { // the graphics build
       const order = [probe.recommended, ...['standard', 'nvidia', 'nvidia-open'].filter((v) => v !== probe.recommended)].filter((v) => v && probe.available.includes(v));
@@ -153,14 +240,14 @@ async function flowInstaller() {
     }
     if (step === 5) { // last look
       const it = await pick('Ready to install', [
-        { label: 'Erase and install', sub: c.diskLabel, op: 'go', danger: true },
+        { label: c.layout === 'alongside' ? 'Install' : c.layout === 'replace' ? 'Erase those partitions and install' : 'Erase and install', sub: c.diskLabel, op: 'go', danger: c.layout !== 'alongside', ok: c.layout === 'alongside' },
         { label: 'Go back', op: 'back', plain: true },
-      ], 1, { body: `Disk: ${c.diskLabel}, erased completely\nGraphics: ${names[c.variant] || c.variant}\nAccount: ${c.user}\nTime zone: ${c.timezone.replace(/_/g, ' ')}\nSecure Boot: ${c.secureBoot === 'auto' ? 'set up for me' : 'I\'ll handle it'}${online ? '\nDownload: about 5 to 6 GB, during the install' : ''}` });
+      ], 1, { body: `Disk: ${c.diskLabel}, ${c.layout === 'alongside' ? `next to ${c.others} (its free space; nothing else changes)` : c.layout === 'replace' ? `${c.remove.length} partition${c.remove.length === 1 ? '' : 's'} erased (${c.remove.map((x) => x.replace('/dev/', '')).join(', ')}); the rest stays` : 'erased completely'}\nGraphics: ${names[c.variant] || c.variant}\nAccount: ${c.user}\nTime zone: ${c.timezone.replace(/_/g, ' ')}\nSecure Boot: ${c.secureBoot === 'auto' ? 'set up for me' : 'I\'ll handle it'}${online ? '\nDownload: about 5 to 6 GB, during the install' : ''}` });
       if (!it || it.op !== 'go') { step--; continue; }
       break;
     }
   }
-  const r = await api.installer('start', { choices: { disk: c.disk, variant: c.variant, user: c.user, fullName: c.fullName, password: c.password, timezone: c.timezone, secureBoot: c.secureBoot } });
+  const r = await api.installer('start', { choices: { disk: c.disk, layout: c.layout || 'erase', remove: c.remove || [], variant: c.variant, user: c.user, fullName: c.fullName, password: c.password, timezone: c.timezone, secureBoot: c.secureBoot } });
   c.password = '';
   if (!r || !r.ok) return void (await pick("Couldn't start", [{ label: 'OK', plain: true }], 0, { body: (r && r.error) || "The installer didn't start." }));
   const end = await installWatch();
