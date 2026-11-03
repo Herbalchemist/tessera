@@ -152,13 +152,13 @@ const premultiplied = (rgba) => {
   if (process.argv.includes('--preview')) {
     fs.mkdirSync(OUT, { recursive: true });
     const tmp = fs.mkdtempSync(path.join(OUT, 'pv-'));
-    const word = fs.readFileSync(path.join(ROOT, 'system_files/usr/share/tessera/branding/tessera-plymouth-watermark.png')).toString('base64');
+    const word = fs.readFileSync(path.join(THEME, 'watermark.png')).toString('base64');
     await page.setViewportSize({ width: 960, height: 540 });
     for (let i = 0; i < count * 2; i++) {
       const b = boot[i % count];
       await page.setContent(`<body style="margin:0;background:#000;width:960px;height:540px;position:relative">
-        <img src="data:image/png;base64,${b}" style="position:absolute;left:416px;top:206px;width:128px">
-        <img src="data:image/png;base64,${word}" style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%)"></body>`);
+        <img src="data:image/png;base64,${word}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
+        <img src="data:image/png;base64,${b}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:128px"></body>`);
       await page.screenshot({ path: path.join(tmp, `f${String(i).padStart(4, '0')}.png`) });
     }
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(tmp, 'f%04d.png'), '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', path.join(OUT, 'boot-preview.mp4')]);

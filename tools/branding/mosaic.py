@@ -6,15 +6,18 @@
 # corners softened. No randomness: the same sites always give the same symbol.
 import math
 
-# (x, y, size): where a stone sits and how big it wants to be, in the symbol's 64 x 64 space
-SITES = [
-    (19, 20, 15.0), (46, 13, 9.0), (57, 31, 7.2), (40, 34, 8.2), (23, 47, 9.6), (50, 52, 8.2),
-    (7, 41, 5.4), (34, 7, 5.0), (60, 11, 4.6), (37, 55, 4.8), (11, 57, 4.8), (58, 59, 4.4), (48, 24, 4.9), (31, 32, 4.7),
-]
-PALETTE = ['#b4a7ff', '#ffb3c7', '#8fe3cf', '#ffd98f', '#8ec5ff']
+# Stones sit on a loose spiral (a sunflower's seed pattern): big in the middle, smaller and
+# smaller outward, a few tiny ones drifting off the edge. No frame: the outline is the stones.
+COUNT, SPREAD, SHRINK, FIRST, REACH, TURN = 18, 6.6, 0.89, 13.0, 1.3, 80.0
+SITES = []
+for _i in range(COUNT):
+    _rho, _th = SPREAD * math.sqrt(_i + 0.6), math.radians(_i * 137.508 + TURN)
+    SITES.append((_rho * math.cos(_th), _rho * math.sin(_th), FIRST * SHRINK ** _i))
+# one pastel for every stone (14, then they go round again), picked so neighbours differ
+PALETTE = ['#b4a7ff', '#ffb3c7', '#8fe3cf', '#ffd98f', '#8ec5ff', '#ffb8a1', '#d3b3ff', '#a7e8f0',
+           '#ffc9e6', '#c5e8a0', '#ffcf9e', '#a5b8ff', '#f5b0d8', '#9fe6b8']
 GAP = 1.4      # grout between stones
 ROUND = 1.1    # how soft a stone's corners are
-SHADES = [0.0, 0.07, -0.06, 0.04, -0.03, 0.09, -0.08, 0.02, 0.06, -0.05, 0.03, -0.02, 0.08]
 
 
 def clip(poly, a, b, c):
@@ -31,26 +34,19 @@ def clip(poly, a, b, c):
     return out
 
 
-def squircle(lo=1.0, hi=63.0, corner=17.0, steps=10):
-    pts = []
-    for cx, cy, a0 in ((hi - corner, lo + corner, -90), (hi - corner, hi - corner, 0), (lo + corner, hi - corner, 90), (lo + corner, lo + corner, 180)):
-        for s in range(steps + 1):
-            a = math.radians(a0 + 90 * s / steps)
-            pts.append((cx + corner * math.cos(a), cy + corner * math.sin(a)))
-    return pts
-
-
 def cells():
-    shape = squircle()
     out = []
     for i, (x, y, r) in enumerate(SITES):
-        poly = list(shape)
+        R = r * REACH
+        poly = [(x + R * math.cos(2 * math.pi * k / 16 + i), y + R * math.sin(2 * math.pi * k / 16 + i)) for k in range(16)]
         for j, (x2, y2, r2) in enumerate(SITES):
             if i != j:
                 # power bisector: |p - s_i|^2 - r_i^2 <= |p - s_j|^2 - r_j^2
                 poly = clip(poly, 2 * (x2 - x), 2 * (y2 - y), x2 * x2 + y2 * y2 - x * x - y * y - (r2 * r2 - r * r))
         out.append(poly)
-    return out
+    xs, ys = [p[0] for c in out for p in c], [p[1] for c in out for p in c]
+    cx, cy, k = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, 60 / max(max(xs) - min(xs), max(ys) - min(ys))
+    return [[((x - cx) * k + 32, (y - cy) * k + 32) for x, y in c] for c in out]
 
 
 def inset(poly, d):
@@ -99,12 +95,7 @@ def pieces():
     'slot': the same stone's spot, a little smaller, 'c': centre, 'color': ...}], biggest first."""
     raw = cells()
     n = len(raw)
-    near = [[j for j in range(n) if j != i and raw[i] and raw[j] and touching(raw[i], raw[j])] for i in range(n)]
     order = sorted(range(n), key=lambda i: -area(raw[i]))
-    color = {}
-    for k, i in enumerate(order):   # neighbours never share a colour; otherwise the palette goes round
-        taken = {color[j] for j in near[i] if j in color}
-        color[i] = next((c for c in range(len(PALETTE)) if c not in taken), k % len(PALETTE))
     out = []
     for rank, i in enumerate(order):
         body = inset(raw[i], GAP / 2 + ROUND)
@@ -114,7 +105,7 @@ def pieces():
             'pts': [[round(x, 3), round(y, 3)] for x, y in body],
             'slot': [[round(x, 3), round(y, 3)] for x, y in inset(raw[i], GAP / 2 + ROUND + 0.9)],
             'c': [round(v, 3) for v in centroid(body)],
-            'color': shade(PALETTE[color[i]], SHADES[rank % len(SHADES)]),
+            'color': PALETTE[(rank * 5) % len(PALETTE)],
             'area': round(area(raw[i]), 1),
         })
     return out
