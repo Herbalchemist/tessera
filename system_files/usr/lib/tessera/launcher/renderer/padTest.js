@@ -202,13 +202,15 @@ function flowPad() {
 
 // "Change grip/order", as on the Switch: L + R on two Joy-Cons joins them into one controller,
 // SL + SR on one Joy-Con makes it a player of its own (held sideways). Only while this is open.
-const GRIP_PART = { joined: 'Joy-Con L + R', jl: 'Left Joy-Con, sideways', jr: 'Right Joy-Con, sideways', pro: 'Controller' };
+const GRIP_PART = { joined: 'Joy-Con L + R', jl: 'Left Joy-Con, sideways', jr: 'Right Joy-Con, sideways', pro: 'Controller', unassigned: 'Not set up yet' };
 function batteryText(b) {
   if (!b) return '';
   const lvl = b.percent !== null && b.percent !== undefined ? b.percent + '%' : b.level;
   return (lvl ? 'Battery ' + lvl : '') + (b.charging ? ' (charging)' : '');
 }
 function renderGrip() {
+  // opened by the prompt for a Joy-Con that was waiting, and everything is set up now: done
+  if (modal && modal.autoClose && !(vpadInfo.svc || []).some((p) => p.kind === 'unassigned')) { closeModal(); return; }
   modalEl.className = 'grip';
   modalEl.replaceChildren();
   const box = document.createElement('div');
@@ -218,9 +220,10 @@ function renderGrip() {
   const how = document.createElement('p');
   how.className = 'griphow';
   how.textContent = 'Use two Joy-Cons together: press L and R, one on each. Use one Joy-Con on its own, held sideways: press SL and SR on it.';
+  if (vpadInfo.service && (vpadInfo.svc || []).some((p) => p.kind === 'unassigned')) how.classList.add('waiting');
   const cards = document.createElement('div');
   cards.className = 'gripcards';
-  const pads = vpadInfo.pads;
+  const pads = [...(vpadInfo.svc || []), ...vpadInfo.pads];
   if (!pads.length) {
     const none = document.createElement('p');
     none.className = 'gripnone';
@@ -232,7 +235,7 @@ function renderGrip() {
     c.className = 'gripcard k-' + p.kind;
     const pl = document.createElement('div');
     pl.className = 'gripplayer';
-    pl.textContent = 'Player ' + p.player;
+    pl.textContent = p.kind === 'unassigned' ? 'Waiting' : 'Player ' + p.player;
     const pic = document.createElement('div');
     pic.className = 'grippic';
     for (const part of p.parts) { const j = document.createElement('i'); j.className = 'jc ' + part; pic.appendChild(j); }
@@ -241,7 +244,7 @@ function renderGrip() {
     nm.textContent = GRIP_PART[p.kind] || p.name.replace(/ \(Nintendo\)$/, '');
     const sub = document.createElement('div');
     sub.className = 'gripsub';
-    sub.textContent = p.error === 'permission' ? "Tessera isn't allowed to read this one" : [batteryText(p.battery), p.motion ? 'motion sensors' : ''].filter(Boolean).join(' · ');
+    sub.textContent = p.kind === 'unassigned' ? 'Press SL + SR on it, or L + R with another Joy-Con' : p.error === 'permission' ? "Tessera isn't allowed to read this one" : [batteryText(p.battery), p.motion ? 'motion sensors' : ''].filter(Boolean).join(' · ');
     c.append(pl, pic, nm, sub);
     cards.appendChild(c);
   }
@@ -251,11 +254,11 @@ function renderGrip() {
   box.append(h, how, cards, foot);
   modalEl.appendChild(box);
 }
-function flowGrip() {
+function flowGrip(auto = false) {
   if (!api.pads) return Promise.resolve();
   api.pads('grip', { on: true }).then(applyPadList).catch(() => {});
   return new Promise((resolve) => {
-    modal = { kind: 'grip', onClose: () => { api.pads('grip', { on: false }).catch(() => {}); resolve(); } };
+    modal = { kind: 'grip', autoClose: auto, onClose: () => { api.pads('grip', { on: false }).catch(() => {}); resolve(); } };
     modalEl.hidden = false;
     renderGrip();
   });
@@ -267,7 +270,7 @@ const PAD_LABELS = {
   rumble: { off: 'Off', low: 'Low', normal: 'Normal', high: 'High' },
   style: { split: 'Left trigger = left motor, right = right', both: 'Both motors together', pulse: 'Pulsing' },
   glyphs: { auto: 'Automatic (match my controller)', xbox: 'Xbox  (A B X Y)', playstation: 'PlayStation  (✕ ○ □ △)', nintendo: 'Nintendo  (B A Y X)' },
-  joycons: { together: 'One controller (held together)', separate: 'Two players (each held sideways)' },
+  joycons: { ask: 'Ask me: I press SL + SR, or L + R (like a Switch)', together: 'Join a left and a right by themselves', separate: 'Every Joy-Con its own player (sideways)' },
   repeat: { slow: 'Slower', standard: 'Standard', fast: 'Faster' },
   confirm: { auto: 'Automatic: the right button on Switch controllers, the bottom one on others', bottom: 'The bottom button confirms, the right one goes back (every controller)', right: 'The right button confirms, the bottom one goes back (every controller)' },
   browserCursor: { right: 'Right stick moves the cursor, left stick scrolls', left: 'Left stick moves the cursor, right stick scrolls' },
@@ -354,7 +357,7 @@ async function flowPadMenu() {
       { label: 'On-screen keyboard', sub: (PAD_LABELS.oskSize[prefs.pad.oskSize] || PAD_LABELS.oskSize.dock).split(':')[0], op: 'oskSize' },
       { label: 'Joy-Con', header: true },
       { label: 'Change grip/order', sub: vpadInfo.pads.length ? vpadInfo.pads.map((p) => 'P' + p.player + ' ' + (GRIP_PART[p.kind] || 'Controller')).join(' · ') : 'join or split Joy-Cons, see who is which player', op: 'grip' },
-      { label: 'A left and a right Joy-Con', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.together, op: 'joycons' },
+      { label: 'Joy-Con setup', sub: PAD_LABELS.joycons[prefs.pad.joycons] || PAD_LABELS.joycons.ask, op: 'joycons' },
       { label: 'Browser', header: true, fold: 'pad.browser', open: true },
       { label: 'Cursor stick', sub: prefs.pad.browserCursor === 'left' ? 'Left stick (right stick scrolls)' : 'Right stick (left stick scrolls)', op: 'browserCursor' },
       { label: 'Cursor speed', sub: prefs.pad.cursorSpeed + '%', op: 'cursorSpeed' },
@@ -383,7 +386,7 @@ async function flowPadMenu() {
     else if (it.op === 'repeat') await pickChoice('How fast a held stick or D-pad keeps moving (in menus, on tiles and in the browser)', 'repeat');
     else if (it.op === 'confirm') await pickChoice('Which button confirms? By position: the other of the two goes back; the left and top buttons stay. The launcher, browser and dialogs all use this.', 'confirm');
     else if (it.op === 'grip') await flowGrip();
-    else if (it.op === 'joycons') await pickChoice('When a left and a right Joy-Con are both connected', 'joycons');
+    else if (it.op === 'joycons') await pickChoice('How Joy-Cons are set up', 'joycons');
   }
 }
 

@@ -696,6 +696,8 @@ body[data-wg="outline"] .card.kind-inlay .sysinfo-label, body[data-wg="outline"]
 .grippic .jc.jl { background: #3fb0e0; border-top-right-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
 .grippic .jc.jr { background: #f0525b; border-top-left-radius: 0.25rem; border-bottom-left-radius: 0.25rem; }
 .grippic .jc.pro { width: 5.6rem; height: 3.6rem; border-radius: 1.2rem 1.2rem 1.8rem 1.8rem; }
+.gripcard.k-unassigned { border: 2px dashed var(--accent); background: transparent; }
+.griphow.waiting { color: var(--accent); }
 .gripcard.k-jl .jc, .gripcard.k-jr .jc { transform: rotate(-90deg); }
 .gripcard.k-jr .jc { transform: rotate(90deg); }
 .gripname { color: var(--text); font-weight: 700; }

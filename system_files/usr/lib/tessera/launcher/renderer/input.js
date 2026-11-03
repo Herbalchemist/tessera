@@ -228,6 +228,19 @@ function applyPadList(list) {
     else { old.id = p.name; old.player = p.player; old.info = p; }
   }
   if (modal && modal.kind === 'grip') renderGrip();
+  else gripPrompt(list);
+}
+// A Joy-Con that nobody has said how to hold (SL + SR, or L + R) is waiting: show the grip screen,
+// as a Switch does, so the player knows what to press. It closes by itself once nothing is waiting.
+// (Only once for each Joy-Con that connects; B closes it and it stays closed until the next one.)
+let gripAsked = new Set();
+function gripPrompt(list) {
+  const waiting = (list.service && list.svc ? list.svc : []).filter((p) => p.kind === 'unassigned').map((p) => p.id);
+  gripAsked = new Set([...gripAsked].filter((id) => waiting.includes(id)));
+  const fresh = waiting.filter((id) => !gripAsked.has(id));
+  if (!fresh.length || modal || busy || suspended || typeof flowGrip !== 'function') return;
+  fresh.forEach((id) => gripAsked.add(id));
+  flowGrip(true);
 }
 if (api.onPads) {
   api.onPads((m) => {
