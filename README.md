@@ -8,8 +8,9 @@
   </picture>
 </h1>
 
-**A gaming OS you drive from the couch.**<br>
-Controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
+**Designed for controllers, built by you.**<br>
+A gaming OS you drive from the couch: 
+controller-first, themeable down to the layout, built on [Bazzite](https://bazzite.gg).
 
 [![Build](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml/badge.svg)](https://github.com/Herbalchemist/tessera/actions/workflows/build.yml)
 ![Version](https://img.shields.io/badge/launcher-0.56.0-6a58d8)

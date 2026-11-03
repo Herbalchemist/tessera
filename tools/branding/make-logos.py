@@ -6,9 +6,12 @@
 #
 #   python3 tools/branding/make-logos.py && node tools/branding/render.cjs && node tools/branding/motion.cjs
 #
-# The symbol: one large tile with three smaller ones stepping down its side, each turned a little,
-# like loose tesserae. The wordmark: "Tessera" in Inter Bold, its T built from five tiles.
+# The symbol: a living mosaic (mosaic.py): stones of every size and shape, each a shade of its own.
+# A real mosaic is never uniform, and neither are the people who build this: their differences are
+# the point. The wordmark: "Tessera" in Inter Bold, its T built from six unequal stones.
 import os, sys
+sys.path.insert(0, os.path.dirname(__file__))
+import mosaic
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
@@ -20,18 +23,16 @@ FONT = os.environ.get('INTER_BOLD', '/usr/share/fonts/opentype/inter/Inter-Bold.
 L, P, M, G = '#b4a7ff', '#ffb3c7', '#8fe3cf', '#ffd98f'
 INK_DARK = '#2a2638'   # letters on light backgrounds
 
-def tile(x, y, w, rot, fill, rx=None):
-    rx = w * 0.23 if rx is None else rx
-    return (f'<rect x="{x - w / 2:.2f}" y="{y - w / 2:.2f}" width="{w:.2f}" height="{w:.2f}" rx="{rx:.2f}" '
+def tile(x, y, w, rot, fill, h=None, rx=None):
+    h = w if h is None else h
+    rx = min(w, h) * 0.23 if rx is None else rx
+    return (f'<rect x="{x - w / 2:.2f}" y="{y - h / 2:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{rx:.2f}" '
             f'fill="{fill}" transform="rotate({rot} {x:.2f} {y:.2f})"/>')
 
-# ---- the symbol (64 x 64)
-SYMBOL = [(25, 25, 38, -5, L), (54, 16, 14, 12, P), (52, 36, 11.5, -6, M), (46, 53, 17, 9, G)]
+# ---- the symbol (64 x 64): the mosaic
+STONES = mosaic.pieces()
 def symbol(colors=None, ox=0, oy=0, scale=1):
-    out = []
-    for i, (x, y, w, r, c) in enumerate(SYMBOL):
-        out.append(tile(ox + x * scale, oy + y * scale, w * scale, r, colors[i] if colors else c))
-    return ''.join(out)
+    return mosaic.svg_pieces(STONES, ox, oy, scale, mono=colors[0] if colors else None)
 
 def svg(view, body, title='Tessera'):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view}"><title>{title}</title>{body}</svg>\n'
@@ -51,11 +52,17 @@ def letters(text, x0, ink):
     return f'<path fill="{ink}" d="{pen.getCommands()}"/>', x
 
 def tile_t(x0):
-    w = CAP / 3.2; g = w * 0.1; step = w + g
-    cx = [x0 + w / 2, x0 + w / 2 + step, x0 + w / 2 + 2 * step]
-    cy = [w / 2, w / 2 + step, w / 2 + 2 * step]
-    return ''.join([tile(cx[0], cy[0], w, -4, L), tile(cx[1], cy[0], w, 3, P), tile(cx[2], cy[0], w, 6, G),
-                    tile(cx[1], cy[1], w, -3, M), tile(cx[1], cy[2], w, 4, L)]), x0 + 3 * w + 2 * g
+    # the T, six stones none alike: a bar of three (wide, wider, narrow) and a stem of two (short, tall)
+    w = CAP / 3.2; g = w * 0.1
+    bar = [(0.96, 1.00, -4, L), (1.20, 0.93, 3, P), (0.84, 1.04, 6, G)]
+    out, x = [], 0.0
+    for bw, bh, rot, c in bar:
+        out.append(tile(x0 + (x + bw / 2) * w, (0.5 + (1 - bh) / 2 * 0.2) * w, bw * w, rot, c, bh * w))
+        x += bw + 0.1
+    stem = [(0.95, 0.95, -3, M, 1.1 + 0.475), (0.82, 1.05, 4, L, 2.15 + 0.525)]
+    for sw, sh, rot, c, cy in stem:
+        out.append(tile(x0 + 1.6 * w + (rot * 0.01) * w, cy * w, sw * w, rot, c, sh * w))
+    return ''.join(out), x0 + 3 * w + 2 * g
 
 def wordmark(ink):
     pad = CAP * 0.06
@@ -67,7 +74,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     w = lambda p, s: open(p, 'w').write(s)
     w(os.path.join(BR, 'tessera-logo.svg'), svg('0 0 64 64', symbol()))
-    w(os.path.join(BR, 'tessera-logo-white.svg'), svg('0 0 64 64', symbol(['#ffffff'] * 4)))
+    w(os.path.join(BR, 'tessera-logo-white.svg'), svg('0 0 64 64', symbol(['#ffffff'])))
     for name, ink in (('tessera-wordmark.svg', '#ffffff'), ('tessera-wordmark-dark.svg', INK_DARK)):
         view, body = wordmark(ink)
         w(os.path.join(BR, name), svg(view, body))
@@ -79,7 +86,7 @@ def main():
       svg('0 0 512 512', '<rect width="512" height="512" rx="112" fill="#17151f"/>' + symbol(ox=80, oy=80, scale=352 / 64)))
     # the symbol's tiles for motion.cjs (the boot animation and the busy cursor)
     import json
-    json.dump({'colors': [L, P, M, G], 'tiles': [list(t[:4]) for t in SYMBOL]},
+    json.dump({'round': mosaic.ROUND, 'gap': mosaic.GAP, 'pieces': STONES},
               open(os.path.join(ROOT, 'tools/branding/symbol.json'), 'w'), indent=1)
     print('logo SVGs written')
 
