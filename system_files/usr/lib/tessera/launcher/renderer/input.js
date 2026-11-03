@@ -486,15 +486,10 @@ window.addEventListener('mousemove', (e) => {
   }
   hoverSelect(t);
 }, { passive: true });
-// Did choosing this tile move it out from under the pointer? (Looked at once the scroll has had
-// time to start.)
-function watchHoverScroll(card) {
-  setTimeout(() => {
-    if (!card.isConnected) return;
-    const b = card.getBoundingClientRect();
-    const over = pointer.x >= b.left && pointer.x <= b.right && pointer.y >= b.top && pointer.y <= b.bottom;
-    if (!over) hoverHold = { until: performance.now() + HOVER_HOLD_MS, card };
-  }, 220);
+// Where the grid sits: its rows' and rails' positions. If choosing a tile changes this, the grid is
+// about to slide under the pointer.
+function gridPlace() {
+  return rowsEl.style.transform + '|' + [...rowsEl.querySelectorAll('.rail')].map((r) => r.style.transform).join('|');
 }
 // The selection follows the pointer: the tile or menu line under it gets the highlight, so the
 // wheel and the keys carry on from where the mouse is. (Only on real movement, above: when the
@@ -524,8 +519,12 @@ function hoverSelect(t) {
   c.row = r;
   c.cols[rows[r].id] = n;
   focus = 'content';
+  const before = gridPlace();
   update();
-  watchHoverScroll(card);
+  // The grid moved to bring this tile into place: hold still at once (not after the slide, when
+  // a moving pointer has already chosen the next tile and the next), until the pointer reaches the
+  // tile where it went, or a couple of seconds pass.
+  if (gridPlace() !== before) hoverHold = { until: performance.now() + HOVER_HOLD_MS, card };
 }
 window.addEventListener('contextmenu', (e) => { e.preventDefault(); setInputMode('mouse'); showMouse(); if (!suspended && !busy) press('b'); });
 let wheelAt = 0;
