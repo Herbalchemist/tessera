@@ -209,7 +209,7 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     await title('Which partitions should go?');
     const after = await page.evaluate(() => modal.items.map((i) => i.label + '|' + (i.sub || '')));
     assert.match(after[2], /^☑  Linux "old"/);
-    assert.match(after[3], /^Continue\|Tessera gets (8|9)\d\d GB/);
+    assert.match(after[3], /^Continue\|Tessera gets 600 GB/);
     await page.screenshot({ path: path.join(output, 'install-10-partitions.png') });
     await choose('Which partitions should go?', (x) => x.op === 'go');
     await title('Erase these partitions?');
