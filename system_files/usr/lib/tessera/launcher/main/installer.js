@@ -76,7 +76,8 @@ async function installerOp(op, p) {
     const c = p && typeof p.choices === 'object' ? p.choices : null;
     if (!c) return { ok: false, error: 'Nothing to install.' };
     const pick = (k, n) => (typeof c[k] === 'string' ? c[k].slice(0, n) : '');
-    const choices = { disk: pick('disk', 64), variant: pick('variant', 20), user: pick('user', 32), fullName: pick('fullName', 60), password: pick('password', 200), timezone: pick('timezone', 64), secureBoot: pick('secureBoot', 10) };
+    const remove = Array.isArray(c.remove) ? c.remove.filter((x) => typeof x === 'string').slice(0, 64).map((x) => x.slice(0, 64)) : [];
+    const choices = { disk: pick('disk', 64), layout: pick('layout', 12) || 'erase', remove, variant: pick('variant', 20), user: pick('user', 32), fullName: pick('fullName', 60), password: pick('password', 200), timezone: pick('timezone', 64), secureBoot: pick('secureBoot', 10) };
     try { fs.rmSync(INSTALL_STATE, { force: true }); } catch { /* the helper starts it afresh anyway */ }
     const cmd = [...LIVE_SUDO, LIVE_INSTALL, 'run'];
     installChild = spawn(cmd[0], cmd.slice(1), { stdio: ['pipe', 'ignore', 'ignore'], detached: true });

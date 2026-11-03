@@ -124,7 +124,7 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     await page.screenshot({ path: path.join(output, 'install-6-progress.png') });
     await title('Tessera is installed');
     const choices = JSON.parse(fs.readFileSync(path.join(temp, 'choices.json'), 'utf8'));
-    assert.deepEqual(choices, { disk: '/dev/nvme0n1', variant: 'nvidia', user: 'alexrivera', fullName: 'Alex Rivera', password: 'hunter22', timezone: 'America/Phoenix', secureBoot: 'auto' });
+    assert.deepEqual(choices, { disk: '/dev/nvme0n1', layout: 'erase', remove: [], variant: 'nvidia', user: 'alexrivera', fullName: 'Alex Rivera', password: 'hunter22', timezone: 'America/Phoenix', secureBoot: 'auto' });
     const done = await page.evaluate(() => modal.body);
     assert.match(done, /Enroll MOK/);
     assert.match(done, /universalblue/);
@@ -145,6 +145,87 @@ fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify(probe));
     assert.deepEqual(g2.items, ['AMD / Intel']);
     await page.screenshot({ path: path.join(output, 'install-8-one-build-usb.png') });
     checks.push('A one-build USB on a PC that needs another build explains it and still offers what it has');
+
+    // Next to Windows: the disk already has Windows (and an old Linux) on it.
+    const MiB = 1024 ** 2, GB = 1e9, S = 512;
+    const parts = [['/dev/nvme0n1p1', MiB, 100 * MiB], ['/dev/nvme0n1p2', 101 * MiB, 16 * MiB], ['/dev/nvme0n1p3', 117 * MiB, 400 * GB], ['/dev/nvme0n1p4', 117 * MiB + 400 * GB, 300 * GB]];
+    const winDisk = {
+      path: '/dev/nvme0n1', size: 1000204886016, model: 'Samsung SSD 980 1TB', transport: 'nvme', removable: false,
+      pttype: 'gpt', free: Math.floor((1000204886016 - (117 * MiB + 700 * GB)) / MiB) * MiB - MiB,
+      esp: { path: '/dev/nvme0n1p1', size: 100 * MiB, systems: ['Microsoft'], free: 60 * MiB }, systems: ['Windows', 'Linux'],
+      partitions: [
+        { path: '/dev/nvme0n1p1', size: 100 * MiB, fstype: 'vfat', label: '', what: 'Boot partition (EFI)', esp: true },
+        { path: '/dev/nvme0n1p2', size: 16 * MiB, fstype: '', label: '', what: 'Windows', esp: false },
+        { path: '/dev/nvme0n1p3', size: 400 * GB, fstype: 'ntfs', label: 'Windows', what: 'Windows', esp: false },
+        { path: '/dev/nvme0n1p4', size: 300 * GB, fstype: 'ext4', label: 'old', what: 'Linux', esp: false },
+      ],
+      table: { partitiontable: { label: 'gpt', sectorsize: S, firstlba: 2048, lastlba: Math.floor(1000204886016 / S) - 34, partitions: parts.map(([node, a, z]) => ({ node, start: Math.floor(a / S), size: Math.floor(z / S) })) } },
+      alongside: { ok: true, room: 0, why: '' },
+    };
+    fs.writeFileSync(path.join(temp, 'probe.json'), JSON.stringify({ ...probe, disks: [winDisk] }));
+    const restart = () => page.evaluate(() => { closeModal(); installerShown = false; flowInstaller(); });
+    const restOfSteps = async () => {
+      await choose('Graphics', (x) => /Recommended/.test(x.sub));
+      await type('Your name', 'Alex Rivera');
+      await choose('Your account', (x) => x.op === 'ok');
+      await type('Pick a password', 'hunter22');
+      await type('Type the password again', 'hunter22');
+      await choose('Time zone: region', (x) => x.x === 'America');
+      await choose('Time zone: America', (x) => x.z === 'America/Phoenix');
+      await choose('Secure Boot', (x) => x.v === 'auto');
+      await title('Ready to install');
+    };
+    await restart();
+    await choose('Welcome to Tessera', (x) => x.op === 'install');
+    await choose('Where should Tessera go?', (x) => x.disk);
+    await title('How should Tessera use this disk?');
+    const lay = await page.evaluate(() => ({ items: modal.items.map((i) => i.label + '|' + (i.sub || '')), index: modal.index, body: modal.body }));
+    assert.match(lay.items[0], /^Install next to Windows and Linux\|uses the .*free space/);
+    assert.equal(lay.index, 0, 'next to what is there comes first when it fits');
+    assert.match(lay.items[2], /^Erase the whole disk\|.*including Windows and Linux/);
+    assert.match(lay.body, /Windows "Windows" \(400 GB\)/);
+    await page.screenshot({ path: path.join(output, 'install-9-layout.png') });
+    await choose('How should Tessera use this disk?', (x) => x.op === 'alongside');
+    await restOfSteps();
+    const sum2 = await page.evaluate(() => ({ body: modal.body, items: modal.items.map((i) => i.label) }));
+    assert.match(sum2.body, /next to Windows and Linux \(its free space; nothing else changes\)/);
+    assert.equal(sum2.items[0], 'Install');
+    await choose('Ready to install', (x) => x.op === 'go');
+    await title('Tessera is installed');
+    const ch2 = JSON.parse(fs.readFileSync(path.join(temp, 'choices.json'), 'utf8'));
+    assert.equal(ch2.layout, 'alongside');
+    assert.deepEqual(ch2.remove, []);
+    checks.push('A disk with Windows on it: "Install next to Windows" first (its free space), and the helper is told so');
+
+    // Replacing the old Linux: tick it, the room grows, a confirmation names it, the summary says so.
+    await restart();
+    await choose('Welcome to Tessera', (x) => x.op === 'install');
+    await choose('Where should Tessera go?', (x) => x.disk);
+    await choose('How should Tessera use this disk?', (x) => x.op === 'replace');
+    await title('Which partitions should go?');
+    const before = await page.evaluate(() => modal.items.map((i) => i.label));
+    assert.deepEqual(before.slice(0, 3), ['☐  Windows', '☐  Windows "Windows"', '☐  Linux "old"'], 'the boot partition is never offered');
+    await choose('Which partitions should go?', (x) => x.q && x.q.path === '/dev/nvme0n1p4');
+    await title('Which partitions should go?');
+    const after = await page.evaluate(() => modal.items.map((i) => i.label + '|' + (i.sub || '')));
+    assert.match(after[2], /^☑  Linux "old"/);
+    assert.match(after[3], /^Continue\|Tessera gets (8|9)\d\d GB/);
+    await page.screenshot({ path: path.join(output, 'install-10-partitions.png') });
+    await choose('Which partitions should go?', (x) => x.op === 'go');
+    await title('Erase these partitions?');
+    assert.match(await page.evaluate(() => modal.body), /Linux "old", 300 GB \(nvme0n1p4\)/);
+    assert.equal(await page.evaluate(() => modal.index), 1, 'starts on Go back');
+    await choose('Erase these partitions?', (x) => x.op === 'yes');
+    await restOfSteps();
+    const sum3 = await page.evaluate(() => ({ body: modal.body, items: modal.items.map((i) => i.label) }));
+    assert.match(sum3.body, /1 partition erased \(nvme0n1p4\); the rest stays/);
+    assert.equal(sum3.items[0], 'Erase those partitions and install');
+    await choose('Ready to install', (x) => x.op === 'go');
+    await title('Tessera is installed');
+    const ch3 = JSON.parse(fs.readFileSync(path.join(temp, 'choices.json'), 'utf8'));
+    assert.equal(ch3.layout, 'replace');
+    assert.deepEqual(ch3.remove, ['/dev/nvme0n1p4']);
+    checks.push('Replacing partitions: the boot partition is never offered, ticking shows the room, a confirmation names what goes');
   } finally { await app.close(); }
 
   // The online installer (Mortar's "Online install"): no builds on the USB, the PC is offline at first.
