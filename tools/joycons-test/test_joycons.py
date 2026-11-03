@@ -170,5 +170,178 @@ class CommandLine(unittest.TestCase):
         self.assertIn('config', json.loads(r.stdout))
 
 
+def grips(*pairs):
+    g = jc.Grips()
+    for uniq, kind in pairs:
+        g.connect(uniq, kind)
+    return g
+
+
+class Gestures(unittest.TestCase):
+    def test_nothing_is_assigned_until_the_player_says_so(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        self.assertEqual(jc.plan_groups({L: 'jl', R: 'jr'}, [L, R], 'ask', *g.choices()), [])
+
+    def test_sl_and_sr_make_a_joycon_its_own_sideways_player(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        self.assertFalse(g.press(L, jc.TR, True))     # one of the two side buttons is not enough
+        self.assertTrue(g.press(L, jc.TR2, True))     # a left Joy-Con's SL / SR arrive as TR / TR2
+        self.assertEqual(g.assign, {L: 'single'})
+        self.assertFalse(g.press(R, jc.TL, True))
+        self.assertTrue(g.press(R, jc.TL2, True))     # a right Joy-Con's arrive as TL / TL2
+        self.assertEqual(g.order, [L, R])
+        groups = jc.plan_groups({L: 'jl', R: 'jr'}, g.order, 'ask', *g.choices())
+        self.assertEqual([(x['kind'], x['members']) for x in groups], [('jl', [L]), ('jr', [R])])
+
+    def test_l_and_r_together_join_a_left_and_a_right(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        self.assertFalse(g.press(L, jc.TL, True))     # L alone: only one Joy-Con is saying anything
+        self.assertTrue(g.press(R, jc.TR, True))
+        singles, pairs = g.choices()
+        self.assertEqual((singles, pairs), ([], [[L, R]]))
+        groups = jc.plan_groups({L: 'jl', R: 'jr'}, g.order, 'ask', singles, pairs)
+        self.assertEqual([x['kind'] for x in groups], ['joined'])
+
+    def test_two_lefts_or_two_rights_do_not_join(self):
+        g = grips((L, 'jl'), (L2, 'jl'))
+        g.press(L, jc.TL, True)
+        self.assertFalse(g.press(L2, jc.TL, True))
+
+    def test_a_released_button_does_not_count(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        g.press(L, jc.TL, True)
+        g.press(L, jc.TL, False)
+        self.assertFalse(g.press(R, jc.TR, True))
+
+    def test_assigned_joycons_ignore_gestures_unless_the_grip_screen_is_open(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        g.set_single(L)
+        g.set_single(R)
+        g.press(L, jc.TL, True)
+        self.assertFalse(g.press(R, jc.TR, True))     # playing: two bumpers are just two bumpers
+        g.press(L, jc.TL, False); g.press(R, jc.TR, False)
+        g.grip = True
+        g.press(L, jc.TL, True)
+        self.assertTrue(g.press(R, jc.TR, True))      # on the grip screen they regroup
+        self.assertEqual(g.assign, {L: R, R: L})
+
+    def test_in_an_automatic_mode_gestures_work_only_on_the_grip_screen(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        g.always_ask = False
+        g.press(L, jc.TL, True)
+        self.assertFalse(g.press(R, jc.TR, True))
+        g.grip = True
+        g.press(R, jc.TR, False); g.press(R, jc.TR, True)
+        self.assertTrue(g.press(R, jc.TR, True) or g.assign == {L: R, R: L})
+
+    def test_a_disconnect_forgets_how_it_was_held_and_frees_its_partner(self):
+        g = grips((L, 'jl'), (R, 'jr'))
+        g.set_pair(L, R)
+        g.disconnect(R)
+        self.assertEqual(g.assign, {})
+        self.assertEqual(g.order, [])
+
+    def test_choosing_again_replaces_the_old_choice(self):
+        g = grips((L, 'jl'), (R, 'jr'), (R2, 'jr'))
+        g.set_pair(L, R)
+        g.set_pair(L, R2)
+        self.assertEqual(g.assign, {L: R2, R2: L})   # R is free again
+
+    def test_players_are_numbered_in_the_order_they_were_assigned_and_can_move(self):
+        g = grips((L, 'jl'), (R, 'jr'), (L2, 'jl'))
+        g.set_single(L2)
+        g.set_pair(L, R)
+        self.assertEqual(g.order, [L2, L, R])
+        self.assertTrue(g.move(L, -1))                # the pair becomes player 1
+        self.assertEqual(g.order, [L, R, L2])
+        self.assertFalse(g.move(L, -1))               # already first
+        self.assertFalse(g.move(L2, 1))               # already last
+
+
+class ServiceCommands(unittest.TestCase):
+    def service(self, *devices):
+        s = jc.Service()
+        s.cfg = {'mode': 'ask', 'singles': [], 'pairs': [], 'order': []}
+        for uniq, kind in devices:
+            s.devs[uniq] = {'info': {'node': 'event0', 'kind': kind, 'uniq': uniq, 'name': 'Joy-Con (%s)' % kind[1].upper()}, 'fd': os.open(os.devnull, os.O_RDONLY)}
+            s.grips.connect(uniq, kind)
+        return s
+
+    def setUp(self):
+        self.written = []
+        self.real = (jc.make_virtual, jc.write_events, jc.save_config)
+        jc.make_virtual = lambda name: os.open(os.devnull, os.O_WRONLY)
+        jc.write_events = lambda fd, events: self.written.extend(events)
+        jc.save_config = lambda c: None
+
+    def tearDown(self):
+        jc.make_virtual, jc.write_events, jc.save_config = self.real
+
+    def state(self):
+        with open(os.environ['TESSERA_JOYCONS_STATE']) as f:
+            return json.load(f)
+
+    def test_unassigned_joycons_are_listed_and_do_not_play(self):
+        s = self.service((L, 'jl'), (R, 'jr'))
+        s.rebuild()
+        st = self.state()
+        self.assertEqual((st['mode'], st['pads'], [u['uniq'] for u in st['unassigned']]), ('ask', [], [L, R]))
+        s.handle(L, jc.EVENT.pack(0, 0, jc.EV_KEY, jc.DUP, 1))
+        self.assertEqual(self.written, [])
+
+    def test_the_gesture_makes_a_controller_that_then_plays(self):
+        s = self.service((L, 'jl'), (R, 'jr'))
+        s.rebuild()
+        s.handle(L, jc.EVENT.pack(0, 0, jc.EV_KEY, jc.TL, 1))
+        s.handle(R, jc.EVENT.pack(0, 0, jc.EV_KEY, jc.TR, 1))
+        st = self.state()
+        self.assertEqual([(p['player'], p['kind']) for p in st['pads']], [(1, 'joined')])
+        self.assertEqual(st['unassigned'], [])
+        s.handle(R, jc.EVENT.pack(0, 0, jc.EV_KEY, jc.SOUTH, 1))
+        self.assertIn((jc.EV_KEY, 0x130, 1), self.written)
+
+    def test_the_grip_screen_stops_play_and_ends_by_itself(self):
+        s = self.service((L, 'jl'), (R, 'jr'))
+        s.rebuild()
+        s.command({'cmd': 'single', 'uniq': L})
+        s.command({'cmd': 'single', 'uniq': R})
+        s.command({'cmd': 'grip', 'on': True})
+        self.assertTrue(self.state()['grip'])
+        s.handle(R, jc.EVENT.pack(0, 0, jc.EV_KEY, jc.EAST, 1))
+        self.assertEqual(self.written, [])
+        s.command({'cmd': 'grip', 'on': False})
+        self.assertFalse(self.state()['grip'])
+
+    def test_commands_pair_split_move_and_forget(self):
+        s = self.service((L, 'jl'), (R, 'jr'), (L2, 'jl'))
+        s.rebuild()
+        self.assertTrue(s.command({'cmd': 'pair', 'left': L, 'right': R})['ok'])
+        self.assertTrue(s.command({'cmd': 'single', 'uniq': L2})['ok'])
+        self.assertEqual([p['kind'] for p in self.state()['pads']], ['joined', 'jl'])
+        s.command({'cmd': 'move', 'uniq': L2, 'delta': -1})
+        self.assertEqual([p['kind'] for p in self.state()['pads']], ['jl', 'joined'])
+        s.command({'cmd': 'unassign', 'uniq': L2})
+        self.assertEqual([u['uniq'] for u in self.state()['unassigned']], [L2])
+        s.command({'cmd': 'forget'})
+        self.assertEqual(self.state()['pads'], [])
+
+    def test_the_mode_can_be_changed_and_decides_by_itself(self):
+        s = self.service((L, 'jl'), (R, 'jr'))
+        s.rebuild()
+        s.command({'cmd': 'mode', 'mode': 'together'})
+        self.assertEqual([p['kind'] for p in self.state()['pads']], ['joined'])
+        s.command({'cmd': 'mode', 'mode': 'separate'})
+        self.assertEqual([p['kind'] for p in self.state()['pads']], ['jl', 'jr'])
+
+    def test_bad_requests_are_refused_and_change_nothing(self):
+        s = self.service((L, 'jl'), (R, 'jr'))
+        s.rebuild()
+        for bad in ({'cmd': 'single', 'uniq': 'nobody'}, {'cmd': 'mode', 'mode': 'x'}, {'cmd': 'move', 'uniq': L, 'delta': 5},
+                    {'cmd': 'wat'}, 'text', None):
+            self.assertFalse(s.command(bad)['ok'], bad)
+        s.command({'cmd': 'pair', 'left': R, 'right': L})   # a right and a left the wrong way round: nothing happens
+        self.assertEqual(self.state()['pads'], [])
+
+
 if __name__ == '__main__':
     unittest.main()

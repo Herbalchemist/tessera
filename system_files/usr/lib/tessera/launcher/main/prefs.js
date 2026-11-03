@@ -43,7 +43,7 @@ const inputActions = require('../input-actions');
 
 // Controller preferences. Deadzone and trigger threshold are percentages.
 const PAD_DEFAULTS = {
-  deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'together',
+  deadzone: 15, trigger: 8, rumble: 'normal', style: 'split', glyphs: 'auto', joycons: 'ask',
   // Which face button confirms, by position: 'auto' (right on Switch controllers, bottom on the
   // others), 'bottom' or 'right'. See input-actions.js.
   confirm: 'auto',
@@ -60,7 +60,7 @@ const PAD_CHOICES = {
   rumble: ['off', 'low', 'normal', 'high'],
   style: ['split', 'both', 'pulse'],
   glyphs: ['auto', 'xbox', 'playstation', 'nintendo'],
-  joycons: ['together', 'separate'], // a left and a right Joy-Con: one controller, or two players
+  joycons: ['ask', 'together', 'separate'], // Joy-Cons: the player says how they hold them (SL + SR, or L + R), or join / separate by themselves
   confirm: inputActions.CONFIRM_CHOICES,
   repeat: inputActions.REPEAT_CHOICES,
   browserCursor: ['right', 'left'],

@@ -2,21 +2,26 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tessera's Joy-Con service: Joy-Cons as real controllers for the whole system (Ludus, Opus, Steam, games).
 
-The kernel (hid_nintendo) shows every Joy-Con as its own half-controller. Like a Switch, this joins a
-left and a right Joy-Con into one controller, or turns a single Joy-Con held sideways into a
-controller of its own, and shows each result to the system as an ordinary Xbox-style gamepad
+The kernel (hid_nintendo) shows every Joy-Con as its own half-controller. Like a Switch, this lets the
+PLAYER say how each is held: SL + SR on one Joy-Con means "sideways, my own controller"; L + R pressed
+together on a left and a right Joy-Con means "these two are one controller". Until then a Joy-Con is
+unassigned (it does nothing but wait for that gesture). Each result is shown to the system as an
+ordinary Xbox-style gamepad
 (a virtual device made through /dev/uinput). The Joy-Cons themselves are grabbed, so nothing sees
 two half-controllers as well. Buttons are mapped by POSITION, never by printed letter.
 
   joycons run                the service (tessera-joycons.service)
   joycons status             what it is doing now (JSON)
-  joycons set-mode together|separate
+  joycons set-mode ask|together|separate    ask (the default): the player says how they hold them;
+                                            together / separate: decided automatically
   joycons single UNIQ        make this Joy-Con its own player      joycons pair LEFT RIGHT
   joycons forget             clear manual choices
   joycons order UNIQ...      player order (first listed = player 1)
 
 Settings live in /etc/tessera/joycons.json; what is running is written to /run/tessera/joycons.json,
-which Ludus reads (and, while it says "active", Ludus leaves the Joy-Cons to this service).
+which Ludus reads (and, while it says "active", Ludus leaves the Joy-Cons to this service). Ludus's
+Joy-Con screen sends its choices through /run/tessera/joycons.sock (one JSON line in, one out):
+grip, single, pair, unassign, move, mode, forget. They only regroup Joy-Cons.
 TESSERA_JOYCONS_* variables are only for tests.
 """
 import fcntl
@@ -32,6 +37,8 @@ DEV = os.environ.get('TESSERA_JOYCONS_DEV', '/dev/input')
 CONFIG = os.environ.get('TESSERA_JOYCONS_CONFIG', '/etc/tessera/joycons.json')
 STATE = os.environ.get('TESSERA_JOYCONS_STATE', '/run/tessera/joycons.json')
 UINPUT = os.environ.get('TESSERA_JOYCONS_UINPUT', '/dev/uinput')
+SOCK = os.environ.get('TESSERA_JOYCONS_SOCK', '/run/tessera/joycons.sock')
+GRIP_SECONDS = 20  # the Joy-Con screen in Ludus renews this every few seconds; if it goes away, grip mode ends
 
 VENDOR = '057e'
 EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
@@ -105,7 +112,8 @@ def scan():
 
 def plan_groups(devices, order, mode='together', singles=(), pairs=()):
     """devices: {uniq: kind}. Returns [{'kind': 'joined'|'jl'|'jr', 'members': [uniq, ...]}] in player order.
-    A pair is [left, right]; 'singles' never join; mode 'separate' joins nothing on its own."""
+    A pair is [left, right]. Mode 'ask' makes controllers only of what the player chose (singles, pairs);
+    'together' also joins a left and a right by itself; 'separate' makes each Joy-Con its own player."""
     live = [k for k in order if k in devices]
     live += [k for k in devices if k not in live]
     used, groups = set(), []
@@ -122,11 +130,105 @@ def plan_groups(devices, order, mode='together', singles=(), pairs=()):
             groups.append({'kind': 'joined', 'members': [lefts.pop(0), rights.pop(0)]})
             used.update(groups[-1]['members'])
     for k in live:
-        if k not in used:
+        if k not in used and (mode != 'ask' or k in singles):
             groups.append({'kind': devices[k], 'members': [k]})
     first = lambda g: min(live.index(m) for m in g['members'])
     groups.sort(key=first)
     return groups
+
+
+# ------------------------------------------------------------------ the player says how they hold them
+
+class Grips:
+    """Who has said what, without any devices (so it can be tested): the gestures, the player order.
+    SL + SR on one Joy-Con: sideways, its own player. L on a left and R on a right, together: one controller.
+    A gesture counts for an unassigned Joy-Con, or for any when the grip screen is open (grip=True).
+    A choice lasts until that Joy-Con disconnects, like on a Switch."""
+
+    def __init__(self):
+        self.kinds = {}     # uniq -> 'jl' | 'jr'
+        self.assign = {}    # uniq -> 'single' | partner uniq
+        self.held = {}      # uniq -> set of codes held now
+        self.order = []     # uniq keys in player order (a group's members side by side)
+        self.grip = False
+        self.always_ask = True   # False when the mode decides by itself: gestures then work only on the grip screen
+
+    def connect(self, uniq, kind):
+        self.kinds[uniq] = kind
+        self.held[uniq] = set()
+
+    def disconnect(self, uniq):
+        self.kinds.pop(uniq, None)
+        self.held.pop(uniq, None)
+        self.unassign(uniq)
+
+    def unassign(self, uniq):
+        partner = self.assign.pop(uniq, None)
+        if partner and partner != 'single':
+            self.assign.pop(partner, None)   # the other half of a pair is free again too
+        self.order = [k for k in self.order if k != uniq and k != partner]
+
+    def listens(self, uniq):
+        return self.grip or (self.always_ask and uniq not in self.assign)
+
+    def set_single(self, uniq):
+        if uniq not in self.kinds or self.assign.get(uniq) == 'single':
+            return False
+        self.unassign(uniq)
+        self.assign[uniq] = 'single'
+        self.order.append(uniq)
+        return True
+
+    def set_pair(self, left, right):
+        if self.kinds.get(left) != 'jl' or self.kinds.get(right) != 'jr' or self.assign.get(left) == right:
+            return False
+        self.unassign(left)
+        self.unassign(right)
+        self.assign[left], self.assign[right] = right, left
+        self.order += [left, right]
+        return True
+
+    def move(self, uniq, delta):
+        """Move the player holding this Joy-Con up or down the player order."""
+        groups = []
+        for k in self.order:
+            if not any(k in g for g in groups):
+                partner = self.assign.get(k)
+                groups.append([k] if partner in (None, 'single') else sorted([k, partner], key=lambda m: self.kinds[m] != 'jl'))
+        at = next((i for i, g in enumerate(groups) if uniq in g), None)
+        to = None if at is None else at + (1 if delta > 0 else -1)
+        if to is None or to < 0 or to >= len(groups):
+            return False
+        groups[at], groups[to] = groups[to], groups[at]
+        self.order = [k for g in groups for k in g]
+        return True
+
+    def press(self, uniq, code, down):
+        """A button went down or up. Returns True when that completed a gesture (the groups changed)."""
+        held = self.held.get(uniq)
+        if held is None:
+            return False
+        (held.add if down else held.discard)(code)
+        if not down or not self.listens(uniq):
+            return False
+        kind = self.kinds[uniq]
+        if (kind == 'jl' and TR in held and TR2 in held) or (kind == 'jr' and TL in held and TL2 in held):
+            return self.set_single(uniq)   # SL + SR (the kernel reports a left Joy-Con's as TR / TR2)
+        for other, k2 in self.kinds.items():
+            if other == uniq or k2 == kind or not self.listens(other):
+                continue
+            left, right = (uniq, other) if kind == 'jl' else (other, uniq)
+            if TL in self.held[left] and TR in self.held[right]:
+                return self.set_pair(left, right)
+        return False
+
+    def choices(self):
+        singles = [k for k, v in self.assign.items() if v == 'single']
+        pairs = []
+        for k, v in self.assign.items():
+            if v != 'single' and self.kinds.get(k) == 'jl':
+                pairs.append([k, v])
+        return singles, pairs
 
 
 # ------------------------------------------------------------------ turning Joy-Con events into gamepad events
@@ -257,7 +359,7 @@ def load_config():
     except (OSError, ValueError):
         c = {}
     return {
-        'mode': 'separate' if c.get('mode') == 'separate' else 'together',
+        'mode': c.get('mode') if c.get('mode') in ('together', 'separate') else 'ask',
         'singles': [s for s in c.get('singles', []) if isinstance(s, str)],
         'pairs': [p for p in c.get('pairs', []) if isinstance(p, list) and len(p) == 2 and all(isinstance(x, str) for x in p)],
         'order': [s for s in c.get('order', []) if isinstance(s, str)],
@@ -272,12 +374,20 @@ def save_config(c):
     os.replace(tmp, CONFIG)
 
 
-def write_state(active, groups, names):
+def write_state(active, groups, devices, mode='ask', grip=False):
+    """devices: {uniq: {'name', 'kind'}}. What Ludus shows: the controllers made, and the Joy-Cons waiting."""
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     tmp = STATE + '.tmp'
+    used = {m for g in groups for m in g['members']}
+    state = {
+        'active': active, 'mode': mode, 'grip': grip,
+        'pads': [{'player': i + 1, 'kind': g['kind'], 'members': g['members'],
+                  'names': [devices.get(m, {}).get('name', m) for m in g['members']]} for i, g in enumerate(groups)],
+        'unassigned': [{'uniq': k, 'name': d['name'], 'kind': d['kind']} for k, d in devices.items() if k not in used],
+    }
     with open(tmp, 'w') as f:
-        json.dump({'active': active, 'pads': [{'player': i + 1, 'kind': g['kind'], 'members': g['members'],
-                                              'names': [names.get(m, m) for m in g['members']]} for i, g in enumerate(groups)]}, f)
+        json.dump(state, f)
+    os.chmod(tmp, 0o644)
     os.replace(tmp, STATE)
 
 
@@ -285,10 +395,15 @@ class Service:
     def __init__(self):
         self.devs = {}      # uniq -> {'info', 'fd'}
         self.pads = []      # [{'group', 'pad', 'fd'}]
-        self.arrival = []   # uniq keys in order of arrival (player numbers)
+        self.arrival = []   # uniq keys in order of arrival
         self.cfg_mtime = None
         self.cfg = load_config()
+        self.grips = Grips()
+        self.grip_until = 0.0
+        self.sock = None
+        self.active = False
 
+    # ---- the Joy-Cons
     def open_dev(self, info):
         try:
             fd = os.open(os.path.join(DEV, info['node']), os.O_RDONLY | os.O_NONBLOCK)
@@ -306,6 +421,7 @@ class Service:
             except OSError:
                 pass
             del self.devs[key]
+            self.grips.disconnect(key)   # how it was held is forgotten, like on a Switch
             changed = True
         for key, info in seen.items():
             if key in self.devs:
@@ -314,26 +430,36 @@ class Service:
             if fd is None:
                 continue
             self.devs[key] = {'info': info, 'fd': fd}
+            self.grips.connect(key, info['kind'])
             if key not in self.arrival:
                 self.arrival.append(key)
             changed = True
         return changed
 
+    def device_info(self):
+        return {k: {'name': d['info']['name'], 'kind': d['info']['kind']} for k, d in self.devs.items()}
+
+    # ---- controllers
     def rebuild(self):
+        self.grips.always_ask = self.cfg['mode'] == 'ask'
         kinds = {k: d['info']['kind'] for k, d in self.devs.items()}
-        order = self.cfg['order'] + [k for k in self.arrival if k not in self.cfg['order']]
-        groups = plan_groups(kinds, order, self.cfg['mode'], self.cfg['singles'], self.cfg['pairs'])
+        singles, pairs = self.grips.choices()
+        order = self.cfg['order'] + [k for k in self.grips.order if k not in self.cfg['order']]
+        order += [k for k in self.arrival if k not in order]
+        groups = plan_groups(kinds, order, self.cfg['mode'], self.cfg['singles'] + singles, self.cfg['pairs'] + pairs)
         old = {tuple(p['group']['members']): p for p in self.pads}
-        pads = []
+        pads, failed = [], []
         for g in groups:
             key = tuple(g['members'])
             if key in old and old[key]['group']['kind'] == g['kind']:
+                old[key]['group'] = g
                 pads.append(old.pop(key))
                 continue
             try:
                 fd = make_virtual('Tessera Joy-Con' + (' (L+R)' if g['kind'] == 'joined' else ''))
             except OSError as e:
                 print('joycons: cannot make a controller (is /dev/uinput there?):', e, file=sys.stderr)
+                failed += g['members']
                 continue
             pads.append({'group': g, 'pad': Pad(g['kind'], g['members']), 'fd': fd})
         for p in old.values():   # groups that no longer exist: let go of their buttons, then remove them
@@ -343,35 +469,120 @@ class Service:
                 os.close(p['fd'])
             except OSError:
                 pass
-        for i, p in enumerate(pads):
-            p['group'] = groups[[g['members'] for g in groups].index(p['group']['members'])]
+        for m in failed:         # no controller could be made: give the Joy-Con back rather than leave it dead
+            try:
+                fcntl.ioctl(self.devs[m]['fd'], EVIOCGRAB, 0)
+            except (OSError, KeyError):
+                pass
         self.pads = pads
-        # "active" only while every Joy-Con group really has its virtual controller: otherwise Ludus keeps reading them itself
-        write_state(len(pads) == len(groups) and bool(pads), [p['group'] for p in pads], {k: d['info']['name'] for k, d in self.devs.items()})
+        self.active = len(pads) == len(groups)
+        self.publish()
+
+    def publish(self):
+        write_state(self.active, [p['group'] for p in self.pads], self.device_info(), self.cfg['mode'], self.grips.grip)
 
     def handle(self, key, data):
-        pad = next((p for p in self.pads if key in p['group']['members']), None)
-        if not pad:
-            return
-        events = []
         for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
             _, _, t, c, v = EVENT.unpack_from(data, off)
-            if t in (EV_KEY, EV_ABS):
-                events.extend(pad['pad'].feed(key, t, c, v))
-        write_events(pad['fd'], events)
+            if t == EV_KEY:
+                if self.grips.press(key, c, v != 0):
+                    self.rebuild()
+                    continue
+            if t not in (EV_KEY, EV_ABS) or self.grips.grip:
+                continue   # on the grip screen the Joy-Cons only answer the gestures
+            pad = next((p for p in self.pads if key in p['group']['members']), None)
+            if pad:
+                write_events(pad['fd'], pad['pad'].feed(key, t, c, v))
+
+    # ---- Ludus's Joy-Con screen
+    def open_socket(self):
+        import socket
+        os.makedirs(os.path.dirname(SOCK), exist_ok=True)
+        try:
+            os.unlink(SOCK)
+        except OSError:
+            pass
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.bind(SOCK)
+        os.chmod(SOCK, 0o666)   # it can only regroup Joy-Cons
+        s.listen(4)
+        s.setblocking(False)
+        self.sock = s
+
+    def serve(self):
+        try:
+            conn, _ = self.sock.accept()
+        except OSError:
+            return
+        try:
+            conn.settimeout(0.5)
+            msg = json.loads(conn.recv(4096).decode('utf8', 'replace') or '{}')
+            reply = self.command(msg)
+        except (OSError, ValueError):
+            reply = {'ok': False, 'error': 'unreadable request'}
+        try:
+            conn.sendall((json.dumps(reply) + '\n').encode())
+        except OSError:
+            pass
+        conn.close()
+
+    def command(self, msg):
+        if not isinstance(msg, dict):
+            return {'ok': False, 'error': 'unreadable request'}
+        cmd, kinds = msg.get('cmd'), {k: d['info']['kind'] for k, d in self.devs.items()}
+        changed = False
+        if cmd == 'grip':
+            self.grip_until = time.time() + GRIP_SECONDS if msg.get('on') is True else 0.0
+            self.grips.grip = self.grip_until > 0
+            self.publish()
+        elif cmd == 'single' and msg.get('uniq') in kinds:
+            changed = self.grips.set_single(msg['uniq'])
+        elif cmd == 'pair' and msg.get('left') in kinds and msg.get('right') in kinds:
+            changed = self.grips.set_pair(msg['left'], msg['right'])
+        elif cmd == 'unassign' and msg.get('uniq') in kinds:
+            self.grips.unassign(msg['uniq'])
+            self.forget_saved(lambda k: k == msg['uniq'])
+            changed = True
+        elif cmd == 'move' and msg.get('uniq') in kinds and msg.get('delta') in (-1, 1):
+            changed = self.grips.move(msg['uniq'], msg['delta'])
+        elif cmd == 'mode' and msg.get('mode') in ('ask', 'together', 'separate'):
+            self.cfg['mode'] = msg['mode']
+            save_config(self.cfg)
+            self.cfg_mtime = mtime(CONFIG)
+            changed = True
+        elif cmd == 'forget':
+            self.grips.assign.clear()
+            self.grips.order.clear()
+            self.forget_saved(lambda k: True)
+            changed = True
+        elif cmd != 'grip':
+            return {'ok': False, 'error': 'unknown or invalid request'}
+        if changed:
+            self.rebuild()
+        return {'ok': True}
+
+    def forget_saved(self, which):
+        """Drop saved (command line) choices about some Joy-Cons, so a choice made on screen wins."""
+        c = self.cfg
+        c['singles'] = [k for k in c['singles'] if not which(k)]
+        c['pairs'] = [p for p in c['pairs'] if not any(which(k) for k in p)]
+        c['order'] = [k for k in c['order'] if not which(k)]
+        save_config(c)
+        self.cfg_mtime = mtime(CONFIG)
 
     def run(self):
         last_scan = 0
         write_state(False, [], {})
+        self.open_socket()
         try:
             while True:
                 now = time.time()
+                if self.grips.grip and now >= self.grip_until:   # the screen went away without saying so
+                    self.grips.grip = False
+                    self.publish()
                 if now - last_scan >= 1.0:
                     last_scan = now
-                    try:
-                        m = os.stat(CONFIG).st_mtime
-                    except OSError:
-                        m = None
+                    m = mtime(CONFIG)
                     new_cfg = m != self.cfg_mtime
                     if new_cfg:
                         self.cfg_mtime = m
@@ -379,8 +590,11 @@ class Service:
                     if self.sync_devices() or new_cfg:
                         self.rebuild()
                 fds = {d['fd']: k for k, d in self.devs.items()}
-                ready = select.select(list(fds), [], [], 0.25)[0] if fds else (time.sleep(0.25) or [])
+                ready = select.select(list(fds) + [self.sock], [], [], 0.25)[0]
                 for fd in ready:
+                    if fd is self.sock:
+                        self.serve()
+                        continue
                     try:
                         data = os.read(fd, EVENT.size * 64)
                     except OSError:
@@ -391,6 +605,13 @@ class Service:
             for p in self.pads:
                 write_events(p['fd'], p['pad'].release_all())
             write_state(False, [], {})
+
+
+def mtime(path):
+    try:
+        return os.stat(path).st_mtime
+    except OSError:
+        return None
 
 
 # ------------------------------------------------------------------ the command line
@@ -404,7 +625,7 @@ def main(argv):
                           'joycons': [{'uniq': d['uniq'], 'name': d['name']} for d in scan()]}))
     elif cmd in ('set-mode', 'single', 'pair', 'forget', 'order'):
         c = load_config()
-        if cmd == 'set-mode' and len(argv) == 3 and argv[2] in ('together', 'separate'):
+        if cmd == 'set-mode' and len(argv) == 3 and argv[2] in ('ask', 'together', 'separate'):
             c['mode'] = argv[2]
         elif cmd == 'single' and len(argv) == 3:
             c['singles'] = sorted(set(c['singles']) | {argv[2]})

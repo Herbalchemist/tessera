@@ -96,17 +96,39 @@ function describe(node) {
 
 // While tessera-joycons.service runs it holds the Joy-Cons and shows them to the whole system as
 // ordinary controllers (the ones Ludus then sees through the normal gamepad list), so this file
-// leaves Joy-Cons alone. (libexec/tessera/joycons; TESSERA_JOYCONS_STATE is for tests.)
-function joyconsServiceActive() {
-  try { return JSON.parse(fs.readFileSync(process.env.TESSERA_JOYCONS_STATE || '/run/tessera/joycons.json', 'utf8')).active === true; } catch { return false; }
+// leaves Joy-Cons alone and only SHOWS what the service says: the controllers it made, and the
+// Joy-Cons waiting for the player to say how they hold them (SL + SR, or L + R). It also passes the
+// Joy-Con screen's choices on. (libexec/tessera/joycons; TESSERA_JOYCONS_* are for tests.)
+const JOYCONS_STATE = () => process.env.TESSERA_JOYCONS_STATE || '/run/tessera/joycons.json';
+const JOYCONS_SOCK = () => process.env.TESSERA_JOYCONS_SOCK || '/run/tessera/joycons.sock';
+function joyconsState() {
+  try {
+    const st = JSON.parse(fs.readFileSync(JOYCONS_STATE(), 'utf8'));
+    return st && st.active === true ? st : null;
+  } catch { return null; }
 }
+// One request, one answer: {cmd:'grip', on}, {cmd:'single', uniq}, {cmd:'pair', left, right}, {cmd:'unassign', uniq},
+// {cmd:'move', uniq, delta}, {cmd:'mode', mode}, {cmd:'forget'}.
+function joyconsCommand(msg) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; try { sock.destroy(); } catch { /* gone */ } resolve(v); } };
+    const sock = require('net').connect(JOYCONS_SOCK());
+    let buf = '';
+    sock.setTimeout(1500, () => finish({ ok: false, error: 'no answer' }));
+    sock.on('connect', () => sock.write(JSON.stringify(msg)));
+    sock.on('data', (d) => { buf += d; if (buf.includes('\n')) { try { finish(JSON.parse(buf)); } catch { finish({ ok: false }); } } });
+    sock.on('error', () => finish({ ok: false, error: 'service not running' }));
+    sock.on('close', () => finish({ ok: false }));
+  });
+}
+const PART_OF = (uniq) => (String(uniq).endsWith('/jr') ? 'jr' : 'jl');
 function scan() {
   let nodes = [];
   try { nodes = fs.readdirSync(SYS).filter((n) => /^event\d+$/.test(n)); } catch { /* no input class (tests, containers) */ }
   const all = nodes.map(describe).filter(Boolean);
-  return joyconsServiceActive() ? all.filter((d) => d.kind !== 'jl' && d.kind !== 'jr') : all;
+  return joyconsState() ? all.filter((d) => d.kind !== 'jl' && d.kind !== 'jr') : all;
 }
-
 // Battery: hid_nintendo registers a power supply whose device is the controller's HID device.
 function batteryFor(hid) {
   if (!hid) return null;
@@ -162,6 +184,8 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
   let motionOn = false;
   let watcher = null;
   let timer = null;
+  let gripBeat = null;
+  let stateTimer = null;
   let dirty = new Set();
   let flushQueued = false;
   let lastList = '';
@@ -202,12 +226,30 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
     return d ? d.info.name : 'Controller';
   }
 
+  // What the Joy-Con service made (its controllers are ordinary gamepads to Ludus: shown here for the grip screen) and the Joy-Cons waiting to be set up.
+  function servicePads(st) {
+    const pads = st.pads.map((p) => ({
+      id: 'svc:' + p.members.join('+'), name: (p.kind === 'joined' ? 'Joy-Con (L+R)' : 'Joy-Con') + ' (Nintendo)', kind: p.kind, player: p.player,
+      parts: p.members.map(PART_OF), sideways: p.kind === 'jl' || p.kind === 'jr', motion: false, battery: null, error: '',
+    }));
+    const waiting = st.unassigned.map((u) => ({
+      id: 'svc-wait:' + u.uniq, name: u.name + ' (Nintendo)', kind: 'unassigned', player: 0, parts: [u.kind], sideways: false, motion: false, battery: null, error: '',
+    }));
+    return [...pads, ...waiting];
+  }
+
   function listPayload() {
+    const st = joyconsState();
+    const svc = st ? servicePads(st) : [];
+    const first = st ? st.pads.length : 0;
+    const own = groups.map((g, i) => ({ g, i }));
     return {
       ok: true,
       grip,
-      mode: prefs().joycons === 'separate' ? 'separate' : 'together',
-      pads: groups.map((g, i) => {
+      service: Boolean(st),
+      mode: prefs().joycons === 'separate' ? 'separate' : prefs().joycons === 'ask' ? 'ask' : 'together',
+      svc, // shown on the grip screen only: the controllers themselves reach Ludus as ordinary gamepads
+      pads: own.map(({ g, i }) => {
         const members = g.members.map((m) => devs.get(m)).filter(Boolean);
         const bat = members.map((d) => batteryFor(d.info.hid)).filter(Boolean);
         const low = bat.reduce((lo, b) => (lo === null || (b.percent !== null && b.percent < lo.percent) ? b : lo), null);
@@ -216,7 +258,7 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
           // the "Nintendo" and "Joy-Con" words make the launcher pick Nintendo button labels
           name: groupName(g) + ' (Nintendo)',
           kind: g.kind,
-          player: i + 1,
+          player: first + i + 1,
           parts: members.map((d) => d.info.kind),
           sideways: g.kind === 'jl' || g.kind === 'jr',
           motion: members.some((d) => d.hasImu),
@@ -403,10 +445,22 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
       try { watcher = fs.watch(DEV, () => setTimeout(rescan, 400)); } catch { watcher = null; }
       timer = setInterval(rescan, watcher ? 15000 : 3000);
       if (timer.unref) timer.unref();
+      // the Joy-Con service changes by itself (a Joy-Con was set up, or went away): show it, and let go of / take back the Joy-Cons
+      let seen = '';
+      stateTimer = setInterval(() => {
+        let now = '';
+        try { now = fs.readFileSync(JOYCONS_STATE(), 'utf8'); } catch { /* not running */ }
+        if (now === seen) return;
+        seen = now;
+        rescan();
+      }, 1000);
+      if (stateTimer.unref) stateTimer.unref();
     },
     stop() {
       if (watcher) watcher.close();
       if (timer) clearInterval(timer);
+      if (stateTimer) clearInterval(stateTimer);
+      if (gripBeat) clearInterval(gripBeat);
       for (const key of [...devs.keys()]) { const d = devs.get(key); if (d.stop) d.stop(); stopMotion(d); }
       devs.clear();
     },
@@ -423,13 +477,27 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
       if (motionOn) for (const d of devs.values()) startMotion(d);
     },
     list: () => listPayload(),
-    setGrip(on) { grip = Boolean(on); publishList(); return listPayload(); },
+    setGrip(on) {
+      grip = Boolean(on);
+      if (joyconsState()) {
+        // the service decides while the grip screen is open; it ends grip mode by itself if this stops renewing it
+        joyconsCommand({ cmd: 'grip', on: grip });
+        clearInterval(gripBeat);
+        if (grip) { gripBeat = setInterval(() => joyconsCommand({ cmd: 'grip', on: true }), 8000); if (gripBeat.unref) gripBeat.unref(); }
+      }
+      publishList();
+      return listPayload();
+    },
     setMotion(on) {
       motionOn = Boolean(on);
       for (const d of devs.values()) (motionOn ? startMotion : stopMotion)(d);
       return { ok: true, motion: motionOn };
     },
-    regroup: () => { manual.clear(); regroup(); return listPayload(); },
+    regroup: () => {
+      manual.clear(); regroup();
+      if (joyconsState()) joyconsCommand({ cmd: 'mode', mode: ['ask', 'together', 'separate'].includes(prefs().joycons) ? prefs().joycons : 'ask' });
+      return listPayload();
+    },
     _t: { devs, groups: () => groups, frameOf, rescan },
   };
 }
