@@ -91,10 +91,11 @@ ACCENT = (180, 167, 255)  # the highlight in Boot options
 def band(im, top, bottom):
     w, h = im.size
     return (0, int(h * top), w, int(h * bottom))
-# the wait screen: the dashed spots in the middle and the white wordmark near the bottom, nothing else
-is_splash = lambda im: count(im, SLOT, 30, centre(im)) > 40 and count(im, (255, 255, 255), 30, band(im, 0.88, 1)) > 150 and count(im, (170, 170, 170), 40, band(im, 0, 0.3)) < 50
+# the wait screen: the dashed spots in the middle, the white wordmark just under them, nothing else
+# (the lavender spot is the biggest stone's; the wordmark sits 88-132 px below the centre)
+is_splash = lambda im: count(im, SLOT, 30, centre(im)) > 40 and count(im, (255, 255, 255), 30, band(im, 0.55, 0.78)) > 150 and count(im, (170, 170, 170), 40, band(im, 0, 0.3)) < 50
 is_options = lambda im: count(im, ACCENT, 12) > 4000
-is_booted = lambda im: count(im, (170, 170, 170), 60, band(im, 0, 0.15)) > 40 and count(im, SLOT, 30, centre(im)) < 10 and count(im, ACCENT, 12) < 500 and count(im, (255, 255, 255), 30, band(im, 0.88, 1)) < 50
+is_booted = lambda im: count(im, (170, 170, 170), 60, band(im, 0, 0.15)) > 40 and count(im, SLOT, 30, centre(im)) < 10 and count(im, ACCENT, 12) < 500 and count(im, (255, 255, 255), 30, band(im, 0.55, 0.78)) < 50 and count(im, (255, 255, 255), 30, band(im, 0.88, 1)) < 50
 is_plain = lambda im: count(im, ACCENT, 12) < 500 and count(im, SLOT, 30, centre(im)) < 10 and count(im, (170, 170, 170), 60) > 300
 
 def scenario(name, steps, expect):
