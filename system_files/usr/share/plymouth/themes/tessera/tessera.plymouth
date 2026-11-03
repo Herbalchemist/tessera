@@ -1,6 +1,6 @@
 [Plymouth Theme]
 Name=Tessera
-Description=Tessera's symbol building itself, tile by tile, with the Tessera wordmark below
+Description=Tessera's symbol building itself, tile by tile, over its dashed spots, with the wordmark and tagline below
 ModuleName=two-step
 
 # Laid out like Bazzite's (bgrt), but with Tessera's symbol in the middle instead of the computer
@@ -17,7 +17,7 @@ TitleVerticalAlignment=.382
 HorizontalAlignment=.5
 VerticalAlignment=.5
 WatermarkHorizontalAlignment=.5
-WatermarkVerticalAlignment=.96
+WatermarkVerticalAlignment=.5
 Transition=none
 TransitionDuration=0.0
 BackgroundStartColor=0x000000

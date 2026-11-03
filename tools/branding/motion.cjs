@@ -12,7 +12,6 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
-const { slotsBody } = require('./slots.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SYM = JSON.parse(fs.readFileSync(path.join(__dirname, 'symbol.json'), 'utf8'));
@@ -21,10 +20,13 @@ const CURSORS = path.join(ROOT, 'system_files/usr/share/icons/Tessera/cursors');
 const OUT = path.join(__dirname, 'out');
 
 // ---- the motion, as a function of time (seconds) within one loop
+// 13 stones, biggest first. The first loop sets them all by about 1.25 s; the dotted spots (the
+// Plymouth backdrop) stay until the last one is down.
+const N = SYM.pieces.length;
 const LOOP = 2.8;
-const START = [0.15, 0.5, 0.68, 0.86];
-const DUR = [0.5, 0.34, 0.34, 0.38];
-const EXIT = 2.15, EXIT_STAGGER = 0.06, EXIT_DUR = 0.3;
+const START = SYM.pieces.map((_, i) => 0.08 + i * 0.075);
+const DUR = SYM.pieces.map((_, i) => (i === 0 ? 0.4 : 0.3));
+const EXIT = 2.15, EXIT_STAGGER = 0.03, EXIT_DUR = 0.3;
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const outBack = (p) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * (p - 1) ** 3 + c1 * (p - 1) ** 2; };
 const outCubic = (p) => 1 - (1 - p) ** 3;
@@ -33,18 +35,19 @@ const inCubic = (p) => p ** 3;
 // One frame of the symbol as SVG markup, in the symbol's own 64-unit space.
 function symbolAt(t) {
   let out = '';
-  SYM.tiles.forEach(([x, y, w, rot], i) => {
+  SYM.pieces.forEach((pc, i) => {
     const p = clamp((t - START[i]) / DUR[i]);
     if (p <= 0) return;
     const q = clamp((t - EXIT - i * EXIT_STAGGER) / EXIT_DUR);
     const opacity = clamp(p / 0.35) * (1 - q);
     if (opacity <= 0.003) return;
     const scale = (0.3 + 0.7 * outBack(p)) * (1 - 0.25 * inCubic(q));
-    const r = rot + (1 - outCubic(p)) * (i % 2 ? -30 : 30);
+    const r = (1 - outCubic(p)) * (i % 2 ? -30 : 30);
     const dy = -(1 - outCubic(p)) * 10;
-    const s = w * scale;
-    out += `<rect x="${(-s / 2).toFixed(3)}" y="${(-s / 2).toFixed(3)}" width="${s.toFixed(3)}" height="${s.toFixed(3)}" rx="${(s * 0.23).toFixed(3)}" ` +
-      `fill="${SYM.colors[i]}" fill-opacity="${opacity.toFixed(3)}" transform="translate(${x} ${(y + dy).toFixed(3)}) rotate(${r.toFixed(2)})"/>`;
+    const [cx, cy] = pc.c;
+    const pts = pc.pts.map(([x, y]) => `${x},${y}`).join(' ');
+    out += `<polygon points="${pts}" fill="${pc.color}" stroke="${pc.color}" stroke-width="${2 * SYM.round}" stroke-linejoin="round" opacity="${opacity.toFixed(3)}" ` +
+      `transform="translate(${cx} ${(cy + dy).toFixed(3)}) rotate(${r.toFixed(2)}) scale(${scale.toFixed(3)}) translate(${-cx} ${-cy})"/>`;
   });
   return out;
 }
@@ -53,9 +56,9 @@ function symbolAt(t) {
 const ARROW = '<path d="M5 3 L5 25 L11 19.5 L15 28.5 L19 26.8 L15.2 18 L23 18 Z" fill="#ffffff" stroke="#17151f" stroke-width="2" stroke-linejoin="round"/>';
 
 const svg = (size, view, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${view}">${body}</svg>`;
-// the boot frame: 128 px, the symbol drawn 100 px wide in the middle (room for the overshoot), over
-// the empty spots the boot menu's wait screen showed (grub.cjs): the tiles are set into them
-const bootFrame = (t) => svg(128, '-10 -10 84 84', slotsBody() + symbolAt(t));
+// the boot frame: 128 px, the symbol drawn 100 px wide in the middle (room for the overshoot); the
+// dashed spots are in the backdrop (render.cjs) under it, so the stones are set into them
+const bootFrame = (t) => svg(128, '-10 -10 84 84', symbolAt(t));
 // "wait": only the symbol, building
 const waitFrame = (t, n) => svg(n, '-6 -6 76 76', symbolAt(t));
 // "progress": the pointer, and the symbol building at its lower right

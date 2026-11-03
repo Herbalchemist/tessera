@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { slotsBody } = require('./slots.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const BR = path.join(ROOT, 'system_files/usr/share/tessera/branding');
@@ -32,6 +33,18 @@ const fit = (svg, w, h) => `<div style="width:${w}px;height:${h}px">${svg.replac
   const ww = Math.round(44 * ratio(word));
   await shoot(page, fit(word, ww, 44), ww, 44, path.join(BR, 'tessera-plymouth-watermark.png'));
 
+
+  // Plymouth's backdrop (watermark.png), centred on the screen like the animation: the dashed spots
+  // in the middle 128 px box (exactly under the throbber frames), the wordmark under them, then the
+  // tagline. Even sizes, so its centre lands on the same pixel as the 128 px throbber's.
+  const TW = 480, TH = 340, cx = TW / 2, cy = TH / 2;
+  const wordH = 44, wordW = Math.round(wordH * ratio(word));
+  const backdrop = `<div style="position:relative;width:${TW}px;height:${TH}px">
+      <svg style="position:absolute;left:${cx - 64}px;top:${cy - 64}px" xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-10 -10 84 84">${slotsBody()}</svg>
+      <div style="position:absolute;left:${cx - Math.round(wordW / 2)}px;top:${cy + 88}px">${fit(word, wordW, wordH)}</div>
+      <div style="position:absolute;left:0;width:${TW}px;top:${cy + 146}px;text-align:center;font:400 15px Cantarell,Inter,'DejaVu Sans',sans-serif;letter-spacing:.3px;color:#8f8aa3">Designed for controllers, built by you</div></div>`;
+  await shoot(page, backdrop, TW, TH, path.join(ROOT, 'system_files/usr/share/plymouth/themes/tessera/watermark.png'));
+
   const icon = svgOf(path.join(OUT, 'app-icon.svg'));
   await shoot(page, fit(icon, 512, 512), 512, 512, path.join(OUT, 'github-avatar.png'));
   if (fs.existsSync(path.dirname(MORTAR_ICON))) await shoot(page, fit(icon, 512, 512), 512, 512, MORTAR_ICON);
@@ -40,7 +53,7 @@ const fit = (svg, w, h) => `<div style="width:${w}px;height:${h}px">${svg.replac
   const wh = 96;
   await shoot(page, `<div style="width:1280px;height:640px;background:#15131c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;font:500 34px Inter,sans-serif;color:#9a95ad">
       <div style="display:flex;align-items:center;gap:44px">${fit(logo, 168, 168)}${fit(word, Math.round(wh * ratio(word)), wh)}</div>
-      <div>A controller-first gaming OS</div></div>`, 1280, 640, path.join(OUT, 'github-social-preview.png'));
+      <div>Designed for controllers, built by you</div></div>`, 1280, 640, path.join(OUT, 'github-social-preview.png'));
   await browser.close();
   console.log('logo PNGs written');
 })();
