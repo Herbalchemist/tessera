@@ -106,19 +106,20 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
   Holding Guide goes straight Home (swap press and hold in *Settings › Controller*). In Opus the same guide comes up over the desktop with *Return to Ludus*. It steps aside while Steam is running, since Steam takes the button for itself.
 - **First-run setup**: who's playing (a profile), pick a look with the whole launcher previewing behind it, an optional PIN, and an optional **guided tour** that lights up each part of the screen in turn and lets you try it: switch tabs with the bumpers, add a widget to Home, link a library drive or folder, and make your own tab, each right from its step.
 - An on-screen keyboard (with a symbols layer) for names and passwords, and a keypad for the PIN. With a real keyboard you just type.
-- Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Two Joy-Cons can be one controller or two players, switched like on the Switch (*Change grip/order*), and the controller test shows their motion sensors.
+- Nintendo Switch Pro Controllers and Joy-Cons work in the launcher. Joy-Cons are set up the way a Switch does it: press **SL + SR** on one to hold it sideways as its own player, or **L + R** together on a left and a right to use them as one controller (*Change grip/order*), and the controller test shows their motion sensors.
 
 **Settings that don't need a keyboard**
 
 | Group | What's inside |
 |---|---|
-| Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets), **Sound** (volume, microphone, output, headset mode) |
+| Connections | **Wi-Fi** (join with the on-screen keyboard, password hidden unless you press Show, hidden networks, forget), **Bluetooth** (pair controllers and headsets) |
+| Picture & sound | **Appearance** (one tile that opens Theme Settings, Screens and Display calibration), **Sound** (volume, microphone, output, headset mode) |
 | Controllers | **Controller**: live test, Guide button, button mapping, dead zones, rumble, button labels, browser cursor and scroll. **Keyboard & mouse**: key layouts, every key rebindable, hint style, pointer and scroll wheel |
-| Picture & sound | **Appearance** (one tile: Theme Settings, **Screens**, Display calibration), Sound |
-| People | Profiles, PIN |
-| _Appearance details_ | Theme settings, **Screens** (which screen Ludus uses, its resolution and refresh rate from what the screen reports, a built-in screen's orientation; tried for 15 seconds before it's kept; a new screen is offered), display calibration |
-| System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, PIN |
+| People | **Profiles**, **PIN** |
+| System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, **Report a problem** (to GitHub, or saved as a file) |
 | Power | Sleep, restart, shut down, Opus |
+
+**Appearance** opens: **Theme Settings** (the look, layout, motion, boot screen and boot menu), **Screens** (which screen Ludus uses, its resolution and refresh rate from what the screen reports, a built-in screen's orientation; tried for 15 seconds before it's kept; a new screen is offered)), and **Display calibration**.
 
 ![Settings, in groups](docs/screenshots/settings.jpg)
 

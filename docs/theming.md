@@ -25,7 +25,7 @@ This guide covers everything a theme file can do today. A visual theme creator i
 
 You don't have to start from an empty file.
 
-1. Open **Settings › Theme Settings** and pick the factory theme closest to what you want.
+1. Open **Settings › Appearance › Theme Settings** and pick the factory theme closest to what you want.
 2. Change things. Every change shows live behind the menu.
 3. Choose **Save current as a new theme…** and give it a name. Tessera writes a complete `theme.json` for you in `~/Tessera/Themes/<name>/`.
 4. Open that file in Opus (or on another computer) to fine-tune it, share it, or add the few things the console menu doesn't offer, such as narrowing a setting's choices.
