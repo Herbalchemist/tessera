@@ -119,7 +119,7 @@ You can also keep the hints on controller buttons, or hide the pointer sooner or
 | System | **Storage** (drives, clean-up, backups), **Update software** (with *go back to the previous version*, and switching builds after a graphics card swap), Add-ons, **Report a problem** (to GitHub, or saved as a file) |
 | Power | Sleep, restart, shut down, Opus |
 
-**Appearance** opens: **Theme Settings** (the look, layout, motion, boot screen and boot menu), **Screens** (which screen Ludus uses, its resolution and refresh rate from what the screen reports, a built-in screen's orientation; tried for 15 seconds before it's kept; a new screen is offered)), and **Display calibration**.
+**Appearance** opens: **Theme Settings** (the look, layout, motion, boot screen and boot menu), **Screens** (which screen Ludus uses, its resolution and refresh rate from what the screen reports, a built-in screen's orientation; tried for 15 seconds before it's kept; a new screen is offered), and **Display calibration**.
 
 ![Settings, in groups](docs/screenshots/settings.jpg)
 
