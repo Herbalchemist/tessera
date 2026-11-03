@@ -408,8 +408,7 @@ def set_player_lights(hid, player):
         on = player is None or n == ((player - 1) % 4) + 1
         try:
             for path in glob.glob(os.path.join(LEDS, '%s:*:player-%d' % (glob.escape(hid), n))):
-                with open(os.path.join(path, 'brightness'), 'w') as f:
-                    f.write('1' if on else '0')
+                write_led(path, 1 if on else 0)
         except OSError:
             pass
 
@@ -484,9 +483,18 @@ def leds_of(hid):
 
 
 def write_led(path, value):
+    """Set a light, unless it already is that (it is checked again every couple of seconds, and a write
+    makes the controller send a message)."""
+    f = os.path.join(path, 'brightness')
     try:
-        with open(os.path.join(path, 'brightness'), 'w') as f:
-            f.write(str(value))
+        with open(f) as r:
+            if r.read().strip() == str(value):
+                return
+    except (OSError, ValueError):
+        pass
+    try:
+        with open(f, 'w') as w:
+            w.write(str(value))
     except OSError:
         pass
 
@@ -734,6 +742,7 @@ class Service:
 
     def run(self):
         last_scan = 0
+        last_lights = 0
         write_state(False, [], {})
         self.open_socket()
         try:
@@ -751,6 +760,9 @@ class Service:
                         self.cfg = load_config()
                     if self.sync_devices() or new_cfg:
                         self.rebuild()
+                if now - last_lights >= 2.0:   # the kernel sets a controller's lights when it connects, after we may have; say it again
+                    last_lights = now
+                    self.light_players()
                 fds = {d['fd']: k for k, d in self.devs.items()}
                 ready = select.select(list(fds) + [self.sock], [], [], 0.25)[0]
                 for fd in ready:
