@@ -321,9 +321,56 @@ function navRepeater() {
   return padNav;
 }
 
+// Every controller moves the UI, not only the one used last (that one only decides which buttons the
+// hints show). Who gets to move what is up to the people in the room, not the launcher.
+const extraPads = new Map(); // identity -> { prev: [pressed, ...] }
+function serveExtraPads(chosen, nav, active) {
+  const seen = new Set();
+  if (active) {
+    for (const p of gamepads()) {
+      const k = padIdent(p);
+      if (chosen && k === padIdent(chosen)) continue;
+      seen.add(k);
+      const swap = padMap(p);
+      const b = (n) => { const i = IA.physicalFor(n, swap); return Boolean(p.buttons[i] && p.buttons[i].pressed); };
+      let st = extraPads.get(k);
+      if (!st) {   // just appeared: what is already held (a trigger at rest) is not a press
+        st = { prev: new Array(prevBtn.length).fill(false) };
+        for (let n = 0; n < st.prev.length; n++) st.prev[n] = b(n);
+        extraPads.set(k, st);
+        continue;
+      }
+      const wheel = modal && modal.kind === 'color';
+      const sx = wheel ? 0 : axisValue(p, 0);
+      const sy = wheel ? 0 : axisValue(p, 1);
+      const dir = b(14) || sx < -0.5 ? 'left' : b(15) || sx > 0.5 ? 'right' : b(12) || sy < -0.5 ? 'up' : b(13) || sy > 0.5 ? 'down' : '';
+      const count = Math.min(p.buttons.length, st.prev.length);
+      if (patternActive()) {
+        nav.set('pad:' + k, '');
+        for (let n = 12; n <= 15; n++) { const d = b(n); if (d && !st.prev[n]) onButton(n); st.prev[n] = d; }
+      } else {
+        nav.set('pad:' + k, dir);
+      }
+      for (let n = 0; n < count; n++) {
+        if (n >= 12 && n <= 15) continue;
+        const isDown = b(n);
+        if (isDown && !st.prev[n]) onButton(n);
+        if (!isDown && st.prev[n]) onRelease(n);
+        st.prev[n] = isDown;
+      }
+    }
+  }
+  for (const k of [...extraPads.keys()]) {   // a controller that went away, or was chosen: let go of its direction
+    if (seen.has(k)) continue;
+    nav.set('pad:' + k, '');
+    extraPads.delete(k);
+  }
+}
+
 function loop(now) {
   const pad = suspended ? null : choosePad();
   const nav = navRepeater();
+  serveExtraPads(pad, nav, Boolean(pad) && !suspended && !(browserOpen && !modal));
   if (!pad || suspended) nav.set('pad', '');
   if (pad && mouseShown && padBusy(pad)) hideMouse();
   if (pad) {

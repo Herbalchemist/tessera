@@ -25,6 +25,7 @@ grip, single, pair, unassign, move, mode, forget. They only regroup Joy-Cons.
 TESSERA_JOYCONS_* variables are only for tests.
 """
 import fcntl
+import glob
 import json
 import os
 import select
@@ -37,6 +38,7 @@ DEV = os.environ.get('TESSERA_JOYCONS_DEV', '/dev/input')
 CONFIG = os.environ.get('TESSERA_JOYCONS_CONFIG', '/etc/tessera/joycons.json')
 STATE = os.environ.get('TESSERA_JOYCONS_STATE', '/run/tessera/joycons.json')
 UINPUT = os.environ.get('TESSERA_JOYCONS_UINPUT', '/dev/uinput')
+LEDS = os.environ.get('TESSERA_JOYCONS_LEDS', '/sys/class/leds')
 SOCK = os.environ.get('TESSERA_JOYCONS_SOCK', '/run/tessera/joycons.sock')
 GRIP_SECONDS = 20  # the Joy-Con screen in Ludus renews this every few seconds; if it goes away, grip mode ends
 
@@ -97,7 +99,11 @@ def describe(node):
     if not kind:
         return None  # a Pro Controller and the like are already a whole controller
     uniq = ''.join(c for c in read_text(os.path.join(base, 'uniq')).lower() if c in '0123456789abcdef:') or node
-    return {'node': node, 'kind': kind, 'uniq': uniq + '/' + kind, 'name': name}
+    try:   # the Joy-Con's HID device: its player lights are named after it
+        hid = os.path.basename(os.path.realpath(os.path.join(base, 'device')))
+    except OSError:
+        hid = ''
+    return {'node': node, 'kind': kind, 'uniq': uniq + '/' + kind, 'name': name, 'hid': hid}
 
 
 def scan():
@@ -391,6 +397,21 @@ def write_state(active, groups, devices, mode='ask', grip=False):
     os.replace(tmp, STATE)
 
 
+def set_player_lights(hid, player):
+    """The four lights on a Joy-Con: light number `player` (1-4) for that player, all four while it waits (player=None).
+    The kernel numbers them in the order the Joy-Cons connected, which is not the player order here."""
+    if not hid:
+        return
+    for n in range(1, 5):
+        on = player is None or n == ((player - 1) % 4) + 1
+        try:
+            for path in glob.glob(os.path.join(LEDS, '%s:*:player-%d' % (glob.escape(hid), n))):
+                with open(os.path.join(path, 'brightness'), 'w') as f:
+                    f.write('1' if on else '0')
+        except OSError:
+            pass
+
+
 class Service:
     def __init__(self):
         self.devs = {}      # uniq -> {'info', 'fd'}
@@ -476,7 +497,17 @@ class Service:
                 pass
         self.pads = pads
         self.active = len(pads) == len(groups)
+        self.light_players()
         self.publish()
+
+    def light_players(self):
+        """Each Joy-Con's lights show its player number (both halves of a pair show the same); a waiting one shows all four."""
+        player = {}
+        for i, p in enumerate(self.pads):
+            for m in p['group']['members']:
+                player[m] = i + 1
+        for key, d in self.devs.items():
+            set_player_lights(d['info'].get('hid'), player.get(key))
 
     def publish(self):
         write_state(self.active, [p['group'] for p in self.pads], self.device_info(), self.cfg['mode'], self.grips.grip)
