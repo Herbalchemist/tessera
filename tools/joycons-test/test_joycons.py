@@ -343,5 +343,56 @@ class ServiceCommands(unittest.TestCase):
         self.assertEqual(self.state()['pads'], [])
 
 
+class PlayerLights(unittest.TestCase):
+    def setUp(self):
+        self.leds = os.path.join(tmp, 'leds')
+        jc.LEDS = self.leds
+        for hid in ('0003:057E:2006.0001', '0003:057E:2007.0002'):
+            for n in range(1, 5):
+                d = os.path.join(self.leds, '%s:green:player-%d' % (hid, n))
+                os.makedirs(d, exist_ok=True)
+                with open(os.path.join(d, 'brightness'), 'w') as f:
+                    f.write('0')
+
+    def lit(self, hid):
+        out = []
+        for n in range(1, 5):
+            with open(os.path.join(self.leds, '%s:green:player-%d' % (hid, n), 'brightness')) as f:
+                if f.read() == '1':
+                    out.append(n)
+        return out
+
+    def test_a_player_lights_its_own_number_and_a_waiting_joycon_all_four(self):
+        a, b = '0003:057E:2006.0001', '0003:057E:2007.0002'
+        jc.set_player_lights(a, 2)
+        jc.set_player_lights(b, None)
+        self.assertEqual((self.lit(a), self.lit(b)), ([2], [1, 2, 3, 4]))
+        jc.set_player_lights(a, 5)           # more than four players wraps round
+        self.assertEqual(self.lit(a), [1])
+        jc.set_player_lights('', 1)           # no light directory: nothing to do, nothing breaks
+        jc.set_player_lights('0003:057E:9999.0009', 1)
+
+    def test_the_service_lights_players_in_setup_order_both_halves_of_a_pair_alike(self):
+        a, b = '0003:057E:2006.0001', '0003:057E:2007.0002'
+        s = jc.Service()
+        s.cfg = {'mode': 'ask', 'singles': [], 'pairs': [], 'order': []}
+        for uniq, kind, hid in ((L, 'jl', a), (R, 'jr', b)):
+            s.devs[uniq] = {'info': {'node': 'event0', 'kind': kind, 'uniq': uniq, 'name': 'Joy-Con', 'hid': hid}, 'fd': os.open(os.devnull, os.O_RDONLY)}
+            s.grips.connect(uniq, kind)
+        s.pads = []
+        s.light_players()
+        self.assertEqual((self.lit(a), self.lit(b)), ([1, 2, 3, 4], [1, 2, 3, 4]))   # both waiting
+        s.grips.set_single(R)
+        s.grips.set_single(L)                      # the right one was set up first: player 1
+        real = jc.make_virtual, jc.write_events
+        jc.make_virtual = lambda name: os.open(os.devnull, os.O_WRONLY)
+        jc.write_events = lambda fd, events: None
+        try:
+            s.rebuild()
+        finally:
+            jc.make_virtual, jc.write_events = real
+        self.assertEqual((self.lit(b), self.lit(a)), ([1], [2]))
+
+
 if __name__ == '__main__':
     unittest.main()
