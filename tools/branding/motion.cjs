@@ -33,9 +33,9 @@ const outCubic = (p) => 1 - (1 - p) ** 3;
 const inCubic = (p) => p ** 3;
 
 // One frame of the symbol as SVG markup, in the symbol's own 64-unit space.
-function symbolAt(t) {
+function symbolAt(t, count = N) {
   let out = '';
-  SYM.pieces.forEach((pc, i) => {
+  SYM.pieces.slice(0, count).forEach((pc, i) => {
     const p = clamp((t - START[i]) / DUR[i]);
     if (p <= 0) return;
     const q = clamp((t - EXIT - i * EXIT_STAGGER) / EXIT_DUR);
@@ -60,10 +60,12 @@ const svg = (size, view, body) => `<svg xmlns="http://www.w3.org/2000/svg" width
 // dashed spots are in the backdrop (render.cjs) under it, so the stones are set into them
 const bootFrame = (t) => svg(128, '-10 -10 84 84', symbolAt(t));
 // "wait": only the symbol, building
-const waitFrame = (t, n) => svg(n, '-6 -6 76 76', symbolAt(t));
+// the cursors are tiny: only the nine biggest stones (the little drifting ones would be specks)
+const CURSOR_STONES = 9;
+const waitFrame = (t, n) => svg(n, '-6 -6 76 76', symbolAt(t, CURSOR_STONES));
 // "progress": the pointer, and the symbol building at its lower right
 const progressFrame = (t, n) => svg(n, '0 0 32 32',
-  `<g transform="scale(0.72)">${ARROW}</g><g transform="translate(15.5 15.5) scale(0.25)">${symbolAt(t)}</g>`);
+  `<g transform="scale(0.72)">${ARROW}</g><g transform="translate(15.5 15.5) scale(0.25)">${symbolAt(t, CURSOR_STONES)}</g>`);
 
 // ---- Xcursor files (the format X and Wayland desktops read cursors from)
 // frames: [{ size, w, h, xhot, yhot, delay, argb: Uint32Array (premultiplied) }]
