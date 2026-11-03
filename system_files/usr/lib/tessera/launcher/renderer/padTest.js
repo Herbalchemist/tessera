@@ -202,7 +202,7 @@ function flowPad() {
 
 // "Change grip/order", as on the Switch: L + R on two Joy-Cons joins them into one controller,
 // SL + SR on one Joy-Con makes it a player of its own (held sideways). Only while this is open.
-const GRIP_PART = { joined: 'Joy-Con L + R', jl: 'Left Joy-Con, sideways', jr: 'Right Joy-Con, sideways', pro: 'Controller', unassigned: 'Not set up yet' };
+const GRIP_PART = { joined: 'Joy-Con L + R', jl: 'Left Joy-Con, sideways', jr: 'Right Joy-Con, sideways', pro: 'Controller', unassigned: 'Not set up yet', other: 'Controller' };
 function batteryText(b) {
   if (!b) return '';
   const lvl = b.percent !== null && b.percent !== undefined ? b.percent + '%' : b.level;
@@ -241,7 +241,7 @@ function renderGrip() {
     for (const part of p.parts) { const j = document.createElement('i'); j.className = 'jc ' + part; pic.appendChild(j); }
     const nm = document.createElement('div');
     nm.className = 'gripname';
-    nm.textContent = GRIP_PART[p.kind] || p.name.replace(/ \(Nintendo\)$/, '');
+    nm.textContent = p.kind === 'other' ? p.name : GRIP_PART[p.kind] || p.name.replace(/ \(Nintendo\)$/, '');
     const sub = document.createElement('div');
     sub.className = 'gripsub';
     sub.textContent = p.kind === 'unassigned' ? 'Press SL + SR on it, or L + R with another Joy-Con' : p.error === 'permission' ? "Tessera isn't allowed to read this one" : [batteryText(p.battery), p.motion ? 'motion sensors' : ''].filter(Boolean).join(' · ');

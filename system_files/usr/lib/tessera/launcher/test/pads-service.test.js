@@ -51,6 +51,15 @@ test('with the service running Ludus leaves the Joy-Cons alone and shows what th
   c.stop();
 });
 
+test('other controllers share the player numbers with the Joy-Cons', () => {
+  writeState({ active: true, mode: 'ask', grip: false, pads: [{ player: 1, kind: 'joined', members: [L, R], names: [] }],
+    others: [{ player: 2, name: 'Nintendo Wii Remote' }], unassigned: [] });
+  const c = ctl();
+  c._t.rescan();
+  assert.deepEqual(c.list().svc.map((p) => [p.kind, p.player, p.name]), [['joined', 1, 'Joy-Con (L+R) (Nintendo)'], ['other', 2, 'Nintendo Wii Remote']]);
+  c.stop();
+});
+
 test('a service that is not active (no controller could be made) is ignored', () => {
   writeState({ active: false, pads: [], unassigned: [] });
   assert.equal(pads.scan().length, 2);

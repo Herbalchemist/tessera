@@ -232,10 +232,15 @@ function create({ onList = () => {}, onFrame = () => {}, onMotion = () => {}, pr
       id: 'svc:' + p.members.join('+'), name: (p.kind === 'joined' ? 'Joy-Con (L+R)' : 'Joy-Con') + ' (Nintendo)', kind: p.kind, player: p.player,
       parts: p.members.map(PART_OF), sideways: p.kind === 'jl' || p.kind === 'jr', motion: false, battery: null, error: '',
     }));
+    // every other controller (Wii remote, PlayStation, Xbox...) shares the player numbers with the Joy-Cons
+    const others = (st.others || []).map((o) => ({
+      id: 'svc-other:' + o.name + ':' + o.player, name: o.name, kind: 'other', player: o.player,
+      parts: [], sideways: false, motion: false, battery: null, error: '',
+    }));
     const waiting = st.unassigned.map((u) => ({
       id: 'svc-wait:' + u.uniq, name: u.name + ' (Nintendo)', kind: 'unassigned', player: 0, parts: [u.kind], sideways: false, motion: false, battery: null, error: '',
     }));
-    return [...pads, ...waiting];
+    return [...pads, ...others].sort((a, b) => a.player - b.player).concat(waiting);
   }
 
   function listPayload() {

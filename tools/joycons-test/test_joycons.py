@@ -394,5 +394,135 @@ class PlayerLights(unittest.TestCase):
         self.assertEqual((self.lit(b), self.lit(a)), ([1], [2]))
 
 
+class OtherControllers(unittest.TestCase):
+    """Wii remotes, PlayStation and Xbox pads share the player list with the Joy-Cons, and show their number."""
+    def setUp(self):
+        self.sysroot = os.path.join(tmp, 'sys2')
+        self.leds = os.path.join(tmp, 'leds2')
+        jc.SYS, jc.LEDS = self.sysroot, self.leds
+        import shutil
+        for d in (self.sysroot, self.leds):
+            shutil.rmtree(d, ignore_errors=True)
+            os.makedirs(d)
+
+    def pad(self, node, name, hid, gamepad=True, virtual=False):
+        parent = os.path.join(tmp, 'devs', 'virtual' if virtual else 'real', hid)
+        base = os.path.join(parent, node)
+        os.makedirs(base, exist_ok=True)
+        os.makedirs(os.path.join(base, 'capabilities'), exist_ok=True)
+        with open(os.path.join(base, 'name'), 'w') as f:
+            f.write(name)
+        with open(os.path.join(base, 'capabilities', 'key'), 'w') as f:
+            f.write('0 1000000000000 0 0 0 0' if gamepad else '0')   # bit 48 of the fifth word from the right = 0x130
+        os.makedirs(os.path.join(self.sysroot, node), exist_ok=True)
+        link = os.path.join(self.sysroot, node, 'device')
+        if os.path.lexists(link):
+            os.unlink(link)
+        os.symlink(base, link)
+        dev_link = os.path.join(base, 'device')
+        if not os.path.lexists(dev_link):
+            os.symlink(parent, dev_link)
+
+    def led(self, name):
+        d = os.path.join(self.leds, name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, 'brightness'), 'w') as f:
+            f.write('0')
+        return d
+
+    def value(self, name):
+        with open(os.path.join(self.leds, name, 'brightness')) as f:
+            return int(f.read())
+
+    def test_only_real_controllers_count_and_one_device_is_one_controller(self):
+        self.pad('event3', 'Nintendo Wii Remote', '0005:057E:0306.0001')
+        self.pad('event4', 'Nintendo Wii Remote Accelerometer', '0005:057E:0306.0001', gamepad=False)
+        self.pad('event5', 'Sony DualSense', '0003:054C:0CE6.0002')
+        self.pad('event6', 'Sony DualSense Touchpad', '0003:054C:0CE6.0002', gamepad=False)
+        self.pad('event7', 'Tessera Joy-Con (L+R)', '0003:045E:028E.0003')
+        self.pad('event8', 'Microsoft X-Box 360 pad', '0003:045E:028E.0004', virtual=True)
+        found = jc.scan_others()
+        self.assertEqual(sorted(found), ['0003:054C:0CE6.0002', '0005:057E:0306.0001'])
+
+    def test_wii_remote_lights_one_of_four(self):
+        hid = '0005:057E:0306.0001'
+        for n in range(1, 5):
+            self.led('%s:blue:p%d' % (hid, n))
+        jc.set_slot_lights(hid, 2)
+        self.assertEqual([self.value('%s:blue:p%d' % (hid, n)) for n in range(1, 5)], [0, 1, 0, 0])
+        jc.set_slot_lights(hid, 5)   # the fifth player wraps round
+        self.assertEqual([self.value('%s:blue:p%d' % (hid, n)) for n in range(1, 5)], [1, 0, 0, 0])
+
+    def hanging_led(self, hid, name):
+        """A light that hangs off its controller in sysfs and is only linked from the lights directory."""
+        d = os.path.join(tmp, 'devs', 'real', hid, 'leds', name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, 'brightness'), 'w') as f:
+            f.write('0')
+        os.symlink(d, os.path.join(self.leds, name))
+        return d
+
+    def test_dualsense_and_xbox_lights(self):
+        hid, xhid = '0003:054C:0CE6.0002', '0003:045E:028E.0004'
+        ds = [self.hanging_led(hid, 'input9:white:player-%d' % n) for n in range(1, 6)]
+        xd = self.hanging_led(xhid, 'xpad0')
+        read = lambda d: int(open(os.path.join(d, 'brightness')).read())
+        jc.set_slot_lights(hid, 3)
+        self.assertEqual([read(d) for d in ds], [1, 0, 1, 0, 1])   # the PlayStation 5's pattern for player 3
+        jc.set_slot_lights(hid, 1)
+        self.assertEqual([read(d) for d in ds], [0, 0, 1, 0, 0])
+        jc.set_slot_lights(xhid, 2)
+        self.assertEqual(read(xd), 7)   # xpad: 6 is light 1, 7 is light 2
+
+    def test_one_player_list_across_controller_types(self):
+        a, b = '0003:057E:2006.0001', '0003:057E:2007.0002'
+        s = jc.Service()
+        s.cfg = {'mode': 'ask', 'singles': [], 'pairs': [], 'order': []}
+        for uniq, kind, hid in ((L, 'jl', a), (R, 'jr', b)):
+            s.devs[uniq] = {'info': {'node': 'event0', 'kind': kind, 'uniq': uniq, 'name': 'Joy-Con', 'hid': hid}, 'fd': os.open(os.devnull, os.O_RDONLY)}
+            s.grips.connect(uniq, kind)
+        real = jc.make_virtual, jc.write_events
+        jc.make_virtual = lambda name: os.open(os.devnull, os.O_WRONLY)
+        jc.write_events = lambda fd, events: None
+        try:
+            s.grips.set_pair(L, R)
+            s.rebuild()
+            self.assertEqual(s.numbers, {'g:%s+%s' % (L, R): 1})
+            s.others = {'wii': {'node': 'event3', 'key': 'wii', 'name': 'Nintendo Wii Remote', 'hid': 'wii'}}
+            s.rebuild()                       # a Wii remote joins a Joy-Con pair: player 2
+            self.assertEqual(s.numbers['p:wii'], 2)
+            s.others['ds'] = {'node': 'event5', 'key': 'ds', 'name': 'Sony DualSense', 'hid': 'ds'}
+            s.rebuild()
+            self.assertEqual((s.numbers['p:ds'], s.numbers['p:wii']), (3, 2))
+            del s.others['wii']               # the Wii remote leaves: the DualSense moves up
+            s.rebuild()
+            self.assertEqual(s.numbers['p:ds'], 2)
+            st = json.load(open(jc.STATE))
+            self.assertEqual([p['player'] for p in st['pads']], [1])
+            self.assertEqual(st['others'], [{'player': 2, 'name': 'Sony DualSense'}])
+        finally:
+            jc.make_virtual, jc.write_events = real
+
+    def test_a_wii_remote_first_then_joycons_the_other_way_round(self):
+        a, b = '0003:057E:2006.0001', '0003:057E:2007.0002'
+        s = jc.Service()
+        s.cfg = {'mode': 'ask', 'singles': [], 'pairs': [], 'order': []}
+        real = jc.make_virtual, jc.write_events
+        jc.make_virtual = lambda name: os.open(os.devnull, os.O_WRONLY)
+        jc.write_events = lambda fd, events: None
+        try:
+            s.others = {'wii': {'node': 'event3', 'key': 'wii', 'name': 'Nintendo Wii Remote', 'hid': 'wii'}}
+            s.rebuild()
+            self.assertEqual(s.numbers['p:wii'], 1)
+            for uniq, kind, hid in ((L, 'jl', a), (R, 'jr', b)):
+                s.devs[uniq] = {'info': {'node': 'event0', 'kind': kind, 'uniq': uniq, 'name': 'Joy-Con', 'hid': hid}, 'fd': os.open(os.devnull, os.O_RDONLY)}
+                s.grips.connect(uniq, kind)
+            s.grips.set_pair(L, R)
+            s.rebuild()
+            self.assertEqual((s.numbers['p:wii'], s.numbers['g:%s+%s' % (L, R)]), (1, 2))
+        finally:
+            jc.make_virtual, jc.write_events = real
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -28,6 +28,7 @@ import fcntl
 import glob
 import json
 import os
+import re
 import select
 import struct
 import sys
@@ -380,15 +381,16 @@ def save_config(c):
     os.replace(tmp, CONFIG)
 
 
-def write_state(active, groups, devices, mode='ask', grip=False):
+def write_state(active, groups, devices, mode='ask', grip=False, numbers=None, others=()):
     """devices: {uniq: {'name', 'kind'}}. What Ludus shows: the controllers made, and the Joy-Cons waiting."""
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     tmp = STATE + '.tmp'
     used = {m for g in groups for m in g['members']}
     state = {
         'active': active, 'mode': mode, 'grip': grip,
-        'pads': [{'player': i + 1, 'kind': g['kind'], 'members': g['members'],
+        'pads': [{'player': numbers[i] if numbers else i + 1, 'kind': g['kind'], 'members': g['members'],
                   'names': [devices.get(m, {}).get('name', m) for m in g['members']]} for i, g in enumerate(groups)],
+        'others': [{'player': o['player'], 'name': o['name']} for o in others],
         'unassigned': [{'uniq': k, 'name': d['name'], 'kind': d['kind']} for k, d in devices.items() if k not in used],
     }
     with open(tmp, 'w') as f:
@@ -412,6 +414,102 @@ def set_player_lights(hid, player):
             pass
 
 
+# ------------------------------------------------------------------ the other controllers (Wii remotes, PlayStation, Xbox...)
+# They already work as ordinary gamepads. The service only watches them, so that every controller
+# shares one list of players (a Wii remote added to a Joy-Con pair is player 2, and the other way
+# round), and shows each one's player number on its own lights.
+
+BTN_SOUTH = 0x130   # BTN_GAMEPAD / BTN_A: what a controller (and a Wii remote) has
+
+
+def has_key(path, code):
+    """Does the input device list this key? (capabilities/key: hex words, the highest first.)"""
+    words = read_text(path).split()
+    try:
+        word = int(words[len(words) - 1 - code // 64], 16)
+    except (IndexError, ValueError):
+        return False
+    return bool(word >> (code % 64) & 1)
+
+
+def describe_other(node):
+    """A controller that is not a Joy-Con and not one of ours: {'node','key','name','hid'}, else None.
+    One controller can show up as several input devices (a DualSense's touchpad and motion sensors, a
+    Wii remote's Nunchuk), so they are told apart by the device they all hang from."""
+    base = os.path.join(SYS, node, 'device')
+    name = read_text(os.path.join(base, 'name'))
+    if not name or name.startswith('Tessera') or describe(node):
+        return None
+    if not has_key(os.path.join(base, 'capabilities', 'key'), BTN_SOUTH):
+        return None
+    if '/virtual/' in os.path.realpath(base):
+        return None   # made by software (Steam's controllers, ours), not a real controller
+    try:
+        hid = os.path.basename(os.path.realpath(os.path.join(base, 'device')))
+    except OSError:
+        hid = ''
+    if not hid:
+        return None
+    return {'node': node, 'key': hid, 'name': name, 'hid': hid}
+
+
+def scan_others():
+    try:
+        nodes = sorted((n for n in os.listdir(SYS) if n.startswith('event') and n[5:].isdigit()), key=lambda n: int(n[5:]))
+    except OSError:
+        return {}
+    out = {}
+    for d in (describe_other(n) for n in nodes):
+        if d and d['key'] not in out:
+            out[d['key']] = d
+    return out
+
+
+# DualSense: five lights in a row, the pattern for each player (the PlayStation 5's own)
+DS_PATTERN = {1: (3,), 2: (2, 4), 3: (1, 3, 5), 4: (1, 2, 4, 5), 5: (1, 2, 3, 4, 5)}
+
+
+def leds_of(hid):
+    """[(name, path)] of the lights that belong to one device: named after it, or hanging from it."""
+    out = []
+    try:
+        names = sorted(os.listdir(LEDS))
+    except OSError:
+        return out
+    for name in names:
+        path = os.path.join(LEDS, name)
+        if name.startswith(hid + ':') or ('/' + hid + '/') in os.path.realpath(path) + '/':
+            out.append((name, path))
+    return out
+
+
+def write_led(path, value):
+    try:
+        with open(os.path.join(path, 'brightness'), 'w') as f:
+            f.write(str(value))
+    except OSError:
+        pass
+
+
+def set_slot_lights(hid, player):
+    """Show a player number on whatever lights a controller has. Wii remotes: four blue lights (p1-p4).
+    DualSense: five white ones. Xbox 360: the ring (xpad's brightness 6-9 is light 1-4). Others have none."""
+    if not hid or not player:
+        return
+    leds = leds_of(hid)
+    ring = ((player - 1) % 4) + 1
+    wii = [(n, p) for n, p in leds if re.search(r':p[1-4]$', n)]
+    for n, p in wii:
+        write_led(p, 1 if int(n[-1]) == ring else 0)
+    ds = [(n, p) for n, p in leds if re.search(r':white:player-[1-5]$', n)]
+    on = DS_PATTERN[min(player, 5)] if ds else ()
+    for n, p in ds:
+        write_led(p, 1 if int(n[-1]) in on else 0)
+    for n, p in leds:
+        if re.fullmatch(r'xpad\d+', n):
+            write_led(p, 5 + ring)
+
+
 class Service:
     def __init__(self):
         self.devs = {}      # uniq -> {'info', 'fd'}
@@ -423,6 +521,10 @@ class Service:
         self.grip_until = 0.0
         self.sock = None
         self.active = False
+        self.others = {}    # hid -> {'node','key','name','hid'}: the other controllers
+        self.seat = {}      # who sits where: entity key -> seat number (their order of arrival)
+        self.seat_n = 0
+        self.numbers = {}   # entity key -> player number
 
     # ---- the Joy-Cons
     def open_dev(self, info):
@@ -455,6 +557,10 @@ class Service:
             if key not in self.arrival:
                 self.arrival.append(key)
             changed = True
+        seen_others = scan_others()
+        if set(seen_others) != set(self.others):
+            changed = True
+        self.others = seen_others
         return changed
 
     def device_info(self):
@@ -500,17 +606,42 @@ class Service:
         self.light_players()
         self.publish()
 
+    def seat_players(self):
+        """One list of players for every kind of controller, in the order they sat down: a Joy-Con (or
+        a pair) and a Wii remote or any other controller count alike. Returns [entity key] in player order.
+        A Joy-Con group is 'g:' + its members; another controller is 'p:' + its device."""
+        group_keys = ['g:' + '+'.join(p['group']['members']) for p in self.pads]
+        keys = group_keys + ['p:' + k for k in self.others]
+        for k in [k for k in self.seat if k not in keys]:
+            del self.seat[k]                    # left: its seat is free, the ones after it move up
+        for k in keys:
+            if k not in self.seat:
+                self.seat_n += 1
+                self.seat[k] = self.seat_n
+        # moving a Joy-Con player up or down swaps seats among the Joy-Con groups only
+        held = sorted(self.seat[k] for k in group_keys)
+        for k, n in zip(group_keys, held):
+            self.seat[k] = n
+        return sorted(keys, key=lambda k: self.seat[k])
+
     def light_players(self):
-        """Each Joy-Con's lights show its player number (both halves of a pair show the same); a waiting one shows all four."""
+        """Every controller's lights show its player number (both halves of a Joy-Con pair show the same);
+        a Joy-Con waiting to be set up shows all four."""
+        order = self.seat_players()
+        self.numbers = {k: i + 1 for i, k in enumerate(order)}
         player = {}
-        for i, p in enumerate(self.pads):
+        for p in self.pads:
             for m in p['group']['members']:
-                player[m] = i + 1
+                player[m] = self.numbers['g:' + '+'.join(p['group']['members'])]
         for key, d in self.devs.items():
             set_player_lights(d['info'].get('hid'), player.get(key))
+        for k, o in self.others.items():
+            set_slot_lights(o['hid'], self.numbers.get('p:' + k))
 
     def publish(self):
-        write_state(self.active, [p['group'] for p in self.pads], self.device_info(), self.cfg['mode'], self.grips.grip)
+        numbers = [self.numbers.get('g:' + '+'.join(p['group']['members'])) or i + 1 for i, p in enumerate(self.pads)]
+        others = sorted(({'player': self.numbers.get('p:' + k, 0), 'name': o['name']} for k, o in self.others.items()), key=lambda o: o['player'])
+        write_state(self.active, [p['group'] for p in self.pads], self.device_info(), self.cfg['mode'], self.grips.grip, numbers, others)
 
     def handle(self, key, data):
         for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
