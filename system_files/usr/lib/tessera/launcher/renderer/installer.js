@@ -8,7 +8,7 @@
 // (live-install, through main.js); nothing on the computer changes before the last step's Install.
 let installerShown = false;
 const isLive = () => Boolean(prefs.live);
-const fmtSize = (b) => (b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : `${Math.round(b / 1e9)} GB`);
+const fmtSize = (b) => (b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : b >= 1e9 ? `${Math.round(b / 1e9)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 function installWatch() {
   return new Promise((resolve) => {
     let st = { percent: 0, stage: 'Starting', line: '' };
