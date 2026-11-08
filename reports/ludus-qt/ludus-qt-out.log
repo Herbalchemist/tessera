@@ -1,0 +1,6 @@
+ludus-qt: starting
+QQmlApplicationEngine failed to load component
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:24:33: Cannot assign a value to a signal (expecting a script to be run)
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:24:33: Cannot assign a value to a signal (expecting a script to be run)
+ludus-qt: the screen did not load
+exit code 1
