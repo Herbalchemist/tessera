@@ -472,7 +472,7 @@ Window {
         id: keyboard
         visible: false
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.6)
+        color: Qt.rgba(0.04, 0.06, 0.08, 0.96)
         z: 30
         property string heading: ""
         property string typed: ""
@@ -541,10 +541,10 @@ Window {
     // ---------------------------------------------------------------- a game is running / messages
     Rectangle {
         anchors.fill: parent
-        visible: backend.running !== ""
+        visible: backend !== null && backend.running !== ""
         color: theme.bg
         z: 40
-        Text { anchors.centerIn: parent; text: "Playing " + backend.running; color: theme.dim; font.pixelSize: 24 * theme.u }
+        Text { anchors.centerIn: parent; text: backend ? "Playing " + backend.running : ""; color: theme.dim; font.pixelSize: 24 * theme.u }
     }
     Rectangle {
         visible: win.toastText !== ""
