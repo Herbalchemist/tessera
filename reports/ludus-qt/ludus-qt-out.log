@@ -1,7 +1,14 @@
 ludus-qt: starting
-Traceback (most recent call last):
-  File "/__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/ludus.py", line 230, in grab
-    win.grabWindow().save(os.path.join(out, name + '.png'))
-    ^^^^^^^^^^^^^^
-AttributeError: 'PySide6.QtGui.QWindow' object has no attribute 'grabWindow'
-exit code 124
+shot 01-library
+shot 02-tile-moved
+shot 03-options
+shot 04-add-to-which-mosaic
+shot 05-mosaic
+shot 06-mosaic-options-from-tabs
+shot 07-delete-confirm
+shot 08-keyboard
+shot 09-settings
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:547: TypeError: Cannot read property 'running' of null
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:547: TypeError: Cannot read property 'running' of null
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:544: TypeError: Cannot read property 'running' of null
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:544: TypeError: Cannot read property 'running' of null
