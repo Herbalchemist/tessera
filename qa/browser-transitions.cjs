@@ -76,6 +76,11 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
       const after = await state();
       assert.equal(after.open, false, `${style}: closed`);
       assert.equal(after.curtain, true, `${style}: curtain hidden after leaving`);
+      // The page it lands on was laid out while the launcher was still hidden: its tiles must still
+      // be full size, not squashed thin (sized from a hidden, zero-size grid).
+      const tiles = await page.evaluate(() => [...document.querySelectorAll('#rows .card')].slice(0, 6).map((c) => { const b = c.getBoundingClientRect(); return [Math.round(b.width), Math.round(b.height)]; }));
+      assert.ok(tiles.length > 0, `${style}: the page after the browser has tiles`);
+      for (const [w, h] of tiles) assert.ok(w >= 120 && h >= 80, `${style}: tiles after leaving the browser are full size, got ${JSON.stringify(tiles)}`);
       // Back in with RB: picture comes in, live page resumes without reloading.
       await page.evaluate(() => { moveTabs(1); return launchBrowser(1); });
       await page.waitForTimeout(700);
@@ -85,6 +90,7 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
     }
     checks.push('All seven transitions (slide, zoom, fade, rise, flip, doors, none) leave and return cleanly');
     checks.push('Returning to the Browser tab resumes the page without reloading it');
+    checks.push('The page you land on after the browser has full-size tiles (not squashed thin)');
 
     // Esc+Right typed inside the page switches tabs, like RB.
     const tabBefore = await page.evaluate(() => hoverId);

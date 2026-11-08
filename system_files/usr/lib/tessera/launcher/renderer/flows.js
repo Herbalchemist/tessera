@@ -390,11 +390,20 @@ async function flowNewMosaic({ parent } = {}) {
   }
 }
 
+// The mosaic or folder the Options menu acts on. In grid layouts the rows on screen are slices
+// ("grid:0", "grid:1"...), not the mosaic itself, so it is found from the page (or the open folder)
+// instead: otherwise Rename and Delete vanished as soon as a mosaic had a few tiles in it.
+function pageRow() {
+  const id = stack.length ? stack[stack.length - 1].id : page.startsWith('m:') ? page.slice(2) : null;
+  if (id && data.folders[id]) return { id, title: data.folders[id].title };
+  const row = selectedRow();
+  return row && data.folders[row.id] ? row : null;
+}
 function openMenu() {
   if (suspended || busy || modal || focus !== 'content') return;
   const t = selectedTile();
-  const row = selectedRow();
-  const catRow = Boolean(row) && Boolean(data.folders[row.id]);
+  const row = pageRow();
+  const catRow = Boolean(row);
   const renamable = catRow && row.id !== '_home';
   const inFolder = stack.length > 0;
   const items = [];

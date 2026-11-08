@@ -31,7 +31,7 @@ function cancelHold() {
 // Y on a mosaic: tap = Options, hold 3 s = pick it up. Elsewhere Y is just Options.
 function yDown() {
   if (modal || reorderId || place || !liftTarget()) return press('y');
-  yTap = focus === 'content';
+  yTap = true; // a tap opens Options on the tab bar too (it used to do nothing there)
   startHold();
 }
 function yUp() {
