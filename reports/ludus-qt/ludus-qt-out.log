@@ -1,6 +1,7 @@
 ludus-qt: starting
-QQmlApplicationEngine failed to load component
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:24:33: Cannot assign a value to a signal (expecting a script to be run)
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:24:33: Cannot assign a value to a signal (expecting a script to be run)
-ludus-qt: the screen did not load
-exit code 1
+Traceback (most recent call last):
+  File "/__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/ludus.py", line 230, in grab
+    win.grabWindow().save(os.path.join(out, name + '.png'))
+    ^^^^^^^^^^^^^^
+AttributeError: 'PySide6.QtGui.QWindow' object has no attribute 'grabWindow'
+exit code 124
