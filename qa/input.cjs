@@ -379,6 +379,29 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     await page.waitForTimeout(500);
     assert.equal(await page.evaluate(() => browserOpen), false);
     checks.push(`Bumpers: passing Browser doesn't open it, staying does, and presses during its exit are kept (settled in ${Date.now() - t0} ms)`);
+
+    // A mosaic with tiles in it, in a grid layout: Options still offers to rename and delete it,
+    // from the tiles and from the tab bar (Y tapped there used to do nothing).
+    const menu = await page.evaluate(async () => {
+      if (modal) closeModal();
+      data.folders.qa = { title: 'QA mosaic', tiles: Array.from({ length: 9 }, (_, i) => ({ id: 'g' + i, kind: 'game', title: 'Game ' + i })) };
+      if (!data.tabOrder.includes('m:qa')) data.tabOrder.push('m:qa');
+      stack.length = 0; page = 'm:qa'; focus = 'content';
+      const rowId = (currentRows()[0] || {}).id;
+      openMenu();
+      const fromTiles = modal ? modal.items.map((i) => i.label) : [];
+      closeModal();
+      focus = 'tabs'; hoverId = 'm:qa';
+      const st = { busy, suspended, browserMoving, browserOpen, reorderId, place, lift: liftTarget() };
+      yDown(); st.holding = holdTimer !== null; st.yTap = yTap; yUp();
+      const fromTabs = modal ? modal.items.map((i) => i.label) : [];
+      closeModal();
+      return { rowId, fromTiles, fromTabs, row: pageRow(), st };
+    });
+    assert.deepEqual(menu.row, { id: 'qa', title: 'QA mosaic' }, 'Options acts on the mosaic, whatever the rows on screen are called (' + menu.rowId + ')');
+    assert.ok(menu.fromTiles.includes('Delete this mosaic…') && menu.fromTiles.includes('Rename this mosaic…'), 'rename and delete from the tiles: ' + JSON.stringify(menu.fromTiles));
+    assert.ok(menu.fromTabs.includes('Delete this mosaic…') && !menu.fromTabs.includes('Rename…'), 'and with Y tapped on the tab bar (the mosaic\'s options, not a tile\'s): ' + JSON.stringify(menu));
+    checks.push('A mosaic with tiles in it: Options offers Rename and Delete, from the tiles and from the tab bar');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
   for (const c of checks) console.log('ok -', c);

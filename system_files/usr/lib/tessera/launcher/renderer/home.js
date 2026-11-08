@@ -504,6 +504,21 @@ function render() {
   if (page === 'settings' && !stack.length && typeof refreshTileNotes === 'function') refreshTileNotes();
 }
 
+// Size the grid again whenever its space changes size (shown again after the browser, a new
+// screen size), so a size taken while it was hidden never stays.
+let gridWatch = null;
+function watchGridSize(vp) {
+  if (gridWatch || typeof ResizeObserver === 'undefined') return;
+  let last = '';
+  gridWatch = new ResizeObserver(() => {
+    const now = vp.clientWidth + 'x' + vp.clientHeight;
+    if (now === last || vp.clientWidth < 50 || vp.clientHeight < 50) return;
+    last = now;
+    sizeGrid();
+  });
+  gridWatch.observe(vp);
+}
+
 // Grid tiles are sized so `cols` fit across and `rows` fit down.
 function sizeGrid() {
   const { mode, cols, rows } = layoutCfg();
@@ -513,6 +528,10 @@ function sizeGrid() {
     return;
   }
   const vp = rowsEl.parentElement;
+  watchGridSize(vp);
+  // Hidden (the browser is open, so the page has no size): measuring now would give squashed,
+  // unreadably thin tiles. Keep the last good size; the watcher sizes again once it shows.
+  if (vp.clientWidth < 50 || vp.clientHeight < 50) return;
   const { gapPct } = layoutCfg();
   const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.2 * gapPct / 100; // the same space between columns and between rows
   const w = Math.max(200, vp.clientWidth - gap * 2 - 24);

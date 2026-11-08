@@ -83,8 +83,21 @@ const PAGE = `<!doctype html><title>Transitions QA</title>
       assert.equal(await inPage('loads'), 1, `${style}: the page resumed where it was, no reload`);
       assert.equal(await inPage('window.marker'), 42);
     }
+    // A page laid out while the browser is open (the launcher hidden, so its grid has no size), then
+    // shown: its tiles must be full size, not squashed thin.
+    const tiles = await page.evaluate(async () => {
+      page = 'settings'; stack = []; render(); // laid out behind the open browser
+      await closeBrowser(-1);
+      await new Promise((r) => setTimeout(r, 400));
+      return [...document.querySelectorAll('#rows .card')].slice(0, 6).map((c) => { const b = c.getBoundingClientRect(); return [Math.round(b.width), Math.round(b.height)]; });
+    });
+    assert.ok(tiles.length > 0, 'Settings has tiles');
+    for (const [w, h] of tiles) assert.ok(w >= 120 && h >= 80, 'tiles laid out behind the browser are full size once shown, got ' + JSON.stringify(tiles));
+    await page.evaluate(() => { const l = tabList(); hoverId = l[(l.indexOf('browser') - 1 + l.length) % l.length]; moveTabs(1); return launchBrowser(1); });
+    await page.waitForTimeout(700);
     checks.push('All seven transitions (slide, zoom, fade, rise, flip, doors, none) leave and return cleanly');
     checks.push('Returning to the Browser tab resumes the page without reloading it');
+    checks.push('The page you land on after the browser has full-size tiles (not squashed thin)');
 
     // Esc+Right typed inside the page switches tabs, like RB.
     const tabBefore = await page.evaluate(() => hoverId);
