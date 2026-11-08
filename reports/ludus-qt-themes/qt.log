@@ -1,0 +1,10 @@
+ludus-qt: starting
+ludus-qt: shell-layout.js: SyntaxError: Unexpected token `...'
+qt.qml.propertyCache.append: Final member top is overridden in class Tiles_QMLTYPE_4. The override won't be used.
+QQmlApplicationEngine failed to load component
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:564:17: Type Tiles unavailable
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tiles.qml:52:5: Cannot override FINAL property
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:564:17: Type Tiles unavailable
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tiles.qml:52:5: Cannot override FINAL property
+ludus-qt: the screen did not load
+exit code 1
