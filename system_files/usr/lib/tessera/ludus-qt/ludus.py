@@ -8,8 +8,10 @@ back to at any time (Settings tab, or by failing to start: the session falls bac
   ludus.py               the screen
   ludus.py --check       exit 0 if this version may run here, 3 (and why) if not
   ludus.py --shot DIR    draw each screen into DIR/*.png and quit (for the build's screenshots)
+  ludus.py --theme-shots DIR   every factory theme, named like qa/theme-shots.cjs (side by side)
 """
 import json
+import re
 import os
 import shutil
 import socket
@@ -181,6 +183,54 @@ class ArtProvider(QQuickAsyncImageProvider):
         return ArtResponse(self.bridge, unquote(id_.split('?')[0]), size)
 
 
+def shell_data():
+    """The arrangements and their parts, from the full Ludus's own shell-layout.js (run as is)."""
+    from PySide6.QtQml import QJSEngine
+    eng = QJSEngine()
+    try:
+        src = open(os.path.join(LAUNCHER, 'shell-layout.js'), encoding='utf-8').read()
+    except OSError:
+        return {}
+    r = eng.evaluate('var module = { exports: {} };\n' + src + '\nJSON.stringify({ parts: module.exports.PARTS, presets: module.exports.PRESETS, presetParts: module.exports.PRESET_PARTS })')
+    try:
+        return json.loads(r.toString())
+    except ValueError:
+        print('ludus-qt: shell-layout.js:', r.toString(), file=sys.stderr)
+        return {}
+
+
+def svg_paths(markup):
+    """'<path d=..>' '<circle ..>' '<rect ..>' markup as one SVG path, for QML's PathSvg."""
+    import re
+    out = []
+    for tag, attrs in re.findall(r'<(path|circle|rect)\s([^>]*?)/?>', markup):
+        a = dict(re.findall(r'([a-zA-Z-]+)="([^"]*)"', attrs))
+        f = lambda k, d=0.0: float(a.get(k, d))  # noqa: E731
+        if tag == 'path':
+            out.append(a.get('d', ''))
+        elif tag == 'circle':
+            cx, cy, r = f('cx'), f('cy'), f('r')
+            out.append('M%g %gA%g %g 0 1 0 %g %gA%g %g 0 1 0 %g %gZ' % (cx - r, cy, r, r, cx + r, cy, r, r, cx - r, cy))
+        else:
+            x, y, w, h, rx = f('x'), f('y'), f('width'), f('height'), f('rx')
+            rx = min(rx, w / 2, h / 2)
+            out.append('M%g %gH%gA%g %g 0 0 1 %g %gV%gA%g %g 0 0 1 %g %gH%gA%g %g 0 0 1 %g %gV%gA%g %g 0 0 1 %g %gZ' % (
+                x + rx, y, x + w - rx, rx, rx, x + w, y + rx, y + h - rx, rx, rx, x + w - rx, y + h, x + rx, rx, rx, x, y + h - rx,
+                y + rx, rx, rx, x + rx, y))
+    return ' '.join(out)
+
+
+def tab_icons():
+    """The tab bar's line icons, from the full Ludus's home.js."""
+    import re
+    try:
+        src = open(os.path.join(LAUNCHER, 'renderer', 'home.js'), encoding='utf-8').read()
+    except OSError:
+        return {}
+    m = re.search(r'const TAB_ICONS = \{(.*?)\n\};', src, re.S)
+    return {k: svg_paths(v) for k, v in re.findall(r"(\w+): '([^']*)'", m.group(1))} if m else {}
+
+
 class Session(QObject):
     """Leaving: back to the full Ludus, or to Opus."""
     @Slot()
@@ -214,6 +264,7 @@ def main():
         sys.exit(3)
     print('ludus-qt: starting', flush=True)
     shot_dir = sys.argv[sys.argv.index('--shot') + 1] if '--shot' in sys.argv else None
+    theme_dir = sys.argv[sys.argv.index('--theme-shots') + 1] if '--theme-shots' in sys.argv else None
     app = QGuiApplication(sys.argv)
     app.setApplicationName('Ludus')
     bridge = Bridge()
@@ -223,7 +274,9 @@ def main():
     engine.addImageProvider('art', ArtProvider(bridge))
     engine.rootContext().setContextProperty('bridge', bridge)
     engine.rootContext().setContextProperty('session', session)
-    engine.rootContext().setContextProperty('shotMode', bool(shot_dir))
+    engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
+    engine.rootContext().setContextProperty('shellData', shell_data())
+    engine.rootContext().setContextProperty('tabIcons', tab_icons())
     engine.load(QUrl.fromLocalFile(os.path.join(HERE, 'qml', 'Main.qml')))
     if not engine.rootObjects():
         print('ludus-qt: the screen did not load', file=sys.stderr, flush=True)
@@ -232,6 +285,8 @@ def main():
     bridge.gone.connect(app.quit)   # the main process ended (a restart, Opus): so does the screen
     if shot_dir:
         code = shots(app, win, shot_dir)
+    elif theme_dir:
+        code = theme_shots(app, win, theme_dir)
     else:
         controllers = pads.Pads(lambda a: QTimer.singleShot(0, lambda: QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))))
         # While a game runs the main process hides the screen; the game reads its controllers itself.
@@ -242,14 +297,10 @@ def main():
     sys.exit(code)
 
 
-def shots(app, win, out):
-    """Steps through the screens the way a controller would, saving a picture of each."""
+def run_steps(app, win, out, steps, wait=900, first=2500):
+    """Runs (name, actions) steps, saving a picture after each. An action "@page" shows a page the
+    way qa/theme-shots.cjs does (Main.qml shotView), "theme:id" switches theme, the rest are presses."""
     os.makedirs(out, exist_ok=True)
-    # The sample library (tools/ludus-qt-test) has games, apps and one mosaic with a folder in it.
-    steps = [('01-library', ['rb', 'down']), ('02-tile-moved', ['right', 'right']), ('03-options', ['y']),
-             ('04-add-to-which-mosaic', ['down', 'a']), ('05-mosaic', ['b', 'rb', 'rb', 'down']),
-             ('06-mosaic-options-from-tabs', ['up', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
-             ('08-keyboard', ['b', 'rb', 'a']), ('09-settings', ['b', 'rb', 'down'])]
     state = {'i': 0}
 
     def step():
@@ -257,9 +308,19 @@ def shots(app, win, out):
             app.quit()
             return
         name, acts = steps[state['i']]
-        for a in acts:
-            QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))
         state['i'] += 1
+        pause = wait
+        for a in acts:
+            if a.startswith('@'):
+                QMetaObject.invokeMethod(win, 'shotView', Q_ARG('QVariant', a[1:]))
+            elif a.startswith('theme:'):
+                QMetaObject.invokeMethod(win, 'useTheme', Q_ARG('QVariant', a[6:]))
+                pause = 1800   # the theme, then its background picture
+            else:
+                QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))
+        if not name:
+            QTimer.singleShot(pause, step)
+            return
 
         def grab():
             try:
@@ -270,8 +331,42 @@ def shots(app, win, out):
                 app.exit(1)
                 return
             QTimer.singleShot(50, step)
-        QTimer.singleShot(450, grab)
-    QTimer.singleShot(2500, step)   # the main process sends the page its first view
+        QTimer.singleShot(pause, grab)
+    QTimer.singleShot(first, step)   # first: the main process sends the page its first view
+
+
+def shots(app, win, out):
+    """The screens a controller walks through, on the sample library (tools/ludus-qt-test/sample.py:
+    games, apps, and the mosaic "Couch co-op" with the folder "Party night" in it)."""
+    steps = [('01-library', ['@library']), ('02-options', ['y']), ('03-add-to-which-mosaic', ['down', 'a']),
+             ('04-mosaic', ['b', '@m:couch']), ('05-folder', ['right', 'right', 'a']),
+             ('06-mosaic-options-from-tabs', ['b', 'b', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
+             ('08-keyboard', ['b', 'right', 'a']), ('09-settings', ['b', 'right', 'down']),
+             ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left'])]
+    run_steps(app, win, out, steps)
+    return app.exec()
+
+
+def theme_shots(app, win, out):
+    """Every factory theme, drawn the way qa/theme-shots.cjs draws the full Ludus (same names), so
+    the two can be put side by side: theme-<id>-<library|home|settings|tabs>-<width>.png"""
+    def start():
+        ids = win.property('themeIds')
+        ids = ids.toVariant() if hasattr(ids, 'toVariant') else ids
+        only = os.environ.get('THEMES')
+        ids = only.split(',') if only else list(ids or [])
+        if not ids:
+            print('theme shots: no themes', flush=True)
+            app.exit(1)
+            return
+        w = win.width()
+        steps = []
+        for t in ids:
+            name = re.sub(r'[^a-zA-Z0-9=+-]', '_', t)
+            steps.append(('', ['theme:' + t]))
+            steps += [('theme-%s-%s-%d' % (name, v, w), ['@' + v]) for v in ('library', 'home', 'settings', 'tabs')]
+        run_steps(app, win, out, steps, first=0)
+    QTimer.singleShot(2500, start)
     return app.exec()
 
 

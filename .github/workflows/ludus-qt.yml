@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Ludus (Qt): its tests, and pictures of its screens drawn by Qt itself (off screen, on Fedora with
-# the same PySide6 the image installs). Pictures go to the "reports" branch (reports/ludus-qt/).
+# Ludus (Qt): its tests, and pictures of its screens drawn by Qt itself (on a virtual X screen, on
+# Fedora with the same PySide6 the image installs). Pictures go to the "reports" branch
+# (reports/ludus-qt/). Then every factory theme drawn by the full Ludus (qa/theme-shots.cjs) and by
+# Ludus (Qt) on the same library, side by side (reports/ludus-qt-themes/): the parity check.
 name: Ludus (Qt)
 on:
   workflow_dispatch:
   push:
     branches: [main, 'feat/**', 'fix/**', 'test/**']
-    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/main/**, system_files/usr/lib/tessera/launcher/main.js, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
+    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/**, qa/theme-shots.cjs, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
 permissions:
   contents: write
 jobs:
@@ -15,26 +17,27 @@ jobs:
     container: registry.fedoraproject.org/fedora:latest
     steps:
       - name: Tools
-        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers dejavu-sans-fonts google-noto-sans-fonts
+        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers xorg-x11-server-Xvfb dejavu-sans-fonts google-noto-sans-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Tests
         run: python3 -m unittest discover -v tools/ludus-qt-test
       - name: Draw the screens
         env:
-          QT_QPA_PLATFORM: offscreen
-          QT_QUICK_BACKEND: software
+          QT_QPA_PLATFORM: xcb
+          DISPLAY: ':99'
           XDG_RUNTIME_DIR: /tmp/rt
           QT_FORCE_STDERR_LOGGING: '1'
           PYTHONUNBUFFERED: '1'
         run: |
           mkdir -p /tmp/rt /tmp/data /tmp/home && chmod 700 /tmp/rt
+          Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp & sleep 2
           python3 tools/ludus-qt-test/sample.py /tmp/data
           HOME=/tmp/home TESSERA_DATA_DIR=/tmp/data TESSERA_LAUNCHER_DIR=$PWD/system_files/usr/lib/tessera/launcher timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out > /tmp/ludus-qt-out.log 2>&1 || echo "exit code $?" >> /tmp/ludus-qt-out.log
           cat /tmp/ludus-qt-out.log
           n=$(ls /tmp/ludus-qt-out/*.png 2>/dev/null | wc -l)
           echo "$n pictures"
           ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/ludus-qt-out.log
-          [ "$n" -ge 9 ]
+          [ "$n" -ge 11 ]
       - name: Publish to the reports branch
         if: always()
         run: |
@@ -47,6 +50,67 @@ jobs:
             d=/tmp/rep/reports/ludus-qt
             rm -rf "$d" && mkdir -p "$d" && cp -r /tmp/ludus-qt-out/. "$d/" 2>/dev/null || true
             (cd /tmp/rep && git add -A reports && git commit -qm "ludus-qt: ${GITHUB_SHA::7}" && git push -q origin HEAD:refs/heads/reports) && exit 0
+            sleep $((RANDOM % 10 + 3))
+          done
+          exit 1
+
+  themes:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb imagemagick fonts-dejavu-core libegl1 libgl1-mesa-dri libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-render-util0
+          python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q PySide6
+          npm --prefix qa ci
+          npm --prefix qa install --no-save "electron@$(tr -d '[:space:]v' < system_files/usr/lib/tessera/launcher/electron-version)"
+      - name: The full Ludus, every factory theme
+        env:
+          TESSERA_QA_OUTPUT: /tmp/full
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs | tee /tmp/full.log
+      - name: Ludus (Qt), every factory theme
+        env:
+          QT_QPA_PLATFORM: xcb
+          XDG_RUNTIME_DIR: /tmp/rt
+          PYTHONUNBUFFERED: '1'
+        run: |
+          mkdir -p /tmp/rt /tmp/qdata /tmp/qhome && chmod 700 /tmp/rt
+          python3 tools/ludus-qt-test/theme_sample.py /tmp/qdata
+          HOME=/tmp/qhome TESSERA_DATA_DIR=/tmp/qdata TESSERA_LAUNCHER_DIR=$PWD/system_files/usr/lib/tessera/launcher \
+            timeout 600 xvfb-run -a -s "-screen 0 1920x1080x24" /tmp/venv/bin/python -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --theme-shots /tmp/qt > /tmp/qt.log 2>&1 || echo "exit code $?" >> /tmp/qt.log
+          cat /tmp/qt.log
+          ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/qt.log
+      - name: Side by side
+        if: always()
+        run: |
+          mkdir -p /tmp/out
+          {
+            echo "# Factory themes: the full Ludus (left) and Ludus (Qt) (right)"
+            echo; echo "Commit ${GITHUB_SHA::7}. Same library, 1280x720."; echo
+          } > /tmp/out/README.md
+          missing=0
+          for f in /tmp/full/theme-*.png; do
+            b=$(basename "$f"); q=/tmp/qt/$b
+            if [ -f "$q" ]; then
+              convert "$f" "$q" -bordercolor '#ff00ff' -border 0 +append -resize 1920x "/tmp/out/$b"
+              echo "### ${b%.png}" >> /tmp/out/README.md; echo "![${b%.png}]($b)" >> /tmp/out/README.md; echo >> /tmp/out/README.md
+            else
+              missing=$((missing + 1)); echo "missing in Qt: $b"
+            fi
+          done
+          cp /tmp/qt.log /tmp/full.log /tmp/out/ 2>/dev/null || true
+          echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pairs, $missing missing"
+      - name: Publish to the reports branch
+        if: always()
+        run: |
+          git config --global user.name github-actions; git config --global user.email github-actions@users.noreply.github.com
+          for i in 1 2 3 4 5; do
+            rm -rf /tmp/rep; git worktree prune
+            if git fetch -q origin reports; then git worktree add -q --detach /tmp/rep FETCH_HEAD; else git worktree add -q --orphan -b reports-new /tmp/rep; fi
+            d=/tmp/rep/reports/ludus-qt-themes
+            rm -rf "$d" && mkdir -p "$d" && cp -r /tmp/out/. "$d/" 2>/dev/null || true
+            (cd /tmp/rep && git add -A reports && git commit -qm "ludus-qt-themes: ${GITHUB_SHA::7}" && git push -q origin HEAD:refs/heads/reports) && exit 0
             sleep $((RANDOM % 10 + 3))
           done
           exit 1

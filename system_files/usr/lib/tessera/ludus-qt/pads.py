@@ -18,7 +18,7 @@ EVENT = struct.Struct('llHHi')
 EV_KEY, EV_ABS = 0x01, 0x03
 BTN_SOUTH = 0x130
 # Linux button codes as an Xbox-style pad sends them (and Tessera's own Joy-Con pads, which say they are one)
-BUTTONS = {0x130: 'a', 0x131: 'b', 0x133: 'x', 0x134: 'y', 0x136: 'lb', 0x137: 'rb', 0x13b: 'start',
+BUTTONS = {0x130: 'a', 0x131: 'b', 0x133: 'x', 0x134: 'y', 0x136: 'lb', 0x137: 'rb', 0x13b: 'start', 0x13d: 'l3', 0x13e: 'r3', 0x138: 'lt', 0x139: 'rt',
            0x13a: 'select', 0x13c: 'guide', 0x220: 'up', 0x221: 'down', 0x222: 'left', 0x223: 'right'}
 ABS_X, ABS_Y, HAT_X, HAT_Y = 0x00, 0x01, 0x10, 0x11
 REPEAT_DELAY, REPEAT_EVERY = 0.38, 0.11
