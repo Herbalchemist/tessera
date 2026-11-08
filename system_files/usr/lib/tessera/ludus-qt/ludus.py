@@ -35,6 +35,7 @@ if '--check' in sys.argv:
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Property, QTimer, QUrl, Signal, Slot  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PySide6.QtQuick import QQuickWindow  # noqa: E402,F401  (so the window is a QQuickWindow in Python)
 
 import pads  # noqa: E402
 
@@ -227,8 +228,13 @@ def shots(app, win, out):
         state['i'] += 1
 
         def grab():
-            win.grabWindow().save(os.path.join(out, name + '.png'))
-            print('shot', name, flush=True)
+            try:
+                win.grabWindow().save(os.path.join(out, name + '.png'))
+                print('shot', name, flush=True)
+            except Exception as e:   # noqa: BLE001 - say it and stop, don't hang the build
+                print('shot failed:', e, flush=True)
+                app.exit(1)
+                return
             QTimer.singleShot(50, step)
         QTimer.singleShot(450, grab)
     QTimer.singleShot(600, step)
