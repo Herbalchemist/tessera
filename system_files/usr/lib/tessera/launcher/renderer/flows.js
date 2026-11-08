@@ -399,9 +399,9 @@ function pageRow() {
   const row = selectedRow();
   return row && data.folders[row.id] ? row : null;
 }
-function openMenu() {
-  if (suspended || busy || modal || focus !== 'content') return;
-  const t = selectedTile();
+function openMenu({ tab = false } = {}) {
+  if (suspended || busy || modal || (focus !== 'content' && !tab)) return;
+  const t = tab ? null : selectedTile(); // from the tab bar: the mosaic's own options, not a tile's
   const row = pageRow();
   const catRow = Boolean(row);
   const renamable = catRow && row.id !== '_home';

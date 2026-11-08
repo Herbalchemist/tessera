@@ -400,7 +400,7 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     });
     assert.deepEqual(menu.row, { id: 'qa', title: 'QA mosaic' }, 'Options acts on the mosaic, whatever the rows on screen are called (' + menu.rowId + ')');
     assert.ok(menu.fromTiles.includes('Delete this mosaic…') && menu.fromTiles.includes('Rename this mosaic…'), 'rename and delete from the tiles: ' + JSON.stringify(menu.fromTiles));
-    assert.ok(menu.fromTabs.includes('Delete this mosaic…'), 'and with Y tapped on the tab bar: ' + JSON.stringify(menu));
+    assert.ok(menu.fromTabs.includes('Delete this mosaic…') && !menu.fromTabs.includes('Rename…'), 'and with Y tapped on the tab bar (the mosaic\'s options, not a tile\'s): ' + JSON.stringify(menu));
     checks.push('A mosaic with tiles in it: Options offers Rename and Delete, from the tiles and from the tab bar');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');

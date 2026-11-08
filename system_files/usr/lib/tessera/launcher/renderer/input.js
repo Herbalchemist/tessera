@@ -77,7 +77,7 @@ function press(act) {
       if (act === 'left') return moveTabs(-1);
       if (act === 'right') return moveTabs(1);
     }
-    if (act === 'y' && hoverId === page && !isButtonTab(hoverId)) return openMenu(); // Options for the tab you're on
+    if (act === 'y' && hoverId === page && !isButtonTab(hoverId)) return openMenu({ tab: true }); // Options for the tab you're on
     if (act === shell.contentEntry || act === 'a') {
       if (hoverId === 'new') return flowNewMosaic({});
       if (hoverId === 'browser') return launchBrowser();
