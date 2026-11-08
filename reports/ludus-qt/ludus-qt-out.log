@@ -8,7 +8,3 @@ shot 06-mosaic-options-from-tabs
 shot 07-delete-confirm
 shot 08-keyboard
 shot 09-settings
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:547: TypeError: Cannot read property 'running' of null
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:547: TypeError: Cannot read property 'running' of null
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:544: TypeError: Cannot read property 'running' of null
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:544: TypeError: Cannot read property 'running' of null
