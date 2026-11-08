@@ -392,14 +392,15 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
       const fromTiles = modal ? modal.items.map((i) => i.label) : [];
       closeModal();
       focus = 'tabs'; hoverId = 'm:qa';
-      yDown(); yUp();
+      const st = { busy, suspended, browserMoving, browserOpen, reorderId, place, lift: liftTarget() };
+      yDown(); st.holding = holdTimer !== null; st.yTap = yTap; yUp();
       const fromTabs = modal ? modal.items.map((i) => i.label) : [];
       closeModal();
-      return { rowId, fromTiles, fromTabs, row: pageRow() };
+      return { rowId, fromTiles, fromTabs, row: pageRow(), st };
     });
     assert.deepEqual(menu.row, { id: 'qa', title: 'QA mosaic' }, 'Options acts on the mosaic, whatever the rows on screen are called (' + menu.rowId + ')');
     assert.ok(menu.fromTiles.includes('Delete this mosaic…') && menu.fromTiles.includes('Rename this mosaic…'), 'rename and delete from the tiles: ' + JSON.stringify(menu.fromTiles));
-    assert.ok(menu.fromTabs.includes('Delete this mosaic…'), 'and with Y tapped on the tab bar: ' + JSON.stringify(menu.fromTabs));
+    assert.ok(menu.fromTabs.includes('Delete this mosaic…'), 'and with Y tapped on the tab bar: ' + JSON.stringify(menu));
     checks.push('A mosaic with tiles in it: Options offers Rename and Delete, from the tiles and from the tab bar');
   } finally { await app.close(); }
   assert.deepEqual(errors, [], 'no page errors');
