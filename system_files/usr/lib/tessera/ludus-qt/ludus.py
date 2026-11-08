@@ -9,20 +9,41 @@ back to at any time (Settings tab, or by failing to start: the session falls bac
   ludus.py --check       exit 0 if this version may run here, 3 (and why) if not
   ludus.py --shot DIR    draw each screen into DIR/*.png and quit (for the build's screenshots)
 """
+import json
 import os
-import subprocess
+import shutil
+import socket
 import sys
-import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import library  # noqa: E402
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+LAUNCHER = os.environ.get('TESSERA_LAUNCHER_DIR', '/usr/lib/tessera/launcher')
+DATA_DIR = os.environ.get('TESSERA_DATA_DIR') or os.path.join(
+    os.environ.get('XDG_DATA_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'share'), 'tessera')
 CHOICE = os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'), '.config'), 'tessera', 'ludus')
-STATE = os.path.join(os.environ.get('XDG_STATE_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'state'), 'tessera')
+
+
+def locked_down(settings=None):
+    """What this version has no screens for yet, and must never let anyone around: a PIN, profiles
+    (and their guest limits). While any is set up it doesn't run; the full Ludus is used."""
+    if settings is None:
+        try:
+            with open(os.path.join(DATA_DIR, 'settings.json'), encoding='utf-8') as f:
+                settings = json.load(f)
+        except (OSError, ValueError):
+            settings = {}
+    if not isinstance(settings, dict):
+        return None
+    if settings.get('pin'):
+        return 'a PIN is set'
+    if isinstance(settings.get('profiles'), list) and settings['profiles']:
+        return 'profiles are set up'
+    return None
 
 
 def check():
-    why = library.locked_down()
+    why = locked_down()
     if why:
         print('ludus-qt: not used, %s (the full Ludus keeps those safe)' % why, file=sys.stderr)
         return 3
@@ -32,145 +53,150 @@ def check():
 if '--check' in sys.argv:
     sys.exit(check())
 
-from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Property, QTimer, QUrl, Signal, Slot  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Property, QSocketNotifier, Qt, QTimer, QUrl, Signal, Slot  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QImage  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
-from PySide6.QtQuick import QQuickWindow  # noqa: E402,F401  (so the window is a QQuickWindow in Python)
+from PySide6.QtQuick import QQuickAsyncImageProvider, QQuickImageResponse, QQuickTextureFactory, QQuickWindow  # noqa: E402,F401
 
 import pads  # noqa: E402
 
 
-class Backend(QObject):
-    changed = Signal()
-    action = Signal(str)          # a controller press (from the pads thread, delivered on the screen's thread)
-    message = Signal(str)
-    runningChanged = Signal()
-    gameEnded = Signal(str)
+def node_program():
+    """What runs the full Ludus's main process: the Electron that ships with it, as plain Node
+    (always there, the version that code is tested on), else the system's node."""
+    electron = os.path.join(LAUNCHER, 'node_modules', 'electron', 'dist', 'electron')
+    if os.access(electron, os.X_OK):
+        return [electron], {'ELECTRON_RUN_AS_NODE': '1'}
+    return [os.environ.get('TESSERA_NODE') or shutil.which('node') or 'node'], {}
 
-    def __init__(self, lib):
+
+class Bridge(QObject):
+    """The full Ludus's main process (backend/bridge.js), over a private socket pair."""
+    reply = Signal(int, 'QVariant')
+    event = Signal(str, 'QVariant')
+    windowOp = Signal(str)
+    gone = Signal()
+
+    def __init__(self):
         super().__init__()
-        self.lib = lib
-        self._running = ''
-        self.pads = None
+        ours, theirs = socket.socketpair()
+        prog, extra = node_program()
+        env = dict(os.environ, TESSERA_BRIDGE_FD=str(theirs.fileno()), TESSERA_LAUNCHER_DIR=LAUNCHER, **extra)
+        import subprocess
+        self.child = subprocess.Popen(prog + [os.path.join(HERE, 'backend', 'bridge.js')], env=env,
+                                      pass_fds=(theirs.fileno(),), stdin=subprocess.DEVNULL)
+        theirs.close()
+        self.sock = ours
+        self.sock.setblocking(False)
+        self.buf = b''
+        self.notifier = QSocketNotifier(self.sock.fileno(), QSocketNotifier.Read)
+        self.notifier.activated.connect(self.read)
+        self.art_ids = 1 << 30   # picture requests use their own numbers, far from the page's
 
-    # ---- what the screen shows
-    @Property('QVariantList', notify=changed)
-    def tabs(self):
-        return self.lib.tabs()
+    def new_art_id(self):
+        self.art_ids += 1
+        return self.art_ids
 
-    @Slot(str, result='QVariantList')
-    def tiles(self, where):
-        return self.lib.tiles(where)
-
-    @Slot(result='QVariantList')
-    def mosaicList(self):
-        return [{'id': c['id'], 'title': c['title']} for c in self.lib.mosaics()]
-
-    @Slot(str, result=str)
-    def title(self, cat_id):
-        c = self.lib.cat(cat_id)
-        return c['title'] if c else ''
-
-    @Property(str, notify=runningChanged)
-    def running(self):
-        return self._running
-
-    # ---- changes
-    @Slot(str, result=str)
-    def createMosaic(self, title):
-        id_ = self.lib.create_mosaic(title)
-        self.changed.emit()
-        return id_
-
-    @Slot(str, str, result=bool)
-    def rename(self, cat_id, title):
-        ok = self.lib.rename(cat_id, title)
-        self.changed.emit()
-        return ok
-
-    @Slot(str, result=bool)
-    def deleteMosaic(self, cat_id):
-        ok = self.lib.delete_mosaic(cat_id)
-        self.changed.emit()
-        return ok
-
-    @Slot(str, str, result=bool)
-    def addTo(self, cat_id, entry):
-        ok = self.lib.add_to(cat_id, entry)
-        self.changed.emit()
-        return ok
-
-    @Slot(str, str, result=bool)
-    def removeFrom(self, cat_id, entry):
-        ok = self.lib.remove_from(cat_id, entry)
-        self.changed.emit()
-        return ok
-
-    @Slot(str, int, result=bool)
-    def moveTab(self, tab_id, d):
-        ok = self.lib.move_tab(tab_id, d)
-        self.changed.emit()
-        return ok
-
-    # ---- starting things
-    @Slot(str)
-    def launch(self, item_id):
-        if self._running:
-            return self.message.emit('%s is still running.' % self._running)
-        argv, cwd = self.lib.launch_command(item_id)
-        if argv is None:
-            return self.message.emit(cwd)
-        it = self.lib.item(item_id)
-        os.makedirs(os.path.join(STATE, 'logs'), exist_ok=True)
-        log = open(os.path.join(STATE, 'logs', 'ludus-qt-last-game.log'), 'w')
+    def read(self):
         try:
-            child = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
-        except OSError as e:
-            log.close()
-            return self.message.emit('Launch failed: %s' % e)
-        log.close()
-        self.lib.record_play(item_id)
-        self._running = it.get('title') or 'The game'
-        self.runningChanged.emit()
-        if self.pads:
-            self.pads.paused = True   # a game reads its controllers itself
+            data = self.sock.recv(1 << 20)
+        except BlockingIOError:
+            return
+        except OSError:
+            data = b''
+        if not data:
+            self.notifier.setEnabled(False)
+            self.gone.emit()
+            return
+        self.buf += data
+        while b'\n' in self.buf:
+            line, self.buf = self.buf.split(b'\n', 1)
+            try:
+                m = json.loads(line)
+            except ValueError:
+                continue
+            if 'id' in m:
+                self.reply.emit(int(m['id']), m)
+            elif 'event' in m:
+                self.event.emit(m['event'], m.get('data'))
+            elif 'window' in m:
+                self.windowOp.emit(m['window'])
 
-        def wait():
-            code = child.wait()
-            self._ended = '' if code == 0 else '%s exited (code %d).' % (self._running, code)
-            QTimer.singleShot(0, self.finish)
-        threading.Thread(target=wait, daemon=True).start()
+    @Slot(int, str, 'QVariantList')
+    def request(self, id_, ch, args):
+        msg = (json.dumps({'id': id_, 'ch': ch, 'args': args}) + '\n').encode()
+        self.sock.setblocking(True)
+        try:
+            self.sock.sendall(msg)
+        except OSError:
+            pass
+        finally:
+            self.sock.setblocking(False)
 
-    def finish(self):
-        msg = getattr(self, '_ended', '')
-        self._running = ''
-        self.runningChanged.emit()
-        if self.pads:
-            self.pads.paused = False
-        self.gameEnded.emit(msg)
+    def stop(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+        try:
+            self.child.wait(3)
+        except Exception:   # noqa: BLE001
+            self.child.kill()
 
-    # ---- leaving
+
+class ArtResponse(QQuickImageResponse):
+    """One game picture, asked of the main process (the same answer its tessera-art:// gives)."""
+    def __init__(self, bridge, name, size):
+        super().__init__()
+        self.image = QImage()
+        self.size = size
+        self.rid = bridge.new_art_id()
+        bridge.reply.connect(self.got, Qt.QueuedConnection)
+        QMetaObject.invokeMethod(bridge, 'request', Qt.QueuedConnection, Q_ARG(int, self.rid), Q_ARG(str, '__art'), Q_ARG('QVariantList', [name]))
+
+    def got(self, rid, m):
+        if rid != self.rid:
+            return
+        try:
+            r = m.get('result') if m.get('ok') else None
+            if r and r.get('data'):
+                import base64
+                self.image.loadFromData(base64.b64decode(r['data']))
+                if self.size.isValid() and self.size.width() > 0 and not self.image.isNull():
+                    self.image = self.image.scaled(self.size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        finally:
+            self.finished.emit()
+
+    def textureFactory(self):
+        return QQuickTextureFactory.textureFactoryForImage(self.image)
+
+
+class ArtProvider(QQuickAsyncImageProvider):
+    def __init__(self, bridge):
+        super().__init__()
+        self.bridge = bridge
+
+    def requestImageResponse(self, id_, size):
+        from urllib.parse import unquote
+        return ArtResponse(self.bridge, unquote(id_.split('?')[0]), size)
+
+
+class Session(QObject):
+    """Leaving: back to the full Ludus, or to Opus."""
     @Slot()
     def useFullLudus(self):
-        """Back to the full (Electron) Ludus: forget the choice and start again."""
         try:
             os.remove(CHOICE)
         except OSError:
             pass
-        self._restart()
-
-    def _restart(self):
-        f = os.environ.get('TESSERA_RESTART_FILE')
-        if f:
-            try:
-                open(f, 'w').close()
-            except OSError:
-                pass
-        QGuiApplication.quit()
+        self._touch('TESSERA_RESTART_FILE')
 
     @Slot()
     def goToOpus(self):
-        f = os.environ.get('TESSERA_LEAVE_FILE')
+        self._touch('TESSERA_LEAVE_FILE')
+
+    def _touch(self, var):
+        f = os.environ.get(var)
         if f:
             try:
                 open(f, 'w').close()
@@ -190,29 +216,37 @@ def main():
     shot_dir = sys.argv[sys.argv.index('--shot') + 1] if '--shot' in sys.argv else None
     app = QGuiApplication(sys.argv)
     app.setApplicationName('Ludus')
-    lib = library.Library()
-    back = Backend(lib)
+    bridge = Bridge()
+    session = Session()
     engine = QQmlApplicationEngine()
     engine.warnings.connect(lambda ws: [print('qml:', w.toString(), file=sys.stderr, flush=True) for w in ws])
-    engine.rootContext().setContextProperty('backend', back)
+    engine.addImageProvider('art', ArtProvider(bridge))
+    engine.rootContext().setContextProperty('bridge', bridge)
+    engine.rootContext().setContextProperty('session', session)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir))
-    engine.load(QUrl.fromLocalFile(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'qml', 'Main.qml')))
+    engine.load(QUrl.fromLocalFile(os.path.join(HERE, 'qml', 'Main.qml')))
     if not engine.rootObjects():
         print('ludus-qt: the screen did not load', file=sys.stderr, flush=True)
         sys.exit(1)
     win = engine.rootObjects()[0]
+    bridge.gone.connect(app.quit)   # the main process ended (a restart, Opus): so does the screen
     if shot_dir:
-        return shots(app, win, shot_dir)
-    back.pads = pads.Pads(lambda a: QTimer.singleShot(0, lambda: back.action.emit(a)))
-    back.pads.start()
-    sys.exit(app.exec())
+        code = shots(app, win, shot_dir)
+    else:
+        controllers = pads.Pads(lambda a: QTimer.singleShot(0, lambda: QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))))
+        # While a game runs the main process hides the screen; the game reads its controllers itself.
+        bridge.windowOp.connect(lambda op: setattr(controllers, 'paused', op == 'hide'))
+        controllers.start()
+        code = app.exec()
+    bridge.stop()
+    sys.exit(code)
 
 
 def shots(app, win, out):
     """Steps through the screens the way a controller would, saving a picture of each."""
     os.makedirs(out, exist_ok=True)
     # The sample library (tools/ludus-qt-test) has games, apps and one mosaic with a folder in it.
-    steps = [('01-library', []), ('02-tile-moved', ['right', 'right']), ('03-options', ['y']),
+    steps = [('01-library', ['rb', 'down']), ('02-tile-moved', ['right', 'right']), ('03-options', ['y']),
              ('04-add-to-which-mosaic', ['down', 'a']), ('05-mosaic', ['b', 'rb', 'rb', 'down']),
              ('06-mosaic-options-from-tabs', ['up', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
              ('08-keyboard', ['b', 'rb', 'a']), ('09-settings', ['b', 'rb', 'down'])]
@@ -237,8 +271,8 @@ def shots(app, win, out):
                 return
             QTimer.singleShot(50, step)
         QTimer.singleShot(450, grab)
-    QTimer.singleShot(600, step)
-    sys.exit(app.exec())
+    QTimer.singleShot(2500, step)   # the main process sends the page its first view
+    return app.exec()
 
 
 if __name__ == '__main__':

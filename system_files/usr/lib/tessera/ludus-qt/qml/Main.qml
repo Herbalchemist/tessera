@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Ludus (Qt): the screen. One dispatcher, act(), takes every press (controller, keyboard) so all
-// input behaves the same; `backend` (ludus.py) holds the library and starts games.
+// input behaves the same. Everything else is the full Ludus's own main process, unchanged, reached
+// through `api` (the same requests its page makes) over `bridge` (ludus.py).
 import QtQuick
 import QtQuick.Window
 
@@ -35,6 +36,63 @@ Window {
     property int sel: 0
     property int cols: 6
     property string toastText: ""
+    property var view: ({ tabs: {}, folders: {}, mosaics: [], tabOrder: [] })
+    property bool ready: false
+
+    // ---------------------------------------------------------------- the full Ludus's main process
+    QtObject {
+        id: api
+        property int next: 1
+        property var waiting: ({})
+        function call(ch, args) {
+            return new Promise(function (resolve) {
+                var id = api.next++
+                api.waiting[id] = resolve
+                bridge.request(id, ch, args)
+            })
+        }
+        // Library changes answer with the new view: show it.
+        function library(op, p) {
+            return call("library", [op, p || {}]).then(function (r) {
+                if (r && r.view) win.applyView(r.view)
+                if (r && r.ok === false && r.error) win.toast(r.error)
+                else if (r && r.message) win.toast(r.message)
+                return r || {}
+            })
+        }
+        function launch(id) { return call("launch", [id]) }
+    }
+    Connections {
+        target: bridge
+        function onReply(id, m) {
+            var done = api.waiting[id]
+            delete api.waiting[id]
+            if (done) done(m.ok ? m.result : { ok: false, error: m.error })
+        }
+        function onEvent(ch, data) {
+            if (ch === "init") { win.applyView(data); win.ready = true }
+            else if (ch === "launch-failed" && data) win.toast(data)
+            else if (ch === "game-exited") { if (data) win.toast(data) }
+        }
+        function onWindowOp(op) {
+            if (shotMode) return
+            if (op === "hide") win.hide()
+            else { win.showFullScreen(); win.requestActivate() }
+        }
+    }
+    function applyView(v) { view = v; refresh() }
+    function folderTitle(id) { return (view.folders[id] || {}).title || "" }
+    function tilesOf(where) {
+        var shown = function (t) { return t.kind !== "inlay" }   // Home widgets: not in this version yet
+        if (where === "library" || where === "apps") {
+            var rows = view.tabs[where] || [], out = []
+            for (var i = 0; i < rows.length; i++) out = out.concat(rows[i].tiles)
+            return out
+        }
+        if (where.indexOf("m:") === 0 || where.indexOf("f:") === 0) return ((view.folders[where.slice(2)] || {}).tiles || []).filter(shown)
+        if (where === "home") return ((view.folders._home || {}).tiles || []).filter(shown)
+        return []
+    }
 
     readonly property var curTab: tabList.length ? tabList[Math.min(tabIndex, tabList.length - 1)] : ({ id: "library", title: "Library" })
     readonly property string page: curTab.id
@@ -44,11 +102,13 @@ Window {
 
     function refresh() {
         var keep = curTab.id
-        tabList = backend.tabs.concat([{ id: "new", title: "+ Mosaic" }, { id: "settings", title: "Settings" }])
+        var names = { home: "Home", library: "Library", apps: "Apps" }
+        tabList = (view.tabOrder || []).map(function (t) { return { id: t, title: names[t] || folderTitle(t.slice(2)) } })
+                                        .concat([{ id: "new", title: "+ Mosaic" }, { id: "settings", title: "Settings" }])
         var i = tabList.findIndex(function (t) { return t.id === keep })
         tabIndex = i >= 0 ? i : Math.min(tabIndex, tabList.length - 1)
-        if (stack.length && !backend.title(stack[stack.length - 1])) stack = []
-        tiles = (page === "new" || page === "settings") ? [] : backend.tiles(where)
+        if (stack.length && !folderTitle(stack[stack.length - 1])) stack = []
+        tiles = (page === "new" || page === "settings") ? [] : tilesOf(where)
         sel = Math.max(0, Math.min(sel, tiles.length - 1))
     }
     function goTab(i) {
@@ -60,19 +120,12 @@ Window {
     function toast(t) { toastText = t; toastTimer.restart() }
     Timer { id: toastTimer; interval: 3500; onTriggered: toastText = "" }
 
-    Connections {
-        target: backend
-        function onChanged() { refresh() }
-        function onAction(a) { act(a) }
-        function onMessage(m) { toast(m) }
-        function onGameEnded(m) { if (m) toast(m); refresh() }
-    }
     Component.onCompleted: { refresh(); keys.forceActiveFocus() }
 
     // ---------------------------------------------------------------- input
     // Every press comes through here.
     function act(a) {
-        if (backend.running) return
+        if (!ready) return
         if (keyboard.visible) return keyboard.press(a)
         if (menu.visible) return menu.press(a)
         if (a === "lb" || a === "rb") { goTab(tabIndex + (a === "lb" ? -1 : 1)); area = "tabs"; return }
@@ -121,15 +174,16 @@ Window {
         var t = tiles[sel]
         if (!t) return
         if (t.kind === "folder") { stack = stack.concat([t.id]); sel = 0; refresh(); return }
-        backend.launch(t.id)
+        api.launch(t.id)
     }
     function newMosaic() {
         keyboard.open("Name the new mosaic", "", function (name) {
-            var id = backend.createMosaic(name)
-            refresh()
-            var i = tabList.findIndex(function (x) { return x.id === "m:" + id })
-            if (i >= 0) goTab(i)
-            area = "grid"
+            api.library("newCategory", { title: name }).then(function (r) {
+                if (!r.ok) return
+                var i = tabList.findIndex(function (x) { return x.id === "m:" + r.id })
+                if (i >= 0) goTab(i)
+                area = "grid"
+            })
         })
     }
     // Y: options for the tile, and for the mosaic or folder you're in. From the tab bar: the mosaic's own.
@@ -152,35 +206,33 @@ Window {
             items.push({ label: "Delete this " + what + "…", op: "delete", danger: true })
         }
         items.push({ label: "New mosaic…", op: "new" })
-        menu.open(t ? t.title : (pageCat ? backend.title(pageCat) : "Options"), items, function (it) { runOption(it.op, t) })
+        menu.open(t ? t.title : (pageCat ? folderTitle(pageCat) : "Options"), items, function (it) { runOption(it.op, t) })
     }
     function runOption(op, t) {
         if (op === "open" || op === "play") return activate()
         if (op === "new") return newMosaic()
         if (op === "addTo") {
-            var ms = backend.mosaicList()
+            var ms = view.mosaics || []
             if (!ms.length) return toast("Make a mosaic first: + Mosaic in the tab bar.")
             return menu.open("Add “" + t.title + "” to…", ms.map(function (m) { return { label: m.title, id: m.id } }), function (m) {
-                backend.addTo(m.id, t.id)
-                toast("Added to " + m.label + ".")
+                api.library("addEntry", { catId: m.id, ref: t.id })
             })
         }
-        if (op === "remove") { backend.removeFrom(pageCat, t.id); return }
+        if (op === "remove") { api.library("removeEntry", { catId: pageCat, ref: t.id }); return }
         if (op === "rename") {
             var cat = pageCat
-            return keyboard.open("Rename", backend.title(cat), function (name) { backend.rename(cat, name) })
+            return keyboard.open("Rename", folderTitle(cat), function (name) { api.library("renameCategory", { id: cat, title: name }) })
         }
-        if (op === "moveL" || op === "moveR") { backend.moveTab(page, op === "moveL" ? -1 : 1); return }
+        if (op === "moveL" || op === "moveR") { api.library("moveTab", { id: page, dir: op === "moveL" ? -1 : 1 }); return }
         if (op === "delete") {
             var c = pageCat, inFolder = stack.length > 0
-            return menu.open("Delete “" + backend.title(c) + "”? Your games and apps are kept.",
+            return menu.open("Delete “" + folderTitle(c) + "”? Your games and apps are kept.",
                              [{ label: "Go back", op: "no" }, { label: "Delete", op: "yes", danger: true }],
                              function (it) {
                                  if (it.op !== "yes") return
-                                 backend.deleteMosaic(c)
                                  if (inFolder) stack = stack.slice(0, -1)
                                  else area = "tabs"
-                                 refresh()
+                                 api.library("deleteCategory", { id: c })
                              })
         }
     }
@@ -222,7 +274,7 @@ Window {
         anchors.left: parent.left
         anchors.leftMargin: 56 * theme.u
         visible: win.stack.length > 0
-        text: win.stack.map(function (id) { return backend.title(id) }).join("  ›  ")
+        text: win.stack.map(function (id) { return win.folderTitle(id) }).join("  ›  ")
         color: theme.dim
         font.pixelSize: 17 * theme.u
     }
@@ -263,14 +315,14 @@ Window {
                 clip: true
                 Image {
                     anchors.fill: parent
-                    visible: modelData.art !== ""
-                    source: modelData.art ? "file://" + modelData.art : ""
+                    visible: modelData.art === true
+                    source: modelData.art === true ? "image://art/" + encodeURIComponent(modelData.id) : ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     sourceSize.width: 400
                 }
                 Text {
-                    visible: modelData.art === ""
+                    visible: modelData.art !== true
                     anchors.centerIn: parent
                     text: modelData.kind === "folder" ? "▦" : modelData.title.charAt(0).toUpperCase()
                     color: Qt.rgba(1, 1, 1, 0.13)
@@ -287,7 +339,7 @@ Window {
                         id: name
                         anchors.fill: parent
                         anchors.margins: 11 * theme.u
-                        text: modelData.title + (modelData.kind === "folder" ? "  ·  " + modelData.count : "")
+                        text: modelData.title
                         color: theme.text
                         font.pixelSize: 15 * theme.u
                         wrapMode: Text.Wrap
@@ -346,9 +398,9 @@ Window {
             else if (a === "down") sel = Math.min(rows.length - 1, sel + 1)
             else if (a === "b") win.area = "tabs"
             else if (a === "a") {
-                if (!backend.inSession) return win.toast("Only inside the Tessera session.")
-                if (rows[sel].op === "full") backend.useFullLudus()
-                else backend.goToOpus()
+                if (!session.inSession) return win.toast("Only inside the Tessera session.")
+                if (rows[sel].op === "full") session.useFullLudus()
+                else session.goToOpus()
             }
         }
         Column {
@@ -539,13 +591,6 @@ Window {
     }
 
     // ---------------------------------------------------------------- a game is running / messages
-    Rectangle {
-        anchors.fill: parent
-        visible: backend !== null && backend.running !== ""
-        color: theme.bg
-        z: 40
-        Text { anchors.centerIn: parent; text: backend ? "Playing " + backend.running : ""; color: theme.dim; font.pixelSize: 24 * theme.u }
-    }
     Rectangle {
         visible: win.toastText !== ""
         z: 50

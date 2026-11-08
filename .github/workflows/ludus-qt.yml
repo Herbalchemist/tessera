@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main, 'feat/**', 'fix/**', 'test/**']
-    paths: [system_files/usr/lib/tessera/ludus-qt/**, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
+    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/main/**, system_files/usr/lib/tessera/launcher/main.js, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
 permissions:
   contents: write
 jobs:
@@ -15,7 +15,7 @@ jobs:
     container: registry.fedoraproject.org/fedora:latest
     steps:
       - name: Tools
-        run: dnf -y -q install git python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers dejavu-sans-fonts google-noto-sans-fonts
+        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers dejavu-sans-fonts google-noto-sans-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Tests
         run: python3 -m unittest discover -v tools/ludus-qt-test
@@ -27,9 +27,9 @@ jobs:
           QT_FORCE_STDERR_LOGGING: '1'
           PYTHONUNBUFFERED: '1'
         run: |
-          mkdir -p /tmp/rt /tmp/data && chmod 700 /tmp/rt
+          mkdir -p /tmp/rt /tmp/data /tmp/home && chmod 700 /tmp/rt
           python3 tools/ludus-qt-test/sample.py /tmp/data
-          TESSERA_DATA_DIR=/tmp/data timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out > /tmp/ludus-qt-out.log 2>&1 || echo "exit code $?" >> /tmp/ludus-qt-out.log
+          HOME=/tmp/home TESSERA_DATA_DIR=/tmp/data TESSERA_LAUNCHER_DIR=$PWD/system_files/usr/lib/tessera/launcher timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out > /tmp/ludus-qt-out.log 2>&1 || echo "exit code $?" >> /tmp/ludus-qt-out.log
           cat /tmp/ludus-qt-out.log
           n=$(ls /tmp/ludus-qt-out/*.png 2>/dev/null | wc -l)
           echo "$n pictures"
