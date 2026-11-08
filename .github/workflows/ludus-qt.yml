@@ -24,10 +24,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
           XDG_RUNTIME_DIR: /tmp/rt
+          QT_FORCE_STDERR_LOGGING: '1'
+          PYTHONUNBUFFERED: '1'
         run: |
           mkdir -p /tmp/rt /tmp/data && chmod 700 /tmp/rt
           python3 tools/ludus-qt-test/sample.py /tmp/data
-          TESSERA_DATA_DIR=/tmp/data timeout 120 python3 system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out 2>&1 | tee /tmp/ludus-qt-out.log
+          TESSERA_DATA_DIR=/tmp/data timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out > /tmp/ludus-qt-out.log 2>&1 || echo "exit code $?" >> /tmp/ludus-qt-out.log
+          cat /tmp/ludus-qt-out.log
           n=$(ls /tmp/ludus-qt-out/*.png 2>/dev/null | wc -l)
           echo "$n pictures"
           ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/ludus-qt-out.log

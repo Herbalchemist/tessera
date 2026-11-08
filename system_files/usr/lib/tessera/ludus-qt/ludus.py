@@ -185,16 +185,19 @@ class Backend(QObject):
 def main():
     if check():
         sys.exit(3)
+    print('ludus-qt: starting', flush=True)
     shot_dir = sys.argv[sys.argv.index('--shot') + 1] if '--shot' in sys.argv else None
     app = QGuiApplication(sys.argv)
     app.setApplicationName('Ludus')
     lib = library.Library()
     back = Backend(lib)
     engine = QQmlApplicationEngine()
+    engine.warnings.connect(lambda ws: [print('qml:', w.toString(), file=sys.stderr, flush=True) for w in ws])
     engine.rootContext().setContextProperty('backend', back)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir))
     engine.load(QUrl.fromLocalFile(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'qml', 'Main.qml')))
     if not engine.rootObjects():
+        print('ludus-qt: the screen did not load', file=sys.stderr, flush=True)
         sys.exit(1)
     win = engine.rootObjects()[0]
     if shot_dir:

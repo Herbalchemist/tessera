@@ -26,7 +26,8 @@ REPEAT_DELAY, REPEAT_EVERY = 0.38, 0.11
 
 def has_key(path, code):
     try:
-        words = open(path).read().split()
+        with open(path) as f:
+            words = f.read().split()
         word = int(words[len(words) - 1 - code // 64], 16)
     except (OSError, IndexError, ValueError):
         return False
