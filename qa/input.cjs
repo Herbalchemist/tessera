@@ -385,6 +385,7 @@ fs.writeFileSync(path.join(temp, 'data', 'settings.json'), JSON.stringify({ firs
     const menu = await page.evaluate(async () => {
       if (modal) closeModal();
       data.folders.qa = { title: 'QA mosaic', tiles: Array.from({ length: 9 }, (_, i) => ({ id: 'g' + i, kind: 'game', title: 'Game ' + i })) };
+      if (!data.tabOrder.includes('m:qa')) data.tabOrder.push('m:qa');
       stack.length = 0; page = 'm:qa'; focus = 'content';
       const rowId = (currentRows()[0] || {}).id;
       openMenu();
