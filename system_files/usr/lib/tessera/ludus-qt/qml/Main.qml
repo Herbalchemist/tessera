@@ -21,7 +21,7 @@ Window {
         readonly property color text: "#e8edf3"
         readonly property color dim: "#8b97a6"
         readonly property color accent: "#7fb2ff"
-        readonly property color onAccent: "#0b1220"
+        readonly property color accentInk: "#0b1220"
         readonly property color danger: "#ff8a8a"
         readonly property real u: Math.max(0.6, Math.min(win.width / 1280, win.height / 720))
     }
@@ -205,7 +205,7 @@ Window {
                     id: label
                     anchors.centerIn: parent
                     text: modelData.title
-                    color: parent.focused ? theme.onAccent : parent.current ? theme.accent : theme.dim
+                    color: parent.focused ? theme.accentInk : parent.current ? theme.accent : theme.dim
                     font.pixelSize: 19 * theme.u
                     font.weight: parent.current ? Font.DemiBold : Font.Normal
                 }
@@ -368,8 +368,8 @@ Window {
                         anchors.left: parent.left
                         anchors.leftMargin: 22 * theme.u
                         spacing: 4 * theme.u
-                        Text { text: modelData.label; color: picked ? theme.onAccent : theme.text; font.pixelSize: 20 * theme.u; font.weight: Font.DemiBold }
-                        Text { text: modelData.sub; color: picked ? theme.onAccent : theme.dim; font.pixelSize: 15 * theme.u }
+                        Text { text: modelData.label; color: picked ? theme.accentInk : theme.text; font.pixelSize: 20 * theme.u; font.weight: Font.DemiBold }
+                        Text { text: modelData.sub; color: picked ? theme.accentInk : theme.dim; font.pixelSize: 15 * theme.u }
                     }
                 }
             }
@@ -458,7 +458,7 @@ Window {
                             anchors.left: parent.left
                             anchors.leftMargin: 16 * theme.u
                             text: modelData.label
-                            color: picked ? theme.onAccent : modelData.danger ? theme.danger : theme.text
+                            color: picked ? theme.accentInk : modelData.danger ? theme.danger : theme.text
                             font.pixelSize: 18 * theme.u
                         }
                     }
@@ -529,7 +529,7 @@ Window {
                             height: 56 * theme.u
                             radius: 10 * theme.u
                             color: picked ? theme.accent : (k === "Shift" && keyboard.shift) ? theme.cardHi : theme.card
-                            Text { anchors.centerIn: parent; text: k; color: picked ? theme.onAccent : theme.text; font.pixelSize: 20 * theme.u }
+                            Text { anchors.centerIn: parent; text: k; color: picked ? theme.accentInk : theme.text; font.pixelSize: 20 * theme.u }
                         }
                     }
                 }
