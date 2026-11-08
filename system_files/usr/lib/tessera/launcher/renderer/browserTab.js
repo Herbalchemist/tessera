@@ -532,5 +532,14 @@ function runAction(id) {
   else if (id === '_sound') flowSound();
   else if (id === '_power') flowPower();
   else if (id === '_report') flowReport();
+  else if (id === '_tryqt') flowTryQt();
   else setStatus('Not available yet.');
+}
+
+// Settings > System > Try the new Ludus: Ludus rebuilt in Qt 6 + QML, its first version.
+async function flowTryQt() {
+  const go = await confirm('Try the new Ludus? It is Ludus rebuilt in Qt: lighter and quicker. This first version has tabs, mosaics, folders, the Library and Apps, and starting games. Everything else (themes, the browser, PIN and profiles, most of Settings) is still here: its Settings tab brings you back. If it ever fails to start, you come back here by yourself.', 'Try it');
+  if (!go) return;
+  const r = await api.display('tryQt');
+  if (!r || !r.ok) setStatus((r && r.error) || "Couldn't switch.");
 }

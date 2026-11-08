@@ -79,8 +79,22 @@ RESTART="$STATE/restart-requested"
 export TESSERA_RESTART_FILE="$RESTART"
 NO_DISPLAY=""
 fails=0
+# Ludus (Qt), the new Ludus being built: used when chosen (Settings > System > Try the new Ludus,
+# which writes "qt" here), when it says it may run (no PIN or profiles yet), and until it fails to
+# start once; then the full Ludus comes back by itself.
+QT_LUDUS=/usr/lib/tessera/ludus-qt/ludus.py
+QT_CHOICE="${XDG_CONFIG_HOME:-$HOME/.config}/tessera/ludus"
+QT_FAILED="$STATE/ludus-qt-failed"
 while true; do
   started=$(date +%s)
+  PROGRAM=("$ELECTRON" "$APP")
+  USING_QT=""
+  if [ "$(cat "$QT_CHOICE" 2>/dev/null)" = qt ] && [ ! -e "$QT_FAILED" ] && [ -f "$QT_LUDUS" ] \
+     && python3 -c 'import PySide6.QtQuick' 2>/dev/null && python3 "$QT_LUDUS" --check 2>>"$LOG"; then
+    PROGRAM=(python3 "$QT_LUDUS")
+    USING_QT=1
+    echo "using Ludus (Qt)" >>"$LOG"
+  fi
   rm -f "$LEAVE" "$RESTART"
   # Settings > Screens: which screen, its resolution and refresh, a built-in screen's orientation
   # (display-info reads the screens from the driver; a setting being tried is used for one start).
@@ -89,9 +103,17 @@ while true; do
     mapfile -t DISPLAY_ARGS < <(/usr/libexec/tessera/display-info args 2>>"$LOG")
     [ "${#DISPLAY_ARGS[@]}" -gt 0 ] && echo "screen settings: ${DISPLAY_ARGS[*]}" >>"$LOG"
   fi
-  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "${FX_ARGS[@]}" -- "$ELECTRON" "$APP" >>"$LOG" 2>&1
+  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "${FX_ARGS[@]}" -- "${PROGRAM[@]}" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
+
+  # Ludus (Qt) ended badly: the full Ludus from now on (until it's chosen again), and no count
+  # against the session, which only ends after the full Ludus fails too.
+  if [ -n "$USING_QT" ] && [ ! -e "$LEAVE" ] && [ ! -e "$RESTART" ] && { [ "$code" -ne 0 ] || [ $(( $(date +%s) - started )) -lt "$EARLY_EXIT_SECS" ]; }; then
+    echo "Ludus (Qt) failed (code $code): back to the full Ludus" >>"$LOG"
+    touch "$QT_FAILED"
+    continue
+  fi
 
   # Ludus asked to start again (new screen settings): no failure, no leaving.
   if [ -e "$RESTART" ]; then
