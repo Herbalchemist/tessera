@@ -25,6 +25,8 @@ command -v python3 >/dev/null || dnf5 install -y python3
 ### Tessera launcher
 # Node is only needed here, to fetch Electron into the launcher folder.
 dnf5 install -y nodejs npm wtype
+# Ludus (Qt), the new Ludus being built: Qt 6 is already in the image (KDE); this is its Python side.
+dnf5 install -y python3-pyside6
 # Which Electron: the version in launcher/electron-version (one line, like 38.2.0) if that
 # file exists, so every build uses the same one and an update only carries what really
 # changed. Without the file the newest is used, as before.

@@ -74,7 +74,26 @@ function restartLudus() {
   return true;
 }
 
+// Settings > System > Try the new Ludus: the session starts Ludus (Qt) instead, from now on, until
+// it's turned off there (or it fails to start, and the session comes back here by itself).
+function tryQtLudus() {
+  const prefs = require('./prefs').settings;
+  if (prefs.pin || (Array.isArray(prefs.profiles) && prefs.profiles.length)) return { ok: false, error: "The new Ludus doesn't have PINs and profiles yet, so it stays off while they're set up." };
+  if (!fs.existsSync('/usr/lib/tessera/ludus-qt/ludus.py')) return { ok: false, error: 'The new Ludus isn\'t in this version of Tessera yet. Update first.' };
+  if (!canRestart()) return { ok: false, error: 'Only inside the Tessera session.' };
+  const home = require('os').homedir();
+  const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'tessera');
+  const stateDir = path.join(process.env.XDG_STATE_HOME || path.join(home, '.local', 'state'), 'tessera');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'ludus'), 'qt\n');
+    fs.rmSync(path.join(stateDir, 'ludus-qt-failed'), { force: true }); // chosen again: try again
+  } catch { return { ok: false, error: "Couldn't save the choice." }; }
+  return { ok: restartLudus() };
+}
+
 async function displayOp(op, p) {
+  if (op === 'tryQt') return tryQtLudus();
   if (op === 'list') {
     const r = await helper(['list']);
     return { ...r, nested: nested(), canRestart: canRestart() };

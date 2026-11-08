@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Ludus (Qt): its tests, and pictures of its screens drawn by Qt itself (off screen, on Fedora with
+# the same PySide6 the image installs). Pictures go to the "reports" branch (reports/ludus-qt/).
+name: Ludus (Qt)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'test/**']
+    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/main/**, system_files/usr/lib/tessera/launcher/main.js, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
+permissions:
+  contents: write
+jobs:
+  ludus-qt:
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Tools
+        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers dejavu-sans-fonts google-noto-sans-fonts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Tests
+        run: python3 -m unittest discover -v tools/ludus-qt-test
+      - name: Draw the screens
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          XDG_RUNTIME_DIR: /tmp/rt
+          QT_FORCE_STDERR_LOGGING: '1'
+          PYTHONUNBUFFERED: '1'
+        run: |
+          mkdir -p /tmp/rt /tmp/data /tmp/home && chmod 700 /tmp/rt
+          python3 tools/ludus-qt-test/sample.py /tmp/data
+          HOME=/tmp/home TESSERA_DATA_DIR=/tmp/data TESSERA_LAUNCHER_DIR=$PWD/system_files/usr/lib/tessera/launcher timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --shot /tmp/ludus-qt-out > /tmp/ludus-qt-out.log 2>&1 || echo "exit code $?" >> /tmp/ludus-qt-out.log
+          cat /tmp/ludus-qt-out.log
+          n=$(ls /tmp/ludus-qt-out/*.png 2>/dev/null | wc -l)
+          echo "$n pictures"
+          ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/ludus-qt-out.log
+          [ "$n" -ge 9 ]
+      - name: Publish to the reports branch
+        if: always()
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global user.name github-actions; git config --global user.email github-actions@users.noreply.github.com
+          mkdir -p /tmp/ludus-qt-out && cp /tmp/ludus-qt-out.log /tmp/ludus-qt-out/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            rm -rf /tmp/rep; git worktree prune
+            if git fetch -q origin reports; then git worktree add -q --detach /tmp/rep FETCH_HEAD; else git worktree add -q --orphan -b reports-new /tmp/rep; fi
+            d=/tmp/rep/reports/ludus-qt
+            rm -rf "$d" && mkdir -p "$d" && cp -r /tmp/ludus-qt-out/. "$d/" 2>/dev/null || true
+            (cd /tmp/rep && git add -A reports && git commit -qm "ludus-qt: ${GITHUB_SHA::7}" && git push -q origin HEAD:refs/heads/reports) && exit 0
+            sleep $((RANDOM % 10 + 3))
+          done
+          exit 1

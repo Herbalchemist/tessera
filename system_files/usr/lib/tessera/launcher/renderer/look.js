@@ -436,6 +436,7 @@ const SETTINGS_ROWS = [
       { id: '_update', title: 'Update software', kind: 'action', icon: 'update' },
       { id: '_addons', title: 'Add-ons', kind: 'action', icon: 'addons' },
       { id: '_report', title: 'Report a problem', kind: 'action', icon: 'report' },
+      { id: '_tryqt', title: 'Try the new Ludus', kind: 'action', icon: 'update' },
     ],
   },
   {
