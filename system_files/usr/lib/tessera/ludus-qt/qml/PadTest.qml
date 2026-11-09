@@ -55,7 +55,8 @@ Rectangle {
                text: pt.snap.id ? "Standard layout  ·  17 buttons  ·  4 axes" + (pt.snap.count > 1 ? "  ·  " + pt.snap.count + " controllers connected" : "") : "Plug one in or turn it on, then press a button." }
         Canvas {
             id: art
-            width: parent.width; height: width * 340 / 600 * 0.78
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(parent.width, pt.height * 0.5 * 600 / 340); height: width * 340 / 600
             property real k: width / 600
             onPaint: {
                 var c = getContext("2d")
