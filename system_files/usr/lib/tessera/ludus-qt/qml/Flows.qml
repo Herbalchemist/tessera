@@ -74,7 +74,7 @@ QtObject {
         return out
     }
     function sound() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { data: null, note: "", at: "", volPending: null, volSeq: 0, error: "" }
         var reload = function (s) {
             return w.dev("audio", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read the sound devices." })
@@ -151,7 +151,7 @@ QtObject {
         })
     }
     function bluetooth() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { data: null, note: "", at: "", scanning: false, error: "" }
         var reload = function (s) {
             return w.dev("bluetooth", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read Bluetooth." })
@@ -245,7 +245,7 @@ QtObject {
         })
     }
     function wifi() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { data: null, note: "", at: "", error: "" }
         var reload = function (s) {
             return w.dev("wifi", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read the network." })
@@ -486,7 +486,7 @@ QtObject {
         guideOn = false
         guideSeq++
         if (w.guideMenu.visible) w.guideMenu.close()
-        if (w.browserOpen) w.browserInput.setActive(true)
+        if (w.browserOpen) browserInput.setActive(true)
         if (gameOn && !stay) resumeGame()
     }
     function resumeGame() {
@@ -510,7 +510,7 @@ QtObject {
         var seq = ++guideSeq
         guideOn = true
         w.dismissAll()
-        if (w.browserOpen) w.browserInput.setActive(false)       // the page waits behind the guide
+        if (w.browserOpen) browserInput.setActive(false)       // the page waits behind the guide
         var q = function (p) { return Promise.race([Promise.resolve(p).catch(function () { return null }), w.sleepMs(1500).then(function () { return null })]) }
         Promise.all([q(w.systemInfo()), q(w.dev("audio", "info")), q(w.dev("profiles", "list")), q(w.dev("wifi", "info")), q(w.dev("bluetooth", "info")), q(w.dev("guide", "status"))]).then(function (r) {
             if (!guideOn || seq !== guideSeq) return
@@ -692,7 +692,7 @@ QtObject {
         })
     }
     function pad() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         w.dev("settings", "padGet").then(function (r) {
             if (!r.pad) return w.notice("Controller", "Couldn't read the controller settings.")
             var st = { pad: r.pad, at: "", closed: {} }
@@ -739,7 +739,7 @@ QtObject {
         wheel: { move: "Moves the selection", tabs: "Switches tabs (menus still scroll)", off: "Does nothing" }
     })
     function keyboardMenu() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         Promise.all([w.rawCall("__qt", ["kbm"]), w.rawCall("__qt", ["kb"])]).then(function (r) {
             var kbm = r[0], st = { kb: r[1], at: "", closed: {} }
             if (!kbm || !st.kb) return w.notice("Keyboard & mouse", "Couldn't read the keyboard settings.")
@@ -906,7 +906,7 @@ QtObject {
         })
     }
     function update() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { info: null, note: "", resume: "", at: "", closed: {}, done: false }
         var loop = function () {
             var load = Promise.resolve()
@@ -1047,7 +1047,7 @@ QtObject {
         return loop()
     }
     function report() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         w.dev("report", "contents").then(function (info) {
             if (!info.contents) return w.notice("Report a problem", info.error || "Couldn't read what a report holds.")
             var loop = function () {
@@ -1089,7 +1089,7 @@ QtObject {
         })
     }
     function pin() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { at: "pin", info: null }
         var loop = function () {
             return w.dev("settings", "pinStatus").then(function (info) {
@@ -1286,7 +1286,7 @@ QtObject {
         })
     }
     function profiles() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { at: "" }
         var loop = function () {
             return Promise.all([w.dev("profiles", "list"), w.dev("settings", "themeGet")]).then(function (res) {
@@ -1386,7 +1386,7 @@ QtObject {
         return items
     }
     function storage() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { at: "games" }
         var loop = function () {
             return w.dev("storage", "overview", {}).then(function (ov) {
@@ -1699,7 +1699,7 @@ QtObject {
         })
     }
     function addons() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { view: "top", op: "list", at: "" }
         var loop = function () {
             return w.dev("addons", st.op).then(function (info) {
@@ -1914,7 +1914,7 @@ QtObject {
         })
     }
     function appearance() {
-        if (w.guideMenuUp()) return
+        if (w.menuUp()) return
         var st = { at: "" }
         var loop = function () {
             var items = [
@@ -2209,7 +2209,7 @@ QtObject {
                 title: "Keep these screen settings?", every: 1000,
                 items: function () { return items },
                 body: function (s) { return "Can you see this clearly? If not, Ludus goes back to the settings before in " + s.left + " second" + (s.left === 1 ? "" : "s") + "." },
-                reload: function (s) { s.left -= 1; if (s.left <= 0) w.guideMenuCancel(); return Promise.resolve() }
+                reload: function (s) { s.left -= 1; if (s.left <= 0) w.menuCancel(); return Promise.resolve() }
             }).then(function (it) {
                 if (it && it.op === "keep") return w.dev("display", "confirm", {}).then(function () { w.setStatus("Screen settings kept.") })
                 return w.dev("display", "revert", { restart: true }).then(function (r) { w.setStatus(r && r.restarted ? "Going back to the settings before…" : "Going back to the settings before at the next start.") })
@@ -2359,12 +2359,12 @@ QtObject {
         if (askedWho) return Promise.resolve()
         askedWho = true
         return w.dev("profiles", "list").then(function (pr) {
-            if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !w.guideMenuUp()) return whoIsPlaying()
+            if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !w.menuUp()) return whoIsPlaying()
         })
     }
     // waits for the menu to be free, up to about two minutes
     function whenFree(tries) {
-        if (!w.guideMenuUp()) return Promise.resolve(true)
+        if (!w.menuUp()) return Promise.resolve(true)
         if (tries >= 40) return Promise.resolve(false)
         return w.sleepMs(3000).then(function () { return whenFree(tries + 1) })
     }
@@ -2397,7 +2397,7 @@ QtObject {
             if (!d || !d.ok || d.nested) return null
             var s = (d.screens || []).filter(function (x) { return (e.outputs || []).indexOf(x.name) >= 0 })[0]
             if (!s) return null
-            if (w.guideMenuUp()) { w.setStatus("New screen: " + screenName(s) + ". Settings > Appearance > Screens can show Ludus there."); return null }
+            if (w.menuUp()) { w.setStatus("New screen: " + screenName(s) + ". Settings > Appearance > Screens can show Ludus there."); return null }
             screenAsking = true
             return w.pick("New screen", [
                 { label: "Show Ludus there", sub: "Ludus starts again on it, at its own best mode", op: "use", ok: true },
