@@ -1107,7 +1107,7 @@ Window {
                 color: th.muted
                 font.pixelSize: th.rem
             }
-            SelectionTitle { id: titleAbove; visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: body.packed ? 0 : th.clamp(4, 2 * th.vh, 24) }
+            SelectionTitle { id: titleAbove; visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: body.packed ? 0 : win.homeMode ? 1 : th.clamp(4, 2 * th.vh, 24) }
 
             Item { visible: viewport.oneRow && (th.parts.row === "focus" ? !body.packed && th.parts.title !== "above" : th.rowPlace !== "top"); Layout.fillHeight: true }     // one-row page: middle or bottom
             Item {     // the tiles

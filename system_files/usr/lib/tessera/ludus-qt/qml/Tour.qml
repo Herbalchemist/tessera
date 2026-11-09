@@ -38,6 +38,7 @@ Item {
         tried = false
         var s = steps[i]
         if (s.tab) { var k = win.tabList.findIndex(function (t) { return t.id === s.tab }); if (k >= 0 && k !== win.tabIndex) win.goTab(k) }
+        if (s.tab === "home") win.area = "content"     // the widgets page shows its selected widget
         measure.restart()
     }
     function finish() {
