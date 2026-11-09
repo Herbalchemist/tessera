@@ -161,7 +161,7 @@ Item {
                                 grows: root.grow > 1
                                 artRev: root.artRev
                                 near: rowItem.near && (root.mode !== "rails" || Math.abs(index - rowItem.col) <= 10)
-                                gridFont: root.mode === "rails" ? 0 : th.clamp(0.9 * th.rem, root.cw / 11, 1.5 * th.rem)
+                                gridFont: root.mode === "rails" ? (root.grow > 1 && !sel ? 0.85 * th.rem : 0) : th.clamp(0.9 * th.rem, root.cw / 11, 1.5 * th.rem)
                                 x: root.leftOf(rowItem.row, index, rowItem.pick)
                                 width: root.tileW(modelData) * (sel ? root.grow : 1)
                                 height: root.ch * (sel ? root.grow : 1)

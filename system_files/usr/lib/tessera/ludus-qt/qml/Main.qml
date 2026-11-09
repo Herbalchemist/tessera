@@ -558,7 +558,10 @@ Window {
             Item {     // the tiles
                 id: viewport
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                // "start": only the one row shows, so the page is as tall as it (style.css data-part-row="start")
+                readonly property bool oneRow: th.parts.row === "start" && th.mode === "rails" && win.page !== "settings" && win.page !== "new"
+                Layout.fillHeight: !oneRow
+                Layout.preferredHeight: oneRow ? th.cardSize.h * 1.32 + 64 : -1
                 Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
                 clip: true
                 Tiles {
