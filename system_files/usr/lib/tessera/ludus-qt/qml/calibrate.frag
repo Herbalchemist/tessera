@@ -1,5 +1,6 @@
 #version 440
 // Ludus (Qt): the display calibration, drawn over the whole screen (calibration.js setScreenFilter):
+// calibrate.frag.qsb is this file built with `qsb --qt6` (the Ludus (Qt) workflow builds it on every push; rebuild and commit it when this changes).
 // black level, white level, a gamma and a gain for each colour, then the colour strength.
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
