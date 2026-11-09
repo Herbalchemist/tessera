@@ -572,7 +572,8 @@ def shots(app, win, out):
              ('', ['b']), ('', ['b']), ('', ['run:_browser']), ('', []), ('', []), ('27-browser', []),
              ('', ['run:_browser-url']), ('', []), ('28-browser-address', []),
              ('', ['run:_padtest']), ('', []), ('29-controller-test', []),
-             ('', ['run:_controls']), ('', []), ('30-button-mapping', [])]
+             ('', ['run:_controls']), ('', []), ('30-button-mapping', []),
+             ('', ['b', 'b']), ('', ['run:_grip']), ('', []), ('31-grip-order', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 

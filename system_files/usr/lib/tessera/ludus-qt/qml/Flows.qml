@@ -454,6 +454,14 @@ QtObject {
     }
 
     // the live test: resolves when it is closed
+    function grip(auto) {
+        return new Promise(function (resolve) {
+            var g = w.grip
+            var done = function () { g.closed.disconnect(done); resolve() }
+            g.closed.connect(done)
+            g.open(auto)
+        })
+    }
     function padTest() {
         return w.dev("settings", "padGet").then(function (r) {
             var t = w.padtest
@@ -522,7 +530,7 @@ QtObject {
                     else if (it.op === "test") work = padTest()
                     else if (it.op === "calib") work = calibratePad(st)
                     else if (it.op === "mapping") work = controls()
-                    else if (it.op === "grip") work = notYet(it.label)
+                    else if (it.op === "grip") work = grip()
                     else if (it.op === "guideButton") work = choice("The Guide button (Xbox, PS or Home button)", "guideButton")
                     else if (it.op === "oskSize") work = choice("On-screen keyboard size", "oskSize")
                     else if (it.op === "guideStyle") work = choice("How the guide looks (notifications sit beside it on the right)", "guideStyle")

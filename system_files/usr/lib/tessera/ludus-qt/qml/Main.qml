@@ -45,6 +45,7 @@ Window {
     property int artRev: 0
     property var place: null                // a widget being placed or resized on Home
     property alias padtest: padTestView
+    property alias grip: gripView
     property alias capture: captureView     // the controller test (Flows opens it)
     property string browserUrl: "https://duckduckgo.com/"
     property bool browserOpen: false        // the page is on screen and has the controller
@@ -108,6 +109,7 @@ Window {
             else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
+            else if (ch === "pads" && data && data.type === "list") gripView.apply(data)
             else if (ch === "browser-load" && data) browser.load(String(data))
             else if (ch === "browser-cursor") browser.pointer(data)
             else if (ch === "browser-action") win.browserAct(data)
@@ -135,6 +137,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (id === "_grip") { padTestView.visible = false; flows.grip() }
         else if (id === "_controls") { padTestView.visible = false; flows.controls() }
         else if (id === "_padtest") { calib.visible = false; keyboard.visible = false; browser.shown = false; flows.padTest() }
         else if (id === "_browser") { calib.visible = false; browserUrl = "https://example.com/"; openBrowser(1) }
@@ -377,6 +380,7 @@ Window {
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
         if (id === "_controls") return flows.controls()
+        if (id === "_grip") return flows.grip()
         if (id === "_appearance" || id === "_theme") return flows.appearance()
         if (id === "_addons") return flows.addons()
         if (id === "_storage") return flows.storage()
@@ -593,6 +597,7 @@ Window {
     function act(a) {
         if (!ready) return
         if (captureView.visible) return captureView.press(a)
+        if (gripView.visible) return gripView.press(a)
         if (padTestView.visible) return padTestView.press(a)
         if (calib.visible) return calib.press(a)
         if (wheel.visible) return wheel.press(a)
@@ -1123,6 +1128,7 @@ Window {
         }
     }
     Connections { target: browserInput; function onTab(d) { win.browserAct(d < 0 ? "lb" : "rb") } }
+    Grip { id: gripView; anchors.fill: parent; th: th; z: 28 }
     Capture { id: captureView; anchors.fill: parent; th: th; z: 32 }
     PadTest { id: padTestView; anchors.fill: parent; th: th; z: 27; pad: win.view.prefs && win.view.prefs.pad ? win.view.prefs.pad : ({ deadzone: 15, trigger: 10 }) }
     Calibration { id: calib; anchors.fill: parent; th: th; z: 25; onFilter: function (c) { win.calOverrideOn = c !== undefined; win.calOverride = c === undefined ? null : c } }
