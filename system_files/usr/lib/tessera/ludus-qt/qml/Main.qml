@@ -906,8 +906,8 @@ Window {
         anchors.rightMargin: anchors.leftMargin
         // "focus" with the menu along the bottom: title, row and menu stay together, centred between the clock and the hints
         readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && th.parts.nav === "bottom" && th.parts.title === "above"
-        readonly property real packedGap: 66      // style.css: the menu sits this far below the row
-        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 5.1 * th.rem - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - body.packedGap - header.height) / 2)
+        readonly property real packedGap: 48      // style.css: the menu sits this far below the row
+        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - (5.1 * th.rem - 10) - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - body.packedGap - header.height) / 2)
         readonly property real sideW: th.parts.tabs === "chunky" ? th.clamp(190, 21 * th.vw, 360) : th.clamp(178, 18 * th.vw, 320)
 
         // ---- the menu: a column on the left, or a strip across the top / bottom

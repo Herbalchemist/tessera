@@ -126,7 +126,7 @@ Item {
                     height: width
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
-                        strokeColor: tab.active || tab.lit ? bar.tint[tab.kind] || th.muted : th.muted
+                        strokeColor: bar.tint[tab.kind] || th.muted
                         strokeWidth: 1.8
                         fillColor: "transparent"
                         capStyle: ShapePath.RoundCap
