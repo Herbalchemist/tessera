@@ -870,7 +870,7 @@ Window {
             grid: gridNow, ownGrid: Boolean(view.prefs && view.prefs.pageGrid && view.prefs.pageGrid[pageKey]), pageKey: pageKey, page: page
         })
     }
-    readonly property string titleText: area !== "content"
+    readonly property string titleText: area !== "content" && !tour.visible
         ? (page === "new" ? "Press A to create a mosaic" : page === "browser" ? "Press A to open your browser" : tabName(page))
         : (selTile && !selTile.big ? selTile.title : "")
 
@@ -905,7 +905,7 @@ Window {
         anchors.leftMargin: (1 - th.use) * win.width / 2
         anchors.rightMargin: anchors.leftMargin
         // "focus" with the menu along the bottom: title, row and menu stay together, centred between the clock and the hints
-        readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && th.parts.nav === "bottom" && th.parts.title === "above"
+        readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && !win.homeMode && th.parts.nav === "bottom" && th.parts.title === "above"
         readonly property real packedGap: 48      // style.css: the menu sits this far below the row
         readonly property real packedTop: clockTop.height + Math.max(0, (body.height - (5.1 * th.rem - 10) - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - body.packedGap - header.height) / 2)
         readonly property real sideW: th.parts.tabs === "chunky" ? th.clamp(190, 21 * th.vw, 360) : th.clamp(178, 18 * th.vw, 320)
@@ -1114,7 +1114,7 @@ Window {
                 id: viewport
                 Layout.fillWidth: true
                 // "start": only the one row shows, so the page is as tall as it (style.css data-part-row="start")
-                readonly property bool oneRow: (th.parts.row === "start" || th.parts.row === "focus") && th.mode === "rails" && win.page !== "new"
+                readonly property bool oneRow: (th.parts.row === "start" || th.parts.row === "focus") && th.mode === "rails" && win.page !== "new" && !win.homeMode     // the widgets page is not a one-row page
                 Layout.fillHeight: !oneRow
                 Layout.preferredHeight: oneRow ? (th.parts.row === "start" ? th.cardSize.h * 1.32 + 64 : th.cardSize.h + 76) : -1
                 Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : viewport.oneRow ? 0 : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
