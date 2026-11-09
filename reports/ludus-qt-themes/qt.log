@@ -1,6 +1,6 @@
 ludus-qt: starting
-qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:116:167: Unable to assign [undefined] to QString
-file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:116:167: Unable to assign [undefined] to QString
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
 shot theme-stock-library-1280
 shot theme-stock-home-1280
 shot theme-stock-settings-1280
