@@ -373,8 +373,86 @@ QtObject {
         ]
     }
     function padSet(st, key, value) {
-        return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) st.pad = Object.assign({}, st.pad, r.pad); else w.setStatus(r.error || "Couldn't save that.", true) })
+        return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) { st.pad = Object.assign({}, st.pad, r.pad); padState.setPad(st.pad) } else w.setStatus(r.error || "Couldn't save that.", true) })
     }
+    // ------------------------------------------------------------------ Button mapping (input-actions.js)
+    readonly property var glyphSets: ({
+        xbox: { 0: "A", 1: "B", 2: "X", 3: "Y", 4: "LB", 5: "RB", 6: "LT", 7: "RT", 8: "View", 9: "Menu", 10: "L3", 11: "R3", 16: "Guide" },
+        playstation: { 0: "✕", 1: "○", 2: "□", 3: "△", 4: "L1", 5: "R1", 6: "L2", 7: "R2", 8: "Create", 9: "Options", 10: "L3", 11: "R3", 16: "PS" },
+        nintendo: { 0: "B", 1: "A", 2: "Y", 3: "X", 4: "L", 5: "R", 6: "ZL", 7: "ZR", 8: "−", 9: "+", 10: "LS", 11: "RS", 16: "Home" }
+    })
+    // the family of the controller in use (its USB vendor, then its name)
+    function padFamily() {
+        var s = padState.snapshot(), m = /vendor:\s*([0-9a-f]{4})/i.exec((s && s.id) || ""), v = m ? m[1].toLowerCase() : "", n = ((s && s.name) || "").toLowerCase()
+        return v === "054c" || /dualsense|dualshock|playstation|sony/.test(n) ? "playstation" : v === "057e" || /nintendo|joy-?con|switch|pro controller/.test(n) ? "nintendo" : "xbox"
+    }
+    // a map says how a controller's buttons are read: a remap list, or true when the right button confirms
+    function padMapFor(family, pad) {
+        var r = pad && pad.remap && pad.remap[family]
+        if (r && r.length === 6 && r.slice().sort().join() === "0,1,2,3,4,5") return r
+        var c = pad && pad.confirm
+        return c === "right" || (c !== "bottom" && c !== "right" && family === "nintendo")
+    }
+    function mapRole(p, map) { return Array.isArray(map) ? (p >= 0 && p < 6 ? map[p] : p) : (map && (p === 0 || p === 1) ? 1 - p : p) }
+    function mapPhysical(role, map) {
+        if (Array.isArray(map)) { var i = map.indexOf(role); return role >= 0 && role < 6 && i >= 0 ? i : role }
+        return mapRole(role, map)
+    }
+    function mapAssign(map, role, physical) {
+        var m = [0, 1, 2, 3, 4, 5].map(function (n) { return mapRole(n, map) })
+        var had = m.indexOf(role), t = m[had]
+        m[had] = m[physical]; m[physical] = t
+        return m
+    }
+    readonly property var keyActions: [["shift", "Shift (capital letters)"], ["space", "Space"], ["back", "Delete"], ["done", "Done"], ["cancel", "Cancel"]]
+    readonly property var padJobs: [[0, "Select / open"], [1, "Back"], [2, "X · resize a tile, next link in the browser"], [3, "Options · hold to move a tile"], [4, "Previous tab"], [5, "Next tab"]]
+    readonly property var familyNames: ({ xbox: "Xbox", playstation: "PlayStation", nintendo: "Nintendo" })
+    function press(label, only, hint) { return new Promise(function (resolve) { w.capture.open(label, only, hint, resolve) }) }
+    function controls() {
+        var st = { at: "", closed: {} }
+        var loop = function () {
+            return w.dev("settings", "padGet").then(function (pr) {
+                return w.dev("settings", "getKeys").then(function (kr) {
+                    var pad = pr.pad || {}, keys = kr.keys || {}
+                    var fam = padFamily(), map = padMapFor(fam, pad)
+                    var set = glyphSets[pad.glyphs] || glyphSets[fam]
+                    var roleName = function (n) { var b = mapPhysical(n, map); return set[b] || "Button " + b }
+                    var changed = Boolean(pad.remap && pad.remap[fam])
+                    var items = [{ key: "h:kb", label: "Keyboard", header: true, fold: "map.keyboard" }]
+                    keyActions.forEach(function (a) { items.push({ key: "k:" + a[0], label: a[1], sub: roleName(keys[a[0]]), id: a[0] }) })
+                    items.push({ key: "reset", label: "Reset keyboard buttons", op: "reset" })
+                    items.push({ key: "h:pad", label: familyNames[fam] + " controller buttons", header: true, fold: "map.pad" })
+                    padJobs.forEach(function (j) { items.push({ key: "r:" + j[0], label: j[1], sub: roleName(j[0]), role: j[0] }) })
+                    items.push({ key: "padReset", label: "Put these buttons back", sub: changed ? "the usual " + familyNames[fam] + " layout" : "nothing changed", op: "padReset" })
+                    items.push({ key: "always", label: "Always", sub: "The D-pad and left stick move, and the Guide button opens the guide.", info: true })
+                    var shown = folded(items, st.closed)
+                    return w.pick("Button mapping", shown, Math.max(1, indexOfKey(shown, st.at))).then(function (it) {
+                        if (!it) return null
+                        st.at = it.key
+                        if (it.info) return loop()
+                        if (it.fold) { st.closed[it.fold] = !st.closed[it.fold]; return loop() }
+                        if (it.op === "reset") return w.dev("settings", "resetKeys").then(loop)
+                        if (it.op === "padReset") return (changed ? w.dev("settings", "padRemap", { family: fam, map: null }).then(function (r) { if (r.ok) padState.setPad(r.pad) }) : Promise.resolve()).then(loop)
+                        if (it.role !== undefined) {
+                            return press(it.label, [0, 1, 2, 3, 4, 5], "Press the button it's on now (" + roleName(it.role) + ") to keep it. Esc cancels.").then(function (n) {
+                                if (n === null) return loop()
+                                var next = mapAssign(map, it.role, mapPhysical(n, map))
+                                return w.dev("settings", "padRemap", { family: fam, map: next }).then(function (r) {
+                                    if (r.ok) padState.setPad(r.pad); else w.setStatus("Couldn't change that.", true)
+                                }).then(loop)
+                            })
+                        }
+                        return press(it.label, null, "").then(function (n) {
+                            if (n === null) return loop()
+                            return w.dev("settings", "setKey", { action: it.id, button: n }).then(function (r) { if (!r.ok) w.setStatus(r.error, true) }).then(loop)
+                        })
+                    })
+                })
+            })
+        }
+        return loop()
+    }
+
     // the live test: resolves when it is closed
     function padTest() {
         return w.dev("settings", "padGet").then(function (r) {
@@ -443,7 +521,8 @@ QtObject {
                     if (it.fold) st.closed[it.fold] = !st.closed[it.fold]
                     else if (it.op === "test") work = padTest()
                     else if (it.op === "calib") work = calibratePad(st)
-                    else if (it.op === "mapping" || it.op === "grip") work = notYet(it.label)
+                    else if (it.op === "mapping") work = controls()
+                    else if (it.op === "grip") work = notYet(it.label)
                     else if (it.op === "guideButton") work = choice("The Guide button (Xbox, PS or Home button)", "guideButton")
                     else if (it.op === "oskSize") work = choice("On-screen keyboard size", "oskSize")
                     else if (it.op === "guideStyle") work = choice("How the guide looks (notifications sit beside it on the right)", "guideStyle")

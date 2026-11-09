@@ -21,6 +21,32 @@ BTN_SOUTH = 0x130
 BUTTONS = {0x130: 'a', 0x131: 'b', 0x133: 'x', 0x134: 'y', 0x136: 'lb', 0x137: 'rb', 0x13b: 'start', 0x13d: 'l3', 0x13e: 'r3', 0x138: 'lt', 0x139: 'rt',
            0x13a: 'select', 0x13c: 'guide', 0x220: 'up', 0x221: 'down', 0x222: 'left', 0x223: 'right'}
 ABS_X, ABS_Y, HAT_X, HAT_Y = 0x00, 0x01, 0x10, 0x11
+# Settings > Controller > Confirm button and Settings > Button mapping (input-actions.js, the same rules):
+# a button is read by POSITION. Roles 0-5 are the face buttons and bumpers: a, b, x, y, lb, rb.
+ROLE_ACTION = ['a', 'b', 'x', 'y', 'lb', 'rb']
+POSITION = {0x130: 0, 0x131: 1, 0x133: 2, 0x134: 3, 0x136: 4, 0x137: 5}
+# position of every button the capture screen takes (the standard layout's numbers)
+CAPTURE_POSITION = dict(POSITION, **{0x138: 6, 0x139: 7, 0x13a: 8, 0x13b: 9, 0x13d: 10, 0x13e: 11, 0x13c: 16})
+
+
+def family_of(vendor, name=''):
+    if vendor == '054c' or any(w in name.lower() for w in ('dualsense', 'dualshock', 'playstation', 'sony')):
+        return 'playstation'
+    if vendor == '057e' or any(w in name.lower() for w in ('nintendo', 'joy-con', 'joycon', 'switch', 'pro controller')):
+        return 'nintendo'
+    return 'xbox'
+
+
+def role_of(position, family, pad):
+    """The job the button at this position does, for this controller under the person's settings."""
+    if position > 5:
+        return position
+    remap = (pad.get('remap') or {}).get(family)
+    if isinstance(remap, list) and len(remap) == 6 and sorted(remap) == list(range(6)):
+        return remap[position]
+    confirm = pad.get('confirm')
+    right = confirm == 'right' or (confirm not in ('bottom', 'right') and family == 'nintendo')
+    return {0: 1, 1: 0}.get(position, position) if right else position
 REPEAT_DELAY, REPEAT_EVERY = 0.38, 0.11
 
 
@@ -152,6 +178,8 @@ class Pads:
         self.open = {}      # node -> (fd, Stick)
         self.info = {}      # node -> PadInfo
         self.lastNode = None   # the controller touched last
+        self.padSettings = {}  # prefs.pad: confirm, remap
+        self.capturing = None  # a function to hand the next button's role to (the Button mapping screen), and the roles it takes
         self.held = {}      # node -> (direction, next repeat time)
         self.stop = False
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -224,8 +252,21 @@ class Pads:
                 self.info[n].feed(typ, code, value)
                 if typ == EV_KEY or code in (0, 1, 2, 3, 4, 5, 16, 17):
                     self.lastNode = n
+            if typ == EV_KEY and value == 1 and self.capturing and code in CAPTURE_POSITION:
+                info = self.info.get(n)
+                role = role_of(CAPTURE_POSITION[code], family_of(info.vendor, info.name) if info else 'xbox', self.padSettings)
+                take, only = self.capturing
+                if only is None or role in only:
+                    self.capturing = None
+                    take(role)
+                continue
+            if self.capturing and typ == EV_KEY:
+                continue
             if typ == EV_KEY and code in BUTTONS and value == 1:
                 act = BUTTONS[code]
+                if code in POSITION:
+                    info = self.info.get(n)
+                    act = ROLE_ACTION[role_of(POSITION[code], family_of(info.vendor, info.name) if info else 'xbox', self.padSettings)]
                 if act in ('up', 'down', 'left', 'right'):
                     self.held[n] = (act, time.monotonic() + REPEAT_DELAY)
                 self.emit(act)

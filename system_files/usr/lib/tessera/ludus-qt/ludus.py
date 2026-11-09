@@ -419,10 +419,30 @@ class BrowserInput(QObject):
 
 class PadState(QObject):
     """What the controller touched last reports right now (pads.py), for the controller test."""
+    captured = Signal(int)
+
     def __init__(self, fake=False):
         super().__init__()
         self.pads = None
         self.fake = fake
+
+    @Slot('QVariant')
+    def setPad(self, pad):
+        """The person's controller settings (confirm button, button mapping): how buttons are read."""
+        if self.pads is not None and isinstance(pad, dict):
+            self.pads.padSettings = pad
+
+    @Slot('QVariant')
+    def capture(self, only):
+        """The next button (as the job it does) comes back as `captured`; only: the jobs it takes ([] any)."""
+        if self.pads is not None:
+            roles = set(int(r) for r in only) if only else None
+            self.pads.capturing = (lambda role: self.captured.emit(int(role)), roles)
+
+    @Slot()
+    def cancelCapture(self):
+        if self.pads is not None:
+            self.pads.capturing = None
 
     @Slot(result='QVariant')
     def snapshot(self):
@@ -551,7 +571,8 @@ def shots(app, win, out):
              ('', ['a', 'a', 'a']), ('25-calibration-gamma', []), ('', ['a']), ('26-calibration-balance', []),
              ('', ['b']), ('', ['b']), ('', ['run:_browser']), ('', []), ('', []), ('27-browser', []),
              ('', ['run:_browser-url']), ('', []), ('28-browser-address', []),
-             ('', ['run:_padtest']), ('', []), ('29-controller-test', [])]
+             ('', ['run:_padtest']), ('', []), ('29-controller-test', []),
+             ('', ['run:_controls']), ('', []), ('30-button-mapping', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 
