@@ -222,8 +222,8 @@ Window {
         th.moved(area === "tabs" ? "t|" + page : "c|" + pageKey + "|" + selRow + "|" + selCol)
     }
     onAreaChanged: th.moved(area === "tabs" ? "t|" + page : "c|" + pageKey + "|" + selRow + "|" + selCol)
-    Connections { target: th; function onModeChanged() { win.refresh() } }
-    onGridNowChanged: refresh()
+    Connections { target: th; function onModeChanged() { Qt.callLater(win.refresh) } }
+    onGridNowChanged: Qt.callLater(refresh)
     readonly property var selTile: rows.length && rows[selRow] ? rows[selRow].tiles[selCol] || null : null
 
     function goTab(i) {

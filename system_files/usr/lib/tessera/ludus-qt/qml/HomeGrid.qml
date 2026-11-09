@@ -47,10 +47,10 @@ Item {
         delegate: Item {
             readonly property var w: modelData
             readonly property bool plus: w.kind === "add"
-            readonly property real gx: plus ? 3 : w.x
-            readonly property real gy: plus ? 1 : w.y
-            readonly property real gw: plus ? 6 : w.w
-            readonly property real gh: plus ? 4 : w.h
+            readonly property real gx: plus ? 3 : (w.x || 0)
+            readonly property real gy: plus ? 1 : (w.y || 0)
+            readonly property real gw: plus ? 6 : (w.w || 1)
+            readonly property real gh: plus ? 4 : (w.h || 1)
             visible: !(plus && home.place)
             x: home.px(gx); y: home.py(gy)
             width: home.spanW(gw); height: home.spanH(gh)

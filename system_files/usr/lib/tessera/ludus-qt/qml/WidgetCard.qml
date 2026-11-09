@@ -107,7 +107,7 @@ Item {
         x: card.inset; width: parent.width - 2 * card.inset
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
-        Text { text: card.now; color: th.text; font.pixelSize: Math.min(card.big, card.height * 0.42); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * font.pixelSize; elide: Text.ElideRight; width: parent.width }
+        Text { text: card.now; color: th.text; font.pixelSize: Math.min(card.big, card.height * 0.42); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; elide: Text.ElideRight; width: parent.width }
         Text { text: card.day; color: card.small; font.pixelSize: th.clamp(0.9 * th.rem, 1.4 * th.vw, 1.8 * th.rem); font.weight: Font.Medium; elide: Text.ElideRight; width: parent.width }
     }
     Column {     // CPU, memory, storage, battery, network, uptime
@@ -115,8 +115,8 @@ Item {
         x: card.inset; width: parent.width - 2 * card.inset
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
-        Text { text: card.info[0].toUpperCase(); color: card.small; font.pixelSize: th.clamp(0.75 * th.rem, 1 * th.vw, 1.05 * th.rem); font.weight: Font.DemiBold; font.letterSpacing: 0.05 * font.pixelSize }
-        Text { text: card.info[1]; color: th.text; font.pixelSize: Math.min(card.stat, card.height * 0.4); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * font.pixelSize; elide: Text.ElideRight; width: parent.width }
+        Text { text: card.info[0].toUpperCase(); color: card.small; font.pixelSize: th.clamp(0.75 * th.rem, 1 * th.vw, 1.05 * th.rem); font.weight: Font.DemiBold; font.letterSpacing: 0.05 * th.rem }
+        Text { text: card.info[1]; color: th.text; font.pixelSize: Math.min(card.stat, card.height * 0.4); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; elide: Text.ElideRight; width: parent.width }
         Text { visible: text !== ""; text: card.info[2]; color: card.small; font.pixelSize: th.clamp(0.7 * th.rem, 1.1 * th.vw, 1.3 * th.rem); font.weight: Font.Medium; elide: Text.ElideRight; width: parent.width; topPadding: 2 }
     }
     Column {     // recently played
@@ -126,7 +126,7 @@ Item {
         height: parent.height - 2 * card.inset
         spacing: 6
         clip: true
-        Text { text: "RECENTLY PLAYED"; color: card.small; font.pixelSize: th.rem; font.weight: Font.DemiBold; font.letterSpacing: 0.05 * font.pixelSize; bottomPadding: 2 }
+        Text { text: "RECENTLY PLAYED"; color: card.small; font.pixelSize: th.rem; font.weight: Font.DemiBold; font.letterSpacing: 0.05 * th.rem; bottomPadding: 2 }
         Text { visible: card.recent.length === 0; text: "Nothing played yet"; color: card.small; font.pixelSize: 1.1 * th.rem }
         Repeater {
             model: card.recent
@@ -134,7 +134,7 @@ Item {
                 width: parent.width
                 height: nm.implicitHeight
                 Text { id: nm; width: parent.width - kd.implicitWidth - 16; text: modelData.title; color: th.text; elide: Text.ElideRight; font.pixelSize: th.clamp(th.rem, 1.3 * th.vw, 1.5 * th.rem); font.weight: Font.DemiBold }
-                Text { id: kd; anchors.right: parent.right; anchors.baseline: nm.baseline; text: (modelData.kind === "app" ? "App" : "Game").toUpperCase(); color: card.small; font.pixelSize: nm.font.pixelSize * 0.7; font.letterSpacing: 0.06 * font.pixelSize }
+                Text { id: kd; anchors.right: parent.right; anchors.baseline: nm.baseline; text: (modelData.kind === "app" ? "App" : "Game").toUpperCase(); color: card.small; font.pixelSize: nm.font.pixelSize * 0.7; font.letterSpacing: 0.06 * th.rem }
             }
         }
     }
@@ -143,7 +143,7 @@ Item {
         x: card.inset; width: parent.width - 2 * card.inset
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
-        Text { text: card.kind === "missing" ? "NOT INSTALLED" : "ADD-ON WIDGET"; color: card.small; font.pixelSize: 0.85 * th.rem; font.weight: Font.DemiBold; font.letterSpacing: 0.05 * font.pixelSize }
+        Text { text: card.kind === "missing" ? "NOT INSTALLED" : "ADD-ON WIDGET"; color: card.small; font.pixelSize: 0.85 * th.rem; font.weight: Font.DemiBold; font.letterSpacing: 0.05 * th.rem }
         Text { text: card.t.title || ""; color: th.text; font.pixelSize: 1.3 * th.rem; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
         Text { visible: card.kind === "addon"; text: "Shown in the full Ludus for now"; color: card.small; font.pixelSize: 0.85 * th.rem; elide: Text.ElideRight; width: parent.width }
     }
