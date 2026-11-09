@@ -2,6 +2,7 @@
 // Ludus (Qt): the tabs, in the theme's tab look (pills, text, pivots, round, chunky, segments),
 // across (top / bottom) or down (left sidebar). style.css "Tab look".
 import QtQuick
+import QtQuick.Window
 import QtQuick.Shapes
 
 Item {
@@ -10,6 +11,7 @@ Item {
     property var tabs: []
     property int current: 0
     property bool focused: false
+    signal tapped(int i)
     property real span: 800                 // width available (across) or height (down)
     readonly property string look: th.parts.tabs
     readonly property bool down: th.vertical
@@ -50,6 +52,13 @@ Item {
             model: bar.tabs
             delegate: Item {
                 id: tab
+                MouseArea {
+                    z: 50
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    cursorShape: tab.Window.window && tab.Window.window.mouseOn ? Qt.ArrowCursor : Qt.BlankCursor
+                    onClicked: bar.tapped(index)
+                }
                 readonly property bool active: index === bar.current
                 readonly property bool lit: active && bar.focused
                 readonly property string kind: bar.kindOf(modelData.id)

@@ -15,6 +15,8 @@ Item {
     property var rows: []
     property int selRow: 0
     property int selCol: 0
+    signal pointed(int r, int c, string id)
+    signal tapped(int r, int c)
     property var cols: []             // rails: each row's own selected column
     property bool active: false       // the tiles have focus (not the tab bar or a menu)
     property string artRev: ""
@@ -159,6 +161,8 @@ Item {
                                 th: root.th
                                 t: modelData
                                 picked: sel
+                                onPointed: root.pointed(rowItem.r, index, modelData.id)
+                                onTapped: root.tapped(rowItem.r, index)
                                 grows: root.grow > 1
                                 artRev: root.artRev
                                 near: rowItem.near && (root.mode !== "rails" || Math.abs(index - rowItem.col) <= 10)

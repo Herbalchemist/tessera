@@ -184,6 +184,7 @@ Window {
         var before = view.prefs && view.prefs.theme ? view.prefs.theme.rev + ":" + view.prefs.theme.active : ""
         view = v
         if (v.prefs && v.prefs.pad) padState.setPad(v.prefs.pad)
+        kbPrefs = v.prefs && v.prefs.kb ? v.prefs.kb : {}
         if (v.artRev !== undefined) artRev = v.artRev
         loadPicture(before)
         refresh()
@@ -677,6 +678,55 @@ Window {
         }
     }
     Timer { id: arrive; property int dir: 1; interval: 250; onTriggered: if (page === "browser" && area === "tabs" && !browserOpen && !keyboard.visible && !menu.visible && !wheel.visible && !calib.visible && !place) openBrowser(dir) }
+    // ---------------------------------------------------------------- the mouse (input.js)
+    property var kbPrefs: ({})
+    property bool mouseOn: false           // the pointer shows while it is being used, and hides after a few seconds (Settings > Keyboard & mouse)
+    property var hoverHold: null            // { until, id }: after a choice slides the row, leave the pointer alone for a moment
+    Timer { id: mouseHide; onTriggered: win.mouseOn = false }
+    function mouseSeen() {
+        mouseOn = true
+        var secs = kbPrefs && isFinite(kbPrefs.mouseHide) ? kbPrefs.mouseHide : 3
+        if (secs > 0) { mouseHide.interval = secs * 1000; mouseHide.restart() } else mouseHide.stop()
+    }
+    function pointerBusy() { return menuUp() || tourView.visible || tourView.away || gripView.visible || padTestView.visible || captureView.visible || calib.visible || browserOpen || browserOpening || place || !ready }
+    function pointTile(r, c, id) {
+        mouseSeen()
+        if (pointerBusy()) return
+        if (hoverHold) { if (Date.now() > hoverHold.until || hoverHold.id === id) hoverHold = null; else return }
+        if (area === "content" && selRow === r && selCol === c) return
+        area = "content"
+        setSel(r, c)
+        if (th.mode === "rails" || th.mode === "flow") hoverHold = { until: Date.now() + 2400, id: id }
+    }
+    function clickTile(r, c) {
+        mouseSeen()
+        if (pointerBusy()) return
+        hoverHold = null
+        area = "content"
+        setSel(r, c)
+        act("a")
+    }
+    function clickTab(i) {
+        mouseSeen()
+        if (pointerBusy()) return
+        var from = tabIndex
+        area = "tabs"
+        goTab(i)
+        if (page === "browser" || page === "new") act("a")
+    }
+    function wheelPress(dx, dy) {
+        mouseSeen()
+        var how = kbPrefs && kbPrefs.wheel ? kbPrefs.wheel : "move"
+        if (how === "off" || pointerBusy() && !menuUp()) return
+        var ax = Math.abs(dx) > Math.abs(dy), d = ax ? dx : dy
+        if (!d) return
+        var now = Date.now()
+        if (now - wheelAt < 140) return
+        wheelAt = now
+        if (how === "tabs" && !menuUp() && !ax) return act(d < 0 ? "rb" : "lb")
+        act(ax ? (d < 0 ? "right" : "left") : (d < 0 ? "down" : "up"))
+    }
+    property double wheelAt: 0
     function setSel(r, c) {
         var cc = cur()
         cc.row = r
@@ -876,6 +926,22 @@ Window {
 
     // ================================================================ the screen
     // everything you see, in one item, so the display calibration can be drawn over all of it
+    MouseArea {     // the rest of the mouse: right click = back, middle = options, side buttons, the wheel
+        anchors.fill: parent
+        z: -1
+        acceptedButtons: Qt.RightButton | Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton
+        hoverEnabled: true
+        cursorShape: win.mouseOn ? Qt.ArrowCursor : Qt.BlankCursor
+        onPositionChanged: win.mouseSeen()
+        onPressed: function (e) {
+            win.mouseSeen()
+            if (!win.ready || win.browserOpen) return
+            if (e.button === Qt.RightButton || e.button === Qt.BackButton) win.act("b")
+            else if (e.button === Qt.ForwardButton && !win.menuUp()) win.act("rb")
+            else if (e.button === Qt.MiddleButton) win.act("y")
+        }
+        onWheel: function (e) { win.wheelPress(e.angleDelta.x, e.angleDelta.y) }
+    }
     Item {
         id: stage
         anchors.fill: parent
@@ -990,6 +1056,7 @@ Window {
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
                     id: tabBarA
+                    onTapped: function (i) { win.clickTab(i) }
                     transform: Translate { y: tabBarA.barPill ? 11 : 0 }
                     th: th
                     tabs: win.tabList
@@ -1016,6 +1083,7 @@ Window {
                 HintKey { visible: header.hints; th: th; label: "LB"; anchors.horizontalCenter: parent.horizontalCenter }
                 TabBar {
                     id: tabBarB
+                    onTapped: function (i) { win.clickTab(i) }
                     th: th
                     tabs: win.tabList
                     current: win.tabIndex
@@ -1139,6 +1207,8 @@ Window {
                     selRow: win.selRow
                     selCol: win.selCol
                     active: win.area === "content" && !menu.visible && !keyboard.visible && !wheel.visible
+                    onPointed: function (r, c, id) { win.pointTile(r, c, id) }
+                    onTapped: function (r, c) { win.clickTile(r, c) }
                     artRev: String(win.artRev)
                     cols: win.rowCols
                     pageKey: win.pageKey

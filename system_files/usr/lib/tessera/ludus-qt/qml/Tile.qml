@@ -2,6 +2,7 @@
 // Ludus (Qt): one tile, drawn the way style.css draws .card for the theme's tile look (standard,
 // flat, metro, glossy, bezel) and selection frame (glow, framed, white, halo).
 import QtQuick
+import QtQuick.Window
 import QtQuick.Shapes
 import QtQuick.Effects
 
@@ -14,6 +15,17 @@ Item {
     property bool grows: false        // row movement "start": the selection grows instead of scaling
     property string artRev: ""
     property bool near: true          // pictures load only near the selection (home.js artWindowFor)
+    signal pointed()                   // the mouse moved over it
+    signal tapped()                    // and clicked it
+    MouseArea {
+        z: 50
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton
+        cursorShape: tile.Window.window && tile.Window.window.mouseOn ? Qt.ArrowCursor : Qt.BlankCursor
+        onPositionChanged: tile.pointed()
+        onClicked: tile.tapped()
+    }
     property real gridFont: 0         // grid and flow: the name scales with the tile (style.css .rows.grid .card)
     readonly property string look: th.parts.card
     readonly property string frame: th.parts.frame
