@@ -56,16 +56,6 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
     for (const [w, h] of sizes) {
       await app.evaluate(({ BrowserWindow }, s) => { const win = BrowserWindow.getAllWindows()[0]; win.setFullScreen(false); win.setContentSize(s[0], s[1]); win.setPosition(0, 0); }, [w, h]);
       await page.waitForTimeout(400);
-      // the guided tour on Home and Library, to compare with Ludus (Qt)
-      if (process.env.TOUR_SHOTS) {
-        for (const [i, nm] of [[2, 'home'], [3, 'library']]) {
-          await page.evaluate((n) => { page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); runTour(n); }, i);
-          await page.waitForTimeout(1500);
-          await page.screenshot({ path: path.join(output, `tour-${nm}-${w}.png`) });
-          await page.evaluate(() => { if (modal) closeModal(); });
-          await page.waitForTimeout(300);
-        }
-      }
       for (const id of ids) {
         await page.evaluate(async (spec) => {
           const [id, ...sets] = spec.split('+');
@@ -79,6 +69,16 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
           applyTheme(r.theme);
         }, id);
         const name = id.replace(/[^a-z0-9=+-]/gi, '_');
+        // the guided tour on Home and Library in this theme, to compare with Ludus (Qt)
+        if (process.env.TOUR_SHOTS) {
+          for (const [i, nm] of [[2, 'home'], [3, 'library']]) {
+            await page.evaluate((n) => { page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); runTour(n); }, i);
+            await page.waitForTimeout(1500);
+            await page.screenshot({ path: path.join(output, `tour-${name}-${nm}-${w}.png`) });
+            await page.evaluate(() => { if (modal) closeModal(); });
+            await page.waitForTimeout(300);
+          }
+        }
         for (const view of ['library', 'home', 'settings']) {
           await page.evaluate((v) => { page = v; hoverId = v; stack = []; focus = 'content'; const c = cur(); c.row = 0; c.cols = {}; render(); }, view);
           if (view === 'library') { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150); await page.keyboard.press('ArrowRight'); }

@@ -33,6 +33,7 @@ Item {
         back = { page: win.page, tab: win.tabIndex, area: win.area }
         i = 0; tried = false; away = false; enter(); visible = true
     }
+    function openAt(n) { back = { page: win.page, tab: win.tabIndex, area: win.area }; i = n; away = false; enter(); visible = true }
     function enter() {
         tried = false
         var s = steps[i]

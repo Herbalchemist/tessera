@@ -113,7 +113,15 @@ jobs:
               missing=$((missing + 1)); echo "missing in Qt: $b"
             fi
           done
-          cp /tmp/full/tour-*.png /tmp/out/ 2>/dev/null || true
+          : > /tmp/out/tour-diff.txt
+          for f in /tmp/full/tour-*.png; do
+            b=$(basename "$f"); q=/tmp/qt/$b
+            if [ -f "$q" ]; then
+              convert "$f" "$q" +append -resize 1920x "/tmp/out/$b"
+              echo "$b $(compare -metric RMSE "$f" "$q" null: 2>&1 | tr -d '\n')" >> /tmp/out/tour-diff.txt
+            fi
+          done
+          sort -t'(' -k2 -n -r /tmp/out/tour-diff.txt | head -40
           cp /tmp/qt.log /tmp/full.log /tmp/out/ 2>/dev/null || true
           echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pairs, $missing missing"
       - name: Publish to the reports branch

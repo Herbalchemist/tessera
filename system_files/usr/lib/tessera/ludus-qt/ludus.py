@@ -598,6 +598,8 @@ def theme_shots(app, win, out):
             name = re.sub(r'[^a-zA-Z0-9=+-]', '_', t)
             steps.append(('', ['theme:' + t]))
             steps += [('theme-%s-%s-%d' % (name, v, w), ['@' + v]) for v in ('library', 'home', 'settings', 'tabs')]
+            for n, v in ((2, 'home'), (3, 'library')):     # the guided tour, to put beside the full Ludus's
+                steps += [('tour-%s-%s-%d' % (name, v, w), ['run:_tour:%d' % n]), ('', ['y'])]
         run_steps(app, win, out, steps, first=0)
     QTimer.singleShot(2500, start)
     return app.exec()
