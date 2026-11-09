@@ -50,7 +50,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Appearance: Theme Settings, Screens (resolution, refresh, orientation, restart), Display calibration
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
-- ⬜ Profiles, PIN
+- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). Profiles and the first-run welcome still to do
 - ⬜ Storage: drives, cleaning, hidden / ignored drives, backups and restore
 - ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
 - ⬜ Add-ons: store, shards (signed / unsigned with the admin switch), widgets, themes, reload

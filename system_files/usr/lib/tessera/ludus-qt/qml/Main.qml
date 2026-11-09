@@ -344,6 +344,7 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_pin") return flows.pin()
         if (id === "_update") return flows.update()
         if (id === "_report") return flows.report()
         if (id === "_sound") return flows.sound()
@@ -410,6 +411,11 @@ Window {
     }
     function rawCall(ch, args) { return api.call(ch, args) }
     function menuUp() { return menu.visible || keyboard.visible || job !== null }
+    function reloadPrefs() {      // what the tile notes read (the PIN being on or off) after a flow changed it
+        dev("settings", "pinStatus").then(function (r) {
+            if (r && r.set !== undefined) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { pin: r }) }))
+        })
+    }
     function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
     function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {

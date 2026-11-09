@@ -752,4 +752,62 @@ QtObject {
             return loop()
         })
     }
+
+    // ------------------------------------------------------------------ PIN
+    function askPin(title) { return w.ask(title, "", { digits: true, secret: true, max: 8 }) }
+    function setPin(old) {
+        return askPin("Choose a PIN (4 to 8 digits)").then(function (a) {
+            if (a === null) return false
+            if (!/^\d{4,8}$/.test(a)) { w.setStatus("Use 4 to 8 digits.", true); return false }
+            return askPin("Enter it again").then(function (b) {
+                if (b === null) return false
+                if (a !== b) { w.setStatus("Those didn't match.", true); return false }
+                return w.dev("settings", "pinSet", { pin: a, old: old }).then(function (r) {
+                    w.setStatus(r.ok ? "PIN set." : r.error || "Couldn't set the PIN.", !r.ok)
+                    return Boolean(r.ok)
+                })
+            })
+        })
+    }
+    function pin() {
+        if (w.menuUp()) return
+        var st = { at: "pin", info: null }
+        var loop = function () {
+            return w.dev("settings", "pinStatus").then(function (info) {
+                st.info = info
+                var out = [{ key: "h:state", label: info.set ? "A PIN is set" : "No PIN yet", header: true }]
+                if (!info.set) out.push({ key: "set", label: "Set a PIN", sub: "keeps Settings, adding and deleting behind a code", op: "set" })
+                else {
+                    out.push({ key: "change", label: "Change PIN", op: "change" })
+                    out.push({ key: "remove", label: "Remove PIN", op: "remove" })
+                    out.push({ key: "lock", label: "Lock now", sub: "ask for the PIN again right away", op: "lock" })
+                    out.push({ key: "browser", label: "Also protect the browser", sub: info.browser ? "On" : "Off", op: "browser" })
+                    out.push({ key: "xbox", label: "Allow Xbox games", sub: info.xbox ? "On. Starting one asks for the PIN" : "Off", op: "xbox" })
+                }
+                if (!info.set) out.push({ key: "xboxinfo", label: "Xbox games", sub: "Need a PIN: set one first", info: true })
+                out.push({ key: "h:good", label: "Good to know", header: true })
+                out.push({ key: "forgot", label: "Forgot it?", sub: "Opus, then run tessera-reset-pin (needs your login)", info: true })
+                return w.pick("PIN", out, indexOfKey(out, st.at)).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    if (it.info) return loop()
+                    var work = Promise.resolve()
+                    if (it.op === "set") work = setPin()
+                    else if (it.op === "change") work = askPin("Enter the current PIN").then(function (old) { if (old !== null) return setPin(old) })
+                    else if (it.op === "remove") work = askPin("Enter the PIN to remove it").then(function (p) {
+                        if (p === null) return
+                        return w.dev("settings", "pinRemove", { pin: p }).then(function (r) { w.setStatus(r.ok ? (info.xbox ? "PIN removed. Xbox games are off." : "PIN removed.") : r.error || "Couldn't remove it.", !r.ok) })
+                    })
+                    else if (it.op === "lock") work = w.dev("settings", "pinLock").then(function () { w.setStatus("Locked.") })
+                    else if (it.op === "xbox") work = w.dev("settings", "xboxEnabled", { value: !info.xbox }).then(function (r) {
+                        if (r.needPin) return w.requirePin().then(function (ok) { return ok ? w.dev("settings", "xboxEnabled", { value: !info.xbox }) : r })
+                        return r
+                    }).then(function (r) { if (r && r.error) w.setStatus(r.error, true) })
+                    else if (it.op === "browser") work = w.dev("settings", "pinBrowser", { value: !info.browser }).then(function (r) { if (r.error) w.setStatus(r.error, true) })
+                    return work.then(loop)
+                })
+            })
+        }
+        loop().then(function () { w.refreshTileNotes(true); w.reloadPrefs() })
+    }
 }
