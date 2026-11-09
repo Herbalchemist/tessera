@@ -99,7 +99,7 @@ file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/q
 shot tour-indigo-cube-library-1280
 shot theme-channel-white-library-1280
 qml: VIEWPORT channel-white y=29 h=468 oneRow=false rows=3 selRow=0 header=554+166 clockTop=0
-qml: GEOM channel-white {"tab":{"x":460,"y":641,"w":104,"h":33},"tabs":{"x":230,"y":641,"w":819,"h":33},"tiles":{"x":149,"y":38,"w":982,"h":450},"sel":{"x":640,"y":38,"w":239,"h":143},"footer":{"x":0,"y":533,"w":1280,"h":21}}
+qml: GEOM channel-white {"tab":{"x":477,"y":643,"w":100,"h":29},"tabs":{"x":251,"y":643,"w":777,"h":29},"tiles":{"x":149,"y":38,"w":982,"h":450},"sel":{"x":640,"y":38,"w":239,"h":143},"footer":{"x":0,"y":533,"w":1280,"h":21}}
 shot theme-channel-white-home-1280
 shot theme-channel-white-settings-1280
 shot theme-channel-white-tabs-1280
