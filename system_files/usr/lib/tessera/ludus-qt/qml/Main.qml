@@ -96,7 +96,9 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { win.applyView(data); win.ready = true; keepTimer.start() }
+            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { keepTimer.start(); startTimer.payload = data; startTimer.start() } }
+            else if (ch === "drive-added" && data) flows.offerDrive(data)
+            else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
         }
@@ -1049,6 +1051,7 @@ Window {
     // ================================================================ overlays
     Menu { id: menu; anchors.fill: parent; th: th; z: 20 }
     Flows { id: flows; w: win }
+    Timer { id: startTimer; interval: 700; property var payload: null; onTriggered: flows.startup(payload) }     // first run, who is playing
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }

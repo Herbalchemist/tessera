@@ -1953,4 +1953,148 @@ QtObject {
         }
         return loop()
     }
+
+    // ------------------------------------------------------------------ at start, and when something is plugged in
+    property bool welcomed: false
+    property bool askedWho: false
+    // Shown once, the first time Tessera starts
+    function welcome() {
+        if (welcomed) return Promise.resolve()
+        welcomed = true
+        var profileId = null, wantTour = false
+        return w.pick("Welcome to Tessera", [
+            { label: "Get started", op: "go" },
+            { label: "Skip setup", sub: "Everything here is in Settings too", op: "skip" }
+        ], 0, { body: "Let's set a few things up: who's playing, how Tessera looks, and whether to lock things behind a PIN. It takes about a minute." }).then(function (hi) {
+            var go = hi && hi.op === "go"
+            var part1 = Promise.resolve()
+            if (go) {
+                part1 = w.pick("Who's playing?", [
+                    { label: "Add my name", op: "name" },
+                    { label: "Skip", sub: "Profiles can be added later in Settings > Profiles", op: "skip" }
+                ], 0, { body: "A profile keeps your own controls, Home and mosaics, browser logins and theme, and the guide shows who is playing. More people can be added later." }).then(function (who) {
+                    if (!who || who.op !== "name") return null
+                    return w.ask("Your name", "", { max: 24 }).then(function (name) {
+                        if (!name || !name.trim()) return null
+                        return w.dev("profiles", "add", { name: name }).then(function (r) {
+                            if (r && r.ok) {
+                                var mine = (r.profiles || []).filter(function (p) { return p.name === name.trim() })[0] || (r.profiles || []).slice(-1)[0]
+                                if (mine) { profileId = mine.id; return w.dev("profiles", "use", { id: mine.id }).then(function (u) { if (u && u.view) w.applyView(u.view) }) }
+                            } else if (r && r.error) w.setStatus(r.error, true)
+                        })
+                    })
+                }).then(function () {
+                    // how it looks: the screen is shown behind the menu, so each choice is seen whole
+                    var look = function () {
+                        return w.dev("settings", "themeGet").then(function (t) {
+                            var list = t.themes.map(function (x) { return { label: x.name, sub: x.id === t.active ? "this one" : "", id: x.id } })
+                            var cur = Math.max(0, list.findIndex(function (x) { return x.id === t.active }))
+                            return w.pick("Pick a look", list.concat([{ label: "Keep this one", op: "keep", ok: true }]), cur, { body: "Choose one to see it. Every part of it can be changed later in Theme Settings." }).then(function (it) {
+                                if (!it || it.op === "keep") return t.active
+                                return w.dev("settings", "themeUse", { id: it.id }).then(function (r) { if (r && r.ok) w.applyTheme(r.theme); return look() })
+                            })
+                        })
+                    }
+                    return look().then(function (active) { if (profileId) return w.dev("profiles", "setTheme", { id: profileId, themeId: active }) })
+                })
+            }
+            return part1.then(function () {
+                return w.pick(go ? "A PIN?" : "Welcome to Tessera", [
+                    { label: "Set a PIN", sub: "Choose 4 to 8 digits", op: "set" },
+                    { label: "Skip for now", sub: "You can set one later in Settings", op: "skip" }
+                ], 0, { body: "Want an extra layer of security? With a PIN set, changing settings, adding or deleting games and apps, and opening the browser all ask for it first. Handy if you like a little peace of mind day to day." })
+            }).then(function (pinIt) {
+                if (!pinIt || pinIt.op !== "set") return null
+                return setPin().then(function (ok) { if (!ok) w.setStatus("No PIN was set. You can set one in Settings > PIN.") })
+            }).then(function () {
+                if (!go) return null
+                return w.pick("You're all set", [{ label: "Start playing", ok: true }, { label: "Take a quick tour", sub: "a minute, shows where everything is", tour: true }], 0, {
+                    body: "Press the Guide button any time for quick settings, profiles and power, even during a game. LB and RB switch tabs."
+                }).then(function (end) { wantTour = Boolean(end && end.tour) })
+            })
+        }).then(function () {
+            return w.dev("settings", "firstRunDone").then(function (r) {
+                if (r && r.prefs) takePrefs(r)
+                if (wantTour) return notYet("The quick tour")
+            })
+        })
+    }
+    // "Who's playing?" (at start, when that's turned on)
+    function whoIsPlaying() {
+        return w.dev("profiles", "list").then(function (pr) {
+            if (!pr || !pr.profiles || !pr.profiles.length) return null
+            var items = pr.profiles.map(function (p) { return { key: "p:" + p.id, label: p.name, sub: [p.id === pr.active || p.id === pr.lockedOut ? "last played" : "", p.locked ? "PIN" : ""].filter(Boolean).join(" · "), id: p.id } })
+            if (pr.guest.show !== false) items.push({ key: "guest", label: "Guest", sub: "only what the admin allows", id: null })
+            var at = Math.max(0, items.findIndex(function (x) { return x.id === (pr.lockedOut || pr.active) }))
+            return w.pick("Who's playing?", items, at).then(function (it) {
+                if (it && it.id !== pr.active) return switchProfile(it.id, it.label)
+            })
+        })
+    }
+    // once, as Tessera starts
+    function startup(payload) {
+        var p = (payload && payload.prefs) || {}
+        if (payload && payload.error) w.setStatus(payload.error, true)
+        else if (p.safe) w.setStatus("Started with safe settings: display calibration and shards are off until the next restart.")
+        else if (p.storage && p.storage.low && p.storage.low.length) w.setStatus("Low storage: " + p.storage.low[0].name + " has " + fmtBytes(p.storage.low[0].free) + " left. Settings > Storage can help free some up.", true)
+        if (p.pin && p.pin.firstRun && !welcomed) return welcome()
+        if (askedWho) return Promise.resolve()
+        askedWho = true
+        return w.dev("profiles", "list").then(function (pr) {
+            if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !w.menuUp()) return whoIsPlaying()
+        })
+    }
+    // waits for the menu to be free, up to about two minutes
+    function whenFree(tries) {
+        if (!w.menuUp()) return Promise.resolve(true)
+        if (tries >= 40) return Promise.resolve(false)
+        return w.sleepMs(3000).then(function () { return whenFree(tries + 1) })
+    }
+    // A drive was plugged in while Tessera was open: offer to use it for games
+    function offerDrive(d) {
+        return whenFree(0).then(function (free) {
+            if (!free) return null
+            return w.pick("“" + d.name + "” was plugged in · " + fmtBytes(d.free) + " free of " + fmtBytes(d.total), [
+                { label: "Use it for games", sub: "Makes a Games folder and scans it", op: "use" },
+                { label: "Not now", op: "no" },
+                { label: "Don’t ask about this drive again", op: "never" }
+            ], 0, { body: "Want to keep games on it?" }).then(function (it) {
+                if (!it || it.op === "no") return null
+                return w.requirePin().then(function (ok) {
+                    if (!ok) return null
+                    if (it.op === "never") return w.dev("storage", "ignoreDrive", { key: d.key }).then(function () { w.setStatus("OK. You can still use it from Settings > Storage.") })
+                    return w.dev("storage", "useDrive", { key: d.key }).then(function (r) {
+                        w.setStatus(r.message || r.error, !r.ok)
+                        if (r.ok) return scan()
+                    })
+                })
+            })
+        })
+    }
+    // A screen was plugged in while Ludus runs: show Ludus there?
+    property bool screenAsking: false
+    function displayNew(e) {
+        if (screenAsking) return Promise.resolve()
+        return w.dev("display", "list", {}).then(function (d) {
+            if (!d || !d.ok || d.nested) return null
+            var s = (d.screens || []).filter(function (x) { return (e.outputs || []).indexOf(x.name) >= 0 })[0]
+            if (!s) return null
+            if (w.menuUp()) { w.setStatus("New screen: " + screenName(s) + ". Settings > Appearance > Screens can show Ludus there."); return null }
+            screenAsking = true
+            return w.pick("New screen", [
+                { label: "Show Ludus there", sub: "Ludus starts again on it, at its own best mode", op: "use", ok: true },
+                { label: "Not now", op: "later" },
+                { label: "Don't ask for this screen", op: "ignore" }
+            ], 0, { body: screenName(s) + " was connected." }).then(function (it) {
+                if (!it) return null
+                if (it.op === "ignore") return w.dev("display", "ignore", { output: s.name })
+                if (it.op !== "use") return null
+                var go = function () { return w.dev("display", "try", { output: s.name }) }
+                return go().then(function (r) {
+                    if (r && r.needPin) return w.requirePin("Enter the admin PIN to change screens").then(function (ok) { return ok ? go() : null })
+                    return r
+                }).then(function (r) { if (r && !r.ok) return w.notice("Can't use that", r.error || "Something went wrong.") })
+            }).then(function () { screenAsking = false }, function () { screenAsking = false })
+        })
+    }
 }

@@ -47,10 +47,10 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Settings
 - ✅ Wi-Fi, Bluetooth (live lists, pairing and joining with Cancel, password keyboard with symbols and Show, PIN prompt)
-- 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" offer still to do
+- 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" and "drive plugged in" offers ported
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
-- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). first-run welcome still to do
+- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (the quick tour waits for the tour)
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
 - 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address wait for the browser
