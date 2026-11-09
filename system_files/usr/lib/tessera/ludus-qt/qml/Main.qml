@@ -250,7 +250,7 @@ Window {
     property var rows: []
     function currentRows() {
         var base = baseRows()
-        if (th.mode === "rails" || (page === "home" && !stack.length)) return base
+        if (th.mode === "rails" || (page === "home" && !stack.length) || (page === "settings" && !stack.length)) return base
         if (base.length === 1 && base[0].tiles.length === 1 && base[0].tiles[0].big) return base
         var per = th.mode === "flow" ? gridNow.cols + 2 : gridNow.cols
         var tiles = []
