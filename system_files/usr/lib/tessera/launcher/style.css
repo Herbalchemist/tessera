@@ -1048,6 +1048,10 @@ body[data-part-row="focus"]:not([data-nav="bottom"]) > #status { margin-bottom: 
 /* start: the selection leads its row and grows; only that row shows */
 body[data-part-row="start"] > main { margin-top: clamp(12px, 3vh, 34px); }
 body[data-part-row="start"] > #crumb { display: none; }
+/* a single row of tiles can sit at the top (default), the middle or the bottom of its page */
+body[data-part-row="start"][data-row-place="middle"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { margin-top: auto; }
+body[data-part-row="start"][data-row-place="middle"]:not([data-nav="bottom"]) > #status { margin-bottom: auto; }
+body[data-part-row="start"][data-row-place="bottom"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { margin-top: auto; }
 body[data-part-row="start"] > main:has(.canvas[hidden]):has(.rows:not(.grid):not(.flow):not(.cats)) { flex: 0 0 auto; height: calc(var(--card-h) * 1.32 + 64px); }
 body[data-part-row="start"] .rows:not(.grid):not(.flow):not(.cats) .rowport { padding: 26px var(--edge); clip-path: inset(-80px -80px -80px calc(var(--edge) - 10px)); }
 body[data-part-row="start"] .rows:not(.grid):not(.flow) .rail { gap: clamp(10px, 1.2vw, 18px); align-items: center; }

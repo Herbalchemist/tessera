@@ -1086,6 +1086,7 @@ Window {
             }
             SelectionTitle { visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: th.clamp(4, 2 * th.vh, 24) }
 
+            Item { visible: viewport.oneRow && th.rowPlace !== "top"; Layout.fillHeight: true }     // one-row page: middle or bottom
             Item {     // the tiles
                 id: viewport
                 Layout.fillWidth: true
@@ -1131,7 +1132,7 @@ Window {
             }
 
             SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true }
-            Item { visible: viewport.oneRow; Layout.fillHeight: true }     // a one-row page leaves the spare room here, not between its parts
+            Item { visible: viewport.oneRow && th.rowPlace !== "bottom"; Layout.fillHeight: true }     // a one-row page leaves the spare room here, not between its parts
             Text {
                 Layout.fillWidth: true
                 Layout.leftMargin: column.leftAligned && !column.sideNav ? th.edge : 0

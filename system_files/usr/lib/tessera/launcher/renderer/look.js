@@ -142,6 +142,8 @@ function layoutPartsOf(theme) {
 function applyLayoutParts(theme) {
   const parts = layoutPartsOf(theme);
   for (const [k, v] of Object.entries(parts)) document.body.dataset[k === 'nav' ? 'nav' : 'part' + k[0].toUpperCase() + k.slice(1)] = v;
+  const place = prefs.theme && Array.isArray(prefs.theme.settings) && prefs.theme.settings.find((x) => x.id === 'rowPlace');
+  document.body.dataset.rowPlace = place && ['top', 'middle', 'bottom'].includes(place.value) ? place.value : 'top';
   return parts;
 }
 function shellLayoutInfo() {

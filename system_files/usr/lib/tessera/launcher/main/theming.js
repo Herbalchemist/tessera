@@ -227,6 +227,8 @@ const STOCK_THEME = {
       options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Small', value: 'small' }, { label: 'Medium', value: 'medium' }, { label: 'Large', value: 'large' }] },
     { id: 'partRow', group: 'Layout parts', label: 'Row movement', type: 'choice', default: 'auto',
       options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Selection stays in the middle', value: 'center' }, { label: 'Middle, other rows faded', value: 'focus' }, { label: 'Selection at the front, and it grows', value: 'start' }] },
+    { id: 'rowPlace', group: 'Layout parts', label: 'One-row page position', type: 'choice', default: 'top', hint: 'For arrangements that show a single row of tiles: where it sits on the page',
+      options: [{ label: 'Top', value: 'top' }, { label: 'Middle', value: 'middle' }, { label: 'Bottom', value: 'bottom' }] },
     { id: 'partCard', group: 'Layout parts', label: 'Tile look', type: 'choice', default: 'auto',
       options: [{ label: 'Auto (follow the arrangement)', value: 'auto' }, { label: 'Standard', value: 'standard' }, { label: 'Picture only', value: 'flat' }, { label: 'Flat with color', value: 'metro' }, { label: 'Glossy', value: 'glossy' }, { label: 'Rounded bezel', value: 'bezel' }] },
     { id: 'partSpot', group: 'Layout parts', label: 'Selection art behind everything', type: 'choice', default: 'auto',

@@ -58,6 +58,7 @@ QtObject {
     readonly property string addTile: ["dashed", "solid", "none"].indexOf(val("addTile", "dashed")) >= 0 ? val("addTile", "dashed") : "dashed"
     readonly property string setIcons: ["animated", "still", "off"].indexOf(val("setIcons", "animated")) >= 0 ? val("setIcons", "animated") : "animated"
     readonly property real clockScale: pct("clockScale", 1)
+    readonly property string rowPlace: ["top", "middle", "bottom"].indexOf(val("rowPlace", "top")) >= 0 ? val("rowPlace", "top") : "top"
     readonly property string tabAlign: ["center", "flex-start", "flex-end"].indexOf(val("tabAlign", "center")) >= 0 ? val("tabAlign", "center") : "center"
     readonly property real ring: px("selectRing", "3px")
 
