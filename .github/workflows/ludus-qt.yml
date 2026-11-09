@@ -81,6 +81,7 @@ jobs:
       - name: The full Ludus, every factory theme
         env:
           TESSERA_QA_OUTPUT: /tmp/full
+          TOUR_SHOTS: '1'
         run: xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs | tee /tmp/full.log
       - name: Ludus (Qt), every factory theme
         env:
@@ -112,6 +113,7 @@ jobs:
               missing=$((missing + 1)); echo "missing in Qt: $b"
             fi
           done
+          cp /tmp/full/tour-*.png /tmp/out/ 2>/dev/null || true
           cp /tmp/qt.log /tmp/full.log /tmp/out/ 2>/dev/null || true
           echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pairs, $missing missing"
       - name: Publish to the reports branch
