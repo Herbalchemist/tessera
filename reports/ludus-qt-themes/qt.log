@@ -1,5 +1,4 @@
 ludus-qt: starting
-ludus-qt: the calibration shader is not available: No module named 'PySide6.QtShaderTools'
 shot theme-stock-library-1280
 shot theme-stock-home-1280
 shot theme-stock-settings-1280
