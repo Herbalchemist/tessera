@@ -190,7 +190,7 @@ Window {
     property int selRow: 0
     property int selCol: 0
     function refresh() {
-        var keep = curTab.id
+        var keep = tabList.length ? tabList[Math.min(tabIndex, tabList.length - 1)].id : "home"
         tabList = [{ id: "browser", title: "Browser" }].concat((view.tabOrder || []).map(function (t) { return { id: t, title: tabName(t) } })
                     .concat([{ id: "new", title: "+ Mosaic" }, { id: "settings", title: "Settings" }]))
         var i = tabList.findIndex(function (t) { return t.id === keep })

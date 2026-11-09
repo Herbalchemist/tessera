@@ -22,10 +22,11 @@ Text {
     maximumLineCount: 1
     height: Math.max(implicitHeight, (above ? 1.4 : 1.3) * font.pixelSize + topPadding)
     color: above ? th.accent : nav === "bottom-bar" && !big ? th.muted : th.text
-    font.pixelSize: (above ? 1.45 : big ? 3.4 : tabs === "pivots" ? 1.5 : tabs === "chunky" ? 1.9
+    readonly property real px: (above ? 1.45 : big ? 3.4 : tabs === "pivots" ? 1.5 : tabs === "chunky" ? 1.9
                      : nav === "bottom-bar" ? 1.25 : nav === "left" || nav === "bottom-dock" ? 2.1 : 2.2) * th.rem
+    font.pixelSize: px
     font.weight: big ? Font.ExtraBold : above ? Font.Bold : tabs === "pivots" ? Font.Light : tabs === "chunky" ? Font.ExtraBold : Font.DemiBold
-    font.letterSpacing: big ? -0.02 * font.pixelSize : -0.01 * font.pixelSize
+    font.letterSpacing: big ? -0.02 * px : -0.01 * px
     style: big || tabs === "chunky" ? Text.Raised : Text.Normal
     styleColor: Qt.rgba(0, 0, 0, big ? 0.6 : 0.3)
 }
