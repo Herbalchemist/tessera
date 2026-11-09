@@ -29,11 +29,13 @@ Item {
     // The selected tab stays in view: the strip slides (style.css nav transform).
     readonly property Item currentItem: rep.count > current ? rep.itemAt(current) : null
     readonly property real shift: {
-        if (down || !currentItem || flow.implicitWidth <= span || look === "segments") return 0
+        if (down || look === "segments") return 0
+        if (flow.implicitWidth <= width) return (width - flow.implicitWidth) / 2          // the whole bar fits: centred in its port (home.js)
+        if (!currentItem) return 0
         var mid = currentItem.x + currentItem.width / 2
         return Math.max(span - flow.implicitWidth, Math.min(0, span / 2 - mid))
     }
-    clip: !down && flow.implicitWidth > span
+    clip: !down && flow.implicitWidth > width
 
     Grid {
         id: flow

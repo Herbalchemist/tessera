@@ -885,9 +885,13 @@ Window {
             readonly property string nav: th.parts.nav
             readonly property bool hints: ["pills", "segments"].indexOf(th.parts.tabs) >= 0 || nav === "bottom-bar"
             readonly property real headerPad: nav === "bottom-dock" ? th.clamp(8, 1.3 * th.vh, 16) : nav === "top" || nav === "top-left" ? (th.parts.tabs === "segments" ? th.clamp(8, 1.6 * th.vh, 20) : 18) : th.clamp(6, 1.6 * th.vh, 18)
+            // style.css: header padding 28 + the tab port's margin -22 and padding 36 put a pill 42px down, and 22px of room under it
+            readonly property bool plainTop: nav === "top" && ["pills", "text", "pivots"].indexOf(th.parts.tabs) >= 0
+            readonly property real topPad: plainTop ? 42 : headerPad
+            readonly property real botPad: plainTop ? 22 : headerPad
             x: nav === "left" ? (th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0) : 0
             width: nav === "left" ? body.sideW : body.width
-            height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + headerPad * 2
+            height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
             y: nav === "left" ? 0
              : th.navBottom ? body.height - height - (nav === "bottom" ? footerSpace : nav === "bottom-dock" ? th.clamp(4, 1 * th.vh, 12) : 0)
              : clockTop.height
@@ -937,7 +941,7 @@ Window {
                 readonly property real side: header.nav === "top-left" ? th.edge : header.nav === "bottom-bar" ? th.clamp(18, 4 * th.vw, 70) : 0
                 x: side
                 width: header.width - 2 * side
-                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.headerPad
+                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
                 spacing: header.nav === "bottom-bar" ? 0 : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
                 Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" }
@@ -954,7 +958,7 @@ Window {
                         : header.nav === "bottom-dock" ? Math.min(1170, 78 * th.vw)
                         : header.nav === "bottom-bar" ? 64 * th.vw
                         : th.parts.tabs === "round" ? 94 * th.vw : Math.min(1100, 76 * th.vw)
-                    Layout.preferredWidth: Math.min(span, implicitWidth)
+                    Layout.preferredWidth: (header.nav === "top-left" || header.nav === "bottom-bar" || th.parts.tabs === "round") ? Math.min(span, implicitWidth) : span     // a port of fixed width, the tabs centred in it
                     Layout.preferredHeight: implicitHeight
                 }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
