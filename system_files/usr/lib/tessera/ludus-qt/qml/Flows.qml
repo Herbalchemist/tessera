@@ -518,6 +518,7 @@ QtObject {
             if (st.running && !gameOn) gameOn = { title: st.title || "Game", since: st.since || Date.now() }
             var out = audio && audio.ok ? audio.outputs.find(function (o) { return o.isDefault }) : null
             var items = []
+            if (w.view.prefs && w.view.prefs.live) items.push({ label: "Install Tessera", sub: "on this computer", op: "install", ok: true })
             if (gameOn) {
                 items.push({ label: "Playing · " + gameOn.title, header: true })
                 items.push({ label: "Resume " + gameOn.title, sub: "started " + ago(gameOn.since), op: "resume" })
@@ -616,6 +617,7 @@ QtObject {
                 if (r && guideOn) { m.items.forEach(function (x) { if (x.op === "profile") x.sub = x.id === it.id ? "playing now" : "" }); m.items = m.items.slice() }
             })
         }
+        if (op === "install") return leaveTo(function () { usbFlow("install") })
         if (op === "settings") return leaveTo(function () { w.goSettings() })
         if (op === "profiles") return leaveTo(function () { profiles() })
         if (op === "tour") return leaveTo(function () { w.runTour() })
@@ -2367,11 +2369,39 @@ QtObject {
         })
     }
     // once, as Tessera starts
+    // ---- Install Tessera and Recover (the USB's own steps run in the bridge: backend/flowhost.js);
+    // each of their menus and questions comes here and the answer goes back
+    property bool usbShown: false
+    property var usbMenu: null          // the progress menu open now (an install, a backup, a disk check)
+    function usbFlow(which) {
+        usbShown = true
+        return w.api.call("__flow", ["start", which]).then(function (r) {
+            if (r === false) w.setStatus("That is already open.")
+        })
+    }
+    function usbAnswer(id, v) { if (id) w.api.call("__flow", ["answer", id, v]) }
+    function flowUi(d) {
+        if (d.kind === "status") return w.setStatus(d.text, d.error)
+        if (d.kind === "pick") {
+            d.items.forEach(function (it, i) { it._i = i })
+            return w.pick(d.title, d.items, d.index || 0, { body: d.body, welcome: d.welcome }).then(function (it) { usbAnswer(d.id, it ? it._i : -1) })
+        }
+        if (d.kind === "ask") return w.ask(d.title, d.initial, d.opts).then(function (t) { usbAnswer(d.id, t) })
+        if (d.kind === "progress") { usbMenu = d; return showProgress() }
+        if (d.kind === "progress-set") { if (usbMenu) { usbMenu.items = d.items; usbMenu.body = d.body; if (w.guideMenu.visible) w.guideMenu.update(d.items, d.body) } return }
+        if (d.kind === "progress-close") { if (usbMenu && w.guideMenu.visible) w.guideMenu.close(); usbMenu = null; return }
+    }
+    // B on the progress menu asks the flow (a backup or a check stops; an install ignores it) and the menu stays
+    function showProgress() {
+        var m = usbMenu
+        w.guideMenu.open(m.title, m.items, function () {}, 0, function () { w.api.call("__flow", ["back"]); if (usbMenu === m) showProgress() }, { body: m.body })
+    }
     function startup(payload) {
         var p = (payload && payload.prefs) || {}
         if (payload && payload.error) w.setStatus(payload.error, true)
         else if (p.safe) w.setStatus("Started with safe settings: display calibration and shards are off until the next restart.")
         else if (p.storage && p.storage.low && p.storage.low.length) w.setStatus("Low storage: " + p.storage.low[0].name + " has " + fmtBytes(p.storage.low[0].free) + " left. Settings > Storage can help free some up.", true)
+        if (p.live && !usbShown) { usbShown = true; return usbFlow("install") }
         if (p.pin && p.pin.firstRun && !welcomed) return welcome()
         if (askedWho) return Promise.resolve()
         askedWho = true

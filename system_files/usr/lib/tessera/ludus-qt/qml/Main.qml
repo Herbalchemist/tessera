@@ -108,6 +108,7 @@ Window {
         }
         function onEvent(ch, data) {
             if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { keepTimer.start(); if (!shotMode) { startTimer.payload = data; startTimer.start() } } }
+            else if (ch === "flow-ui" && data) flows.flowUi(data)
             else if (ch === "drive-added" && data) flows.offerDrive(data)
             else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
@@ -257,12 +258,15 @@ Window {
         if (id === "_bluetooth") return tileNotes.bluetooth
         if (id === "_sound") return tileNotes.audio
         if (id === "_power") return "Sleep · Restart · Off"
+        if (id === "_install") return "on this computer"
+        if (id === "_recover") return "a Tessera that won't start"
         if (id === "_desktop") return "Login screen"
         if (id === "_fullludus") return "Every setting is there"
         return ""
     }
     function settingsRows() {
-        return settingsDef.map(function (r) {
+        var usb = view.prefs && view.prefs.live ? [{ id: "_cat_usb", title: "Tessera USB", tiles: [["_install", "Install Tessera", "update"], ["_recover", "Recover", "report"]] }] : []
+        return usb.concat(settingsDef).map(function (r) {
             return { id: r.id, title: r.title, cat: true, tiles: r.tiles.map(function (t) { return { id: t[0], title: t[1], kind: "action", icon: t[2], sub: settingNote(t[0]) } }) }
         })
     }
@@ -405,6 +409,8 @@ Window {
         if (id === "_sound") return flows.sound()
         if (id === "_wifi") return flows.wifi()
         if (id === "_bluetooth") return flows.bluetooth()
+        if (id === "_install") return flows.usbFlow("install")
+        if (id === "_recover") return flows.usbFlow("recover")
         if (id === "_desktop") return flowDesktop()
         if (id === "_fullludus") return confirmYes("Go back to the full Ludus?", "Go back").then(function (y) { if (y) session.useFullLudus() })
         setStatus("This setting comes to this version next. It's in the full Ludus (Settings › Go back to the full Ludus).")

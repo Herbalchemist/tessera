@@ -142,6 +142,7 @@ Module._load = function (request, parent, isMain) {
 // ---- requests from the screen. The full Ludus checks each one came from its own page; here
 // the socket is that page (nothing else can reach it), so requests carry the page's identity.
 const event = { sender: webContents, senderFrame: webContents.mainFrame, reply() {} };
+let flowhost = null;
 async function serve(msg) {
   const { id, ch, args } = msg;
   if (ch === '__qt') {
@@ -159,6 +160,17 @@ async function serve(msg) {
       }
       if (op === 'browserProfile') return out({ id, ok: true, result: String(require(path.join(LAUNCHER, 'main', 'prefs')).settings.activeProfile || '') });
       if (op === 'downloads') return out({ id, ok: true, result: require(path.join(LAUNCHER, 'main', 'addons')).vaultFolder('downloads') });
+      return out({ id, ok: false, error: 'unknown' });
+    } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
+  }
+  if (ch === '__flow') {
+    // Install Tessera and Recover (the USB's flows, run here as they are; see flowhost.js)
+    try {
+      flowhost = flowhost || require('./flowhost')({ handlers, out, launcher: LAUNCHER, event });
+      const op = String(args && args[0] || '');
+      if (op === 'start') return out({ id, ok: true, result: flowhost.start(String(args[1] || '')) });
+      if (op === 'answer') return out({ id, ok: true, result: flowhost.answer(Number(args[1]), args[2]) });
+      if (op === 'back') return out({ id, ok: true, result: flowhost.back() });
       return out({ id, ok: false, error: 'unknown' });
     } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
   }

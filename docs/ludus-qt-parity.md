@@ -57,10 +57,10 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address open them in the browser
 - 🟨 Report a problem (save, read, delete, build the GitHub issue; opens in the browser)
 - 🟡 Power and Opus — sleep, restart, shut down not yet
-- ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover
+- 🟨 Tessera USB: Install Tessera (next to Windows too) and Recover run the full Ludus's own step code unchanged in the bridge (`backend/flowhost.js`); their menus, questions and progress go to the Qt menus. Entry points: first screen on the USB, Settings > Tessera USB, the guide. Not yet run on a real USB; needs a live-USB test
 
 ## Around the screen
-- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), the installer entry
+- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), (the installer entry is done)
 - ⬜ Steam: library import, launching, Big Picture
 - ✅ Starting games and apps; coming back when they end
 - ⬜ Game logs and "exited with code" messages with details
