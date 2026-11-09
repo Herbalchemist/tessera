@@ -17,3 +17,5 @@ file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:9
 shot 14-bluetooth
 shot 15-sound
 shot 16-sound-volume
+shot 17-keyboard-menu
+shot 18-controller-menu
