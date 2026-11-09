@@ -62,8 +62,8 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-cartridge-pop-library-1280
 shot theme-nova-black-library-1280
-qml: VIEWPORT nova-black y=80 h=235 oneRow=true rows=1 selRow=0 header=0+58 clockTop=0
-qml: GEOM nova-black {"tab":{"x":215,"y":22,"w":48,"h":22},"tabs":{"x":70,"y":22,"w":504,"h":22},"tiles":{"x":-81,"y":106,"w":1476,"h":171},"sel":{"x":64,"y":106,"w":171,"h":171},"footer":{"x":0,"y":671,"w":1280,"h":49}}
+qml: VIEWPORT nova-black y=67 h=235 oneRow=true rows=1 selRow=0 header=0+45 clockTop=0
+qml: GEOM nova-black {"tab":{"x":215,"y":22,"w":48,"h":22},"tabs":{"x":70,"y":22,"w":504,"h":22},"tiles":{"x":-81,"y":93,"w":1476,"h":171},"sel":{"x":64,"y":93,"w":171,"h":171},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-nova-black-home-1280
 shot theme-nova-black-settings-1280
 shot theme-nova-black-tabs-1280
@@ -74,8 +74,8 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-nova-black-library-1280
 shot theme-dashboard-steel-library-1280
-qml: VIEWPORT dashboard-steel y=81 h=551 oneRow=false rows=2 selRow=0 header=0+65 clockTop=0
-qml: GEOM dashboard-steel {"tab":{"x":264,"y":22,"w":63,"h":29},"tabs":{"x":70,"y":22,"w":672,"h":29},"tiles":{"x":103,"y":89,"w":1073,"h":358},"sel":{"x":459,"y":89,"w":175,"h":175},"footer":{"x":0,"y":671,"w":1280,"h":49}}
+qml: VIEWPORT dashboard-steel y=75 h=557 oneRow=false rows=2 selRow=0 header=0+59 clockTop=0
+qml: GEOM dashboard-steel {"tab":{"x":264,"y":22,"w":63,"h":29},"tabs":{"x":70,"y":22,"w":672,"h":29},"tiles":{"x":97,"y":83,"w":1085,"h":362},"sel":{"x":457,"y":83,"w":177,"h":177},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-dashboard-steel-home-1280
 shot theme-dashboard-steel-settings-1280
 shot theme-dashboard-steel-tabs-1280
