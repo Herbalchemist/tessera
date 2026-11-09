@@ -24,8 +24,11 @@ Rectangle {
     property bool sym: false
     property bool reveal: false
     property bool digits: false
+    property bool url: false              // a web address: a row of its usual pieces (www. .com / : ? =)
+    property bool fresh: false            // the starting text is selected, so the first key typed replaces it
+    property string doneLabel: ""
     property var rows: baseRows.concat([["shift", "space", "back", "cancel", "done"]])
-    readonly property var special: ({ shift: "⇧", sym: "#+=", show: reveal ? "Hide" : "Show", space: "space", back: "⌫", cancel: "Cancel", done: "Done" })
+    readonly property var special: ({ shift: "⇧", sym: "#+=", show: reveal ? "Hide" : "Show", space: "space", back: "⌫", cancel: "Cancel", done: doneLabel !== "" ? doneLabel : "Done" })
     function glyph(k, r, c) { return sym && special[k] === undefined && symMap[r] ? (symMap[r][c] || "") : k }
     readonly property var buttonOf: ({ a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9, l3: 10, r3: 11 })
     readonly property var names: ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "View", "Menu", "L3", "R3"]
@@ -38,13 +41,17 @@ Rectangle {
         maxText = (opts && opts.max) || 40
         secret = Boolean(opts && opts.secret)
         digits = Boolean(opts && opts.digits)
+        url = Boolean(opts && opts.url)
+        doneLabel = (opts && opts.doneLabel) || ""
         sym = false; reveal = false
         canceled = (opts && opts.cancel) || null
         if (digits) rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["back", "0", "done"], ["cancel"]]
         else if (secret) rows = baseRows.concat([["shift", "sym", "show", "space", "back", "cancel", "done"]])
+        else if (url) rows = baseRows.concat([["www.", ".com", ".org", ".net", "/", ":", "?", "="], ["shift", "sym", "space", "back", "cancel", "done"]])
         else if (opts && opts.symbols) rows = baseRows.concat([["shift", "sym", "space", "back", "cancel", "done"]])
         else rows = baseRows.concat([["shift", "space", "back", "cancel", "done"]])
         typed = (start || "").slice(0, maxText)
+        fresh = Boolean(opts && opts.selectAll && start)
         done = cb
         row = digits ? 0 : 1; col = 0; shift = false
         visible = true
@@ -52,6 +59,7 @@ Rectangle {
         panel.y = Qt.binding(function () { return kb.height - panel.height })
     }
     function typeChar(ch) {
+        if (fresh) { typed = ""; fresh = false }
         if (typed.length + ch.length > maxText) return
         typed += shift ? ch.toUpperCase() : ch
         shift = false
@@ -61,7 +69,7 @@ Rectangle {
         else if (k === "sym") sym = !sym
         else if (k === "show") reveal = !reveal
         else if (k === "space") typeChar(" ")
-        else if (k === "back") typed = typed.slice(0, -1)
+        else if (k === "back") { typed = fresh ? "" : typed.slice(0, -1); fresh = false }
         else if (k === "cancel") finish(false)
         else if (k === "done") finish(true)
         else if (k === "") return
@@ -118,8 +126,13 @@ Rectangle {
             Row {
                 x: kb.key * 0.35
                 anchors.verticalCenter: parent.verticalCenter
-                Text { id: field; text: kb.secret && !kb.reveal ? "•".repeat(kb.typed.length) : kb.typed; color: th.text; font.pixelSize: kb.key * 0.6 }
                 Rectangle {
+                    width: field.width; height: field.height; radius: 4
+                    color: kb.fresh ? th.alpha(th.accent, 0.34) : "transparent"
+                    Text { id: field; text: kb.secret && !kb.reveal ? "•".repeat(kb.typed.length) : kb.typed; color: th.text; font.pixelSize: kb.key * 0.6 }
+                }
+                Rectangle {
+                    visible: !kb.fresh
                     width: 3; height: field.font.pixelSize * 0.9
                     anchors.verticalCenter: parent.verticalCenter
                     color: th.accent
@@ -186,7 +199,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: cap.isSpecial ? kb.special[cap.k] : kb.shift ? kb.glyph(cap.k, line.r, index).toUpperCase() : kb.glyph(cap.k, line.r, index)
                                 color: cap.picked ? (cap.toned ? cap.ink : th.accentInk) : cap.toned ? th.mix(cap.tone, th.text, 0.55) : th.text
-                                font.pixelSize: kb.key * 0.42
+                                font.pixelSize: kb.key * ((cap.k.length > 1 && !cap.isSpecial && !kb.digits) ? 0.27 : 0.42)
                                 font.weight: Font.DemiBold
                             }
                             MouseArea {

@@ -44,6 +44,11 @@ Window {
     property string picture: ""             // the theme's background picture (a data: URL)
     property int artRev: 0
     property var place: null                // a widget being placed or resized on Home
+    property string browserUrl: "https://duckduckgo.com/"
+    property bool browserOpen: false        // the page is on screen and has the controller
+    property bool browserOpening: false     // asking to open it (PIN, guest checks)
+    property double browserQuiet: 0         // a press that closed it also reaches the screen's own pad reader: ignore that echo
+    property var queuedTabs: []             // bumper presses made while it was coming or going
     property var sys: null                  // systemInfo, once a second while Home shows a system widget
     property string clockNow: Qt.formatTime(new Date(), "h:mm AP")
     property string clockDay: Qt.formatDate(new Date(), "dddd, MMMM d")
@@ -101,6 +106,10 @@ Window {
             else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
+            else if (ch === "browser-load" && data) browser.load(String(data))
+            else if (ch === "browser-cursor") browser.pointer(data)
+            else if (ch === "browser-action") win.browserAct(data)
+            else if (ch === "browser-close") { win.browserOpen = false; browserInput.setActive(false); browser.drop() }
         }
         function onWindowOp(op) {
             if (shotMode) return
@@ -124,6 +133,8 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (id === "_browser") { browserUrl = "https://example.com/"; openBrowser(1) }
+        else if (id === "_browser-url") openUrlBar()
         else runAction(id)
     }     // screenshot runs: open a Settings flow by tile id
     function shotView(v) {
@@ -471,10 +482,100 @@ Window {
     readonly property var selTile: rows.length && rows[selRow] ? rows[selRow].tiles[selCol] || null : null
 
     function goTab(i) {
+        arrive.stop()
         tabIndex = (i + tabList.length) % tabList.length
         stack = []
         refresh()
     }
+
+    // ---------------------------------------------------------------- the browser (browserTab.js)
+    function normalizeUrl(v) {
+        var t = (v || "").trim()
+        if (!t) return null
+        if (/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) return t                        // already has a scheme
+        if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(t)) return "https://" + t     // looks like a bare address
+        return "https://duckduckgo.com/?q=" + encodeURIComponent(t)              // treat it as a search
+    }
+    // a browser request that may need the PIN, or the profile's own PIN, or be refused for Guest: asks and tries again
+    function browserCall(op, p) {
+        var go = function () { return safe(api.call("browser", [op, p || {}])) }
+        return go().then(function (r) {
+            if (r.needPin) return requirePin().then(function (ok) { return ok ? go() : { ok: false, canceled: true, error: "" } })
+            if (r.needProfilePin) return flows.profilePin(r.name, function (pin) { return safe(api.call("profiles", ["unlock", { id: r.id, pin: pin }])) })
+                .then(function (u) { return u ? go() : { ok: false, canceled: true, error: "" } })
+            return r
+        })
+    }
+    // dir: +1 when you travelled right to get here (RB), -1 when left (LB)
+    function openBrowser(dir, url) {
+        if (url) browserUrl = url
+        if (browserOpen || browserOpening || browser.moving) return Promise.resolve(false)
+        browserOpening = true
+        return api.call("__qt", ["browserProfile"]).then(function (pid) {
+            browser.profileId = pid || ""
+            return api.call("__qt", ["downloads"])
+        }).then(function (dl) {
+            browser.downloadDir = dl || ""
+            return browserCall(url ? "go" : "open", { url: browserUrl })
+        }).then(function (r) {
+            browserOpening = false
+            if (!r || !r.ok) {
+                if (!r || !r.canceled) setStatus((r && r.error) || "Couldn't open the browser.", true)
+                return false
+            }
+            browser.prepare()
+            browser.enter(dir || 1)
+            browserOpen = true
+            browserInput.setActive(true)
+            setStatus("")
+            browser.focusPage()
+            return true
+        })
+    }
+    function closeBrowser(dir) {
+        if (!browserOpen || browser.moving) return Promise.resolve()
+        browserOpen = false
+        browserInput.setActive(false)
+        browserQuiet = Date.now() + 300
+        return api.call("browser", ["close"]).then(function () { browser.leave(dir || -1) })
+    }
+    // the Browser tab, then the page at this address (a report on GitHub, a shard's link)
+    function openInBrowser(url) {
+        var i = tabList.findIndex(function (t) { return t.id === "browser" })
+        if (i >= 0) { goTab(i); area = "tabs" }
+        return openBrowser(1, url)
+    }
+    // someone else is playing: the page goes before they pick it up
+    function leaveBrowser() { return browserOpen ? closeBrowser(-1) : Promise.resolve() }
+    function openUrlBar() {
+        if (!browserOpen || browser.moving || keyboard.visible) return
+        keys.forceActiveFocus()
+        // the page steps aside while the address is typed (its pointer stops, the screen's own pad reader has the buttons)
+        api.call("browser", ["hide"]).then(function () {
+            return ask("Go to", browser.st.url || browserUrl, { max: 300, url: true, selectAll: true, doneLabel: "Go" })
+        }).then(function (v) {
+            var u = v === null ? null : normalizeUrl(v)
+            if (!u) { browser.focusPage(); return api.call("browser", ["show"]) }
+            return browserCall("go", { url: u }).then(function (r) {
+                if (!r || !r.ok) { closeBrowser(-1); if (!r || !r.canceled) setStatus((r && r.error) || "Couldn't open that address.", true) }
+                else { browserUrl = u; browser.focusPage() }
+            })
+        })
+    }
+    // what the main process's browser code asks of the screen: B closes, LB / RB close and move on, Y is the address
+    function browserAct(a) {
+        if (!browserOpen || keyboard.visible) return
+        if (browser.moving) { if ((a === "lb" || a === "rb") && queuedTabs.length < 6) queuedTabs = queuedTabs.concat([a]); return }
+        if (a === "y") return openUrlBar()
+        if (a === "b") return closeBrowser(-1)
+        if (a === "lb" || a === "rb") {
+            var d = a === "lb" ? -1 : 1
+            closeBrowser(d)
+            goTab(tabIndex + d)
+            area = "tabs"
+        }
+    }
+    Timer { id: arrive; property int dir: 1; interval: 250; onTriggered: if (page === "browser" && area === "tabs" && !browserOpen && !keyboard.visible && !menu.visible && !wheel.visible && !calib.visible && !place) openBrowser(dir) }
     function setSel(r, c) {
         var cc = cur()
         cc.row = r
@@ -489,8 +590,14 @@ Window {
         if (wheel.visible) return wheel.press(a)
         if (keyboard.visible) return keyboard.press(a)
         if (menu.visible) return menu.press(a)
+        if (browserOpen || browserOpening || browser.moving || Date.now() < browserQuiet) return    // the page has the controller (the main process reads it for the page)
         if (place) return placePress(a)
-        if (a === "lb" || a === "rb") { goTab(tabIndex + (a === "lb" ? -1 : 1)); area = "tabs"; return }
+        if (a === "lb" || a === "rb") {
+            var bd = a === "lb" ? -1 : 1
+            goTab(tabIndex + bd); area = "tabs"
+            if (page === "browser") { arrive.dir = bd; arrive.restart() }     // staying on it a moment opens it
+            return
+        }
         var entry = th.contentEntry
         var exit = { down: "up", up: "down", right: "left" }[entry]
         if (area === "tabs") {
@@ -499,7 +606,7 @@ Window {
             if (a === next) return goTab(tabIndex + 1)
             if (a === entry || a === "a") {
                 if (page === "new") return newMosaic()
-                if (page === "browser") return setStatus("The browser comes to this version next. It's in the full Ludus (Settings › Go back).")
+                if (page === "browser") return openBrowser(1)
                 area = "content"
                 return
             }
@@ -537,8 +644,8 @@ Window {
             if (keyboard.visible) {
                 if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { keyboard.finish(true); e.accepted = true; return }
                 if (e.key === Qt.Key_Escape) { keyboard.finish(false); e.accepted = true; return }
-                if (e.key === Qt.Key_Backspace) { keyboard.typed = keyboard.typed.slice(0, -1); e.accepted = true; return }
-                if (e.text && e.text.length === 1 && e.text >= " " && e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter) { keyboard.typed += e.text; e.accepted = true; return }
+                if (e.key === Qt.Key_Backspace) { keyboard.typed = keyboard.fresh ? "" : keyboard.typed.slice(0, -1); keyboard.fresh = false; e.accepted = true; return }
+                if (e.text && e.text.length === 1 && e.text >= " " && e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter) { if (keyboard.fresh) { keyboard.typed = ""; keyboard.fresh = false } keyboard.typed += e.text; e.accepted = true; return }
             }
             if (m[e.key] !== undefined) { act(m[e.key]); e.accepted = true }
         }
@@ -989,6 +1096,25 @@ Window {
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
+    Browser {
+        id: browser
+        anchors.fill: parent
+        th: th
+        z: 15
+        prevName: win.tabList.length ? win.tabList[(win.tabIndex - 1 + win.tabList.length) % win.tabList.length].title : ""
+        nextName: win.tabList.length ? win.tabList[(win.tabIndex + 1) % win.tabList.length].title : ""
+        fallbackUrl: win.browserUrl
+        onPlaced: function (r) {
+            browserInput.setOrigin(r.x, r.y)
+            api.call("browser", ["frame", { rect: r }])
+        }
+        onReport: function (s) { api.call("__qt", ["browserState", s]) }
+        onClosed: {
+            keys.forceActiveFocus()
+            while (win.queuedTabs.length && !browser.moving) { var q = win.queuedTabs[0]; win.queuedTabs = win.queuedTabs.slice(1); win.act(q) }
+        }
+    }
+    Connections { target: browserInput; function onTab(d) { win.browserAct(d < 0 ? "lb" : "rb") } }
     Calibration { id: calib; anchors.fill: parent; th: th; z: 25; onFilter: function (c) { win.calOverrideOn = c !== undefined; win.calOverride = c === undefined ? null : c } }
     }
 }

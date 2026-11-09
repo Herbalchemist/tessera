@@ -55,9 +55,14 @@ def check():
 if '--check' in sys.argv:
     sys.exit(check())
 
-from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Property, QSocketNotifier, Qt, QTimer, QUrl, Signal, Slot  # noqa: E402
-from PySide6.QtGui import QGuiApplication, QImage, QShader, QShaderVersion  # noqa: E402
+from PySide6.QtCore import (Q_ARG, QCoreApplication, QEvent, QMetaObject, QObject, QPoint, QPointF, Property,  # noqa: E402
+                            QSocketNotifier, Qt, QTimer, QUrl, Signal, Slot)
+from PySide6.QtGui import QGuiApplication, QImage, QKeyEvent, QMouseEvent, QShader, QShaderVersion, QWheelEvent  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+try:                                  # the built-in browser (the page is QtWebEngine's)
+    from PySide6.QtWebEngineQuick import QtWebEngineQuick  # noqa: E402
+except ImportError:
+    QtWebEngineQuick = None
 from PySide6.QtQuick import QQuickAsyncImageProvider, QQuickImageResponse, QQuickTextureFactory, QQuickWindow  # noqa: E402,F401
 
 import pads  # noqa: E402
@@ -321,12 +326,107 @@ class Session(QObject):
         return bool(os.environ.get('TESSERA_LEAVE_FILE'))
 
 
+BROWSER_DIR = os.path.join(os.environ.get('XDG_DATA_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'share'),
+                           'tessera-ludus-qt', 'browser')
+SYNTHETIC = 0x7e57                     # marks key events sent for the page, so the Esc watch ignores them
+KEYS = {'UP': Qt.Key_Up, 'DOWN': Qt.Key_Down, 'LEFT': Qt.Key_Left, 'RIGHT': Qt.Key_Right, 'ENTER': Qt.Key_Return,
+        'ESC': Qt.Key_Escape, 'TAB': Qt.Key_Tab, 'PAGEUP': Qt.Key_PageUp, 'PAGEDOWN': Qt.Key_PageDown}
+KEY_TEXT = {'ENTER': '\r', 'TAB': '\t'}
+
+
+def forget_browser(partition):
+    """A removed profile's browser data goes with it (the full Ludus clears the partition)."""
+    m = re.fullmatch(r'persist:tessera-browser(?:-([A-Za-z0-9_-]+))?', str(partition or ''))
+    if m:
+        shutil.rmtree(os.path.join(BROWSER_DIR, m.group(1) or 'main'), ignore_errors=True)
+
+
+class BrowserInput(QObject):
+    """The pointer and keys the full Ludus's own browser code works out (sticks, triggers, the pad's
+    direction buttons) arrive as events in Electron's shape; they are played into the page as real
+    mouse and key events on the window. It also watches for Esc held with Left/Right (tab switching
+    from inside the page, which has the keyboard); Esc on its own still reaches the page."""
+    tab = Signal(int)
+
+    def __init__(self):
+        super().__init__()
+        self.win = None
+        self.ox = 0.0
+        self.oy = 0.0
+        self.active = False
+        self.esc = False
+        self.held = Qt.NoButton
+
+    def attach(self, window):
+        self.win = window
+        window.installEventFilter(self)
+
+    @Slot(float, float)
+    def setOrigin(self, x, y):
+        self.ox, self.oy = x, y
+
+    @Slot(bool)
+    def setActive(self, on):
+        self.active = bool(on)
+        self.esc = False
+
+    def eventFilter(self, obj, ev):
+        if not self.active or not isinstance(ev, QKeyEvent) or ev.nativeScanCode() == SYNTHETIC:
+            return False
+        if ev.key() == Qt.Key_Escape:
+            self.esc = ev.type() == QEvent.KeyPress
+        elif self.esc and ev.key() in (Qt.Key_Left, Qt.Key_Right):
+            if ev.type() == QEvent.KeyPress:
+                self.tab.emit(-1 if ev.key() == Qt.Key_Left else 1)
+            return True
+        return False
+
+    def play(self, e):
+        if not self.active or self.win is None or not isinstance(e, dict):
+            return
+        t = e.get('type')
+        try:
+            if t in ('mouseMove', 'mouseDown', 'mouseUp'):
+                pos = QPointF(self.ox + float(e.get('x', 0)), self.oy + float(e.get('y', 0)))
+                gp = QPointF(self.win.mapToGlobal(QPoint(int(pos.x()), int(pos.y()))))
+                b = Qt.RightButton if e.get('button') == 'right' else Qt.LeftButton
+                if t == 'mouseDown':
+                    self.held = b
+                    ev = QMouseEvent(QEvent.MouseButtonPress, pos, gp, b, self.held, Qt.NoModifier)
+                elif t == 'mouseUp':
+                    self.held = Qt.NoButton
+                    ev = QMouseEvent(QEvent.MouseButtonRelease, pos, gp, b, Qt.NoButton, Qt.NoModifier)
+                else:
+                    ev = QMouseEvent(QEvent.MouseMove, pos, gp, Qt.NoButton, self.held, Qt.NoModifier)
+            elif t == 'mouseWheel':
+                pos = QPointF(self.ox + float(e.get('x', 0)), self.oy + float(e.get('y', 0)))
+                gp = QPointF(self.win.mapToGlobal(QPoint(int(pos.x()), int(pos.y()))))
+                dx, dy = float(e.get('deltaX', 0)), float(e.get('deltaY', 0))
+                ev = QWheelEvent(pos, gp, QPoint(int(dx), int(dy)), QPoint(int(dx * 1.2), int(dy * 1.2)),
+                                 Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+            elif t in ('keyDown', 'keyUp'):
+                name = str(e.get('keyCode', ''))
+                if name not in KEYS:
+                    return
+                kind = QEvent.KeyPress if t == 'keyDown' else QEvent.KeyRelease
+                ev = QKeyEvent(kind, KEYS[name], Qt.NoModifier, SYNTHETIC, 0, 0, KEY_TEXT.get(name, '') if kind == QEvent.KeyPress else '')
+            else:
+                return
+        except (TypeError, ValueError):
+            return
+        QCoreApplication.postEvent(self.win, ev)
+
+
 def main():
     if check():
         sys.exit(3)
     print('ludus-qt: starting', flush=True)
     shot_dir = sys.argv[sys.argv.index('--shot') + 1] if '--shot' in sys.argv else None
     theme_dir = sys.argv[sys.argv.index('--theme-shots') + 1] if '--theme-shots' in sys.argv else None
+    if QtWebEngineQuick is not None:
+        if hasattr(os, 'geteuid') and os.geteuid() == 0:     # a build container: Chromium's sandbox needs a user
+            os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--no-sandbox')
+        QtWebEngineQuick.initialize()                      # before the application is made
     app = QGuiApplication(sys.argv)
     app.setApplicationName('Ludus')
     bridge = Bridge()
@@ -337,6 +437,10 @@ def main():
     engine.rootContext().setContextProperty('bridge', bridge)
     engine.rootContext().setContextProperty('session', session)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
+    engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
+    engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
+    browser_input = BrowserInput()
+    engine.rootContext().setContextProperty('browserInput', browser_input)
     engine.rootContext().setContextProperty('shellData', shell_data())
     engine.rootContext().setContextProperty('calShader', bake_cal_shader())
     engine.rootContext().setContextProperty('tabIcons', tab_icons())
@@ -346,6 +450,8 @@ def main():
         print('ludus-qt: the screen did not load', file=sys.stderr, flush=True)
         sys.exit(1)
     win = engine.rootObjects()[0]
+    browser_input.attach(win)
+    bridge.event.connect(lambda ch, data: browser_input.play(data) if ch == 'browser-input' else forget_browser((data or {}).get('partition')) if ch == 'browser-forget' else None)
     bridge.gone.connect(app.quit)   # the main process ended (a restart, Opus): so does the screen
     if shot_dir:
         code = shots(app, win, shot_dir)
@@ -419,7 +525,9 @@ def shots(app, win, out):
              ('', ['b']), ('', ['b']), ('', ['run:_wheel']), ('', []), ('22-color-wheel', ['right', 'right', 'rb']),
              ('', ['b']), ('', ['run:_calfilter']), ('23-calibrated-screen', []),
              ('', ['run:_calfilter-off']), ('', ['run:_calib']), ('24-calibration-brightness', ['right', 'right']),
-             ('', ['a', 'a', 'a']), ('25-calibration-gamma', []), ('', ['a']), ('26-calibration-balance', [])]
+             ('', ['a', 'a', 'a']), ('25-calibration-gamma', []), ('', ['a']), ('26-calibration-balance', []),
+             ('', ['b']), ('', ['b']), ('', ['run:_browser']), ('', []), ('', []), ('27-browser', []),
+             ('', ['run:_browser-url']), ('', []), ('28-browser-address', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 

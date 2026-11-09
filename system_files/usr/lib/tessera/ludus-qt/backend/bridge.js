@@ -77,16 +77,59 @@ Object.assign(app, {
   getVersion: () => require(path.join(LAUNCHER, 'package.json')).version,
   commandLine: { appendSwitch() {} },
 });
+// The embedded browser. The page itself is Qt's (QtWebEngine, in the screen); the full Ludus's
+// own browser code (the PIN and guest checks, the controller pointer, the sticks and buttons read
+// from /dev/input) runs as it is and drives these stand-ins, which pass what it does to the screen:
+//   browser-load  { url }              load this address
+//   browser-input { type, x, y... }    a pointer or key event for the page (Electron's sendInputEvent shape)
+//   browser-cursor { x, y, visible, down }  where to draw the pointer
+//   browser-close                      drop the page (another profile is playing)
+//   browser-forget { partition }       a removed profile's browser data
+// and the screen tells it back what the page shows (__qt 'browserState') so a resumed page is known.
+let pageView = null;
+class BrowserView {
+  constructor(opts = {}) {
+    this.page = Boolean(opts.webPreferences && opts.webPreferences.partition);
+    this.bounds = { x: 0, y: 0, width: 0, height: 0 };
+    this.visible = true;
+    const st = this.state = { url: '', title: '', loading: false, canGoBack: false };
+    const wc = this.webContents = new EventEmitter();
+    wc.session = { setPermissionRequestHandler() {}, setPermissionCheckHandler() {}, on() {} };
+    wc.setWindowOpenHandler = () => {};
+    wc.isDestroyed = () => false;
+    wc.getURL = () => st.url;
+    wc.getTitle = () => st.title;
+    wc.isLoading = () => st.loading;
+    wc.navigationHistory = { canGoBack: () => st.canGoBack };
+    wc.focus = () => {};
+    wc.loadURL = (u) => { if (this.page) { st.url = String(u); st.loading = true; out({ event: 'browser-load', data: String(u) }); } return Promise.resolve(); };
+    wc.close = () => { if (this.page) { st.url = ''; st.title = ''; out({ event: 'browser-close' }); pageView = null; } };
+    wc.sendInputEvent = (e) => { if (this.page) out({ event: 'browser-input', data: e }); };
+    wc.capturePage = async () => ({ isEmpty: () => true });
+    // the pointer's press state is told to the pointer's own little view this way
+    wc.executeJavaScript = (code) => { const m = !this.page && /'down', (true|false)/.exec(String(code)); if (m) out({ event: 'browser-cursor', data: { down: m[1] === 'true' } }); return Promise.resolve(); };
+    if (this.page) pageView = this;
+  }
+  setBounds(b) { this.bounds = b; this.cursor(); }
+  setVisible(v) { this.visible = Boolean(v); this.cursor(); }
+  setBackgroundColor() {}
+  cursor() { if (!this.page) out({ event: 'browser-cursor', data: { x: this.bounds.x, y: this.bounds.y, visible: this.visible } }); }
+}
+const browserSession = {
+  defaultSession: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {}, on() {}, webRequest: { onBeforeRequest() {} } },
+  // a removed profile's browser data: the screen deletes its folder
+  fromPartition: (name) => ({ clearStorageData: () => { out({ event: 'browser-forget', data: { partition: String(name) } }); return Promise.resolve(); }, clearCache: () => Promise.resolve() }),
+};
 const protocolHandlers = new Map();
 const electron = {
   app, ipcMain, BrowserWindow,
   Menu: { setApplicationMenu() {} },
   protocol: { handle: (scheme, fn) => protocolHandlers.set(scheme, fn), registerSchemesAsPrivileged() {} },
   screen: { getPrimaryDisplay: display, getAllDisplays: () => [display()], on() {} },
-  session: { defaultSession: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {}, on() {}, webRequest: { onBeforeRequest() {} } } },
   net: { fetch: (...a) => fetch(...a) },
   nativeImage: null, // no picture shrinking here: art.js then serves the originals
-  WebContentsView: class { constructor() { this.webContents = new EventEmitter(); } setBounds() {} },
+  WebContentsView: BrowserView,
+  session: browserSession,
   contextBridge: { exposeInMainWorld() {} },
   ipcRenderer: { on() {}, send() {}, invoke: async () => null },
 };
@@ -109,6 +152,13 @@ async function serve(msg) {
       if (op === 'keyLabels') return out({ id, ok: true, result: (args[1] || []).map((c) => kbm.label(String(c))) });
       if (op === 'kbm') return out({ id, ok: true, result: { ACTIONS: kbm.ACTIONS, ACTION_LABELS: kbm.ACTION_LABELS, PRESET_NAMES: kbm.PRESET_NAMES, PRESETS: kbm.PRESETS, MAX_PER_ACTION: kbm.MAX_PER_ACTION } });
       if (op === 'kb') return out({ id, ok: true, result: require(path.join(LAUNCHER, 'main', 'prefs')).kbPayload() });
+      if (op === 'browserState') {
+        const st = args[1] || {};
+        if (pageView) Object.assign(pageView.state, { url: String(st.url || '').slice(0, 2000), title: String(st.title || '').slice(0, 200), loading: Boolean(st.loading), canGoBack: Boolean(st.canGoBack) });
+        return out({ id, ok: true, result: true });
+      }
+      if (op === 'browserProfile') return out({ id, ok: true, result: String(require(path.join(LAUNCHER, 'main', 'prefs')).settings.activeProfile || '') });
+      if (op === 'downloads') return out({ id, ok: true, result: require(path.join(LAUNCHER, 'main', 'addons')).vaultFolder('downloads') });
       return out({ id, ok: false, error: 'unknown' });
     } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
   }

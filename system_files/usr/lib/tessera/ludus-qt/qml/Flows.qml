@@ -680,7 +680,7 @@ QtObject {
     }
     function issueUrl(title, body) { return issuesUrl + "/new?title=" + encodeURIComponent(title) + "&body=" + encodeURIComponent(body) }
     function reportRows(lines) { return lines.map(function (l) { return /^== /.test(l) ? { label: l.slice(3), header: true } : { label: l || " ", info: true } }) }
-    function openInBrowser(url) { return notYet("The browser") }      // until the built-in browser is ported
+    function openInBrowser(url) { return w.openInBrowser(url) }
     function reportToGitHub(r) {
         return w.ask("What happened? (optional)", "", { max: 300 }).then(function (what) {
             if (what === null) return reportMade(r)
@@ -833,8 +833,7 @@ QtObject {
         return again()
     }
     function switchProfile(id, name) {
-        // (the built-in browser is not in this version yet, so there is nothing to close first)
-        return w.dev("profiles", "use", { id: id }).then(function (r) {
+        return w.leaveBrowser().then(function () { return w.dev("profiles", "use", { id: id }) }).then(function (r) {
             if (r.needProfilePin) return profilePin(r.name || name, function (pin) { return w.dev("profiles", "use", { id: id, pin: pin }) })
             if (r.needPin && !r.ok) return w.requirePin("Enter the admin PIN to switch to Guest").then(function (ok) { return ok ? w.dev("profiles", "use", { id: id }) : r })
             return r
@@ -1515,7 +1514,7 @@ QtObject {
             if (!r.ok) { w.setStatus(r.error, true); return null }
             var v = r.view
             if (v.message) w.setStatus(v.message)
-            if (v.openUrl) return notYet("The browser")
+            if (v.openUrl) return w.openInBrowser(v.openUrl)
             var items = v.items.length ? v.items.map(function (x, i) { return x.action ? { key: "a" + i, label: x.label, sub: x.sub, act: x.action } : { key: "a" + i, label: x.label, sub: x.sub, info: true } }) : [{ label: "Nothing to show", info: true }]
             var first = items.findIndex(function (x) { return x.act })
             return w.pick(title, items, Math.max(0, first), { body: v.body }).then(function (it) {
