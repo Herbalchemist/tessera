@@ -72,7 +72,7 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
         // the guided tour on Home and Library in this theme, to compare with Ludus (Qt)
         if (process.env.TOUR_SHOTS) {
           for (const [i, nm] of [[2, 'home'], [3, 'library']]) {
-            await page.evaluate((n) => { page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); runTour(n); }, i);
+            await page.evaluate((n) => { page = 'library'; const c = cur(); c.row = 0; c.cols = {}; page = 'home'; hoverId = 'home'; stack = []; focus = 'content'; render(); runTour(n); }, i);
             await page.waitForTimeout(1500);
             await page.screenshot({ path: path.join(output, `tour-${name}-${nm}-${w}.png`) });
             await page.evaluate(() => { if (modal) closeModal(); });
