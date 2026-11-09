@@ -2,6 +2,7 @@
 // Ludus (Qt): one tile, drawn the way style.css draws .card for the theme's tile look (standard,
 // flat, metro, glossy, bezel) and selection frame (glow, framed, white, halo).
 import QtQuick
+import QtQuick.Shapes
 import QtQuick.Effects
 
 Item {
@@ -118,6 +119,38 @@ Item {
             maskEnabled: true
             maskSource: artMask
         }
+        Item {    // Settings tiles: a line icon over a wash of the highlight color (style.css .card.has-ico)
+            id: ico
+            readonly property string path: tile.t.icon && th.setIcons !== "off" && typeof settingIcons !== "undefined" ? (settingIcons[tile.t.icon] || "") : ""
+            anchors.fill: art
+            visible: path !== ""
+            Rectangle {
+                anchors.fill: parent
+                radius: artMask.children[0].radius
+                color: th.mix(th.card, th.accent, tile.picked ? 0.28 : 0.16)
+                gradient: Gradient {
+                    GradientStop { position: 0; color: th.mix(th.card, th.accent, tile.picked ? 0.28 : 0.16) }
+                    GradientStop { position: 0.52; color: th.mix(th.card, th.accent, tile.picked ? 0.28 : 0.16) }
+                    GradientStop { position: 0.88; color: th.card }
+                }
+            }
+            Shape {
+                id: iconShape
+                width: parent.width * 0.46; height: width
+                x: (parent.width - width) / 2; y: parent.height * 0.15
+                layer.enabled: true
+                layer.samples: 4
+                ShapePath {
+                    strokeColor: th.accent
+                    strokeWidth: 1.6
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
+                    scale: Qt.size(iconShape.width / 24, iconShape.width / 24)
+                    PathSvg { path: ico.path }
+                }
+            }
+        }
         Rectangle {    // the shade that keeps a name readable over a picture
             anchors.fill: art
             visible: tile.hasArt && tile.look !== "flat"
@@ -152,7 +185,7 @@ Item {
                 width: parent.width
                 horizontalAlignment: words.centered ? Text.AlignHCenter : Text.AlignLeft
                 text: (tile.t.offline ? (tile.t.offline === "drive" ? "Drive not connected" : "Files missing")
-                       : ({ folder: "Folder", app: "App", game: "Game" })[tile.t.kind] || "").toUpperCase()
+                       : (tile.t.kind === "action" ? (tile.t.sub || "") : ({ folder: "Folder", app: "App", game: "Game" })[tile.t.kind] || "")).toUpperCase()
                 color: tile.look === "metro" && (tile.t.kind === "app" || tile.t.kind === "action") ? Qt.rgba(1, 1, 1, 0.75) : th.muted
                 font.pixelSize: 0.8 * th.rem
                 font.weight: Font.Medium

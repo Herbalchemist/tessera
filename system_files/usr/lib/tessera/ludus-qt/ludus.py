@@ -230,6 +230,32 @@ def tab_icons():
     return {k: svg_paths(v) for k, v in re.findall(r"(\w+): '([^']*)'", m.group(1))} if m else {}
 
 
+def setting_icons():
+    """The Settings tiles' line icons, from the full Ludus's look.js (its ICONS table, run as it is)."""
+    import re
+    import subprocess
+    try:
+        src = open(os.path.join(LAUNCHER, 'renderer', 'look.js'), encoding='utf-8').read()
+    except OSError:
+        return {}
+    m = re.search(r'\nconst ICONS = \{.*?\n\};', src, re.S)
+    if not m:
+        return {}
+    prog, extra = node_program()
+    try:
+        r = subprocess.run(prog + ['-e', m.group(0) + '\nconsole.log(JSON.stringify(ICONS))'], env=dict(os.environ, **extra),
+                           capture_output=True, text=True, timeout=20, check=True)
+        icons = json.loads(r.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        print('ludus-qt: icons:', e, file=sys.stderr)
+        return {}
+    out = {}
+    for name, ic in icons.items():
+        markup = ''.join('<%s %s/>' % (tag, ' '.join('%s="%s"' % (k, v) for k, v in attrs.items() if k != 'class')) for tag, attrs in ic.get('parts', []))
+        out[name] = svg_paths(markup)
+    return out
+
+
 class Session(QObject):
     """Leaving: back to the full Ludus, or to Opus."""
     @Slot()
@@ -276,6 +302,7 @@ def main():
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
     engine.rootContext().setContextProperty('shellData', shell_data())
     engine.rootContext().setContextProperty('tabIcons', tab_icons())
+    engine.rootContext().setContextProperty('settingIcons', setting_icons())
     engine.load(QUrl.fromLocalFile(os.path.join(HERE, 'qml', 'Main.qml')))
     if not engine.rootObjects():
         print('ludus-qt: the screen did not load', file=sys.stderr, flush=True)

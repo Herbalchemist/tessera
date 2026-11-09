@@ -117,7 +117,6 @@ Window {
         cursors[id] = { row: 0, cols: {} }
         tabIndex = Math.max(0, i)
         area = v === "tabs" ? "tabs" : "content"
-        if (id === "settings") settingsPage.sel = 0
         refresh()
         if (v === "library") { act("right"); act("right") }
     }
@@ -179,6 +178,7 @@ Window {
             var id = page.slice(2), m = view.folders[id] || { title: "?", tiles: [] }
             return [withAdd({ id: id, title: m.title, tiles: m.tiles }, "This mosaic is empty", "Add a game, an app, an inlay, or something from your library")]
         }
+        if (page === "settings") return settingsRows()
         if (page === "library" || page === "apps") {
             var rows = (view.tabs[page] || []).map(function (r) { return withAdd({ id: r.id, title: r.title, tiles: r.tiles }) })
             if (rows.length) return rows
@@ -186,6 +186,66 @@ Window {
             return [{ id: "_empty_" + page, title: tabName(page), tiles: [{ id: "_add", kind: "add", big: true, title: text[0], sub: text[1] }] }]
         }
         return []
+    }
+    // ---------------------------------------------------------------- Settings (look.js SETTINGS_ROWS)
+    // Everything here is also in the full Ludus; what is marked soon opens there until it is ported.
+    readonly property var settingsDef: [
+        { id: "_cat_connect", title: "Connections", tiles: [["_wifi", "Wi-Fi", "wifi"], ["_bluetooth", "Bluetooth", "bluetooth"]] },
+        { id: "_cat_look", title: "Picture & sound", tiles: [["_appearance", "Appearance", "theme"], ["_sound", "Sound", "sound"]] },
+        { id: "_cat_pads", title: "Controllers", tiles: [["_pad", "Controller", "pad"], ["_keyboard", "Keyboard & mouse", "keyboard"]] },
+        { id: "_cat_people", title: "People", tiles: [["_profiles", "Profiles", "profiles"], ["_pin", "PIN", "pin"]] },
+        { id: "_cat_system", title: "System", tiles: [["_storage", "Storage", "storage"], ["_update", "Update software", "update"], ["_addons", "Add-ons", "addons"],
+                                                      ["_report", "Report a problem", "report"], ["_fullludus", "Go back to the full Ludus", "update"]] },
+        { id: "_cat_power", title: "Power", tiles: [["_power", "Power", "power"], ["_desktop", "Opus", "desktop"]] }
+    ]
+    function settingNote(id) {
+        var p = view.prefs || {}
+        if (th.val("setNotes", true) === false) return ""
+        if (id === "_appearance") { var t = p.theme && p.theme.themes ? p.theme.themes.filter(function (x) { return x.id === p.theme.active })[0] : null; return t ? t.name : "" }
+        if (id === "_profiles") return p.profiles && p.profiles.length ? p.profiles.length + (p.profiles.length === 1 ? " profile" : " profiles") : "None yet"
+        if (id === "_pin") return p.pin && p.pin.set ? "On" : "Off"
+        if (id === "_power") return "Sleep · Restart · Off"
+        if (id === "_desktop") return "Login screen"
+        if (id === "_fullludus") return "Every setting is there"
+        return ""
+    }
+    function settingsRows() {
+        return settingsDef.map(function (r) {
+            return { id: r.id, title: r.title, cat: true, tiles: r.tiles.map(function (t) { return { id: t[0], title: t[1], kind: "action", icon: t[2], sub: settingNote(t[0]) } }) }
+        })
+    }
+    // ---- menus as promises (the flows ask, wait for the answer, and carry on)
+    function pick(title, items, index) {
+        return new Promise(function (resolve) { menu.open(title, items, function (it) { resolve(it) }, index || 0, function () { resolve(null) }) })
+    }
+    function confirmYes(question, yesLabel) {
+        return pick(question, [{ label: yesLabel || "Yes", op: "yes" }, { label: "Cancel", op: "no" }], 1).then(function (r) { return Boolean(r && r.op === "yes") })
+    }
+    function notice(title, body) { return pick(title + (body ? "\n" + body : ""), [{ label: "OK", op: "ok" }], 0) }
+    function runAction(id) {
+        if (id === "_power") return flowPower()
+        if (id === "_desktop") return flowDesktop()
+        if (id === "_fullludus") return confirmYes("Go back to the full Ludus?", "Go back").then(function (y) { if (y) session.useFullLudus() })
+        setStatus("This setting comes to this version next. It's in the full Ludus (Settings › Go back to the full Ludus).")
+    }
+    function flowPower() {
+        var ask = { restart: ["Restart the console?", "Restart"], shutdown: ["Shut the console down?", "Shut down"] }
+        pick("Power", [{ label: "Sleep", sub: "Wake it with the controller", op: "sleep" }, { label: "Restart", op: "restart" }, { label: "Shut down", op: "shutdown" }, { label: "Back", op: "" }]).then(function (it) {
+            if (!it || !it.op) return
+            var go = ask[it.op] ? confirmYes(ask[it.op][0], ask[it.op][1]) : Promise.resolve(true)
+            go.then(function (y) {
+                if (!y) return
+                api.call("power", [it.op]).then(function (r) {
+                    if (r && r.needPin) return setStatus("A PIN is set: use the full Ludus for this for now.", true)
+                    if (!r || r.ok === false) return setStatus((r && r.error) || "That did not work.", true)
+                    if (it.op !== "sleep") notice(it.op === "restart" ? "Restarting…" : "Shutting down…", it.op === "restart" ? "The console is restarting. This takes a moment." : "The console is shutting down.")
+                })
+            })
+        })
+    }
+    function flowDesktop() {
+        confirmYes(session.inSession ? "Switch to Opus?  Ludus will close and the login screen will appear (choose Opus there).  To come back later, choose Return to Ludus in the application menu."
+                                     : "Switch to Opus?  Ludus will close and the desktop will be shown again.", "Switch").then(function (y) { if (y) { setStatus("Closing Tessera…"); session.goToOpus() } })
     }
     property var rows: []
     function currentRows() {
@@ -254,14 +314,12 @@ Window {
             if (a === entry || a === "a") {
                 if (page === "new") return newMosaic()
                 if (page === "browser") return setStatus("The browser comes to this version next. It's in the full Ludus (Settings › Go back).")
-                if (page === "settings") { settingsPage.sel = 0; area = "content"; return }
                 area = "content"
                 return
             }
             if (a === "y" && !buttonTab) return openOptions(true)
             return
         }
-        if (page === "settings") return settingsPage.press(a)
         if (homeMode && (a === "left" || a === "right" || a === "up" || a === "down") && selTile && selTile.kind === "inlay") return homeMove(a, exit)
         var r = selRow, c = selCol
         if (a === "left") { if (c > 0) setSel(r, c - 1); else if (exit === "left") area = "tabs"; return }
@@ -307,6 +365,7 @@ Window {
         if (!t) return
         if (t.kind === "folder") { stack = stack.concat([t.id]); refresh(); return }
         if (t.kind === "add") return addSomething()
+        if (t.kind === "action") return runAction(t.id)
         if (t.kind === "inlay") return openOptions(false)     // widgets are display-only; A offers move / resize / remove
         if (t.offline) return setStatus(t.offline === "drive" ? t.title + " is on a drive that isn't plugged in."
                                                               : t.title + "'s files can't be found. Settings > Storage > Clean up can remove broken entries.", true)
@@ -481,7 +540,7 @@ Window {
     }
     readonly property string titleText: area !== "content"
         ? (page === "new" ? "Press A to create a mosaic" : page === "browser" ? "Press A to open your browser" : tabName(page))
-        : (page === "settings" ? "" : selTile && !selTile.big ? selTile.title : "")
+        : (selTile && !selTile.big ? selTile.title : "")
 
     // ================================================================ the screen
     Backdrop {
@@ -680,7 +739,7 @@ Window {
                 id: viewport
                 Layout.fillWidth: true
                 // "start": only the one row shows, so the page is as tall as it (style.css data-part-row="start")
-                readonly property bool oneRow: th.parts.row === "start" && th.mode === "rails" && win.page !== "settings" && win.page !== "new"
+                readonly property bool oneRow: th.parts.row === "start" && th.mode === "rails" && win.page !== "new"
                 Layout.fillHeight: !oneRow
                 Layout.preferredHeight: oneRow ? th.cardSize.h * 1.32 + 64 : -1
                 Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
@@ -709,7 +768,7 @@ Window {
                     cols: win.rowCols
                     pageKey: win.pageKey
                     grid: win.gridNow
-                    visible: win.page !== "settings" && win.page !== "new" && !win.homeMode
+                    visible: win.page !== "new" && !win.homeMode
                 }
                 Column {
                     anchors.centerIn: parent
@@ -718,7 +777,6 @@ Window {
                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "A new mosaic"; color: th.text; font.pixelSize: 1.6 * th.rem; font.weight: Font.DemiBold }
                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Press A to make one and name it."; color: th.muted; font.pixelSize: 1.1 * th.rem }
                 }
-                SettingsPage { id: settingsPage; anchors.fill: parent; visible: win.page === "settings"; th: th; active: win.area === "content" && !menu.visible; onLeave: win.area = "tabs" }
             }
 
             SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true }

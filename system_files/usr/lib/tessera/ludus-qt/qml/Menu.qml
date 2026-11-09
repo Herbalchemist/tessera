@@ -12,10 +12,12 @@ Rectangle {
     property var items: []
     property int sel: 0
     property var done: null
+    property var canceled: null
     visible: false
     color: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
 
-    function open(h, its, cb, index) {
+    function open(h, its, cb, index, cancel) {
+        canceled = cancel || null
         heading = h
         items = its
         sel = Math.max(0, Math.min(its.length - 1, index || 0))
@@ -23,16 +25,16 @@ Rectangle {
         visible = true
         th.moved("m|" + h + "|" + sel)
     }
-    function close() { visible = false; done = null }
+    function close() { visible = false; done = null; canceled = null }
     function press(a) {
         if (!items.length) { if (a === "b" || a === "a") close(); return }
         if (a === "up") sel = (sel - 1 + items.length) % items.length
         else if (a === "down") sel = (sel + 1) % items.length
-        else if (a === "b") close()
+        else if (a === "b") { var c = canceled; close(); if (c) c() }
         else if (a === "a") { var it = items[sel], cb = done; close(); if (cb) cb(it) }
         th.moved("m|" + heading + "|" + sel)
     }
-    MouseArea { anchors.fill: parent; onClicked: menu.close() }
+    MouseArea { anchors.fill: parent; onClicked: menu.press("b") }
 
     Rectangle {
         id: box
