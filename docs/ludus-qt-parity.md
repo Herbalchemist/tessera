@@ -18,7 +18,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Game art (automatic and chosen pictures)
 - ⬜ Recently played
 - ⬜ Hover-to-select with the mouse, with the edge-scroll pause
-- 🟨 The tour (first start, and from the guide) and Welcome: ported and picture-checked; the ring lights the whole page area rather than hugging the tiles
+- 🟨 The tour (first start, and from the guide) and Welcome: ported, compared side by side with the full Ludus (ring hugs the tiles, same card and buttons; the game lists differ only because the two sample libraries differ)
 - 🟡 Status line and messages — shown under the tiles; the full set of messages not yet
 
 ## Themes and customization (docs/theming.md)
