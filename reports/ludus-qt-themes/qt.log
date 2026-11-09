@@ -50,8 +50,8 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-mosaic-dark-library-1280
 shot theme-cartridge-pop-library-1280
-qml: VIEWPORT cartridge-pop y=200 h=292 oneRow=true rows=1 selRow=0 header=476+92 clockTop=62
-qml: GEOM cartridge-pop {"tab":{"x":506,"y":487,"w":68,"h":68},"tabs":{"x":308,"y":487,"w":663,"h":68},"tiles":{"x":63,"y":226,"w":1389,"h":216},"sel":{"x":532,"y":226,"w":216,"h":216},"footer":{"x":58,"y":687,"w":1165,"h":33}}
+qml: VIEWPORT cartridge-pop y=164 h=292 oneRow=true rows=1 selRow=0 header=506+92 clockTop=62
+qml: GEOM cartridge-pop {"tab":{"x":506,"y":517,"w":68,"h":68},"tabs":{"x":308,"y":517,"w":663,"h":68},"tiles":{"x":63,"y":190,"w":1389,"h":216},"sel":{"x":532,"y":190,"w":216,"h":216},"footer":{"x":58,"y":687,"w":1165,"h":33}}
 shot theme-cartridge-pop-home-1280
 shot theme-cartridge-pop-settings-1280
 shot theme-cartridge-pop-tabs-1280
@@ -110,8 +110,8 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-channel-white-library-1280
 shot theme-arcade-marquee-library-1280
-qml: VIEWPORT arcade-marquee y=72 h=552 oneRow=false rows=3 selRow=0 header=0+56 clockTop=0
-qml: GEOM arcade-marquee {"tab":{"x":415,"y":12,"w":161,"h":33},"tabs":{"x":93,"y":12,"w":1126,"h":33},"tiles":{"x":25,"y":77,"w":1230,"h":534},"sel":{"x":513,"y":77,"w":236,"h":167},"footer":{"x":0,"y":671,"w":1280,"h":49}}
+qml: VIEWPORT arcade-marquee y=90 h=534 oneRow=false rows=3 selRow=0 header=0+74 clockTop=0
+qml: GEOM arcade-marquee {"tab":{"x":398,"y":18,"w":161,"h":33},"tabs":{"x":76,"y":18,"w":1126,"h":33},"tiles":{"x":25,"y":95,"w":1230,"h":516},"sel":{"x":513,"y":95,"w":236,"h":161},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-arcade-marquee-home-1280
 shot theme-arcade-marquee-settings-1280
 shot theme-arcade-marquee-tabs-1280
