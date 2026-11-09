@@ -537,6 +537,8 @@ Window {
         }
         walk(viewport)
         var f = footerA.visible ? footerA : footerB, fp = f.mapToItem(win.contentItem, 0, 0)
+        var vp = viewport.mapToItem(win.contentItem, 0, 0)
+        console.log("VIEWPORT " + theme + " y=" + Math.round(vp.y) + " h=" + Math.round(viewport.height) + " oneRow=" + viewport.oneRow + " rows=" + win.rows.length + " selRow=" + win.selRow + " header=" + Math.round(header.y) + "+" + Math.round(header.height) + " clockTop=" + Math.round(clockTop.height))
         console.log("GEOM " + theme + " " + JSON.stringify({ tab: cur && { x: Math.round(cur.x), y: Math.round(cur.y), w: Math.round(cur.w), h: Math.round(cur.h) }, tabs: { x: Math.round(nav.x), y: Math.round(nav.y), w: Math.round(bar.width), h: Math.round(bar.height) },
             tiles: x0 < 1e8 ? { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) } : null, sel: sel, footer: { x: Math.round(fp.x), y: Math.round(fp.y), w: Math.round(f.width), h: Math.round(f.height) } }))
     }
