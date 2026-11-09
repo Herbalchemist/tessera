@@ -968,7 +968,7 @@ Window {
                 y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
                 spacing: header.nav === "bottom-bar" ? 0 : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
-                Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" }
+                Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" && header.nav !== "top-left" }
                 HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar" }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
