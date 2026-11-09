@@ -107,7 +107,7 @@ Item {
         x: card.inset; width: parent.width - 2 * card.inset
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
-        Text { text: card.now; color: th.text; font.pixelSize: Math.min(card.big, card.height * 0.42); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; elide: Text.ElideRight; width: parent.width }
+        Text { text: card.now; color: th.text; font.pixelSize: Math.min(card.big, card.height * 0.42); fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12; font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; width: parent.width }
         Text { text: card.day; color: card.small; font.pixelSize: th.clamp(0.9 * th.rem, 1.4 * th.vw, 1.8 * th.rem); font.weight: Font.Medium; elide: Text.ElideRight; width: parent.width }
     }
     Column {     // CPU, memory, storage, battery, network, uptime
@@ -116,7 +116,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
         Text { text: card.info[0].toUpperCase(); color: card.small; font.pixelSize: th.clamp(0.75 * th.rem, 1 * th.vw, 1.05 * th.rem); font.weight: Font.DemiBold; font.letterSpacing: 0.05 * th.rem }
-        Text { text: card.info[1]; color: th.text; font.pixelSize: Math.min(card.stat, card.height * 0.4); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; elide: Text.ElideRight; width: parent.width }
+        Text { text: card.info[1]; color: th.text; font.pixelSize: Math.min(card.stat, card.height * 0.4); font.weight: Font.DemiBold; font.letterSpacing: -0.02 * th.rem * 3; fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12; width: parent.width }
         Text { visible: text !== ""; text: card.info[2]; color: card.small; font.pixelSize: th.clamp(0.7 * th.rem, 1.1 * th.vw, 1.3 * th.rem); font.weight: Font.Medium; elide: Text.ElideRight; width: parent.width; topPadding: 2 }
     }
     Column {     // recently played

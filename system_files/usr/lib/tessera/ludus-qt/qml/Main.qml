@@ -755,23 +755,38 @@ Window {
         x: th.parts.nav === "left" ? body.anchors.leftMargin + header.x + header.width / 2 - width / 2 : th.edge
         y: th.navBottom ? win.height - th.clamp(52, 10 * th.vh, 110) - height : th.clamp(16, 4 * th.vh, 44)
         z: 6
-        Repeater {
-            model: 2
-            Rectangle {
-                anchors.fill: parent
-                radius: 0.6 * th.vh
-                color: th.alpha(th.border, 0.55)
-                border.width: 0.45 * th.vh
-                border.color: th.mix(th.accent, Qt.color("#ffffff"), 0.2)
-                transform: Rotation {
-                    origin.x: width / 2; origin.y: height / 2
-                    axis { x: 0.3; y: 1; z: 0 }
-                    angle: spinner.angle + index * 90
+        Canvas {     // an isometric cube: top, left and right faces, floating gently
+            id: cubeArt
+            anchors.fill: parent
+            property real bob: 0
+            transform: Translate { y: cubeArt.bob }
+            onPaint: {
+                var c = getContext("2d"), w = width, h = height, m = w * 0.06
+                var cx = w / 2, top = m, r = w * 0.44, hh = r * 0.5
+                c.clearRect(0, 0, w, h)
+                var a = th.accent, b = th.border
+                var face = function (pts, fill) {
+                    c.beginPath(); c.moveTo(pts[0][0], pts[0][1])
+                    for (var i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1])
+                    c.closePath(); c.fillStyle = fill; c.fill()
+                    c.lineWidth = Math.max(2, w * 0.03); c.strokeStyle = Qt.rgba(1, 1, 1, 0.55); c.lineJoin = "round"; c.stroke()
                 }
+                var P = function (c1) { return Qt.rgba(c1.r, c1.g, c1.b, 0.85) }
+                var mixc = function (x, y, t) { return Qt.rgba(x.r * (1 - t) + y.r * t, x.g * (1 - t) + y.g * t, x.b * (1 - t) + y.b * t, 0.85) }
+                var mid = top + hh * 2 - hh * 0.0
+                face([[cx, top], [cx + r, top + hh], [cx, top + 2 * hh], [cx - r, top + hh]], mixc(a, Qt.rgba(1, 1, 1, 1), 0.35))
+                face([[cx - r, top + hh], [cx, top + 2 * hh], [cx, top + 2 * hh + r * 1.0], [cx - r, top + hh + r * 1.0]], P(a))
+                face([[cx + r, top + hh], [cx, top + 2 * hh], [cx, top + 2 * hh + r * 1.0], [cx + r, top + hh + r * 1.0]], mixc(a, Qt.rgba(0, 0, 0, 1), 0.45))
+            }
+            Connections { target: th; function onAccentChanged() { cubeArt.requestPaint() } }
+            onWidthChanged: requestPaint()
+            SequentialAnimation on bob {
+                running: th.motion && th.parts.emblem === "cube"
+                loops: Animation.Infinite
+                NumberAnimation { from: -3; to: 3; duration: 2600; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 3; to: -3; duration: 2600; easing.type: Easing.InOutSine }
             }
         }
-        QtObject { id: spinner; property real angle: 38 }
-        NumberAnimation { target: spinner; property: "angle"; running: th.motion && th.parts.emblem === "cube"; from: 38; to: 398; duration: 14000; loops: Animation.Infinite }
     }
 
     // ================================================================ overlays
