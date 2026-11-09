@@ -38,7 +38,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Address: Y opens the keyboard with the address selected and a row of www. .com .org .net / : ? =; the pull-out bubble animation is not ported (the keyboard's own field is used). Esc+Left/Right inside the page switch tabs
 - 🟨 Controller as pointer (sticks, triggers, scroll, d-pad keys) runs on the full Ludus's own pointer code, played into the page as real mouse and key events; downloads go to the Downloads folder under a cleaned name; every permission refused; pop-ups refused; http(s) only
 - ✅ PIN, profile PIN and guest rules (the same checks as the full Ludus, asked on the screen)
-- ⬜ The guide over the browser; "Back to the browser"
+- 🟨 The guide over the browser; "Back to the browser" (the guide opens over the page and hands it back on close; not run with a live page yet)
 
 ## People and safety
 - ⬜ PIN (set, change, remove; never waits for the admin PIN)
@@ -60,7 +60,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover
 
 ## Around the screen
-- ⬜ Guide (Guide button over games and over Opus)
+- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), the quick tour and installer entries
 - ⬜ Steam: library import, launching, Big Picture
 - ✅ Starting games and apps; coming back when they end
 - ⬜ Game logs and "exited with code" messages with details
