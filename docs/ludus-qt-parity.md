@@ -8,9 +8,9 @@ profiles are the same files in both, so switching never loses anything.
 Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Pages and navigation
-- 🟡 Tab bar (Library, Apps, mosaics, + Mosaic, Settings, Browser) — Home and Browser tabs not yet
+- 🟡 Tab bar (Browser, Home, Library, Apps, mosaics, + Mosaic, Settings), in all six tab looks — the Browser tab opens in the full Ludus until the browser port
 - 🟡 Every controller moves the screen; keyboard — mouse and pointer not yet; per-pad glyphs (Xbox / PlayStation / Nintendo) not yet
-- ⬜ Home: widgets (inlays) placed on its grid, add / move / resize / remove
+- 🟡 Home: widgets on the 12 × 6 grid, add from the preset list, move / resize / remove, four widget styles — downloaded add-on widgets show their name until the browser engine port; the frosted style is a tinted pane (no blur of what is behind it yet)
 - ✅ Library and Apps lists
 - 🟡 Mosaics: make, rename, reorder, delete — per-page grid size, holding Y to lift a tab, pick-up-and-move tiles not yet
 - 🟡 Folders: open, back — new folder, rename, delete from inside not yet
@@ -19,13 +19,13 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Recently played
 - ⬜ Hover-to-select with the mouse, with the edge-scroll pause
 - ⬜ The tour (first start) and Welcome
-- ⬜ Status line and messages in the theme's style
+- 🟡 Status line and messages — shown under the tiles; the full set of messages not yet
 
 ## Themes and customization (docs/theming.md)
-- ⬜ All 49 theme settings (colors, sizes, radius, shadows, fonts, motion, background picture and dim…)
-- ⬜ All 9 shell layouts: classic, dock, crossbar, dashboard, switch, hero, pivot, cube, channel
-- ⬜ Layout modes: rails, grid, flow; columns × rows; packed groups
-- ⬜ The 10 factory themes, looking the same as today
+- 🟡 All 49 theme settings are read; drawn so far: colors, screen area, font size, radius, borders, shadows, selection ring and pastel glow, background picture and dim, backdrops, widgets, motion — checked side by side by the CI job (reports/ludus-qt-themes)
+- 🟡 All 9 shell layouts and every layout part (menu position, tabs, clock, frame, title, tile shape and size, row, card look, spotlight, emblem, hints) — drawn; being matched against the current Ludus one theme at a time
+- 🟡 Layout modes: rails, grid, flow; columns × rows, per-page grid sizes read — packed groups and the per-page grid-size editor not yet
+- 🟡 The 10 factory themes draw; the differences found so far are listed in the side-by-side report
 - ⬜ Themes from ~/Tessera/Themes (theme.json), with the same checks and limits
 - ⬜ Theme Settings: change live, save as new, rename, overwrite, delete; the color wheel
 - ⬜ Per-profile themes; "everyone" theme
@@ -67,6 +67,11 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Display restart, nested in Opus, safe mode
 - ⬜ Calibration
 - ⬜ Updates status
+
+## Changes you may want to approve (nothing is removed without asking)
+- New settings planned for both versions: add-tile outline (dashed, solid, none), clock size, tab bar alignment
+- The cube emblem is drawn as a floating isometric cube instead of the turning 3D one
+- Text in widgets shrinks to fit instead of being cut off
 
 ## Checks before the switch
 - ⬜ Every QA check of the current Ludus has a Qt counterpart that passes
