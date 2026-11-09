@@ -1,35 +1,6 @@
 ludus-qt: starting
-shot 01-library
-shot 02-options
-shot 03-add-to-which-mosaic
-shot 04-mosaic
-shot 05-folder
-shot 06-mosaic-options-from-tabs
-shot 07-delete-confirm
-shot 08-keyboard
-shot 09-settings
-shot 10-home
-shot 11-tabs-browser
-shot 12-wifi
-shot 13-wifi-password
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:131:17: QML Text: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:131:17: QML Text: Binding loop detected for property "height"
-shot 14-bluetooth
-shot 15-sound
-shot 16-sound-volume
-shot 17-keyboard-menu
-shot 18-controller-menu
-shot 19-storage
-shot 20-addons
-shot 21-theme-settings
-shot 22-color-wheel
-shot 23-calibrated-screen
-shot 24-calibration-brightness
-shot 25-calibration-gamma
-shot 26-calibration-balance
-shot 27-browser
-shot 28-browser-address
-shot 29-controller-test
-shot 30-button-mapping
-shot 31-grip-order
-shot 32-guide
+QQmlApplicationEngine failed to load component
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:1105:24: Expected token `,'
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:1105:24: Expected token `,'
+ludus-qt: the screen did not load
+exit code 1
