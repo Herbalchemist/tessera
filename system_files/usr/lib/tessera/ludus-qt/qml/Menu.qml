@@ -14,6 +14,7 @@ Rectangle {
     property var done: null
     property var canceled: null
     property string body: ""
+    property string yLabel: ""       // a second thing Y can do on the row (Profiles: Options); the answer carries pressedY: true
     property double holdUntil: 0     // don't redraw underneath a hand that is still turning a bar
     visible: false
     color: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
@@ -37,6 +38,7 @@ Rectangle {
         canceled = cancel || null
         heading = h
         body = (opts && opts.body) || ""
+        yLabel = (opts && opts.yLabel) || ""
         holdUntil = 0
         items = its
         sel = Math.max(0, Math.min(its.length - 1, index || 0))
@@ -56,6 +58,7 @@ Rectangle {
         else if (a === "a" && !pickable(sel)) { }
         else if (a === "b") { var c = canceled; close(); if (c) c() }
         else if (a === "a") { var it = items[sel], cb = done; close(); if (cb) cb(it) }
+        else if (a === "y" && yLabel && pickable(sel) && !items[sel].fold) { var yi = Object.assign({}, items[sel], { pressedY: true }), ycb = done; close(); if (ycb) ycb(yi) }
         th.moved("m|" + heading + "|" + sel)
     }
     MouseArea { anchors.fill: parent; onClicked: menu.press("b") }
@@ -177,6 +180,7 @@ Rectangle {
                         var cur = menu.items[menu.sel], h = []
                         if (cur && cur.adjust) h.push(["← / →", "Adjust"])
                         if (cur && (!cur.header || cur.fold) && !cur.info) h.push(["A", cur.fold ? "Fold" : "Select"])
+                        if (menu.yLabel && cur && (!cur.header || cur.fold) && !cur.info) h.push(["Y", menu.yLabel])
                         h.push(["B", "Back"])
                         return h
                     }

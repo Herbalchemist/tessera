@@ -810,4 +810,202 @@ QtObject {
         }
         loop().then(function () { w.refreshTileNotes(true); w.reloadPrefs() })
     }
+
+    // ------------------------------------------------------------------ Profiles
+    readonly property string profileOwn: "Their own controls and button layout, keyboard keys, Home and mosaics, Recently played, browser logins and theme. Games are shared. Press Y on Guest to choose what Guest may do."
+    readonly property var guestLabels: [["games", "Play games"], ["apps", "Open apps"], ["browser", "Use the browser"], ["pages", "Change Home and the mosaics"], ["look", "Change the look (themes)"], ["controls", "Change the controls"]]
+    function noBusy(r, def) { return r && typeof r === "object" ? r : { ok: false, error: def || "Something went wrong." } }
+    // their PIN (or the admin PIN), asked until it's right, cancelled, or too many tries
+    function profilePin(name, attempt) {
+        var tries = 0
+        var again = function () {
+            if (tries++ >= 5) return Promise.resolve(null)
+            return askPin(name + "'s PIN").then(function (pin) {
+                if (pin === null) return null
+                return attempt(pin).then(function (r) {
+                    if (r && r.ok) return r
+                    w.setStatus((r && r.error) || "That isn't the PIN.", true)
+                    if (!r || r.wait) return null
+                    return again()
+                })
+            })
+        }
+        return again()
+    }
+    function switchProfile(id, name) {
+        // (the built-in browser is not in this version yet, so there is nothing to close first)
+        return w.dev("profiles", "use", { id: id }).then(function (r) {
+            if (r.needProfilePin) return profilePin(r.name || name, function (pin) { return w.dev("profiles", "use", { id: id, pin: pin }) })
+            if (r.needPin && !r.ok) return w.requirePin("Enter the admin PIN to switch to Guest").then(function (ok) { return ok ? w.dev("profiles", "use", { id: id }) : r })
+            return r
+        }).then(function (r) {
+            if (!r || !r.ok) { w.setStatus((r && r.error) || "Couldn't switch.", true); return null }
+            if (r.view) w.applyView(r.view)       // their pages, controls, keys and theme
+            else if (r.theme) w.applyTheme(r.theme)
+            w.goHome()
+            w.setStatus(id ? "Hi, " + name + "!" : "Playing as Guest.")
+            return r
+        })
+    }
+    function addProfile() {
+        return w.ask("Name this profile", "", { max: 24 }).then(function (name) {
+            if (name === null) return null
+            if (!name.trim()) { w.setStatus("Give them a name.", true); return null }
+            return w.pick("Start " + name.trim() + " with", [
+                { label: "A copy of Guest's setup", sub: "Guest's Home, mosaics and controls, to change from there", op: "copy" },
+                { label: "A fresh start", sub: "An empty Home and the usual controls", op: "fresh" }
+            ]).then(function (start) {
+                if (!start) return null
+                var go = function () { return w.dev("profiles", "add", { name: name, start: start.op }) }
+                return go().then(function (r) { return r.needPin ? w.requirePin().then(function (ok) { return ok ? go() : null }) : r }).then(function (r) {
+                    if (!r) return null
+                    w.setStatus(r.ok ? "Added " + name.trim() + "." : r.error || "Couldn't add that.", !r.ok)
+                    return r.ok ? r.id : null
+                })
+            })
+        })
+    }
+    function guestOptions() {
+        var st = { at: "" }
+        var loop = function () {
+            return w.dev("profiles", "list").then(function (pr) {
+                var g = pr.guest || {}
+                var items = [{ key: "h:may", label: "Guest may", header: true }]
+                guestLabels.forEach(function (x) { items.push({ key: x[0], label: x[1], sub: g[x[0]] ? "Allowed" : "Not allowed" }) })
+                items.push({ key: "show", label: "Offer Guest in \"Who's playing?\"", sub: g.show !== false ? "Yes" : "No: only the admin can switch to Guest" })
+                return w.pick("Guest", items, indexOfKey(items, st.at || "games"), { body: (pr.profiles || []).length ? "Guest is Tessera with nobody's profile. It only does what you allow here; the admin PIN allows anything else on the spot." : "These apply once someone has a profile. Until then Tessera is all yours." }).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    var value = !(it.key === "show" ? g.show !== false : g[it.key])
+                    var set = function () { return w.dev("profiles", "guestSet", { key: it.key, value: value }) }
+                    return set().then(function (r) {
+                        if (r.needPin) return w.requirePin("Enter the admin PIN").then(function (ok) { return ok ? set() : null })
+                        return r
+                    }).then(function (r) { if (r && !r.ok && r.error) w.setStatus(r.error, true) }).then(loop)
+                })
+            })
+        }
+        return loop()
+    }
+    function profileOptions(id, name) {
+        return w.dev("profiles", "list").then(function (info) {
+            var me = (info.profiles || []).filter(function (x) { return x.id === id })[0] || {}
+            var items = [
+                { label: "Switch to them", op: "use" },
+                { label: "Rename…", op: "rename" },
+                { label: "Their theme…", sub: "what they pick while playing is kept too", op: "theme" },
+                { label: "PIN", header: true }
+            ]
+            if (me.admin) {
+                items.push({ label: "Logs in with", sub: me.login === "own" ? "A PIN of their own (the admin PIN is asked for admin things)" : "The admin PIN", op: "adminLogin" })
+                if (me.login === "own") items.push({ label: "Change their login PIN…", op: "pin" })
+            } else {
+                items.push({ label: me.ownPin ? "Change their PIN…" : "Give them a PIN…", sub: me.ownPin ? "" : "to log in as them and open their own things; never admin rights", op: "pin" })
+                if (me.ownPin) items.push({ label: "Remove their PIN", op: "nopin" })
+            }
+            if (me.locked) items.push({ label: "Their PIN also opens their browser", sub: me.browserLock ? "On: asked again after a few minutes" : "Off", op: "browserLock" })
+            if (info.adminPin) items.push({ label: me.admin ? "This is the admin profile" : "Make this the admin profile", sub: me.admin ? "" : "their login can be the admin PIN", op: "admin", info: Boolean(me.admin) })
+            items.push({ label: "Remove this profile…", sub: "their pages, controls and browser logins go with it", op: "remove" })
+            return w.pick(name, items).then(function (it) {
+                if (!it || it.info) return null
+                // PIN changes: by them (logged in, PIN fresh) or with the admin PIN
+                var asOwnerOrAdmin = function (op, payload) {
+                    return w.dev("profiles", op, payload).then(function (r) {
+                        if (!r.needPin) return r
+                        return w.requirePin("Enter the admin PIN").then(function (ok) { return ok ? w.dev("profiles", op, payload) : null })
+                    })
+                }
+                var newPin = function (title) {
+                    return askPin(title).then(function (a) {
+                        if (a === null) return null
+                        if (!/^\d{4,8}$/.test(a)) { w.setStatus("Use 4 to 8 digits.", true); return null }
+                        return askPin("Enter it again").then(function (b) {
+                            if (b === null) return null
+                            if (a !== b) { w.setStatus("Those didn't match.", true); return null }
+                            return a
+                        })
+                    })
+                }
+                var say = function (r, good) { if (r) w.setStatus(r.ok ? good : r.error || "That did not work.", !r.ok) }
+                if (it.op === "pin") return newPin("A PIN for " + name + " (4 to 8 digits)").then(function (a) { if (a !== null) return asOwnerOrAdmin("setPin", { id: id, pin: a }).then(function (r) { say(r, name + " has a PIN now.") }) })
+                if (it.op === "nopin") return asOwnerOrAdmin("setPin", { id: id, pin: null }).then(function (r) { say(r, name + "'s PIN is removed.") })
+                if (it.op === "browserLock") return asOwnerOrAdmin("browserLock", { id: id, on: !me.browserLock }).then(function (r) { if (r && !r.ok) w.setStatus(r.error, true) })
+                if (it.op === "admin") return asOwnerOrAdmin("setAdmin", { id: id }).then(function (r) { say(r, name + " is the admin profile. They log in with the admin PIN.") })
+                if (it.op === "adminLogin") {
+                    return w.pick(name + " logs in with", [
+                        { label: "The admin PIN", sub: "one PIN for logging in and for admin things", v: "admin" },
+                        { label: "A PIN of their own", sub: "for logging in and their own things; the admin PIN is asked for admin things", v: "own" }
+                    ], me.login === "own" ? 1 : 0).then(function (how) {
+                        if (!how || how.v === me.login) return
+                        if (how.v === "own") return newPin(name + "'s login PIN (not the admin PIN)").then(function (a) { if (a !== null) return asOwnerOrAdmin("setPin", { id: id, pin: a }).then(function (r) { say(r, name + " logs in with their own PIN now.") }) })
+                        return asOwnerOrAdmin("adminLogin", { login: "admin" }).then(function (r) { say(r, name + " logs in with the admin PIN.") })
+                    })
+                }
+                if (it.op === "use") return switchProfile(id, name)
+                if (it.op === "rename") return w.ask("Rename this profile", name, { max: 24 }).then(function (nn) {
+                    if (nn === null || !nn.trim()) return
+                    var go = function () { return w.dev("profiles", "rename", { id: id, name: nn }) }
+                    return go().then(function (r) { return r.needPin ? w.requirePin().then(function (ok) { return ok ? go() : null }) : r }).then(function (r) { if (r) w.setStatus(r.ok ? "Renamed." : r.error || "Couldn't rename that.", !r.ok) })
+                })
+                if (it.op === "theme") return w.dev("settings", "themeGet").then(function (t) {
+                    return w.pick("Theme for " + name, (t.themes || []).map(function (x) { return { label: x.name, sub: x.dup ? "#" + x.id : x.author, id: x.id } })).then(function (choice) {
+                        if (!choice) return
+                        return w.dev("profiles", "setTheme", { id: id, themeId: choice.id }).then(function (r) {
+                            if (r.ok && r.theme) w.applyTheme(r.theme)
+                            w.setStatus(r.ok ? name + " now uses " + choice.label + "." : r.error || "Couldn't set that.", !r.ok)
+                        })
+                    })
+                })
+                if (it.op === "remove") return w.confirmYes("Remove “" + name + "”? Their own Home and mosaics, controls, Recently played and browser logins are deleted. Games stay installed.", "Remove").then(function (yes) {
+                    if (!yes) return
+                    var go = function () { return w.dev("profiles", "remove", { id: id }) }
+                    return go().then(function (r) { return r.needPin ? w.requirePin().then(function (ok) { return ok ? go() : null }) : r }).then(function (r) {
+                        if (r && r.ok && r.view) w.applyView(r.view)
+                        if (r) w.setStatus(r.ok ? "Removed " + name + "." : r.error || "Couldn't remove that.", !r.ok)
+                    })
+                })
+            })
+        })
+    }
+    function profiles() {
+        if (w.menuUp()) return
+        var st = { at: "" }
+        var loop = function () {
+            return Promise.all([w.dev("profiles", "list"), w.dev("settings", "themeGet")]).then(function (res) {
+                var pr = res[0], t = res[1], list = pr.profiles || []
+                var themeName = function (id) { var x = (t.themes || []).filter(function (th) { return th.id === id })[0]; return x ? x.name : id }
+                var items = [{ key: "h:who", label: "Who's playing", header: true }]
+                list.forEach(function (p) {
+                    items.push({ key: "p:" + p.id, label: p.name, sub: [p.id === pr.active ? "Playing now" : "Switch to them", p.admin ? "Admin" : "", p.locked ? "PIN" : "", p.themeId ? themeName(p.themeId) : ""].filter(Boolean).join(" · "), id: p.id, who: true })
+                })
+                items.push({ key: "guest", label: "Guest", sub: [pr.active ? "Switch to Guest" : "Playing now", "nobody's profile", pr.guest && pr.guest.show === false ? "hidden" : ""].filter(Boolean).join(" · "), id: null, who: true, guestRow: true })
+                items.push({ key: "add", label: "Add a profile…", op: "add" })
+                if (list.length) items.push({ key: "ask", label: "Ask who's playing when Tessera starts", sub: pr.ask ? "On" : "Off", op: "ask" })
+                var body = "Each profile has " + profileOwn.charAt(0).toLowerCase() + profileOwn.slice(1)
+                return w.pick("Profiles", items, indexOfKey(items, st.at || (list.length ? "p:" + list[0].id : "guest")), { body: body, yLabel: "Options" }).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    var work = Promise.resolve()
+                    if (it.pressedY) {
+                        if (it.guestRow) work = guestOptions()
+                        else if (it.id) work = profileOptions(it.id, it.label)
+                    } else if (it.who) { if (it.id !== pr.active) work = switchProfile(it.id, it.label) }
+                    else if (it.op === "add") {
+                        work = addProfile().then(function (id) {
+                            if (!id) return
+                            return w.confirmYes("Switch to them now?", "Switch").then(function (yes) {
+                                if (!yes) return
+                                return w.dev("profiles", "list").then(function (np) {
+                                    var me = (np.profiles || []).filter(function (x) { return x.id === id })[0]
+                                    return switchProfile(id, me ? me.name : "")
+                                })
+                            })
+                        })
+                    } else if (it.op === "ask") work = w.dev("profiles", "ask", { on: !pr.ask })
+                    return work.then(loop)
+                })
+            })
+        }
+        loop().then(function () { w.reloadPrefs() })
+    }
 }

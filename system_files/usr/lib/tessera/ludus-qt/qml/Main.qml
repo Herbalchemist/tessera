@@ -344,6 +344,7 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_profiles") return flows.profiles()
         if (id === "_pin") return flows.pin()
         if (id === "_update") return flows.update()
         if (id === "_report") return flows.report()
@@ -416,6 +417,14 @@ Window {
             if (r && r.set !== undefined) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { pin: r }) }))
         })
     }
+    function goHome() {       // after switching who is playing: their Home, cursor on it
+        stack = []
+        var i = tabList.findIndex(function (t) { return t.id === "home" })
+        tabIndex = Math.max(0, i)
+        area = "content"
+        refresh()
+    }
+    function applyTheme(t) { if (t) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { theme: t }) })) }
     function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
     function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {
