@@ -122,6 +122,21 @@ jobs:
             fi
           done
           sort -t'(' -k2 -n -r /tmp/out/tour-diff.txt | head -40
+          python3 - <<'PY' > /tmp/out/geometry.txt || true
+          import json, glob, os, re
+          q = {}
+          for line in open('/tmp/qt.log', errors='replace'):
+              m = re.search(r'GEOM (\S+) (\{.*\})', line)
+              if m: q[m.group(1)] = json.loads(m.group(2))
+          for f in sorted(glob.glob('/tmp/full/geom-*.json')):
+              name = os.path.basename(f)[5:-5]; e = json.load(open(f)); t = q.get(name)
+              print('==', name)
+              for k in ('tab', 'tabs', 'tiles', 'sel', 'footer'):
+                  a = e.get(k); b = t.get(k) if t else None
+                  d = '' if not a or not b else '  diff x%+d y%+d w%+d h%+d' % (b['x'] - a['x'], b['y'] - a['y'], b['w'] - a['w'], b['h'] - a['h'])
+                  print('  %-7s full %s | qt %s%s' % (k, a, b, d))
+          PY
+          cat /tmp/out/geometry.txt | head -80
           cp /tmp/qt.log /tmp/full.log /tmp/out/ 2>/dev/null || true
           echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pairs, $missing missing"
       - name: Publish to the reports branch

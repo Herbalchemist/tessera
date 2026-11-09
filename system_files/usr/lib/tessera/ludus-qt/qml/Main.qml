@@ -141,6 +141,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (String(id).indexOf("_geom:") === 0) { geom(String(id).slice(6)) }
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_guide") { gripView.visible = false; flows.guideEvent({ action: "menu" }) }
@@ -515,6 +516,29 @@ Window {
             r = { x: fp.x, y: fp.y, w: f.width, h: f.height }
         }
         return r
+    }
+    // layout numbers for the side-by-side checks (qa/theme-shots.cjs writes the same for the full Ludus)
+    function geom(theme) {
+        var bar = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
+        var cur = bar.itemRect(tabIndex, win.contentItem), nav = bar.mapToItem(win.contentItem, 0, 0)
+        var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, sel = null
+        var walk = function (it) {
+            for (var k = 0; k < it.children.length; k++) {
+                var c = it.children[k]
+                if (!c.visible || c.opacity < 0.05) continue
+                if (c.objectName === "tile") {
+                    var p = c.mapToItem(win.contentItem, 0, 0)
+                    if (c.width > 4 && p.x + c.width > 0 && p.x < win.width && p.y + c.height > 0 && p.y < win.height) {
+                        x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + c.width); y1 = Math.max(y1, p.y + c.height)
+                        if (c.picked) sel = { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(c.width), h: Math.round(c.height) }
+                    }
+                } else walk(c)
+            }
+        }
+        walk(viewport)
+        var f = footerA.visible ? footerA : footerB, fp = f.mapToItem(win.contentItem, 0, 0)
+        console.log("GEOM " + theme + " " + JSON.stringify({ tab: cur && { x: Math.round(cur.x), y: Math.round(cur.y), w: Math.round(cur.w), h: Math.round(cur.h) }, tabs: { x: Math.round(nav.x), y: Math.round(nav.y), w: Math.round(bar.width), h: Math.round(bar.height) },
+            tiles: x0 < 1e8 ? { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) } : null, sel: sel, footer: { x: Math.round(fp.x), y: Math.round(fp.y), w: Math.round(f.width), h: Math.round(f.height) } }))
     }
     function tourBack(b) {
         if (!b) return

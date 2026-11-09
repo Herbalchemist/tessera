@@ -84,6 +84,16 @@ fs.writeFileSync(path.join(dataDir, 'library.json'), JSON.stringify({
           if (view === 'library') { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150); await page.keyboard.press('ArrowRight'); }
           await page.waitForTimeout(900);
           await page.screenshot({ path: path.join(output, `theme-${name}-${view}-${w}.png`) });
+          if (view === 'library') {
+            const g = await page.evaluate(() => {
+              const R = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; };
+              const cards = [...document.querySelectorAll('.rows .card:not(.ghost)')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 4 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth && getComputedStyle(e).visibility !== 'hidden'; });
+              const rs = cards.map((e) => e.getBoundingClientRect());
+              const union = rs.length ? { x: Math.round(Math.min(...rs.map((r) => r.left))), y: Math.round(Math.min(...rs.map((r) => r.top))), w: Math.round(Math.max(...rs.map((r) => r.right)) - Math.min(...rs.map((r) => r.left))), h: Math.round(Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top))) } : null;
+              return { tab: R(document.querySelector('.tab.active')), tabs: R(document.querySelector('nav')), tiles: union, sel: R(document.querySelector('.rows .card.active')), footer: R(document.querySelector('footer')) };
+            });
+            fs.writeFileSync(path.join(output, `geom-${name}.json`), JSON.stringify(g));
+          }
         }
         // the tab bar focused
         await page.evaluate(() => { page = 'library'; hoverId = 'library'; focus = 'tabs'; render(); });
