@@ -905,7 +905,8 @@ Window {
         anchors.rightMargin: anchors.leftMargin
         // "focus" with the menu along the bottom: title, row and menu stay together, centred between the clock and the hints
         readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && th.parts.nav === "bottom" && th.parts.title === "above"
-        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 4.5 * th.rem - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - header.height) / 2)
+        readonly property real packedGap: 66      // style.css: the menu sits this far below the row
+        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 5.1 * th.rem - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - body.packedGap - header.height) / 2)
         readonly property real sideW: th.parts.tabs === "chunky" ? th.clamp(190, 21 * th.vw, 360) : th.clamp(178, 18 * th.vw, 320)
 
         // ---- the menu: a column on the left, or a strip across the top / bottom
@@ -916,13 +917,13 @@ Window {
             readonly property real headerPad: nav === "bottom-dock" ? th.clamp(8, 1.3 * th.vh, 16) : nav === "top" || nav === "top-left" ? (th.parts.tabs === "segments" ? th.clamp(8, 1.6 * th.vh, 20) : 18) : th.clamp(6, 1.6 * th.vh, 18)
             // style.css: header padding 28 + the tab port's margin -22 and padding 36 put a pill 42px down, and 22px of room under it
             readonly property bool plainTop: nav === "top" && ["pills", "text", "pivots"].indexOf(th.parts.tabs) >= 0
-            readonly property real topPad: plainTop ? 42 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad + 4 : headerPad
-            readonly property real botPad: plainTop ? 22 : nav === "top-left" && th.parts.tabs !== "segments" ? (th.parts.row === "start" ? 1 : headerPad - 10) : headerPad
+            readonly property real topPad: plainTop ? 42 : th.parts.tabs === "segments" && (nav === "top" || nav === "top-left") ? headerPad + 6 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad + 4 : headerPad
+            readonly property real botPad: plainTop ? 22 : th.parts.tabs === "segments" && (nav === "top" || nav === "top-left") ? headerPad + 12 : nav === "top-left" && th.parts.tabs !== "segments" ? (th.parts.row === "start" ? 1 : headerPad - 10) : headerPad
             x: nav === "left" ? (th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0) : 0
             width: nav === "left" ? body.sideW : body.width
             height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
             y: nav === "left" ? 0
-             : body.packed ? body.packedTop + titleAbove.height + viewport.Layout.preferredHeight
+             : body.packed ? body.packedTop + titleAbove.height + viewport.Layout.preferredHeight + body.packedGap
              : th.navBottom ? body.height - height - (nav === "bottom" ? footerSpace : nav === "bottom-dock" ? th.clamp(4, 1 * th.vh, 12) : 0)
              : clockTop.height
             readonly property real footerSpace: 3 * th.rem
@@ -972,7 +973,7 @@ Window {
                 x: side + (header.nav === "top-left" && th.parts.tabs !== "segments" ? 6 : 0)
                 width: header.width - 2 * side
                 y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
-                spacing: header.nav === "bottom-bar" ? 0 : 28
+                spacing: header.nav === "bottom-bar" ? 0 : th.parts.tabs === "segments" ? th.clamp(6, 1 * th.vw, 16) : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
                 Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" && header.nav !== "top-left" }
                 HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar" }
