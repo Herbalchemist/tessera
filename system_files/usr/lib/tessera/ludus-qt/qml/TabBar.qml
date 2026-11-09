@@ -93,7 +93,7 @@ Item {
                           : bar.look === "pills" && bar.down ? th.radius * 0.72 : 0
                     color: bar.barPill ? (tab.active ? th.card : th.alpha(th.card, 0.65))
                          : bar.look === "pills" ? (tab.lit ? th.accent : tab.active ? th.alpha(th.accent, 0.14) : "transparent")
-                         : bar.look === "segments" ? (tab.active ? th.alpha(th.accent, 0.22) : "transparent")
+                         : bar.look === "segments" ? (tab.active ? th.alpha(th.accent, 0.22) : th.alpha(th.accent, 0))
                          : bar.look === "round" ? th.card : "transparent"
                     gradient: bar.look !== "chunky" ? null : tab.lit ? chunkyLit : tab.active ? chunkyOn : chunkyOff
                     border.width: bar.barPill ? 2 : bar.look === "round" && tab.active && !tab.lit ? 2 : 0
@@ -101,7 +101,7 @@ Item {
                     Gradient { id: chunkyOff; GradientStop { position: 0; color: th.mix(th.border, th.panel, 0.3) } GradientStop { position: 0.7; color: th.panel } }
                     Gradient { id: chunkyOn; GradientStop { position: 0; color: th.mix(th.border, th.accent, 0.35) } GradientStop { position: 0.75; color: th.panel } }
                     Gradient { id: chunkyLit; GradientStop { position: 0; color: th.mix(th.border, th.accent, 0.6) } GradientStop { position: 0.8; color: th.mix(th.panel, th.accent, 0.15) } }
-                    Behavior on color { enabled: th.motion; ColorAnimation { duration: 200 } }
+                    Behavior on color { enabled: th.motion && bar.look !== "segments"; ColorAnimation { duration: 200 } }
                 }
                 Rectangle {   // segments: the line between two; text / pivots: the underline
                     visible: bar.look === "segments" && index > 0

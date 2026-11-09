@@ -196,7 +196,7 @@ Item {
                 width: parent.width
                 horizontalAlignment: words.centered ? Text.AlignHCenter : Text.AlignLeft
                 text: tile.t.title || ""
-                color: tile.hasArt ? "#ffffff" : tile.isAdd ? th.muted : tile.t.big === true ? th.text
+                color: tile.hasArt ? "#ffffff" : tile.isAdd ? (tile.look === "bezel" ? th.mix(th.text, th.muted, 0.25) : th.muted) : tile.t.big === true ? th.text
                      : tile.look === "metro" && (tile.t.kind === "app" || tile.t.kind === "action") ? th.accentInk
                      : tile.look === "bezel" ? th.mix(th.text, th.muted, 0.25) : th.text
                 font.pixelSize: tile.gridFont > 0 && tile.t.big !== true ? tile.gridFont : (tile.t.big === true ? 2 : tile.look === "metro" ? 0.95 : tile.look === "bezel" ? 1 : th.parts.nav === "bottom-dock" && th.mode === "rails" ? 1.1 : 1.2) * th.rem

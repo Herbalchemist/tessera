@@ -982,7 +982,7 @@ Window {
                 readonly property real side: header.nav === "top-left" ? th.edge : header.nav === "bottom-bar" ? th.clamp(18, 4 * th.vw, 70) : 0
                 x: side + (header.nav === "top-left" && th.parts.tabs !== "segments" ? 6 : 0)
                 width: header.width - 2 * side
-                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
+                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) + (th.parts.tabs === "pills" ? 11 : 0) : header.topPad
                 spacing: header.nav === "bottom-bar" ? 0 : th.parts.tabs === "segments" ? th.clamp(6, 1 * th.vw, 16) : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
                 Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" && header.nav !== "top-left" }
@@ -1073,7 +1073,7 @@ Window {
             anchors.horizontalCenter: parent.horizontalCenter
             y: header.y + header.height - header.height * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 0.58 : 0.4) - height
             z: 3
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.time; color: th.text; font.pixelSize: th.clamp(1.8 * th.rem, 6.5 * th.vh, 3.6 * th.rem) * th.clockScale; font.weight: Font.DemiBold; font.letterSpacing: 2 }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.time; color: th.muted; font.pixelSize: th.clamp(1.8 * th.rem, 6.5 * th.vh, 3.6 * th.rem) * th.clockScale; font.weight: Font.DemiBold; font.letterSpacing: 2 }
             Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.date; color: th.muted; font.pixelSize: th.clamp(0.85 * th.rem, 2.4 * th.vh, 1.3 * th.rem) * th.clockScale; font.weight: Font.DemiBold }
         }
         QtObject {
