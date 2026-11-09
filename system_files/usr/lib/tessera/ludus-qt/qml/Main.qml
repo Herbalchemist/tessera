@@ -36,12 +36,17 @@ Window {
     property bool statusError: false
     property string picture: ""             // the theme's background picture (a data: URL)
     property int artRev: 0
+    property var place: null                // a widget being placed or resized on Home
+    property var sys: null                  // systemInfo, once a second while Home shows a system widget
+    property string clockNow: Qt.formatTime(new Date(), "h:mm AP")
+    property string clockDay: Qt.formatDate(new Date(), "dddd, MMMM d")
 
     readonly property var curTab: tabList.length ? tabList[Math.min(tabIndex, tabList.length - 1)] : ({ id: "home", title: "Home" })
     readonly property string page: curTab.id
     readonly property string pageKey: stack.length ? "f:" + stack[stack.length - 1] : page
     readonly property bool isMosaic: page.indexOf("m:") === 0
     readonly property string pageCat: stack.length ? stack[stack.length - 1] : (isMosaic ? page.slice(2) : (page === "home" ? "_home" : ""))
+    readonly property bool homeMode: page === "home" && stack.length === 0
     readonly property bool buttonTab: page === "new" || page === "browser" || page === "settings"
     // This page's own grid size, if it has one (Theme Settings > Layout, per page), else the theme's
     readonly property var gridNow: {
@@ -73,6 +78,8 @@ Window {
         }
         function settings(op, p) { return call("settings", [op, p || {}]) }
         function launch(id) { return call("launch", [id]) }
+        function addons(op, p) { return call("addons", [op, p || {}]) }
+        function systemInfo() { return call("systemInfo", []) }
     }
     Connections {
         target: bridge
@@ -115,6 +122,15 @@ Window {
         if (v === "library") { act("right"); act("right") }
     }
 
+    Timer {
+        interval: 1000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: {
+            var d = new Date()
+            clockNow = Qt.formatTime(d, "h:mm AP"); clockDay = Qt.formatDate(d, "dddd, MMMM d")
+            var wants = homeMode && rows.length && rows[0].tiles.some(function (t) { return ["cpu", "ram", "storage", "battery", "network", "uptime"].indexOf(t.type) >= 0 })
+            if (wants && ready) api.systemInfo().then(function (r) { if (r && r.ok !== false) sys = r })
+        }
+    }
     function setStatus(t, err) { status = t || ""; statusError = Boolean(err); statusTimer.restart() }
     Timer { id: statusTimer; interval: 6000; onTriggered: win.status = "" }
 
@@ -154,10 +170,10 @@ Window {
             return [withAdd({ id: top, title: f.title, tiles: f.tiles }, "This folder is empty", "Add a game, an app, or something from your library")]
         }
         if (page === "home") {
-            // Home holds widgets only (inlays); they come to this version in the next part of the port
+            // Home holds widgets only (inlays)
             var h = ((view.folders._home || {}).tiles || []).filter(function (t) { return t.kind === "inlay" })
-            if (!h.length) return [{ id: "_home", title: "Home", tiles: [{ id: "_add", kind: "add", big: true, title: "Make this yours", sub: "Pick a widget, then choose where it goes" }] }]
-            return [{ id: "_home", title: "Home", tiles: [{ id: "_widgets", kind: "add", big: true, title: "Your widgets", sub: h.length + (h.length === 1 ? " widget" : " widgets") + " · shown in the full Ludus for now" }] }]
+            if (!h.length) return [{ id: "_home", title: "Home", tiles: [{ id: "_add", kind: "add", big: true, title: "Make this yours", sub: "Pick a widget, then choose where it goes", ctx: { catId: "_home" } }] }]
+            return [{ id: "_home", title: "Home", tiles: h }]
         }
         if (isMosaic) {
             var id = page.slice(2), m = view.folders[id] || { title: "?", tiles: [] }
@@ -227,6 +243,7 @@ Window {
         if (!ready) return
         if (keyboard.visible) return keyboard.press(a)
         if (menu.visible) return menu.press(a)
+        if (place) return placePress(a)
         if (a === "lb" || a === "rb") { goTab(tabIndex + (a === "lb" ? -1 : 1)); area = "tabs"; return }
         var entry = th.contentEntry
         var exit = { down: "up", up: "down", right: "left" }[entry]
@@ -245,6 +262,7 @@ Window {
             return
         }
         if (page === "settings") return settingsPage.press(a)
+        if (homeMode && (a === "left" || a === "right" || a === "up" || a === "down") && selTile && selTile.kind === "inlay") return homeMove(a, exit)
         var r = selRow, c = selCol
         if (a === "left") { if (c > 0) setSel(r, c - 1); else if (exit === "left") area = "tabs"; return }
         if (a === "right") { if (rows[r] && c < rows[r].tiles.length - 1) setSel(r, c + 1); return }
@@ -288,20 +306,111 @@ Window {
         var t = selTile
         if (!t) return
         if (t.kind === "folder") { stack = stack.concat([t.id]); refresh(); return }
-        if (t.id === "_widgets" || (t.kind === "add" && pageCat === "_home")) return setStatus("Home's widgets come to this version next. Add them in the full Ludus (Settings › Go back).")
         if (t.kind === "add") return addSomething()
+        if (t.kind === "inlay") return openOptions(false)     // widgets are display-only; A offers move / resize / remove
+        if (t.offline) return setStatus(t.offline === "drive" ? t.title + " is on a drive that isn't plugged in."
+                                                              : t.title + "'s files can't be found. Settings > Storage > Clean up can remove broken entries.", true)
         api.launch(t.id)
     }
-    // "+ Add" on a mosaic or folder: something from the library goes in.
+    // Spatial movement between widgets, by where they sit on the grid (home.js homeMove)
+    function homeMove(dir, exit) {
+        var tiles = rows[0].tiles, i = selCol, from = tiles[i], best = -1, bestScore = 1e9
+        var fx = from.x + from.w / 2, fy = from.y + from.h / 2
+        tiles.forEach(function (o, n) {
+            if (n === i || o.kind !== "inlay") return
+            var dx = o.x + o.w / 2 - fx, dy = o.y + o.h / 2 - fy
+            var along = dir === "left" ? -dx : dir === "right" ? dx : dir === "up" ? -dy : dy
+            var across = dir === "left" || dir === "right" ? Math.abs(dy) : Math.abs(dx)
+            if (along <= 0) return
+            var score = along + across * 2
+            if (score < bestScore) { best = n; bestScore = score }
+        })
+        if (best >= 0) return setSel(0, best)
+        if (dir === exit) area = "tabs"
+    }
+    // ---- placing a widget: move it with the D-pad, X switches to resizing, A drops it, B cancels
+    function startPlace(p) { place = Object.assign({ mode: "move", bad: false }, p); area = "content"; checkPlace() }
+    function overlaps(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h }
+    function widgetsOnHome() { return ((view.folders._home || {}).tiles || []).filter(function (t) { return t.kind === "inlay" }) }
+    function checkPlace() {
+        var p = place
+        p.bad = widgetsOnHome().some(function (o) { return o.id !== p.id && overlaps(p, o) })
+        place = Object.assign({}, p)
+        var def = p.def
+        setStatus("D-pad " + (p.mode === "move" ? "moves" : "resizes") + (def.resizable ? "  ·  X: " + (p.mode === "move" ? "resize" : "move") : "  ·  fixed size") + "  ·  A place  ·  B cancel")
+    }
+    function placePress(a) {
+        var p = Object.assign({}, place), d = ({ left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] })[a]
+        if (d) {
+            if (p.mode === "move") { p.x = Math.max(0, Math.min(12 - p.w, p.x + d[0])); p.y = Math.max(0, Math.min(6 - p.h, p.y + d[1])) }
+            else {
+                p.w = Math.max(p.def.min.w, Math.min(Math.min(p.def.max.w, 12 - p.x), p.w + d[0]))
+                p.h = Math.max(p.def.min.h, Math.min(Math.min(p.def.max.h, 6 - p.y), p.h + d[1]))
+            }
+            place = p
+            return checkPlace()
+        }
+        if (a === "x") { if (p.def.resizable) { p.mode = p.mode === "move" ? "size" : "move"; place = p; checkPlace() } return }
+        if (a === "b") { place = null; setStatus(""); return }
+        if (a === "a") {
+            var rect = { x: p.x, y: p.y, w: p.w, h: p.h }
+            var op = p.id ? api.library("placeInlay", Object.assign({ id: p.id }, rect)) : api.library("addInlay", Object.assign({ catId: "_home", type: p.type }, rect))
+            op.then(function (r) { if (r.ok !== false) { place = null; setStatus("") } else checkPlace() })
+        }
+    }
+    function firstFree(w, h) {
+        var others = widgetsOnHome()
+        for (var y = 0; y + h <= 6; y++)
+            for (var x = 0; x + w <= 12; x++)
+                if (!others.some(function (o) { return overlaps({ x: x, y: y, w: w, h: h }, o) })) return { x: x, y: y }
+        return { x: 0, y: 0 }
+    }
+    // Nothing is added for you: pick a preset or an installed widget.
+    function addWidget() {
+        api.addons("list").then(function (info) {
+            if (!info || !info.presets) return setStatus("Couldn't read the widgets.", true)
+            var sub = function (d, kind) { return [d.description || kind, d.size.w + " × " + d.size.h, d.resizable ? "resizable" : ""].filter(Boolean).join(" · ") }
+            var items = info.presets.map(function (p) { return { label: p.name, sub: sub(p, "preset"), def: p } })
+                .concat(info.widgets.map(function (w) { return { label: w.name, sub: sub(w, "widget"), def: w } }))
+                .concat([{ label: "↻  Reload add-ons", reload: true }])
+            menu.open("Add a widget", items, function (it) {
+                if (it.reload) return api.addons("rescan").then(addWidget)
+                var d = it.def, at = firstFree(d.size.w, d.size.h)
+                startPlace({ type: d.type, name: d.name, def: d, x: at.x, y: at.y, w: d.size.w, h: d.size.h })
+            })
+        })
+    }
+    function placeExisting(t) {
+        startPlace({ id: t.id, name: t.title, def: { size: { w: t.w, h: t.h }, min: t.min, max: t.max, resizable: t.resizable }, x: t.x, y: t.y, w: t.w, h: t.h })
+    }
+    // What "+" offers depends on where it is (flows.js flowAdd).
     function addSomething() {
-        if (!pageCat) return setStatus("Adding games and apps comes to this version next. Add them in the full Ludus (Settings › Go back).")
-        var inThere = ((view.folders[pageCat] || {}).tiles || []).map(function (t) { return t.id })
+        var into = pageCat
+        var inThere = into ? ((view.folders[into] || {}).tiles || []).map(function (t) { return t.id }) : []
         var all = []
         ;["library", "apps"].forEach(function (k) { (view.tabs[k] || []).forEach(function (r) { all = all.concat(r.tiles) }) })
-        var items = all.filter(function (t) { return inThere.indexOf(t.id) < 0 }).map(function (t) { return { label: t.title, sub: t.kind === "app" ? "App" : "Game", id: t.id } })
+        var fresh = all.filter(function (t) { return inThere.indexOf(t.id) < 0 })
+        var items = []
+        if (into && fresh.length) items.push({ label: "Add something from your library…", op: "existing" })
+        if (into === "_home") items.push({ label: "Add a widget…", op: "inlay" })
+        if (!into || page === "library" || page === "apps") items.push({ label: "Add from a file, or scan for games…", op: "file" })
+        if (into === "_home") items.push({ label: "New mosaic…", op: "mosaic" })
+        else if (into) items.push({ label: "New folder here…", op: "folder" })
+        var run = function (it) {
+            if (it.op === "inlay") return addWidget()
+            if (it.op === "mosaic") return newMosaic()
+            if (it.op === "folder") return newFolder(into)
+            if (it.op === "file") return setStatus("Adding from a file and scanning come to this version next. Use the full Ludus for now (Settings › Go back).")
+            menu.open("Add to " + (into === "_home" ? "Home" : folderTitle(into)),
+                      fresh.map(function (t) { return { label: t.title, sub: t.kind === "app" ? "App" : "Game", id: t.id } }),
+                      function (it2) { api.library("addEntry", { catId: into, ref: it2.id }) })
+        }
+        if (items.length === 1) return run(items[0])
         if (!items.length) return setStatus("Everything in your library is in here already.")
-        var cat = pageCat
-        menu.open("Add to " + folderTitle(cat), items, function (it) { api.library("addEntry", { catId: cat, ref: it.id }) })
+        menu.open("Add", items, run)
+    }
+    function newFolder(parentId) {
+        keyboard.open("Name the new folder", "", function (name) { api.library("newCategory", { title: name, parentId: parentId }) })
     }
     function newMosaic() {
         keyboard.open("Name the new mosaic", "", function (name) {
@@ -315,6 +424,14 @@ Window {
     }
     function openOptions(fromTabs) {
         var t = fromTabs || !selTile || selTile.kind === "add" ? null : selTile
+        if (t && t.kind === "inlay") {
+            var wi = []
+            if (!t.missing) wi.push({ label: t.resizable ? "Move / resize…" : "Move…", op: "resize" })
+            wi.push({ label: "Remove this widget", op: "removeWidget" })
+            wi.push({ label: "Add a widget…", op: "addWidget" })
+            wi.push({ label: "New mosaic…", op: "new" })
+            return menu.open("Options", wi, function (it) { runOption(it.op, t, "_home") })
+        }
         var cat = pageCat && pageCat !== "_home" ? pageCat : ""
         var items = []
         if (t) {
@@ -337,6 +454,9 @@ Window {
     function runOption(op, t, cat) {
         if (op === "open" || op === "play") return activate()
         if (op === "new") return newMosaic()
+        if (op === "resize") return placeExisting(t)
+        if (op === "addWidget") return addWidget()
+        if (op === "removeWidget") return api.library("removeEntry", { catId: "_home", ref: t.id })
         if (op === "addTo") {
             var ms = (view.mosaics || []).filter(function (m) { return m.id !== cat })
             if (!ms.length) return setStatus("Make a mosaic first: + Mosaic in the tab bar.")
@@ -564,6 +684,19 @@ Window {
                 Layout.preferredHeight: oneRow ? th.cardSize.h * 1.32 + 64 : -1
                 Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
                 clip: true
+                HomeGrid {
+                    anchors.fill: parent
+                    visible: win.homeMode
+                    th: th
+                    tiles: win.homeMode && win.rows.length ? win.rows[0].tiles : []
+                    sel: win.selCol
+                    active: win.area === "content" && !menu.visible && !keyboard.visible
+                    place: win.place
+                    sys: win.sys
+                    recent: win.view.recent || []
+                    now: win.clockNow
+                    day: win.clockDay
+                }
                 Tiles {
                     anchors.fill: parent
                     th: th
@@ -575,7 +708,7 @@ Window {
                     cols: win.rowCols
                     pageKey: win.pageKey
                     grid: win.gridNow
-                    visible: win.page !== "settings" && win.page !== "new"
+                    visible: win.page !== "settings" && win.page !== "new" && !win.homeMode
                 }
                 Column {
                     anchors.centerIn: parent

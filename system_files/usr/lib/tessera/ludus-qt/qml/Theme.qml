@@ -64,6 +64,10 @@ QtObject {
     readonly property bool motion: val("motion", true) !== false
     readonly property bool pastel: val("selColor", "accent") === "pastel"
     readonly property string widgetStyle: ["glass", "frosted", "outline", "solid"].indexOf(val("widgetStyle", "frosted")) >= 0 ? val("widgetStyle", "frosted") : "frosted"
+    readonly property real widgetTint: pct("widgetTint", 0.3)       // frosted: how much of the card color
+    readonly property real widgetClear: pct("widgetClear", 0.6)     // glass: how see-through
+    readonly property color widgetColor: hex("widgetColor", "#ffffff")  // solid
+    readonly property bool widgetSheen: val("widgetSheen", true) !== false
 
     // ---- layout (renderer/home.js layoutCfg)
     readonly property string mode: ["grid", "flow"].indexOf(val("layout", "rails")) >= 0 ? val("layout", "rails") : "rails"
