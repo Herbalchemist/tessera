@@ -87,7 +87,7 @@ file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/q
 shot tour-dashboard-steel-library-1280
 shot theme-indigo-cube-library-1280
 qml: VIEWPORT indigo-cube y=24 h=622 oneRow=false rows=3 selRow=0 header=0+720 clockTop=0
-qml: GEOM indigo-cube {"tab":{"x":50,"y":203,"w":211,"h":45},"tabs":{"x":50,"y":105,"w":230,"h":338},"tiles":{"x":350,"y":24,"w":874,"h":914},"sel":{"x":785,"y":24,"w":209,"h":292},"footer":{"x":325,"y":690,"w":924,"h":30}}
+qml: GEOM indigo-cube {"tab":{"x":45,"y":235,"w":219,"h":49},"tabs":{"x":45,"y":129,"w":241,"h":366},"tiles":{"x":350,"y":24,"w":874,"h":914},"sel":{"x":785,"y":24,"w":209,"h":292},"footer":{"x":325,"y":690,"w":924,"h":30}}
 shot theme-indigo-cube-home-1280
 shot theme-indigo-cube-settings-1280
 shot theme-indigo-cube-tabs-1280
