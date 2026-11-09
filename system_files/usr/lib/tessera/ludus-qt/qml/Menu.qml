@@ -155,9 +155,9 @@ Rectangle {
                             width: Math.max(3, (parent.width - 3) * Math.max(0, Math.min(100, row.hasBar ? modelData.bar.pct : 0)) / 100)
                             height: parent.height
                             radius: 3
-                            color: row.hasBar && modelData.bar.mute ? th.alpha(th.text, 0.38) : th.accent
+                            color: row.hasBar && modelData.bar.mute ? (row.picked ? th.alpha(row.ink, 0.5) : th.alpha(th.text, 0.38)) : (row.picked ? row.ink : th.accent)
                         }
-                        Rectangle { width: Math.max(0, parent.width - filled.width - 3); height: parent.height; radius: 3; color: th.alpha(th.text, 0.13); visible: row.hasBar && modelData.bar.pct < 100 }
+                        Rectangle { width: Math.max(0, parent.width - filled.width - 3); height: parent.height; radius: 3; color: row.picked ? th.alpha(row.ink, 0.2) : th.alpha(th.text, 0.13); visible: row.hasBar && modelData.bar.pct < 100 }
                     }
                     MouseArea {
                         anchors.fill: parent
