@@ -27,6 +27,13 @@ Window {
     // ---------------------------------------------------------------- state
     property var view: ({ tabs: {}, folders: {}, mosaics: [], tabOrder: [], prefs: null })
     property bool ready: false
+    // display calibration: the saved one, unless Gamescope already applies it to everything; while the steps run, theirs
+    property bool calOverrideOn: false
+    property var calOverride: null
+    readonly property var calSaved: { var c = view.prefs && view.prefs.calibration; return c && c.cal && c.cal.enabled && !c.systemActive ? c.cal : null }
+    readonly property var calNow: calOverrideOn ? calOverride : calSaved
+    readonly property bool calOn: Boolean(calNow)
+    function runCalibration(mode) { return new Promise(function (resolve) { calib.begin(mode, resolve) }) }
     property string area: "tabs"            // "tabs" or "content"
     property int tabIndex: 0
     property var tabList: []
@@ -110,7 +117,13 @@ Window {
         })
     }
     // A page the way qa/theme-shots.cjs shows it: library (two to the right), home, settings, or the tab bar.
-    function shotRun(id) { if (id === "_wheel") pickColor("Accent color", "#7fb2ff"); else runAction(id) }     // screenshot runs: open a Settings flow by tile id
+    function shotRun(id) {
+        if (id === "_wheel") pickColor("Accent color", "#7fb2ff")
+        else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
+        else if (id === "_calfilter-off") calOverrideOn = false
+        else if (id === "_calib") runCalibration("thorough")
+        else runAction(id)
+    }     // screenshot runs: open a Settings flow by tile id
     function shotView(v) {
         var id = v === "tabs" ? "library" : v
         var i = tabList.findIndex(function (t) { return t.id === id })
@@ -416,7 +429,7 @@ Window {
     }
     function rawCall(ch, args) { return api.call(ch, args) }
     function menuCancel() { if (menu.visible) menu.press("b") }
-    function menuUp() { return menu.visible || keyboard.visible || wheel.visible || job !== null }
+    function menuUp() { return menu.visible || keyboard.visible || wheel.visible || calib.visible || job !== null }
     function reloadPrefs() {      // what the tile notes read (the PIN being on or off) after a flow changed it
         dev("settings", "pinStatus").then(function (r) {
             if (r && r.set !== undefined) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { pin: r }) }))
@@ -470,6 +483,7 @@ Window {
     // ---------------------------------------------------------------- input
     function act(a) {
         if (!ready) return
+        if (calib.visible) return calib.press(a)
         if (wheel.visible) return wheel.press(a)
         if (keyboard.visible) return keyboard.press(a)
         if (menu.visible) return menu.press(a)
@@ -713,6 +727,20 @@ Window {
         : (selTile && !selTile.big ? selTile.title : "")
 
     // ================================================================ the screen
+    // everything you see, in one item, so the display calibration can be drawn over all of it
+    Item {
+        id: stage
+        anchors.fill: parent
+        layer.enabled: win.calOn && calShader !== ""
+        layer.effect: ShaderEffect {
+            property variant source
+            property vector4d gamma: win.calNow ? Qt.vector4d(win.calNow.gamma[0], win.calNow.gamma[1], win.calNow.gamma[2], 1) : Qt.vector4d(1, 1, 1, 1)
+            property vector4d gain: win.calNow ? Qt.vector4d(win.calNow.gain[0], win.calNow.gain[1], win.calNow.gain[2], 1) : Qt.vector4d(1, 1, 1, 1)
+            property real black: win.calNow ? win.calNow.black : 0
+            property real white: win.calNow ? win.calNow.white : 1
+            property real sat: win.calNow ? win.calNow.sat : 1
+            fragmentShader: calShader
+        }
     Backdrop {
         anchors.fill: parent
         th: th
@@ -1024,4 +1052,6 @@ Window {
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
+    Calibration { id: calib; anchors.fill: parent; th: th; z: 25; onFilter: function (c) { win.calOverrideOn = c !== undefined; win.calOverride = c === undefined ? null : c } }
+    }
 }

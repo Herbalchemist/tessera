@@ -1609,7 +1609,7 @@ QtObject {
                 st.at = it.key
                 if (it.op === "theme") return themeSettings().then(loop)
                 if (it.op === "screens") return screens().then(function (r) { return r === "restarted" ? null : loop() })
-                return notYet("Display calibration").then(loop)
+                return calibration().then(loop)
             })
         }
         loop()
@@ -1897,5 +1897,60 @@ QtObject {
                 return w.dev("display", "revert", { restart: true }).then(function (r) { w.setStatus(r && r.restarted ? "Going back to the settings before…" : "Going back to the settings before at the next start.") })
             })
         })
+    }
+
+    // ------------------------------------------------------------------ Display calibration
+    readonly property string calIntro: "Set your screen to its normal picture mode first and turn off any dynamic contrast, energy saving or motion smoothing. Let it warm up for a few minutes, dim the room, and turn HDR off."
+    function calDate(iso) {
+        try { var d = new Date(iso); return isNaN(d) ? "" : d.getDate() + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()] } catch (e) { return "" }
+    }
+    function calibrate(mode) {
+        var quick = mode === "quick"
+        return w.pick(quick ? "Quick calibration" : "Thorough calibration", [
+            { label: "Start", sub: quick ? "4 short steps · about a minute" : "12 steps · about 5 minutes", op: "go" },
+            { label: "Cancel", op: "no" }
+        ], 0, { body: calIntro + (quick ? " This one sets brightness, gamma and white balance." : " This one also sets white level, gamma at three levels, each colour on its own, tint and colour strength.") }).then(function (it) {
+            if (!it || it.op !== "go") return null
+            return w.runCalibration(mode).then(function (cal) {
+                if (!cal) return null
+                return w.dev("settings", "calSet", { cal: cal }).then(function (r) {
+                    if (r && r.prefs) { takePrefs(r); w.setStatus("Calibration saved.") } else w.setStatus((r && r.error) || "Couldn't save the calibration.", true)
+                })
+            })
+        })
+    }
+    function calibration() {
+        var st = { at: "" }
+        var loop = function () {
+            var p = (w.view.prefs && w.view.prefs.calibration) || { cal: null }, c = p.cal
+            var items = [{ key: "h", label: c ? "Calibrated " + calDate(c.at) + " · " + (c.mode === "thorough" ? "Thorough" : "Quick") + (c.enabled ? "" : " · off") : "Not calibrated yet",
+                           sub: c ? "Gamma ≈ " + (2.2 / ((c.gamma[0] + c.gamma[1] + c.gamma[2]) / 3)).toFixed(2) : "", header: true },
+                         { key: "quick", label: "Quick calibration", sub: "About a minute", op: "quick" },
+                         { key: "thorough", label: "Thorough calibration", sub: "About 5 minutes", op: "thorough" }]
+            if (c) {
+                items.push({ key: "toggle", label: "Calibration", sub: c.enabled ? "On · Select to turn off" : "Off · Select to turn on", op: "toggle" })
+                items.push({ key: "system", label: "Apply to games too", sub: p.system ? "On · experimental" : "Off · experimental", op: "system" })
+                items.push({ key: "reset", label: "Reset to default", op: "reset" })
+            }
+            var body = p.systemFailed ? "Applying it to games failed, so it was switched off. Tessera itself is still calibrated." : p.system && !p.systemActive ? "Applying it to games takes effect the next time Tessera starts." : ""
+            return w.pick("Display calibration", items, Math.max(1, indexOfKey(items, st.at)), { body: body }).then(function (it) {
+                if (!it) return null
+                st.at = it.key
+                if (it.op === "quick" || it.op === "thorough") return calibrate(it.op).then(loop)
+                return w.requirePin().then(function (ok) {
+                    if (!ok) return loop()
+                    var call
+                    if (it.op === "toggle") call = w.dev("settings", "calToggle", { enabled: !c.enabled })
+                    else if (it.op === "system") {
+                        call = (p.system ? Promise.resolve(true) : w.confirmYes("Also apply the calibration to games? Tessera gives it to Gamescope when it starts, so it takes effect after a restart. If anything goes wrong it switches itself off.", "Turn it on")).then(function (y) { return y ? w.dev("settings", "calSystem", { on: !p.system }) : null })
+                    } else call = w.confirmYes("Go back to the screen as it is, with no calibration?", "Reset").then(function (y) { return y ? w.dev("settings", "calReset", {}) : null })
+                    return call.then(function (r) {
+                        if (r && r.prefs) { takePrefs(r); w.setStatus(it.op === "reset" ? "Calibration reset." : it.op === "toggle" ? (c.enabled ? "Calibration is off." : "Calibration is on.") : p.system ? "Games will no longer be calibrated." : "Games will be calibrated from the next start.") }
+                        else if (r) w.setStatus(r.error, true)
+                    }).then(loop)
+                })
+            })
+        }
+        return loop()
     }
 }

@@ -56,7 +56,7 @@ if '--check' in sys.argv:
     sys.exit(check())
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Property, QSocketNotifier, Qt, QTimer, QUrl, Signal, Slot  # noqa: E402
-from PySide6.QtGui import QGuiApplication, QImage  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QImage, QShader, QShaderVersion  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 from PySide6.QtQuick import QQuickAsyncImageProvider, QQuickImageResponse, QQuickTextureFactory, QQuickWindow  # noqa: E402,F401
 
@@ -185,6 +185,38 @@ class ArtProvider(QQuickAsyncImageProvider):
         return ArtResponse(self.bridge, unquote(id_.split('?')[0]), size)
 
 
+def bake_cal_shader():
+    """The display calibration shader (qml/calibrate.frag), built here for this machine's graphics with
+    Qt's own shader tools. Returns its file address, or '' if it can't be built: the screen is then drawn
+    without the correction (the full Ludus's page draws it with an SVG filter instead)."""
+    try:
+        import tempfile
+        from PySide6.QtShaderTools import QShaderBaker
+        baker = QShaderBaker()
+        baker.setSourceFileName(os.path.join(HERE, 'qml', 'calibrate.frag'))
+        baker.setGeneratedShaderVariants([QShader.StandardShader])
+        baker.setGeneratedShaders([
+            (QShader.SpirvShader, QShaderVersion(100)),
+            (QShader.GlslShader, QShaderVersion(150)),
+            (QShader.GlslShader, QShaderVersion(120)),
+            (QShader.GlslShader, QShaderVersion(100, QShaderVersion.GlslEs)),
+            (QShader.HlslShader, QShaderVersion(50)),
+            (QShader.MslShader, QShaderVersion(12)),
+        ])
+        shader = baker.bake()
+        if not shader.isValid():
+            print('ludus-qt: the calibration shader did not build:', baker.errorMessage(), flush=True)
+            return ''
+        out = os.path.join(tempfile.gettempdir(), 'ludus-calibrate-%d.frag.qsb' % os.getuid())
+        with open(out, 'wb') as f:
+            f.write(bytes(shader.serialized()))
+        print('ludus-qt: the calibration shader is built', flush=True)
+        return QUrl.fromLocalFile(out).toString()
+    except Exception as e:  # noqa: BLE001 - without it the screen simply isn't corrected
+        print('ludus-qt: the calibration shader is not available:', e, flush=True)
+        return ''
+
+
 def shell_data():
     """The arrangements and their parts, from the full Ludus's own shell-layout.js (run as is)."""
     import subprocess
@@ -303,6 +335,7 @@ def main():
     engine.rootContext().setContextProperty('session', session)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
     engine.rootContext().setContextProperty('shellData', shell_data())
+    engine.rootContext().setContextProperty('calShader', bake_cal_shader())
     engine.rootContext().setContextProperty('tabIcons', tab_icons())
     engine.rootContext().setContextProperty('settingIcons', setting_icons())
     engine.load(QUrl.fromLocalFile(os.path.join(HERE, 'qml', 'Main.qml')))
@@ -380,7 +413,10 @@ def shots(app, win, out):
              ('', ['b']), ('', ['b']), ('', ['run:_storage']), ('', []), ('', []), ('19-storage', []),
              ('', ['b']), ('', ['run:_addons']), ('', []), ('20-addons', []),
              ('', ['b']), ('', ['run:_appearance']), ('', ['a']), ('', []), ('21-theme-settings', []),
-             ('', ['b']), ('', ['b']), ('', ['run:_wheel']), ('', []), ('22-color-wheel', ['right', 'right', 'rb'])]
+             ('', ['b']), ('', ['b']), ('', ['run:_wheel']), ('', []), ('22-color-wheel', ['right', 'right', 'rb']),
+             ('', ['b']), ('', ['run:_calfilter']), ('23-calibrated-screen', []),
+             ('', ['run:_calfilter-off']), ('', ['run:_calib']), ('24-calibration-brightness', ['right', 'right']),
+             ('', ['a', 'a', 'a']), ('25-calibration-gamma', []), ('', ['a']), ('26-calibration-balance', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 

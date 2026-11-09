@@ -47,7 +47,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Settings
 - ✅ Wi-Fi, Bluetooth (live lists, pairing and joining with Cancel, password keyboard with symbols and Show, PIN prompt)
-- 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration and the "new screen plugged in" offer still to do
+- 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" offer still to do
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). first-run welcome still to do
