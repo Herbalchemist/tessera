@@ -68,6 +68,7 @@ Item {
     function placeY() {
         if (!rows.length) return 0
         var t = rowsTop + selRow * rowH, b = t + rowH
+        if (mode === "rails" && rowPart === "start") return -t     // the one row sits at the top of its short page
         if (mode === "rails") return height / 2 - (t + rowH / 2)
         var minTy = Math.min(0, height - fullH)
         var y = memo.ty

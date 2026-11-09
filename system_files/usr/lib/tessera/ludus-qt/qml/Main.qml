@@ -911,8 +911,8 @@ Window {
             readonly property real headerPad: nav === "bottom-dock" ? th.clamp(8, 1.3 * th.vh, 16) : nav === "top" || nav === "top-left" ? (th.parts.tabs === "segments" ? th.clamp(8, 1.6 * th.vh, 20) : 18) : th.clamp(6, 1.6 * th.vh, 18)
             // style.css: header padding 28 + the tab port's margin -22 and padding 36 put a pill 42px down, and 22px of room under it
             readonly property bool plainTop: nav === "top" && ["pills", "text", "pivots"].indexOf(th.parts.tabs) >= 0
-            readonly property real topPad: plainTop ? 42 : headerPad
-            readonly property real botPad: plainTop ? 22 : headerPad
+            readonly property real topPad: plainTop ? 42 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad + 4 : headerPad
+            readonly property real botPad: plainTop ? 22 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad - 4 : headerPad
             x: nav === "left" ? (th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0) : 0
             width: nav === "left" ? body.sideW : body.width
             height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
@@ -963,7 +963,7 @@ Window {
                 id: headerRow
                 visible: header.nav !== "left"
                 readonly property real side: header.nav === "top-left" ? th.edge : header.nav === "bottom-bar" ? th.clamp(18, 4 * th.vw, 70) : 0
-                x: side
+                x: side + (header.nav === "top-left" && th.parts.tabs !== "segments" ? 6 : 0)
                 width: header.width - 2 * side
                 y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
                 spacing: header.nav === "bottom-bar" ? 0 : 28
