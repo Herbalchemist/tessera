@@ -36,7 +36,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ All seven transitions (slide, zoom, fade, rise, flip, doors, none), screenshot curtain
 - ⬜ Framed or full screen; the frame shows title and address
 - ⬜ Address bubble and on-screen keyboard; Esc+Left/Right inside the page
-- 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
+- ⬜ Controller as pointer inside pages; downloads
 - ⬜ PIN and guest rules for the browser
 
 ## People and safety
@@ -50,7 +50,6 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Appearance: Theme Settings, Screens (resolution, refresh, orientation, restart), Display calibration
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
-- ⬜ Keyboard & mouse
 - ⬜ Profiles, PIN
 - ⬜ Storage: drives, cleaning, hidden / ignored drives, backups and restore
 - ⬜ Update software: update, previous version, graphics build choice, boot menu settings, boot screen
