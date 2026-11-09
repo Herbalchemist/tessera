@@ -143,8 +143,10 @@ Item {
                 }
             }
             Canvas {
+                id: gridArt
                 anchors.fill: parent
                 opacity: 0.07
+                Connections { target: th; function onAccentChanged() { gridArt.requestPaint() } }
                 onWidthChanged: requestPaint()
                 onHeightChanged: requestPaint()
                 onPaint: {
