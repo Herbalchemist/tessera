@@ -45,6 +45,7 @@ Item {
     Repeater {
         model: home.tiles
         delegate: Item {
+            objectName: "tile"
             readonly property var w: modelData
             readonly property bool plus: w.kind === "add"
             readonly property real gx: plus ? 3 : (w.x || 0)

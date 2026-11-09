@@ -98,7 +98,7 @@ Item {
     }
     Rectangle {
         id: card
-        width: Math.min(tour.width * 0.5, 560)
+        width: Math.min(tour.width * 0.5, 22 * th.rem)
         height: col.implicitHeight + 3 * th.rem
         radius: th.radius; color: th.panel
         border.width: 2; border.color: th.alpha(th.accent, 0.6)
@@ -110,11 +110,19 @@ Item {
             anchors.centerIn: parent
             width: parent.width - 3 * th.rem
             spacing: 10
-            Text { color: th.muted; font.pixelSize: 0.8 * th.rem; text: (tour.i + 1) + " of " + tour.steps.length }
+            Text { color: th.accent; font.pixelSize: 0.7 * th.rem; font.weight: Font.DemiBold; font.letterSpacing: 1; text: (tour.i + 1) + " OF " + tour.steps.length }
             Text { width: parent.width; color: th.text; font.pixelSize: 1.4 * th.rem; font.weight: Font.DemiBold; text: tour.st.title }
             Text { width: parent.width; wrapMode: Text.Wrap; color: th.text; font.pixelSize: 1.0 * th.rem; lineHeight: 1.25; text: tour.st.text }
             Text { visible: Boolean(tour.st.tryTabs); width: parent.width; wrapMode: Text.Wrap; color: tour.tried ? th.ok : th.accent; font.pixelSize: 0.95 * th.rem; text: tour.tried ? "✓ " + tour.st.triedText : tour.st.tryText }
-            Text { visible: Boolean(tour.st.op); color: th.accent; font.pixelSize: 0.95 * th.rem; text: tour.st.doLabel ? "X  " + tour.st.doLabel.charAt(0).toUpperCase() + tour.st.doLabel.slice(1) : "" }
+            Rectangle {
+                visible: Boolean(tour.st.op); radius: height / 2; color: th.accent
+                width: doRow.implicitWidth + 28; height: doRow.implicitHeight + 16
+                Row {
+                    id: doRow; anchors.centerIn: parent; spacing: 8
+                    Rectangle { width: 20; height: 20; radius: 10; color: th.alpha(th.accentInk, 0.25); Text { anchors.centerIn: parent; color: th.accentInk; font.pixelSize: 0.7 * th.rem; font.weight: Font.Bold; text: "X" } }
+                    Text { anchors.verticalCenter: parent.verticalCenter; color: th.accentInk; font.pixelSize: 0.9 * th.rem; font.weight: Font.DemiBold; text: tour.st.doLabel ? tour.st.doLabel.charAt(0).toUpperCase() + tour.st.doLabel.slice(1) : "" }
+                }
+            }
             Text { color: th.muted; font.pixelSize: 0.85 * th.rem; text: "A " + (tour.i === tour.steps.length - 1 ? "done" : "next") + (tour.i ? "   B back" : "") + (tour.i === tour.steps.length - 1 ? "" : "   Y leave the tour") }
         }
     }

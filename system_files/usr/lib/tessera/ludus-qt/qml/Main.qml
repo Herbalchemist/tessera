@@ -492,6 +492,22 @@ Window {
         } else if (what === "page") {
             var q = viewport.mapToItem(win.contentItem, 0, 0)
             r = { x: q.x, y: q.y, w: viewport.width, h: viewport.height }
+            // hug the tiles that are really on screen (like the full Ludus), else the page area
+            var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, n = 0
+            var walk = function (it) {
+                for (var k = 0; k < it.children.length; k++) {
+                    var c = it.children[k]
+                    if (!c.visible || c.opacity < 0.05) continue
+                    if (c.objectName === "tile") {
+                        var p = c.mapToItem(win.contentItem, 0, 0)
+                        if (c.width > 4 && c.height > 4 && p.x + c.width > r.x && p.x < r.x + r.w && p.y + c.height > r.y && p.y < r.y + r.h) {
+                            x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + c.width); y1 = Math.max(y1, p.y + c.height); n++
+                        }
+                    } else walk(c)
+                }
+            }
+            walk(viewport)
+            if (n) r = { x: Math.max(r.x, x0), y: Math.max(r.y, y0), w: Math.min(r.x + r.w, x1) - Math.max(r.x, x0), h: Math.min(r.y + r.h, y1) - Math.max(r.y, y0) }
         } else if (what === "footer") {
             var f = footerA.visible ? footerA : footerB
             var fp = f.mapToItem(win.contentItem, 0, 0)

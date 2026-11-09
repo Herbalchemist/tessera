@@ -7,6 +7,7 @@ import QtQuick.Effects
 
 Item {
     id: tile
+    objectName: "tile"
     property var t: ({})
     property Theme th
     property bool picked: false
