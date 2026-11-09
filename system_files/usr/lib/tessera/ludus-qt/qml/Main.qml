@@ -45,6 +45,7 @@ Window {
     property int artRev: 0
     property var place: null                // a widget being placed or resized on Home
     property alias padtest: padTestView
+    property alias guideMenu: menu
     property alias grip: gripView
     property alias capture: captureView     // the controller test (Flows opens it)
     property string browserUrl: "https://duckduckgo.com/"
@@ -109,6 +110,7 @@ Window {
             else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
+            else if (ch === "guide") flows.guideEvent(data)
             else if (ch === "pads" && data && data.type === "list") gripView.apply(data)
             else if (ch === "browser-load" && data) browser.load(String(data))
             else if (ch === "browser-cursor") browser.pointer(data)
@@ -137,6 +139,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (id === "_guide") { gripView.visible = false; flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
         else if (id === "_controls") { padTestView.visible = false; flows.controls() }
         else if (id === "_padtest") { calib.visible = false; keyboard.visible = false; browser.shown = false; flows.padTest() }
@@ -164,7 +167,11 @@ Window {
             if (wants && ready) api.systemInfo().then(function (r) { if (r && r.ok !== false) sys = r })
         }
     }
-    function setStatus(t, err) { status = t || ""; statusError = Boolean(err); statusTimer.restart() }
+    property var statusLog: []              // the guide's notifications: what the status line said, newest first
+    function setStatus(t, err) {
+        status = t || ""; statusError = Boolean(err); statusTimer.restart()
+        if (t) { statusLog = [{ msg: String(t), isError: Boolean(err), at: Date.now() }].concat(statusLog).slice(0, 30) }
+    }
     Timer { id: statusTimer; interval: 6000; onTriggered: win.status = "" }
 
     function applyView(v) {
@@ -468,6 +475,9 @@ Window {
     function applyTheme(t) { if (t) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { theme: t }) })) }
     function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
     function pickColor(title, start) { return new Promise(function (resolve) { wheel.open(title, start, resolve) }) }
+    function systemInfo() { return api.systemInfo() }
+    function goSettings() { var i = tabList.findIndex(function (t) { return t.id === "settings" }); if (i >= 0) { goTab(i); area = "content" } }
+    function dismissAll() { if (menu.visible) menu.close() }
     function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {
         if (page === "settings" && ready) refreshTileNotes(false)

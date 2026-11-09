@@ -74,7 +74,7 @@ QtObject {
         return out
     }
     function sound() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { data: null, note: "", at: "", volPending: null, volSeq: 0, error: "" }
         var reload = function (s) {
             return w.dev("audio", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read the sound devices." })
@@ -151,7 +151,7 @@ QtObject {
         })
     }
     function bluetooth() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { data: null, note: "", at: "", scanning: false, error: "" }
         var reload = function (s) {
             return w.dev("bluetooth", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read Bluetooth." })
@@ -245,7 +245,7 @@ QtObject {
         })
     }
     function wifi() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { data: null, note: "", at: "", error: "" }
         var reload = function (s) {
             return w.dev("wifi", "info").then(function (r) { if (r.ok) s.data = r; else if (!s.data) s.error = r.error || "Couldn't read the network." })
@@ -454,6 +454,186 @@ QtObject {
     }
 
     // the live test: resolves when it is closed
+
+    // ------------------------------------------------------------------ the guide (renderer/guide.js)
+    // The Guide button (main process: guide.js, unchanged) sends {action, inGame, title}. One press
+    // opens or closes this panel from anywhere; a hold goes Home. Over a running game it holds
+    // Resume / Close.
+    property bool guideOn: false
+    property var gameOn: null
+    property bool notesHidden: false
+    property var guideAll: []
+    property var guideClosed: ({ "guide.power": true })
+    property var clearedLow: ({})
+    property int guideSeq: 0
+    function ago(t) { var m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago" }
+    function guideEvent(msg) {
+        if (!msg) return
+        if (msg.inGame) gameOn = { title: msg.title || "Game", since: gameOn ? gameOn.since : Date.now() }
+        if (msg.action === "home") return guideHome()
+        if (guideOn) return closeGuide(false)
+        openGuide()
+    }
+    function guideHome() {
+        if (guideOn) closeGuide(true)
+        if (w.guideMenu.visible) w.guideMenu.close()
+        w.leaveBrowser()
+        w.goHome()
+        if (gameOn) w.setStatus(gameOn.title + " is still running. Press Guide to go back to it.")
+    }
+    function closeGuide(stay) {
+        if (!guideOn) return
+        guideOn = false
+        guideSeq++
+        if (w.guideMenu.visible) w.guideMenu.close()
+        if (w.browserOpen) w.browserInput.setActive(true)
+        if (gameOn && !stay) resumeGame()
+    }
+    function resumeGame() {
+        if (!gameOn) return
+        gameOn = null
+        w.dev("guide", "resume")
+    }
+    function notes() {
+        var out = [], low = (w.view.prefs && w.view.prefs.storage && w.view.prefs.storage.low) || []
+        low.forEach(function (l) { if (!clearedLow[l.name + "|" + l.free]) out.push({ text: "Low storage on " + l.name, sub: fmtBytes(l.free) + " left", error: true }) })
+        w.statusLog.forEach(function (m) { out.push({ text: m.msg.length > 90 ? m.msg.slice(0, 88) + "…" : m.msg, sub: ago(m.at), error: m.isError }) })
+        return out
+    }
+    function guideNotes() {
+        var m = w.guideMenu
+        m.notes = notes()
+        m.notesHidden = notesHidden
+    }
+    function openGuide() {
+        if (guideOn) return
+        var seq = ++guideSeq
+        guideOn = true
+        w.dismissAll()
+        if (w.browserOpen) w.browserInput.setActive(false)       // the page waits behind the guide
+        var q = function (p) { return Promise.race([Promise.resolve(p).catch(function () { return null }), w.sleepMs(1500).then(function () { return null })]) }
+        Promise.all([q(w.systemInfo()), q(w.dev("audio", "info")), q(w.dev("profiles", "list")), q(w.dev("wifi", "info")), q(w.dev("bluetooth", "info")), q(w.dev("guide", "status"))]).then(function (r) {
+            if (!guideOn || seq !== guideSeq) return
+            var info = r[0] || {}, audio = r[1], prof = r[2] || { profiles: [], active: null }, wifi = r[3], bt = r[4], st = r[5] || {}
+            if (st.running && !gameOn) gameOn = { title: st.title || "Game", since: st.since || Date.now() }
+            var out = audio && audio.ok ? audio.outputs.find(function (o) { return o.isDefault }) : null
+            var items = []
+            if (gameOn) {
+                items.push({ label: "Playing · " + gameOn.title, header: true })
+                items.push({ label: "Resume " + gameOn.title, sub: "started " + ago(gameOn.since), op: "resume" })
+                items.push({ label: "Close " + gameOn.title, op: "closeGame", danger: true })
+            }
+            items.push({ label: "Go", header: true })
+            items.push({ label: "Home", op: "home" })
+            if (w.browserOpen) items.push({ label: "Back to the browser", op: "close" })
+            items.push({ label: "Settings", op: "settings" })
+            items.push({ label: "Quick settings", header: true })
+            if (out) {
+                var vol = { label: "Volume", sub: out.mute ? "Muted" : out.volume + "%", op: "mute", adjust: function (dir) {
+                    var v = Math.max(0, Math.min(100, (out.volume || 0) + dir * 5))
+                    if (v === out.volume && !out.mute) return
+                    out.volume = v
+                    if (out.mute && dir > 0) { out.mute = false; w.dev("audio", "mute", { kind: "output", id: out.id, on: false }) }
+                    vol.sub = out.mute ? "Muted" : v + "%"
+                    w.dev("audio", "volume", { kind: "output", id: out.id, pct: v })
+                } }
+                items.push(vol)
+            }
+            if (wifi && wifi.ok && wifi.present) {
+                var cur = (wifi.networks || []).find(function (n) { return n.active || n.connected || n.inUse })
+                items.push({ label: "Wi-Fi", sub: wifi.radio ? (cur ? "On · " + cur.ssid : "On") : "Off", op: "wifi", on: Boolean(wifi.radio) })
+            }
+            if (bt && bt.ok && bt.adapter && bt.adapter.present) items.push({ label: "Bluetooth", sub: bt.adapter.powered ? "On" : "Off", op: "bt", on: Boolean(bt.adapter.powered) })
+            ;(info.pads || []).forEach(function (pad) {
+                var level = pad.pct !== null && pad.pct !== undefined ? pad.pct + "%" : (pad.level || "unknown")
+                items.push({ label: pad.name, sub: "Battery " + level + (pad.charging ? ", charging" : ""), info: true })
+            })
+            items.push({ label: "Profiles", header: true })
+            ;(prof.profiles || []).forEach(function (pr) { items.push({ label: pr.name, sub: pr.id === prof.active ? "playing now" : "", op: "profile", id: pr.id }) })
+            if ((prof.profiles || []).length && (!prof.guest || prof.guest.show !== false || !prof.active)) items.push({ label: "Guest", sub: prof.active ? "" : "playing now", op: "profile", id: null })
+            items.push({ label: (prof.profiles || []).length ? "Manage profiles…" : "Add a profile…", op: "profiles" })
+            items.push({ label: "Help", header: true })
+            items.push({ label: "Take the tour", sub: "a quick look around Tessera", op: "tour" })
+            items.push({ label: "Report a problem", sub: "a file to attach to an issue; nothing is sent", op: "report" })
+            items.push({ label: "Power", header: true, fold: "guide.power" })
+            items.push({ label: "Sleep", op: "sleep" })
+            items.push({ label: "Restart", op: "restart" })
+            items.push({ label: "Shut down", op: "shutdown" })
+            items.push({ label: "Opus", op: "desktop" })
+            var who = (prof.profiles || []).find(function (p) { return p.id === prof.active })
+            var bits = [Qt.formatTime(new Date(), "h:mm AP")]
+            if (info.battery && info.battery.present && info.battery.pct !== null) bits.push("Battery " + info.battery.pct + "%" + (info.battery.charging ? " ⚡" : ""))
+            if (wifi && wifi.ok && wifi.present && wifi.radio) { var c2 = (wifi.networks || []).find(function (n) { return n.active || n.connected || n.inUse }); if (c2) bits.push(c2.ssid) }
+            if (who) bits.push(who.name)
+            guideAll = items
+            var opts = { body: bits.join("  ·  "), stay: true, notes: notes() }
+            var menuItems = folded(items, guideClosed)
+            opts.onX = function () { notesHidden = !notesHidden; guideNotes() }
+            opts.onY = function () {
+                ;((w.view.prefs && w.view.prefs.storage && w.view.prefs.storage.low) || []).forEach(function (l) { clearedLow[l.name + "|" + l.free] = true })
+                w.statusLog = []; notesHidden = false; w.setStatus(""); w.statusLog = []; guideNotes()
+            }
+            w.pick("Guide", menuItems, 0, opts)
+            // the menu stays open across answers: keep listening for the next A
+            w.guideMenu.done = function (it) { guideChoose(it, seq) }
+            w.guideMenu.canceled = function () { if (guideOn && seq === guideSeq) closeGuide(false) }
+        })
+    }
+    function guideChoose(it, seq) {
+        if (!it || it.info || !guideOn || seq !== guideSeq) return
+        var op = it.op, m = w.guideMenu
+        var leaveTo = function (fn) { closeGuide(true); fn() }
+        if (it.fold) { guideClosed[it.fold] = !guideClosed[it.fold]; var keep = m.sel; m.items = folded(guideAll, guideClosed); m.sel = keep; return }
+        if (op === "close") return closeGuide(true)
+        if (op === "resume") return closeGuide(false)
+        if (op === "home") return guideHome()
+        if (op === "closeGame") {
+            var title = gameOn ? gameOn.title : "the game"
+            closeGuide(true)
+            return w.confirmYes("Close " + title + "? Anything you haven't saved in it is lost.", "Close it").then(function (y) {
+                if (!y) return openGuide()
+                return w.dev("guide", "closeGame").then(function (r) { w.setStatus(r && r.ok ? "Closing " + title + "…" : (r && r.error) || "Couldn't close it.", !(r && r.ok)) })
+            })
+        }
+        if (op === "mute") {
+            return w.dev("audio", "info").then(function (a) {
+                var o = a && a.ok && a.outputs.find(function (x) { return x.isDefault })
+                if (!o) return
+                return w.dev("audio", "mute", { kind: "output", id: o.id, on: !o.mute }).then(function () { it.sub = !o.mute ? "Muted" : o.volume + "%"; m.items = m.items.slice() })
+            })
+        }
+        if (op === "wifi" || op === "bt") {
+            return w.requirePin().then(function (ok) {
+                if (!ok) return
+                return (op === "wifi" ? w.dev("wifi", "radio", { on: !it.on }) : w.dev("bluetooth", "power", { on: !it.on })).then(function (r) {
+                    if (r && r.ok) { it.on = !it.on; it.sub = it.on ? "On" : "Off"; m.items = m.items.slice() }
+                    else w.setStatus((r && r.error) || "Couldn't change that.", true)
+                })
+            })
+        }
+        if (op === "profile") {
+            return switchProfile(it.id, it.label).then(function (r) {
+                if (r && guideOn) { m.items.forEach(function (x) { if (x.op === "profile") x.sub = x.id === it.id ? "playing now" : "" }); m.items = m.items.slice() }
+            })
+        }
+        if (op === "settings") return leaveTo(function () { w.goSettings() })
+        if (op === "profiles") return leaveTo(function () { profiles() })
+        if (op === "tour") return leaveTo(function () { notYet("The quick tour") })
+        if (op === "report") return leaveTo(function () { report() })
+        if (op === "sleep" || op === "restart" || op === "shutdown" || op === "desktop") {
+            closeGuide(true)
+            var words = { sleep: ["Go to sleep?", "Sleep"], restart: ["Restart the computer?", "Restart"], shutdown: ["Shut down the computer?", "Shut down"], desktop: ["Switch to Opus?", "Switch"] }[op]
+            if (gameOn && op !== "sleep") { w.setStatus("Close " + gameOn.title + " first.", true); return openGuide() }
+            return w.confirmYes(words[0], words[1]).then(function (y) {
+                if (!y) return
+                if (op === "desktop") return w.flowDesktop()
+                return w.gated(function () { return w.dev("power", op) }).then(function (r) {
+                    if (r.canceled) return
+                    if (r.ok === false) w.setStatus(r.error || "That did not work.", true)
+                })
+            })
+        }
+    }
     function grip(auto) {
         return new Promise(function (resolve) {
             var g = w.grip
@@ -512,7 +692,7 @@ QtObject {
         })
     }
     function pad() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         w.dev("settings", "padGet").then(function (r) {
             if (!r.pad) return w.notice("Controller", "Couldn't read the controller settings.")
             var st = { pad: r.pad, at: "", closed: {} }
@@ -559,7 +739,7 @@ QtObject {
         wheel: { move: "Moves the selection", tabs: "Switches tabs (menus still scroll)", off: "Does nothing" }
     })
     function keyboardMenu() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         Promise.all([w.rawCall("__qt", ["kbm"]), w.rawCall("__qt", ["kb"])]).then(function (r) {
             var kbm = r[0], st = { kb: r[1], at: "", closed: {} }
             if (!kbm || !st.kb) return w.notice("Keyboard & mouse", "Couldn't read the keyboard settings.")
@@ -726,7 +906,7 @@ QtObject {
         })
     }
     function update() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { info: null, note: "", resume: "", at: "", closed: {}, done: false }
         var loop = function () {
             var load = Promise.resolve()
@@ -867,7 +1047,7 @@ QtObject {
         return loop()
     }
     function report() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         w.dev("report", "contents").then(function (info) {
             if (!info.contents) return w.notice("Report a problem", info.error || "Couldn't read what a report holds.")
             var loop = function () {
@@ -909,7 +1089,7 @@ QtObject {
         })
     }
     function pin() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { at: "pin", info: null }
         var loop = function () {
             return w.dev("settings", "pinStatus").then(function (info) {
@@ -1106,7 +1286,7 @@ QtObject {
         })
     }
     function profiles() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { at: "" }
         var loop = function () {
             return Promise.all([w.dev("profiles", "list"), w.dev("settings", "themeGet")]).then(function (res) {
@@ -1206,7 +1386,7 @@ QtObject {
         return items
     }
     function storage() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { at: "games" }
         var loop = function () {
             return w.dev("storage", "overview", {}).then(function (ov) {
@@ -1519,7 +1699,7 @@ QtObject {
         })
     }
     function addons() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { view: "top", op: "list", at: "" }
         var loop = function () {
             return w.dev("addons", st.op).then(function (info) {
@@ -1734,7 +1914,7 @@ QtObject {
         })
     }
     function appearance() {
-        if (w.menuUp()) return
+        if (w.guideMenuUp()) return
         var st = { at: "" }
         var loop = function () {
             var items = [
@@ -2029,7 +2209,7 @@ QtObject {
                 title: "Keep these screen settings?", every: 1000,
                 items: function () { return items },
                 body: function (s) { return "Can you see this clearly? If not, Ludus goes back to the settings before in " + s.left + " second" + (s.left === 1 ? "" : "s") + "." },
-                reload: function (s) { s.left -= 1; if (s.left <= 0) w.menuCancel(); return Promise.resolve() }
+                reload: function (s) { s.left -= 1; if (s.left <= 0) w.guideMenuCancel(); return Promise.resolve() }
             }).then(function (it) {
                 if (it && it.op === "keep") return w.dev("display", "confirm", {}).then(function () { w.setStatus("Screen settings kept.") })
                 return w.dev("display", "revert", { restart: true }).then(function (r) { w.setStatus(r && r.restarted ? "Going back to the settings before…" : "Going back to the settings before at the next start.") })
@@ -2179,12 +2359,12 @@ QtObject {
         if (askedWho) return Promise.resolve()
         askedWho = true
         return w.dev("profiles", "list").then(function (pr) {
-            if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !w.menuUp()) return whoIsPlaying()
+            if (pr && (pr.ask || pr.lockedOut) && pr.profiles && pr.profiles.length && !w.guideMenuUp()) return whoIsPlaying()
         })
     }
     // waits for the menu to be free, up to about two minutes
     function whenFree(tries) {
-        if (!w.menuUp()) return Promise.resolve(true)
+        if (!w.guideMenuUp()) return Promise.resolve(true)
         if (tries >= 40) return Promise.resolve(false)
         return w.sleepMs(3000).then(function () { return whenFree(tries + 1) })
     }
@@ -2217,7 +2397,7 @@ QtObject {
             if (!d || !d.ok || d.nested) return null
             var s = (d.screens || []).filter(function (x) { return (e.outputs || []).indexOf(x.name) >= 0 })[0]
             if (!s) return null
-            if (w.menuUp()) { w.setStatus("New screen: " + screenName(s) + ". Settings > Appearance > Screens can show Ludus there."); return null }
+            if (w.guideMenuUp()) { w.setStatus("New screen: " + screenName(s) + ". Settings > Appearance > Screens can show Ludus there."); return null }
             screenAsking = true
             return w.pick("New screen", [
                 { label: "Show Ludus there", sub: "Ludus starts again on it, at its own best mode", op: "use", ok: true },

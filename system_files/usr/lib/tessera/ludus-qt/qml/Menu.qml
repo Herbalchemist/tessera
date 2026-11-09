@@ -15,6 +15,13 @@ Rectangle {
     property var canceled: null
     property string body: ""
     property string yLabel: ""       // a second thing Y can do on the row (Profiles: Options); the answer carries pressedY: true
+    property bool stay: false        // A answers without closing (the guide: volume, Wi-Fi, who is playing)
+    property var onX: null           // the guide's notification buttons
+    property var onY: null
+    property var notes: []           // [{text, sub, error}] in a panel beside the menu
+    property bool notesHidden: false
+    property string xLabel: ""
+    property string yPanel: ""
     property double holdUntil: 0     // don't redraw underneath a hand that is still turning a bar
     visible: false
     color: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
@@ -39,6 +46,8 @@ Rectangle {
         heading = h
         body = (opts && opts.body) || ""
         yLabel = (opts && opts.yLabel) || ""
+        stay = Boolean(opts && opts.stay); onX = (opts && opts.onX) || null; onY = (opts && opts.onY) || null
+        notes = (opts && opts.notes) || []; notesHidden = false; xLabel = ""; yPanel = ""
         holdUntil = 0
         items = its
         sel = Math.max(0, Math.min(its.length - 1, index || 0))
@@ -47,7 +56,7 @@ Rectangle {
         visible = true
         th.moved("m|" + h + "|" + sel)
     }
-    function close() { visible = false; done = null; canceled = null }
+    function close() { visible = false; done = null; canceled = null; stay = false; onX = null; onY = null; notes = [] }
     function press(a) {
         if (!items.length) { if (a === "b" || a === "a") close(); return }
         if (a === "up" || a === "down") {
@@ -57,12 +66,40 @@ Rectangle {
         else if ((a === "left" || a === "right") && items[sel] && items[sel].adjust) { items[sel].adjust(a === "right" ? 1 : -1); items = items.slice() }
         else if (a === "a" && !pickable(sel)) { }
         else if (a === "b") { var c = canceled; close(); if (c) c() }
+        else if (a === "x" && onX) onX()
+        else if (a === "y" && onY) onY()
+        else if (a === "a" && stay) { var si = items[sel]; if (done) done(si) }
         else if (a === "a") { var it = items[sel], cb = done; close(); if (cb) cb(it) }
         else if (a === "y" && yLabel && pickable(sel) && !items[sel].fold) { var yi = Object.assign({}, items[sel], { pressedY: true }), ycb = done; close(); if (ycb) ycb(yi) }
         th.moved("m|" + heading + "|" + sel)
     }
     MouseArea { anchors.fill: parent; onClicked: menu.press("b") }
 
+
+    Rectangle {     // the guide's notifications: a panel on the right (X hides or shows, Y clears)
+        visible: menu.notes.length > 0
+        x: box.x + box.width + 20
+        y: box.y
+        width: Math.min(22 * th.rem, menu.width - x - 20)
+        height: ncol.implicitHeight + 36
+        radius: th.radius + 2
+        color: th.panel
+        opacity: 0.96
+        Column {
+            id: ncol
+            x: 18; y: 18; width: parent.width - 36; spacing: 8
+            Text { color: th.muted; font.pixelSize: 0.95 * th.rem; font.weight: Font.DemiBold; text: menu.notesHidden ? menu.notes.length + " notification" + (menu.notes.length === 1 ? "" : "s") : "Notifications" }
+            Repeater {
+                model: menu.notesHidden ? [] : menu.notes
+                Column {
+                    width: ncol.width; spacing: 2
+                    Text { width: parent.width; wrapMode: Text.Wrap; color: modelData.error ? th.danger : th.text; font.pixelSize: 0.9 * th.rem; text: modelData.text }
+                    Text { color: th.muted; font.pixelSize: 0.75 * th.rem; text: modelData.sub || "" }
+                }
+            }
+            Text { color: th.muted; font.pixelSize: 0.8 * th.rem; text: "X  " + (menu.notesHidden ? "Show" : "Hide") + "     Y  Clear" }
+        }
+    }
     Rectangle {
         id: box
         anchors.centerIn: parent
