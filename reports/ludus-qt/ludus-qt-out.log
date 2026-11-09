@@ -1,5 +1,4 @@
 ludus-qt: starting
-ludus-qt: the calibration shader is not available: No module named 'PySide6.QtShaderTools'
 shot 01-library
 shot 02-options
 shot 03-add-to-which-mosaic
@@ -27,4 +26,4 @@ shot 22-color-wheel
 shot 23-calibrated-screen
 shot 24-calibration-brightness
 shot 25-calibration-gamma
-exit code 124
+shot 26-calibration-balance
