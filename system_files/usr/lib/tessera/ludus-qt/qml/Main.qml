@@ -1020,6 +1020,13 @@ Window {
                     current: win.tabIndex
                     focused: win.area === "tabs"
                     span: parent.width
+                    // style.css: chunky tabs turn 14° about their left edge, seen from 900px away
+                    readonly property real turn: th.parts.tabs === "chunky" ? 14 * Math.PI / 180 : 0
+                    transform: [
+                        Translate { y: -tabBarB.height / 2 },
+                        Matrix4x4 { matrix: Qt.matrix4x4(Math.cos(tabBarB.turn), 0, 0, 0,  0, 1, 0, 0,  -Math.sin(tabBarB.turn), 0, 1, 0,  Math.sin(tabBarB.turn) / 900, 0, 0, 1) },
+                        Translate { y: tabBarB.height / 2 }
+                    ]
                 }
                 HintKey { visible: header.hints; th: th; label: "RB"; anchors.horizontalCenter: parent.horizontalCenter }
             }
@@ -1184,37 +1191,45 @@ Window {
         x: th.parts.nav === "left" ? body.anchors.leftMargin + header.x + header.width / 2 - width / 2 : th.edge
         y: th.navBottom ? win.height - th.clamp(52, 10 * th.vh, 110) - height : th.clamp(16, 4 * th.vh, 44)
         z: 6
-        Canvas {     // an isometric cube: top, left and right faces, floating gently
+        Canvas {     // a glass cube turning in place (style.css #cube-emblem: six clear faces, glowing edges)
             id: cubeArt
             anchors.fill: parent
-            property real bob: 0
-            transform: Translate { y: cubeArt.bob }
+            property real angle: 38
+            NumberAnimation on angle { running: th.motion && th.parts.emblem === "cube" && cubeArt.visible; from: 38; to: 398; duration: 14000; loops: Animation.Infinite }
+            onAngleChanged: requestPaint()
             onPaint: {
-                var c = getContext("2d"), w = width, h = height, m = w * 0.06
-                var cx = w / 2, top = m, r = w * 0.44, hh = r * 0.5
+                var c = getContext("2d"), w = width, h = height
                 c.clearRect(0, 0, w, h)
-                var a = th.accent, b = th.border
-                var face = function (pts, fill) {
-                    c.beginPath(); c.moveTo(pts[0][0], pts[0][1])
-                    for (var i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1])
-                    c.closePath(); c.fillStyle = fill; c.fill()
-                    c.lineWidth = Math.max(2, w * 0.03); c.strokeStyle = Qt.rgba(1, 1, 1, 0.55); c.lineJoin = "round"; c.stroke()
+                var half = w / 2
+                var ay = angle * Math.PI / 180, ax = -24 * Math.PI / 180
+                var cy = Math.cos(ay), sy = Math.sin(ay), cx = Math.cos(ax), sx = Math.sin(ax)
+                var persp = 60 * th.vh
+                var pt = function (x, y, z) {
+                    var x1 = x * cy + z * sy, z1 = -x * sy + z * cy                 // turn about the vertical
+                    var y2 = y * cx - z1 * sx, z2 = y * sx + z1 * cx                // then tilt
+                    var k = persp / (persp - z2 * half)
+                    return { x: w / 2 + x1 * half * k, y: h / 2 + y2 * half * k, z: z2 }
                 }
-                var P = function (c1) { return Qt.rgba(c1.r, c1.g, c1.b, 0.85) }
-                var mixc = function (x, y, t) { return Qt.rgba(x.r * (1 - t) + y.r * t, x.g * (1 - t) + y.g * t, x.b * (1 - t) + y.b * t, 0.85) }
-                var mid = top + hh * 2 - hh * 0.0
-                face([[cx, top], [cx + r, top + hh], [cx, top + 2 * hh], [cx - r, top + hh]], mixc(a, Qt.rgba(1, 1, 1, 1), 0.35))
-                face([[cx - r, top + hh], [cx, top + 2 * hh], [cx, top + 2 * hh + r * 1.0], [cx - r, top + hh + r * 1.0]], P(a))
-                face([[cx + r, top + hh], [cx, top + 2 * hh], [cx, top + 2 * hh + r * 1.0], [cx + r, top + hh + r * 1.0]], mixc(a, Qt.rgba(0, 0, 0, 1), 0.45))
+                var faces = [[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]], [[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]],
+                             [[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]], [[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]],
+                             [[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]], [[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]]]
+                var drawn = faces.map(function (f) {
+                    var q = f.map(function (v) { return pt(v[0], v[1], v[2]) })
+                    return { q: q, z: (q[0].z + q[1].z + q[2].z + q[3].z) / 4 }
+                }).sort(function (a, b) { return a.z - b.z })
+                var edge = th.mix(th.accent, Qt.color("#ffffff"), 0.2), fill = th.alpha(th.border, 0.55)
+                for (var n = 0; n < drawn.length; n++) {
+                    var q = drawn[n].q
+                    c.beginPath(); c.moveTo(q[0].x, q[0].y)
+                    for (var i = 1; i < 4; i++) c.lineTo(q[i].x, q[i].y)
+                    c.closePath()
+                    c.fillStyle = fill; c.fill()
+                    c.fillStyle = th.alpha(th.accent, 0.1); c.fill()
+                    c.lineWidth = Math.max(2, 0.45 * th.vh); c.strokeStyle = edge; c.lineJoin = "round"; c.stroke()
+                }
             }
             Connections { target: th; function onAccentChanged() { cubeArt.requestPaint() } }
             onWidthChanged: requestPaint()
-            SequentialAnimation on bob {
-                running: th.motion && th.parts.emblem === "cube"
-                loops: Animation.Infinite
-                NumberAnimation { from: -3; to: 3; duration: 2600; easing.type: Easing.InOutSine }
-                NumberAnimation { from: 3; to: -3; duration: 2600; easing.type: Easing.InOutSine }
-            }
         }
     }
 
