@@ -2,6 +2,7 @@
 // Ludus (Qt): the guided tour (renderer/tour.js). A ring lights one part of the screen at a time with
 // a card that explains it. A: next, B: back, Y: leave. The Tabs step really switches tabs.
 import QtQuick
+import QtQuick.Effects
 
 Item {
     id: tour
@@ -80,7 +81,7 @@ Item {
     Timer { id: measure; interval: 450; onTriggered: tour.ring = win.tourRect(tour.st.target || "") }   // the page has slid in by now
 
     Rectangle { anchors.fill: parent; color: tour.ring ? "transparent" : Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.78) }
-    readonly property color shade: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.78)
+    readonly property color shade: Qt.rgba(6 / 255, 9 / 255, 13 / 255, 0.72)
     Rectangle { visible: tour.ring !== null; x: 0; y: 0; width: tour.width; height: Math.max(0, ringBox.y); color: tour.shade }
     Rectangle { visible: tour.ring !== null; x: 0; y: ringBox.y + ringBox.height; width: tour.width; height: Math.max(0, tour.height - y); color: tour.shade }
     Rectangle { visible: tour.ring !== null; x: 0; y: ringBox.y; width: Math.max(0, ringBox.x); height: ringBox.height; color: tour.shade }
@@ -94,36 +95,47 @@ Item {
         Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-        Rectangle { anchors.fill: parent; radius: th.radius; color: "transparent"; border.width: 3; border.color: th.accent }
+        Rectangle { id: glow; anchors.fill: parent; anchors.margins: -2; radius: 18; color: "transparent"; border.width: 3; border.color: th.accent
+            layer.enabled: true
+            layer.effect: MultiEffect { shadowEnabled: true; shadowColor: th.alpha(th.accent, 0.55); shadowBlur: 1; blurMax: 28; shadowOpacity: 1 } }
     }
     Rectangle {
         id: card
-        width: Math.min(tour.width * 0.5, 22 * th.rem)
-        height: col.implicitHeight + 3 * th.rem
-        radius: th.radius; color: th.panel
-        border.width: 2; border.color: th.alpha(th.accent, 0.6)
+        width: Math.min(tour.width * 0.86, 30 * th.rem)
+        height: col.implicitHeight + 56
+        radius: th.radius + 4; color: th.panel
+        layer.enabled: true
+        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.6); shadowBlur: 1; blurMax: 64; shadowVerticalOffset: 24 }
         readonly property real below: tour.ring ? tour.ring.y + tour.ring.h + 28 : 0
         x: tour.ring ? Math.max(20, Math.min(tour.width - width - 20, tour.ring.x + tour.ring.w / 2 - width / 2)) : (tour.width - width) / 2
         y: !tour.ring ? (tour.height - height) / 2 : (below + height + 20 < tour.height ? below : tour.ring.y - height - 28 >= 20 ? tour.ring.y - height - 28 : Math.max(20, tour.ring.y + tour.ring.h - height - 30))
+        Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
         Column {
             id: col
-            anchors.centerIn: parent
-            width: parent.width - 3 * th.rem
-            spacing: 10
-            Text { color: th.accent; font.pixelSize: 0.7 * th.rem; font.weight: Font.DemiBold; font.letterSpacing: 1; text: (tour.i + 1) + " OF " + tour.steps.length }
-            Text { width: parent.width; color: th.text; font.pixelSize: 1.4 * th.rem; font.weight: Font.DemiBold; text: tour.st.title }
-            Text { width: parent.width; wrapMode: Text.Wrap; color: th.text; font.pixelSize: 1.0 * th.rem; lineHeight: 1.25; text: tour.st.text }
-            Text { visible: Boolean(tour.st.tryTabs); width: parent.width; wrapMode: Text.Wrap; color: tour.tried ? th.ok : th.accent; font.pixelSize: 0.95 * th.rem; text: tour.tried ? "✓ " + tour.st.triedText : tour.st.tryText }
+            x: 32; y: 28
+            width: parent.width - 64
+            spacing: 0
+            Text { color: th.accent; font.pixelSize: 0.8 * th.rem; font.weight: Font.Bold; font.letterSpacing: 0.08 * 0.8 * th.rem; bottomPadding: 4; text: (tour.i + 1) + " OF " + tour.steps.length }
+            Text { width: parent.width; color: th.muted; font.pixelSize: 1.3 * th.rem; font.weight: Font.DemiBold; wrapMode: Text.Wrap; bottomPadding: 16; text: tour.st.title }
+            Text { width: parent.width; wrapMode: Text.Wrap; color: th.text; font.pixelSize: 1.05 * th.rem; lineHeight: 1.43; bottomPadding: 12; text: tour.st.text }
             Rectangle {
-                visible: Boolean(tour.st.op); radius: height / 2; color: th.accent
-                width: doRow.implicitWidth + 28; height: doRow.implicitHeight + 16
+                visible: Boolean(tour.st.tryTabs); width: parent.width; height: visible ? tryT.implicitHeight + 16 : 0; radius: th.radius
+                color: tour.tried ? th.alpha(th.ok, 0.18) : th.alpha(th.accent, 0.14)
+                Text { id: tryT; x: 12; y: 8; width: parent.width - 24; wrapMode: Text.Wrap; color: th.text; font.weight: Font.DemiBold; font.pixelSize: 0.95 * th.rem; text: tour.tried ? "✓ " + tour.st.triedText : tour.st.tryText }
+            }
+            Item { width: 1; height: tour.st.op ? 12 : 0 }
+            Rectangle {
+                visible: Boolean(tour.st.op); radius: th.radius; color: th.accent
+                width: doRow.implicitWidth + 28; height: visible ? doRow.implicitHeight + 16 : 0
                 Row {
                     id: doRow; anchors.centerIn: parent; spacing: 8
-                    Rectangle { width: 20; height: 20; radius: 10; color: th.alpha(th.accentInk, 0.25); Text { anchors.centerIn: parent; color: th.accentInk; font.pixelSize: 0.7 * th.rem; font.weight: Font.Bold; text: "X" } }
-                    Text { anchors.verticalCenter: parent.verticalCenter; color: th.accentInk; font.pixelSize: 0.9 * th.rem; font.weight: Font.DemiBold; text: tour.st.doLabel ? tour.st.doLabel.charAt(0).toUpperCase() + tour.st.doLabel.slice(1) : "" }
+                    Rectangle { width: Math.max(1.6 * 0.95 * th.rem, xk.implicitWidth + 12); height: xk.implicitHeight + 2; radius: 0.4 * 0.95 * th.rem; color: th.alpha(th.accentInk, 0.18)
+                        Text { id: xk; anchors.centerIn: parent; color: th.accentInk; font.pixelSize: 0.95 * th.rem; font.weight: Font.DemiBold; text: "X" } }
+                    Text { anchors.verticalCenter: parent.verticalCenter; color: th.accentInk; font.pixelSize: 0.95 * th.rem; font.weight: Font.DemiBold; text: tour.st.doLabel ? tour.st.doLabel.charAt(0).toUpperCase() + tour.st.doLabel.slice(1) : "" }
                 }
             }
-            Text { color: th.muted; font.pixelSize: 0.85 * th.rem; text: "A " + (tour.i === tour.steps.length - 1 ? "done" : "next") + (tour.i ? "   B back" : "") + (tour.i === tour.steps.length - 1 ? "" : "   Y leave the tour") }
+            Text { width: parent.width; topPadding: 12; horizontalAlignment: Text.AlignHCenter; color: th.muted; font.pixelSize: 0.95 * th.rem; text: "A " + (tour.i === tour.steps.length - 1 ? "done" : "next") + (tour.i ? "   B back" : "") + (tour.i === tour.steps.length - 1 ? "" : "   Y leave the tour") }
         }
     }
 }
