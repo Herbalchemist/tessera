@@ -1,12 +1,4 @@
 ludus-qt: starting
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
