@@ -27,7 +27,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟡 Layout modes: rails, grid, flow; columns × rows, per-page grid sizes read — packed groups and the per-page grid-size editor not yet
 - 🟡 The 10 factory themes draw; the differences found so far are listed in the side-by-side report
 - ⬜ Themes from ~/Tessera/Themes (theme.json), with the same checks and limits
-- ⬜ Theme Settings: change live, save as new, rename, overwrite, delete; the color wheel
+- 🟨 Theme Settings: ported (see Appearance below); the wheel is checked in CI pictures
 - ⬜ Per-profile themes; "everyone" theme
 - ⬜ Busy cursors, the boot art (unchanged files)
 
@@ -47,7 +47,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Settings
 - ✅ Wi-Fi, Bluetooth (live lists, pairing and joining with Cancel, password keyboard with symbols and Show, PIN prompt)
-- ⬜ Appearance: Theme Settings, Screens (resolution, refresh, orientation, restart), Display calibration
+- 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens and Display calibration still to do
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). first-run welcome still to do

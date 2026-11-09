@@ -110,7 +110,7 @@ Window {
         })
     }
     // A page the way qa/theme-shots.cjs shows it: library (two to the right), home, settings, or the tab bar.
-    function shotRun(id) { runAction(id) }     // screenshot runs: open a Settings flow by tile id
+    function shotRun(id) { if (id === "_wheel") pickColor("Accent color", "#7fb2ff"); else runAction(id) }     // screenshot runs: open a Settings flow by tile id
     function shotView(v) {
         var id = v === "tabs" ? "library" : v
         var i = tabList.findIndex(function (t) { return t.id === id })
@@ -345,6 +345,7 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_appearance" || id === "_theme") return flows.appearance()
         if (id === "_addons") return flows.addons()
         if (id === "_storage") return flows.storage()
         if (id === "_profiles") return flows.profiles()
@@ -414,7 +415,7 @@ Window {
         })
     }
     function rawCall(ch, args) { return api.call(ch, args) }
-    function menuUp() { return menu.visible || keyboard.visible || job !== null }
+    function menuUp() { return menu.visible || keyboard.visible || wheel.visible || job !== null }
     function reloadPrefs() {      // what the tile notes read (the PIN being on or off) after a flow changed it
         dev("settings", "pinStatus").then(function (r) {
             if (r && r.set !== undefined) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { pin: r }) }))
@@ -429,6 +430,7 @@ Window {
     }
     function applyTheme(t) { if (t) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { theme: t }) })) }
     function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
+    function pickColor(title, start) { return new Promise(function (resolve) { wheel.open(title, start, resolve) }) }
     function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {
         if (page === "settings" && ready) refreshTileNotes(false)
@@ -467,6 +469,7 @@ Window {
     // ---------------------------------------------------------------- input
     function act(a) {
         if (!ready) return
+        if (wheel.visible) return wheel.press(a)
         if (keyboard.visible) return keyboard.press(a)
         if (menu.visible) return menu.press(a)
         if (place) return placePress(a)
@@ -916,7 +919,7 @@ Window {
                     th: th
                     tiles: win.homeMode && win.rows.length ? win.rows[0].tiles : []
                     sel: win.selCol
-                    active: win.area === "content" && !menu.visible && !keyboard.visible
+                    active: win.area === "content" && !menu.visible && !keyboard.visible && !wheel.visible
                     place: win.place
                     sys: win.sys
                     recent: win.view.recent || []
@@ -929,7 +932,7 @@ Window {
                     rows: win.rows
                     selRow: win.selRow
                     selCol: win.selCol
-                    active: win.area === "content" && !menu.visible && !keyboard.visible
+                    active: win.area === "content" && !menu.visible && !keyboard.visible && !wheel.visible
                     artRev: String(win.artRev)
                     cols: win.rowCols
                     pageKey: win.pageKey
@@ -1017,5 +1020,6 @@ Window {
     // ================================================================ overlays
     Menu { id: menu; anchors.fill: parent; th: th; z: 20 }
     Flows { id: flows; w: win }
+    ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
 }

@@ -1568,4 +1568,229 @@ QtObject {
             return loop(r)
         })
     }
+
+    // ------------------------------------------------------------------ Appearance and Theme Settings
+    readonly property var colorPresets: [
+        ["Blue", "#7fb2ff"], ["Sky", "#5ad1ff"], ["Teal", "#3ddc97"], ["Green", "#7ed957"], ["Yellow", "#ffd166"],
+        ["Orange", "#ff9f45"], ["Red", "#ff6b6b"], ["Pink", "#ff7ac8"], ["Purple", "#b794f6"], ["White", "#ffffff"],
+        ["Light gray", "#c9ced6"], ["Gray", "#3b475a"], ["Charcoal", "#1a222c"], ["Midnight", "#10151c"], ["Black", "#000000"]
+    ]
+    readonly property var bootScreens: ({
+        tessera: { name: "Tessera", sub: "The Tessera symbol building itself" },
+        bgrt: { name: "Bazzite", sub: "Your computer maker's logo and a spinner" },
+        spinner: { name: "Spinner", sub: "A plain spinner" },
+        details: { name: "Text", sub: "Startup messages, handy for troubleshooting" }
+    })
+    function themeValueText(s) {
+        if (s.type === "range") return s.value + (s.unit || "")
+        if (s.type === "choice") { var o = s.options.filter(function (x) { return x.value === s.value })[0]; return o ? o.label : String(s.value) }
+        if (s.type === "toggle") return s.value ? "On" : "Off"
+        if (s.type === "image") return s.value || "None"
+        var hit = colorPresets.filter(function (x) { return x[1] === s.value })[0]
+        return hit ? hit[0] + "  " + s.value : s.value
+    }
+    function themeSet(id, value) {
+        return w.dev("settings", "themeSet", { id: id, value: value }).then(function (r) {
+            if (r && r.theme) w.applyTheme(r.theme)
+            if (r && !r.ok) w.setStatus(r.error, true)
+        })
+    }
+    function appearance() {
+        if (w.menuUp()) return
+        var st = { at: "" }
+        var loop = function () {
+            var items = [
+                { key: "theme", label: "Theme Settings", sub: "colors, layout, motion, boot screen", op: "theme" },
+                { key: "screens", label: "Screens", sub: "which screen, resolution, refresh rate", op: "screens" },
+                { key: "cal", label: "Display calibration", sub: "", op: "cal" }
+            ]
+            return w.pick("Appearance", items, indexOfKey(items, st.at)).then(function (it) {
+                if (!it) return null
+                st.at = it.key
+                if (it.op === "theme") return themeSettings().then(loop)
+                return notYet(it.op === "screens" ? "Screens" : "Display calibration").then(loop)
+            })
+        }
+        loop()
+    }
+    function bootScreen(info) {
+        var shown = info.pending || info.current
+        return w.pick("Boot screen", info.themes.map(function (id) {
+            return { label: bootScreens[id].name, sub: id === shown ? (info.pending ? "after the next restart" : "current") : bootScreens[id].sub, id: id }
+        }), Math.max(0, info.themes.indexOf(shown)), { body: "Shown while the machine starts and shuts down, for everyone. It changes after a restart, and needs the admin PIN." }).then(function (b) {
+            if (!b || b.id === shown) return null
+            return w.requirePin().then(function (ok) {
+                if (!ok) return null
+                return updateStart("boot", { theme: b.id }).then(function (bad) { return bad || updateWatch("boot", { name: bootScreens[b.id].name }) }).then(function (r) {
+                    if (r.result === "bootset") w.setStatus("Done. The " + bootScreens[b.id].name + " boot screen shows from the next restart.")
+                    else { var end = updateEnd(r); if (end) w.setStatus(end, r.result === "error") }
+                })
+            })
+        })
+    }
+    function bootMenu(info) {
+        return w.pick("Boot menu", [
+            { label: "Tessera", sub: info.menu === "on" ? "current" : "wait screen; O opens Boot options", id: "on" },
+            { label: "GRUB's menu", sub: info.menu === "off" ? "current" : "the list of system versions", id: "off" }
+        ], info.menu === "off" ? 1 : 0, { body: "Shown for 3 seconds when the machine starts. Tessera's shows the empty tile spots; press O (or F2) on a keyboard for Boot options: Opus, safe settings, a repair console, the previous version. Needs the admin PIN." }).then(function (m) {
+            if (!m || m.id === info.menu) return null
+            return w.requirePin().then(function (ok) {
+                if (!ok) return null
+                return updateStart("bootmenu", { menu: m.id }).then(function (bad) { return bad || updateWatch("bootmenu", { name: m.label }) }).then(function (r) {
+                    if (r.result === "bootmenu") w.setStatus(m.id === "on" ? "Done. Tessera's boot menu shows from the next start." : "Done. GRUB's menu shows from the next start.")
+                    else { var end = updateEnd(r); if (end) w.setStatus(end, r.result === "error") }
+                })
+            })
+        })
+    }
+    function themeSettings() {
+        var st = { at: "", closed: {} }
+        var loop = function () {
+            return Promise.all([w.dev("settings", "themeGet"), w.dev("update", "bootInfo", {})]).then(function (res) {
+                var t = res[0], boot = res[1]
+                if (!t || !t.themes) return null
+                w.applyTheme(t)
+                var active = t.themes.filter(function (x) { return x.id === t.active })[0]
+                var items = [{ key: "h:theme", label: "Theme", header: true },
+                             { key: "switch", label: active ? active.name : "Tessera Bright", sub: t.themes.length > 1 ? "Select to switch" : "more themes: Add-ons", op: "switch" }]
+                var group = null, sizes = {}
+                t.settings.forEach(function (x) { sizes[x.group] = (sizes[x.group] || 0) + 1 })
+                t.settings.forEach(function (x) {
+                    if (x.group !== group) {
+                        group = x.group
+                        items.push(sizes[group] > 1 ? { key: "f:" + group, label: group, header: true, fold: "theme." + group } : { key: "h:" + group, label: group, header: true })
+                    }
+                    items.push({ key: "s:" + x.id, label: x.label, sub: themeValueText(x), op: "set", s: x })
+                })
+                // the boot screen is the machine's, not this theme's: one for everyone, set with the admin PIN
+                if (boot && boot.ok) {
+                    var shown = boot.pending || boot.current
+                    items.push({ key: "h:boot", label: "Boot screen", header: true })
+                    items.push({ key: "boot", label: bootScreens[shown].name, sub: boot.pending ? "shows after the next restart" : "for everyone on this machine", op: "boot", boot: boot })
+                    items.push({ key: "h:bootmenu", label: "Boot menu", header: true })
+                    items.push({ key: "bootmenu", label: boot.menu === "off" ? "GRUB's menu" : "Tessera", sub: boot.menu === "off" ? "the list of system versions" : "wait screen; O opens Boot options", op: "bootmenu", boot: boot })
+                }
+                items.push({ key: "h:yours", label: "Your themes", header: true })
+                items.push({ key: "saveNew", label: "Save current as a new theme…", op: "saveNew" })
+                if (active && !active.builtin) {
+                    items.push({ key: "rename", label: "Rename this theme…", op: "rename" })
+                    items.push({ key: "overwrite", label: "Overwrite this theme with current", op: "overwrite" })
+                    items.push({ key: "delete", label: "Delete this theme…", op: "delete", danger: true })
+                }
+                items.push({ key: "h:reset", label: "Reset", header: true })
+                items.push({ key: "reset", label: "Reset this theme to defaults", op: "reset" })
+                items = folded(items, st.closed)
+                return w.pick("Theme Settings", items, Math.max(1, indexOfKey(items, st.at))).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    if (it.fold) { st.closed[it.fold] = !st.closed[it.fold]; return loop() }
+                    var say = function (r, good) { if (r) { if (r.ok) { if (r.theme) w.applyTheme(r.theme); w.setStatus(good) } else w.setStatus(r.error, true) } }
+                    var name = function (title, start) {
+                        return w.ask(title, start).then(function (n) {
+                            if (n === null) return null
+                            if (!n.trim()) { w.setStatus("Give it a name.", true); return null }
+                            return n
+                        })
+                    }
+                    var work = Promise.resolve()
+                    if (it.op === "bootmenu") work = bootMenu(it.boot)
+                    else if (it.op === "boot") work = bootScreen(it.boot)
+                    else if (it.op === "reset") work = w.confirmYes("Reset every Theme Setting to its default?", "Reset").then(function (y) {
+                        if (y) return w.dev("settings", "themeReset").then(function (r) { if (r && r.theme) w.applyTheme(r.theme) })
+                    })
+                    else if (it.op === "switch") work = w.pick("Choose a theme", t.themes.map(function (x) {
+                        return { label: x.name, sub: [x.id === t.active ? "current" : x.author, x.dup ? "#" + x.id : ""].filter(Boolean).join("  ·  "), id: x.id }
+                    }), Math.max(0, t.themes.findIndex(function (x) { return x.id === t.active }))).then(function (c) {
+                        if (c) return w.dev("settings", "themeUse", { id: c.id }).then(function (r) { if (r && r.theme) w.applyTheme(r.theme) })
+                    })
+                    else if (it.op === "saveNew") work = name("Name this theme", "").then(function (n) {
+                        if (n !== null) return w.dev("addons", "saveTheme", { name: n }).then(function (r) { say(r, "Saved as “" + n.trim() + "”.") })
+                    })
+                    else if (it.op === "rename") work = name("Rename this theme", active.name).then(function (n) {
+                        if (n !== null) return w.dev("addons", "renameTheme", { id: active.id, name: n }).then(function (r) { say(r, "Renamed.") })
+                    })
+                    else if (it.op === "overwrite") work = w.confirmYes("Overwrite “" + active.name + "” with the Theme Settings you have now?", "Overwrite").then(function (y) {
+                        if (y) return w.dev("addons", "overwriteTheme", { id: active.id }).then(function (r) { say(r, "Saved.") })
+                    })
+                    else if (it.op === "delete") work = w.confirmYes("Delete “" + active.name + "”? This removes its folder from your Tessera folder.", "Delete").then(function (y) {
+                        if (!y) return
+                        var go = function () { return w.dev("addons", "remove", { dir: "themes", id: active.id }) }
+                        return go().then(function (r) {
+                            // only in-use themes land here: an unused one deletes with no PIN prompt at all
+                            if (r && r.needPin) return w.requirePin("This theme is being used by another profile. Enter your PIN to continue deleting.").then(function (ok) { return ok ? go() : null })
+                            return r
+                        }).then(function (r) {
+                            if (!r) return
+                            if (r.ok) {
+                                if (r.theme) w.applyTheme(r.theme)
+                                w.setStatus(r.fellBack && r.fellBack.length ? "Deleted “" + active.name + "”. " + r.fellBack.join(" and ") + " fell back to Tessera Bright." : "Deleted “" + active.name + "”.")
+                            } else w.setStatus(r.error || "Couldn't delete that.", true)
+                        })
+                    })
+                    else if (it.op === "set") work = editThemeSetting(it.s)
+                    return work.then(loop)
+                })
+            })
+        }
+        return loop()
+    }
+    function editThemeSetting(s) {
+        if (s.type === "toggle") return themeSet(s.id, !s.value)
+        if (s.type === "range") {
+            var vals = []
+            for (var v = s.min; v <= s.max + 1e-9; v += s.step) vals.push(Math.round(v * 1000) / 1000)
+            return w.pick(s.label + (s.hint ? "  ·  " + s.hint : ""), vals.slice(0, 60).map(function (x) { return { label: x + (s.unit || ""), sub: x === s.value ? "current" : "", v: x } }), Math.max(0, vals.indexOf(s.value))).then(function (it) { if (it) return themeSet(s.id, it.v) })
+        }
+        if (s.type === "choice") {
+            return w.pick(s.label, s.options.map(function (o) { return { label: o.label, sub: o.value === s.value ? "current" : "", v: o.value } }), Math.max(0, s.options.findIndex(function (o) { return o.value === s.value }))).then(function (it) { if (it) return themeSet(s.id, it.v) })
+        }
+        if (s.type === "color") {
+            var items = [
+                { key: "wheel", label: "Color wheel…", sub: "pick by eye", op: "wheel" },
+                { key: "hex", label: "Hex code…", sub: s.value.toUpperCase(), op: "hex" },
+                { key: "h:presets", label: "Presets", header: true, fold: "color.presets" }
+            ].concat(colorPresets.map(function (c) { return { key: "c:" + c[1], label: c[0], sub: c[1] + (c[1] === s.value ? "  ·  current" : ""), v: c[1] } }))
+            items.push({ key: "default", label: "Default", sub: s.default, v: s.default })
+            var closed = {}
+            var show = function (at) {
+                var shown = folded(items.map(function (x) { return Object.assign({}, x) }), closed)
+                return w.pick(s.label, shown, indexOfKey(shown, at)).then(function (it) {
+                    if (!it) return null
+                    if (it.fold) { closed[it.fold] = !closed[it.fold]; return show(it.key) }
+                    if (it.op !== "wheel" && it.op !== "hex") return themeSet(s.id, it.v)
+                    var hex = s.value, typing = it.op === "hex"
+                    var next = function () {
+                        if (typing) {
+                            return w.ask("Hex code, like #ff8800", hex, { symbols: true }).then(function (txt) {
+                                if (txt === null) return null
+                                var m = /^#?([0-9a-f]{6})$/i.exec(txt.trim())
+                                if (!m) { w.setStatus("That is not a 6-digit hex code.", true); return next() }
+                                hex = "#" + m[1].toLowerCase()
+                                typing = false
+                                return next()
+                            })
+                        }
+                        return w.pickColor(s.label, hex).then(function (res) {
+                            if (!res) return null
+                            hex = res.color
+                            if (res.hex) { typing = true; return next() }
+                            return themeSet(s.id, hex)
+                        })
+                    }
+                    return next()
+                })
+            }
+            return show("wheel")
+        }
+        if (s.type === "image") {
+            var rows = [{ label: "Choose a picture…", sub: "PNG, JPEG or WebP, up to 12 MB", op: "pick" }]
+            if (s.value) rows.push({ label: "Remove picture", op: "none" })
+            return w.pick(s.label, rows).then(function (it) {
+                if (!it) return null
+                if (it.op === "none") return themeSet(s.id, "")
+                return browse("pickImage")
+            })
+        }
+        return Promise.resolve()
+    }
 }
