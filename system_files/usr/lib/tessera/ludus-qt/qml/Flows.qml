@@ -2097,4 +2097,175 @@ QtObject {
             }).then(function () { screenAsking = false }, function () { screenAsking = false })
         })
     }
+
+    // ------------------------------------------------------------------ Adding things, and the Options menu (flows.js)
+    // things in your library that aren't on this page yet
+    function libraryChoices(into) {
+        var v = w.view
+        var have = {}
+        ;((v.folders[into] || {}).tiles || []).forEach(function (t) { have[t.id] = true })
+        var rowTiles = function (tab, row) { var r = (v.tabs[tab] || []).filter(function (x) { return x.id === row })[0]; return r ? r.tiles : [] }
+        var things = rowTiles("library", "_all_games").concat(rowTiles("apps", "_all_apps"))
+        var folders = Object.keys(v.folders).filter(function (id) { return id !== "_home" }).map(function (id) { return { id: id, title: v.folders[id].title, kind: "folder" } })
+        return things.concat(folders).filter(function (t) { return t.id !== into && !have[t.id] })
+    }
+    // what "+" offers depends on where it is: ctx { catId } on a page, { tab, kind } in Library and Apps
+    function add(ctx) {
+        return w.requirePin().then(function (ok) {
+            if (!ok) return null
+            var into = ctx.catId
+            var onlyGame = ctx.kind === "game", onlyApp = ctx.kind === "app"
+            var items = []
+            if (into && libraryChoices(into).length) items.push({ label: "Add something from your library…", op: "existing" })
+            if (into === "_home") items.push({ label: "Add a widget…", op: "inlay" })
+            if (!onlyApp && ctx.tab !== "apps") items.push({ label: "Add a game from a file…", op: "game" })
+            if (!onlyGame && ctx.tab !== "library") items.push({ label: "Add an app from a file…", op: "app" })
+            if (!onlyApp && ctx.tab !== "apps") items.push({ label: "Scan for games", op: "scan" })
+            if (into === "_home") items.push({ label: "New mosaic…", op: "mosaic" })
+            else if (into) items.push({ label: "New folder here…", op: "folder" })
+            var run = function (it) {
+                if (!it) return null
+                switch (it.op) {
+                case "existing": return addExisting(into)
+                case "inlay": return w.addWidget()
+                case "game": return browse("addGame", into)
+                case "app": return browse("addApp", into)
+                case "scan": return scan(into)
+                case "mosaic": return w.newMosaic()
+                case "folder": return w.newFolder(into)
+                }
+            }
+            if (items.length === 1) return run(items[0])
+            return w.pick("Add", items).then(run)
+        })
+    }
+    function addExisting(into) {
+        var choices = libraryChoices(into)
+        var on = {}, st = { at: "" }
+        var loop = function () {
+            var items = [{ key: "go", label: "Add selected", op: "go", ok: true }]
+            choices.forEach(function (t) { items.push({ key: "t:" + t.id, id: t.id, label: t.title, sub: (on[t.id] ? "✓ Adding · " : "") + ({ folder: "Folder", app: "App", game: "Game" }[t.kind] || "") }) })
+            return w.pick("Add to this page", items, indexOfKey(items, st.at || "go")).then(function (it) {
+                if (!it) return null
+                st.at = it.key
+                if (it.id !== undefined) { on[it.id] = !on[it.id]; return loop() }
+                var ids = choices.filter(function (t) { return on[t.id] }).map(function (t) { return t.id })
+                var n = 0, last = null
+                var next = function (i) {
+                    if (i >= ids.length) { if (ids.length) w.setStatus(n ? "Added " + n + "." : (last && last.error), !n); return null }
+                    return w.dev("library", "addEntry", { catId: into, ref: ids[i] }).then(function (r) { last = r; if (r && r.view) w.applyView(r.view); if (r && r.ok) n++; return next(i + 1) })
+                }
+                return next(0)
+            })
+        }
+        return loop()
+    }
+    function rename(op, id, current) {
+        return w.ask("Rename", current).then(function (text) { if (text !== null) return lib(op, { id: id, title: text }) })
+    }
+    function addTo(t, rowId) {
+        var f = w.view.folders
+        var targets = Object.keys(f).filter(function (id) { return id !== t.id && id !== rowId }).map(function (id) { return { label: f[id].title, id: id } })
+        if (!targets.length) { w.setStatus("Make a mosaic first (the + Mosaic tab).", true); return Promise.resolve() }
+        return w.pick("Add “" + t.title + "” to…", targets).then(function (c) { if (c) return lib("addEntry", { catId: c.id, ref: t.id }) })
+    }
+    // rows and columns for this page only; rails, grid and flow stay a Theme Settings choice for everything
+    function pageGrid(ctx) {
+        var lc = ctx.grid, has = ctx.ownGrid
+        var save = function (payload) {
+            return w.dev("settings", "pageGridSet", Object.assign({ key: ctx.pageKey }, payload)).then(function (r) {
+                if (r && r.prefs) takePrefs(r)
+                else if (r && !r.ok) w.setStatus("That size isn't allowed.", true)
+            })
+        }
+        var presets = [[3, 2], [4, 2], [5, 3], [6, 3], [6, 4], [8, 4]]
+        var items = [{ label: "Use the Theme Settings size", sub: has ? "for this page" : "current", reset: true }]
+            .concat(presets.map(function (x) { return { label: x[0] + " × " + x[1], sub: has && lc.cols === x[0] && lc.rows === x[1] ? "current" : "", c: x[0], r: x[1] } }))
+            .concat([{ label: "Custom…", sub: "pick columns and rows", custom: true }])
+        return w.pick("Grid size for this page (columns × rows)", items).then(function (it) {
+            if (!it) return null
+            if (it.reset) return save({})
+            if (!it.custom) return save({ cols: it.c, rows: it.r })
+            var range = function (lo, hi) { var o = []; for (var i = lo; i <= hi; i++) o.push(i); return o }
+            return w.pick("Columns", range(2, 12).map(function (v) { return { label: String(v), sub: v === lc.cols ? "current" : "", v: v } }), Math.max(0, lc.cols - 2)).then(function (cp) {
+                if (!cp) return null
+                return w.pick("Rows on screen", range(1, 8).map(function (v) { return { label: String(v), sub: v === lc.rows ? "current" : "", v: v } }), Math.max(0, lc.rows - 1)).then(function (rp) {
+                    if (rp) return save({ cols: cp.v, rows: rp.v })
+                })
+            })
+        })
+    }
+    // the Options menu of a tile, or of the page when opened from the tab bar
+    function options(ctx) {
+        var t = ctx.t, catRow = Boolean(ctx.catId)
+        var renamable = catRow && ctx.catId !== "_home"
+        var isThing = t && (t.kind === "game" || t.kind === "app" || t.kind === "folder")
+        var items = []
+        if (isThing) {
+            items.push({ label: "Add to a mosaic or folder…", op: "addTo" })
+            if (catRow) items.push({ label: "Remove from this page", op: "removeFromRow" })
+            if (t.kind === "folder") {
+                items.push({ label: "Rename this folder…", op: "renameTile" })
+                items.push({ label: "Delete this folder…", op: "deleteTile" })
+            } else {
+                items.push({ label: "Rename…", op: "renameItem" })
+                items.push({ label: "Change picture…", op: "pickArt" })
+                if (t.custom) items.push({ label: "Use the automatic picture", op: "clearArt" })
+                items.push({ label: "Remove from library…", op: "deleteItem" })
+                if (t.deletable) items.push({ label: "Delete the files…", op: "deleteFiles" })
+            }
+        } else if (t && t.kind === "inlay") {
+            if (!t.missing) items.push({ label: t.resizable ? "Move / resize…" : "Move…", op: "resize" })
+            if (catRow) items.push({ label: "Remove this widget", op: "removeFromRow" })
+        }
+        if (ctx.homeMode) items.push({ label: "Add a widget…", op: "addWidget" })
+        if (renamable) {
+            items.push({ label: ctx.inFolder ? "Rename the open folder…" : "Rename this mosaic…", op: "renameRow" })
+            if (!ctx.inFolder) {
+                items.push({ label: "Move this mosaic left", op: "moveL" })
+                items.push({ label: "Move this mosaic right", op: "moveR" })
+            }
+            items.push({ label: ctx.inFolder ? "Delete the open folder…" : "Delete this mosaic…", op: "deleteRow", danger: true })
+        }
+        if (catRow) items.push({ label: "New folder here…", op: "newFolder" })
+        if (ctx.mode !== "rails" && !ctx.homeMode) items.push({ label: "Grid size for this page…", sub: ctx.grid.cols + " × " + ctx.grid.rows + (ctx.ownGrid ? " (this page)" : " (from Theme Settings)"), op: "pageGrid" })
+        items.push({ label: "New mosaic…", op: "newCat" })
+        items.push({ label: "Add a game from a file…", op: "addGame" })
+        items.push({ label: "Add an app from a file…", op: "addApp" })
+        items.push({ label: "Scan for games", op: "scan" })
+        return w.pick("Options", items).then(function (it) { return it ? runOption(it.op, t, ctx) : null })
+    }
+    function runOption(op, t, ctx) {
+        var pinOps = { addGame: 1, addApp: 1, scan: 1, addWidget: 1, deleteItem: 1, deleteTile: 1, deleteRow: 1, deleteFiles: 1, removeFromRow: 1 }
+        return (pinOps[op] ? w.requirePin() : Promise.resolve(true)).then(function (ok) {
+            if (!ok) return null
+            var into = ctx.catId || undefined
+            var yes = function (q, label, then) { return w.confirmYes(q, label).then(function (y) { if (y) return then() }) }
+            switch (op) {
+            case "addWidget": return w.addWidget()
+            case "pageGrid": return pageGrid(ctx)
+            case "addTo": return addTo(t, ctx.catId)
+            case "resize": return w.placeExisting(t)
+            case "removeFromRow": return lib("removeEntry", { catId: ctx.catId, ref: t.id })
+            case "renameTile": return rename("renameCategory", t.id, t.title)
+            case "renameItem": return rename("renameItem", t.id, t.title)
+            case "pickArt": return browse("pickArt", undefined, t.id)
+            case "clearArt": return lib("clearArt", { id: t.id })
+            case "deleteTile": return yes("Delete “" + t.title + "”?", "Delete (things inside are kept)", function () { return lib("deleteCategory", { id: t.id }) })
+            case "deleteItem": return yes("Remove “" + t.title + "” from your library?", "Remove (files are not touched)", function () { return lib("deleteItem", { id: t.id }) })
+            case "deleteFiles": return yes("Delete “" + t.title + "” and its files from your Tessera folder? This can't be undone.", "Delete files", function () { return lib("deleteFiles", { id: t.id }) })
+            case "renameRow": return rename("renameCategory", ctx.catId, ctx.catTitle)
+            case "moveL": case "moveR": return lib("moveTab", { id: ctx.page, dir: op === "moveL" ? -1 : 1 })
+            case "deleteRow": return yes("Delete “" + ctx.catTitle + "”?", "Delete (your games and apps are kept)", function () {
+                if (ctx.inFolder) w.leaveFolder(); else w.leavePage()
+                return lib("deleteCategory", { id: ctx.catId })
+            })
+            case "newFolder": return w.newFolder(into)
+            case "newCat": return w.newMosaic()
+            case "addGame": return browse("addGame", into)
+            case "addApp": return browse("addApp", into)
+            case "scan": return scan(into)
+            }
+        })
+    }
 }

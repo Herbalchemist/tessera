@@ -628,101 +628,35 @@ Window {
     function placeExisting(t) {
         startPlace({ id: t.id, name: t.title, def: { size: { w: t.w, h: t.h }, min: t.min, max: t.max, resizable: t.resizable }, x: t.x, y: t.y, w: t.w, h: t.h })
     }
-    // What "+" offers depends on where it is (flows.js flowAdd).
+    // What "+" offers depends on where it is (flows.js flowAdd); the flows themselves are in Flows.qml
     function addSomething() {
-        var into = pageCat
-        var inThere = into ? ((view.folders[into] || {}).tiles || []).map(function (t) { return t.id }) : []
-        var all = []
-        ;["library", "apps"].forEach(function (k) { (view.tabs[k] || []).forEach(function (r) { all = all.concat(r.tiles) }) })
-        var fresh = all.filter(function (t) { return inThere.indexOf(t.id) < 0 })
-        var items = []
-        if (into && fresh.length) items.push({ label: "Add something from your library…", op: "existing" })
-        if (into === "_home") items.push({ label: "Add a widget…", op: "inlay" })
-        if (!into || page === "library" || page === "apps") items.push({ label: "Add from a file, or scan for games…", op: "file" })
-        if (into === "_home") items.push({ label: "New mosaic…", op: "mosaic" })
-        else if (into) items.push({ label: "New folder here…", op: "folder" })
-        var run = function (it) {
-            if (it.op === "inlay") return addWidget()
-            if (it.op === "mosaic") return newMosaic()
-            if (it.op === "folder") return newFolder(into)
-            if (it.op === "file") return setStatus("Adding from a file and scanning come to this version next. Use the full Ludus for now (Settings › Go back).")
-            menu.open("Add to " + (into === "_home" ? "Home" : folderTitle(into)),
-                      fresh.map(function (t) { return { label: t.title, sub: t.kind === "app" ? "App" : "Game", id: t.id } }),
-                      function (it2) { api.library("addEntry", { catId: into, ref: it2.id }) })
-        }
-        if (items.length === 1) return run(items[0])
-        if (!items.length) return setStatus("Everything in your library is in here already.")
-        menu.open("Add", items, run)
+        flows.add(pageCat ? { catId: pageCat } : { tab: page, kind: page === "apps" ? "app" : "game" })
     }
     function newFolder(parentId) {
-        keyboard.open("Name the new folder", "", function (name) { api.library("newCategory", { title: name, parentId: parentId }) })
+        return ask("Name your folder", "").then(function (name) { return name === null ? null : api.library("newCategory", { title: name, parentId: parentId }) })
     }
     function newMosaic() {
-        keyboard.open("Name the new mosaic", "", function (name) {
-            api.library("newCategory", { title: name }).then(function (r) {
-                if (!r.ok) return
-                var i = tabList.findIndex(function (x) { return x.id === "m:" + r.id })
-                if (i >= 0) goTab(i)
-                area = "content"
+        return ask("Name your mosaic", "").then(function (name) {
+            if (name === null) return null
+            return api.library("newCategory", { title: name }).then(function (r) {
+                if (r && r.ok && r.id) {
+                    var i = tabList.findIndex(function (x) { return x.id === "m:" + r.id })
+                    if (i >= 0) goTab(i)
+                    stack = []
+                    area = "content"
+                }
+                return r
             })
         })
     }
+    function leaveFolder() { stack = stack.slice(0, -1) }
+    function leavePage() { area = "tabs" }
     function openOptions(fromTabs) {
         var t = fromTabs || !selTile || selTile.kind === "add" ? null : selTile
-        if (t && t.kind === "inlay") {
-            var wi = []
-            if (!t.missing) wi.push({ label: t.resizable ? "Move / resize…" : "Move…", op: "resize" })
-            wi.push({ label: "Remove this widget", op: "removeWidget" })
-            wi.push({ label: "Add a widget…", op: "addWidget" })
-            wi.push({ label: "New mosaic…", op: "new" })
-            return menu.open("Options", wi, function (it) { runOption(it.op, t, "_home") })
-        }
-        var cat = pageCat && pageCat !== "_home" ? pageCat : ""
-        var items = []
-        if (t) {
-            if (t.kind === "folder") items.push({ label: "Open", op: "open" })
-            else items.push({ label: t.kind === "app" ? "Start" : "Play", op: "play" })
-            if (t.kind !== "folder") items.push({ label: "Add to a mosaic or folder…", op: "addTo" })
-            if (cat) items.push({ label: "Remove from this page", op: "remove" })
-        }
-        if (cat) {
-            items.push({ label: stack.length ? "Rename the open folder…" : "Rename this mosaic…", op: "rename" })
-            if (!stack.length) {
-                items.push({ label: "Move this mosaic left", op: "moveL" })
-                items.push({ label: "Move this mosaic right", op: "moveR" })
-            }
-            items.push({ label: stack.length ? "Delete the open folder…" : "Delete this mosaic…", op: "delete", danger: true })
-        }
-        items.push({ label: "New mosaic…", op: "new" })
-        menu.open("Options", items, function (it) { runOption(it.op, t, cat) })
-    }
-    function runOption(op, t, cat) {
-        if (op === "open" || op === "play") return activate()
-        if (op === "new") return newMosaic()
-        if (op === "resize") return placeExisting(t)
-        if (op === "addWidget") return addWidget()
-        if (op === "removeWidget") return api.library("removeEntry", { catId: "_home", ref: t.id })
-        if (op === "addTo") {
-            var ms = (view.mosaics || []).filter(function (m) { return m.id !== cat })
-            if (!ms.length) return setStatus("Make a mosaic first: + Mosaic in the tab bar.")
-            return menu.open("Add “" + t.title + "” to…", ms.map(function (m) { return { label: m.title, id: m.id } }), function (m) {
-                api.library("addEntry", { catId: m.id, ref: t.id })
-            })
-        }
-        if (op === "remove") return api.library("removeEntry", { catId: cat, ref: t.id })
-        if (op === "rename") return keyboard.open("Rename", folderTitle(cat), function (name) { api.library("renameCategory", { id: cat, title: name }) })
-        if (op === "moveL" || op === "moveR") return api.library("moveTab", { id: page, dir: op === "moveL" ? -1 : 1 })
-        if (op === "delete") {
-            var inFolder = stack.length > 0
-            return menu.open("Delete “" + folderTitle(cat) + "”?",
-                             [{ label: "Delete (your games and apps are kept)", op: "yes", danger: true }, { label: "Cancel", op: "no" }],
-                             function (it) {
-                                 if (it.op !== "yes") return
-                                 if (inFolder) stack = stack.slice(0, -1)
-                                 else area = "tabs"
-                                 api.library("deleteCategory", { id: cat })
-                             }, 1)
-        }
+        flows.options({
+            t: t, catId: pageCat, catTitle: folderTitle(pageCat), inFolder: stack.length > 0, homeMode: homeMode, mode: th.mode,
+            grid: gridNow, ownGrid: Boolean(view.prefs && view.prefs.pageGrid && view.prefs.pageGrid[pageKey]), pageKey: pageKey, page: page
+        })
     }
     readonly property string titleText: area !== "content"
         ? (page === "new" ? "Press A to create a mosaic" : page === "browser" ? "Press A to open your browser" : tabName(page))
