@@ -18,7 +18,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Game art (automatic and chosen pictures)
 - ⬜ Recently played
 - ⬜ Hover-to-select with the mouse, with the edge-scroll pause
-- ⬜ The tour (first start) and Welcome
+- 🟨 The tour (first start, and from the guide) and Welcome: ported and picture-checked; the ring lights the whole page area rather than hugging the tiles
 - 🟡 Status line and messages — shown under the tiles; the full set of messages not yet
 
 ## Themes and customization (docs/theming.md)
@@ -51,16 +51,16 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" and "drive plugged in" offers ported
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). The live controller test (buttons, sticks, triggers, raw numbers, hold B; vibration while testing not yet) stick calibration and Button mapping (keyboard and per-family controller buttons, press-the-button capture, Confirm/remap applied to Qt navigation) are ported. Change grip/order (live Joy-Con cards from the pads service) is ported too; the card layout with real Joy-Cons has not been run. Still to do: adding and removing single keys
-- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (the quick tour waits for the tour)
+- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (with the quick tour)
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
-- ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
+- ✅ Update software (check, download, restart, go back, graphics builds, and the "new graphics card?" prompt at start; not seen with a real card swap)
 - 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address open them in the browser
 - 🟨 Report a problem (save, read, delete, build the GitHub issue; opens in the browser)
 - 🟡 Power and Opus — sleep, restart, shut down not yet
 - ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover
 
 ## Around the screen
-- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), the quick tour and installer entries
+- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), the installer entry
 - ⬜ Steam: library import, launching, Big Picture
 - ✅ Starting games and apps; coming back when they end
 - ⬜ Game logs and "exited with code" messages with details

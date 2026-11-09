@@ -104,7 +104,7 @@ Item {
         border.width: 2; border.color: th.alpha(th.accent, 0.6)
         readonly property real below: tour.ring ? tour.ring.y + tour.ring.h + 28 : 0
         x: tour.ring ? Math.max(20, Math.min(tour.width - width - 20, tour.ring.x + tour.ring.w / 2 - width / 2)) : (tour.width - width) / 2
-        y: !tour.ring ? (tour.height - height) / 2 : (below + height + 20 < tour.height ? below : Math.max(20, tour.ring.y - height - 28))
+        y: !tour.ring ? (tour.height - height) / 2 : (below + height + 20 < tour.height ? below : tour.ring.y - height - 28 >= 20 ? tour.ring.y - height - 28 : Math.max(20, tour.ring.y + tour.ring.h - height - 30))
         Column {
             id: col
             anchors.centerIn: parent
