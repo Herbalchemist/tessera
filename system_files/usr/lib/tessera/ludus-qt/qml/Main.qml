@@ -508,8 +508,7 @@ Window {
                 }
             }
             walk(viewport)
-            r = { x: Math.max(0, r.x), y: r.y, w: Math.min(win.width, r.x + r.w) - Math.max(0, r.x), h: r.h }
-            if (n) r = { x: Math.max(r.x, x0), y: Math.max(r.y, y0), w: Math.min(r.x + r.w, x1, win.width - 10) - Math.max(r.x, x0), h: Math.min(r.y + r.h, y1) - Math.max(r.y, y0) }
+            if (n) r = { x: Math.max(r.x, x0), y: Math.max(r.y, y0), w: Math.min(r.x + r.w, x1) - Math.max(r.x, x0), h: Math.min(r.y + r.h, y1) - Math.max(r.y, y0) }
         } else if (what === "footer") {
             var f = footerA.visible ? footerA : footerB
             var fp = f.mapToItem(win.contentItem, 0, 0)

@@ -27,7 +27,7 @@ Item {
         { title: "The guide", text: "Press the Guide button any time, even in the middle of a game, for quick settings, profiles, notifications and power. You can take this tour again from there." }
     ]
     readonly property var st: steps[i]
-    property var ring: null
+    property var ring: null              // the lit part (raw, from Main.tourRect), or null
 
     function open() {
         back = { page: win.page, tab: win.tabIndex, area: win.area }
@@ -79,7 +79,38 @@ Item {
             if (quiet >= 3) { stop(); tour.away = false; tour.i = at; tour.visible = true; tour.enter() }
         }
     }
-    Timer { id: measure; interval: 450; onTriggered: tour.ring = win.tourRect(tour.st.target || "") }   // the page has slid in by now
+    Timer { id: measure; interval: 450; onTriggered: { tour.ring = win.tourRect(tour.st.target || ""); tour.place() } }   // the page has slid in by now
+    onWidthChanged: if (visible) place()
+    onIChanged: Qt.callLater(place)
+    onTriedChanged: Qt.callLater(place)
+    // the card sits below the lit part when there's room, above it otherwise, beside it (narrower if that
+    // is what fits), or at the edge with the most room (tour.js placeTour)
+    function place() {
+        var W = width, H = height, r = ring, pad = 10
+        var shown = r && r.w > 4 && r.h > 4
+        if (shown) {
+            var x = Math.max(4, r.x - pad), y = Math.max(4, r.y - pad)
+            ringBox.x = x; ringBox.y = y
+            ringBox.width = Math.min(W - 8, r.x + r.w + pad) - x; ringBox.height = Math.min(H - 8, r.y + r.h + pad) - y
+        } else { ringBox.x = W / 2; ringBox.y = H / 2; ringBox.width = 0; ringBox.height = 0 }
+        card.width = Math.min(W * 0.86, 30 * th.rem)
+        if (shown) {
+            var below = H - (r.y + r.h + pad + 16) - 8, above = r.y - pad - 16 - 8
+            var side = Math.max(W - (r.x + r.w + pad + 16) - 16, r.x - pad - 16 - 16)
+            if (card.height > Math.max(below, above) && card.width > side && side >= 240) card.width = Math.floor(side)
+        }
+        var ch = card.height, cw = card.width
+        var top = (H - ch) / 2, left = (W - cw) / 2
+        if (shown) {
+            if (r.y + r.h + pad + 16 + ch < H) top = r.y + r.h + pad + 16
+            else if (r.y - pad - 16 - ch > 0) top = r.y - pad - 16 - ch
+            else if (r.x + r.w + pad + 16 + cw < W) { left = r.x + r.w + pad + 16; top = Math.min(H - ch - 16, Math.max(16, r.y)) }
+            else if (r.x - pad - 16 - cw > 0) { left = r.x - pad - 16 - cw; top = Math.min(H - ch - 16, Math.max(16, r.y)) }
+            else top = r.y > H - (r.y + r.h) ? 16 : H - ch - 16
+            if (left === (W - cw) / 2) left = Math.min(W - cw - 16, Math.max(16, r.x + r.w / 2 - cw / 2))
+        }
+        card.x = Math.round(left); card.y = Math.round(top)
+    }
 
     Rectangle { anchors.fill: parent; color: tour.ring ? "transparent" : Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.78) }
     readonly property color shade: Qt.rgba(6 / 255, 9 / 255, 13 / 255, 0.72)
@@ -90,26 +121,21 @@ Item {
     Item {
         id: ringBox
         visible: tour.ring !== null
-        x: tour.ring ? tour.ring.x - 10 : 0; y: tour.ring ? tour.ring.y - 10 : 0
-        width: tour.ring ? tour.ring.w + 20 : 0; height: tour.ring ? tour.ring.h + 20 : 0
         Behavior on x { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
         Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-        Rectangle { id: glow; anchors.fill: parent; anchors.margins: -2; radius: 18; color: "transparent"; border.width: 3; border.color: th.accent
+        Rectangle { anchors.fill: parent; anchors.margins: -5; radius: 22; color: "transparent"; border.width: 5; border.color: th.alpha(th.accent, 0.3) }
+        Rectangle { id: glow; anchors.fill: parent; anchors.margins: -3; radius: 21; color: "transparent"; border.width: 3; border.color: th.accent
             layer.enabled: true
             layer.effect: MultiEffect { shadowEnabled: true; shadowColor: th.alpha(th.accent, 0.9); shadowBlur: 1; blurMax: 40; shadowOpacity: 1; shadowScale: 1.02 } }
     }
     Rectangle {
         id: card
-        width: Math.min(tour.width * 0.86, 30 * th.rem)
         height: col.implicitHeight + 56
         radius: th.radius + 4; color: th.panel
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.6); shadowBlur: 1; blurMax: 64; shadowVerticalOffset: 24 }
-        readonly property real below: tour.ring ? tour.ring.y + tour.ring.h + 28 : 0
-        x: tour.ring ? Math.max(20, Math.min(tour.width - width - 20, tour.ring.x + tour.ring.w / 2 - width / 2)) : (tour.width - width) / 2
-        y: !tour.ring ? (tour.height - height) / 2 : (below + height + 20 < tour.height ? below : Math.max(12, tour.ring.y - height - 20))
         Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
         Column {
