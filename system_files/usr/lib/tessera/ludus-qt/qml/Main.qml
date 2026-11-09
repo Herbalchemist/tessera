@@ -533,27 +533,27 @@ Window {
         // ---- everything else: crumb, title, the tiles, status, button hints
         ColumnLayout {
             id: column
-            readonly property bool left: th.parts.nav === "left"
+            readonly property bool sideNav: th.parts.nav === "left"
             readonly property string nav: th.parts.nav
-            readonly property bool leftAligned: left || nav === "top-left" || nav === "bottom-dock" || th.parts.title === "big"
-            x: left ? header.x + header.width + th.clamp(14, 2 * th.vw, 34) : 0
-            width: body.width - x - (left && th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0)
-            y: left ? 0 : th.navBottom ? clockTop.height : header.y + header.height
-            height: left ? body.height : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
+            readonly property bool leftAligned: sideNav || nav === "top-left" || nav === "bottom-dock" || th.parts.title === "big"
+            x: sideNav ? header.x + header.width + th.clamp(14, 2 * th.vw, 34) : 0
+            width: body.width - x - (sideNav && th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0)
+            y: sideNav ? 0 : th.navBottom ? clockTop.height : header.y + header.height
+            height: sideNav ? body.height : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
             spacing: 0
 
             Text {     // where you are, inside folders
                 visible: column.nav !== "bottom-bar" && th.parts.row !== "start"
                 Layout.fillWidth: true
-                Layout.leftMargin: column.leftAligned && !column.left ? th.edge : 0
-                Layout.topMargin: column.left ? th.clamp(4, 1 * th.vh, 12) : 0
+                Layout.leftMargin: column.leftAligned && !column.sideNav ? th.edge : 0
+                Layout.topMargin: column.sideNav ? th.clamp(4, 1 * th.vh, 12) : 0
                 Layout.minimumHeight: 1.5 * th.rem
                 horizontalAlignment: column.leftAligned || th.parts.tabs === "segments" ? Text.AlignLeft : Text.AlignHCenter
                 text: win.stack.length ? [win.tabName(win.page)].concat(win.stack.map(win.folderTitle)).join("  ›  ") : ""
                 color: th.muted
                 font.pixelSize: th.rem
             }
-            SelectionTitle { visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.left; Layout.fillWidth: true; Layout.topMargin: th.clamp(4, 2 * th.vh, 24) }
+            SelectionTitle { visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: th.clamp(4, 2 * th.vh, 24) }
 
             Item {     // the tiles
                 id: viewport
@@ -584,10 +584,10 @@ Window {
                 SettingsPage { id: settingsPage; anchors.fill: parent; visible: win.page === "settings"; th: th; active: win.area === "content" && !menu.visible; onLeave: win.area = "tabs" }
             }
 
-            SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.left; Layout.fillWidth: true }
+            SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true }
             Text {
                 Layout.fillWidth: true
-                Layout.leftMargin: column.leftAligned && !column.left ? th.edge : 0
+                Layout.leftMargin: column.leftAligned && !column.sideNav ? th.edge : 0
                 Layout.minimumHeight: 1.5 * th.rem
                 horizontalAlignment: column.leftAligned ? Text.AlignLeft : Text.AlignHCenter
                 text: win.status
