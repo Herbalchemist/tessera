@@ -1101,8 +1101,8 @@ Window {
                 Layout.fillWidth: true
             }
         }
-        Footer {      // "bottom"
-            id: footerB: the hints under the menu, with a line above them
+        Footer {      // "bottom": the hints under the menu, with a line above them
+            id: footerB
             visible: header.nav === "bottom"
             th: th
             ruled: true
