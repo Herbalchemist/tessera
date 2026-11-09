@@ -905,7 +905,7 @@ Window {
         anchors.rightMargin: anchors.leftMargin
         // "focus" with the menu along the bottom: title, row and menu stay together, centred between the clock and the hints
         readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && th.parts.nav === "bottom" && th.parts.title === "above"
-        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 4.5 * th.rem - clockTop.height - titleAbove.height - viewport.preferredHeight - header.height) / 2)
+        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 4.5 * th.rem - clockTop.height - titleAbove.height - viewport.Layout.preferredHeight - header.height) / 2)
         readonly property real sideW: th.parts.tabs === "chunky" ? th.clamp(190, 21 * th.vw, 360) : th.clamp(178, 18 * th.vw, 320)
 
         // ---- the menu: a column on the left, or a strip across the top / bottom
@@ -922,7 +922,7 @@ Window {
             width: nav === "left" ? body.sideW : body.width
             height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
             y: nav === "left" ? 0
-             : body.packed ? body.packedTop + titleAbove.height + viewport.preferredHeight
+             : body.packed ? body.packedTop + titleAbove.height + viewport.Layout.preferredHeight
              : th.navBottom ? body.height - height - (nav === "bottom" ? footerSpace : nav === "bottom-dock" ? th.clamp(4, 1 * th.vh, 12) : 0)
              : clockTop.height
             readonly property real footerSpace: 3 * th.rem
@@ -1074,7 +1074,7 @@ Window {
             x: sideNav ? header.x + header.width + th.clamp(14, 2 * th.vw, 34) : 0
             width: body.width - x - (sideNav && th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0)
             y: sideNav ? 0 : body.packed ? body.packedTop : th.navBottom ? clockTop.height : header.y + header.height
-            height: sideNav ? body.height : body.packed ? titleAbove.height + viewport.preferredHeight + 1.5 * th.rem : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
+            height: sideNav ? body.height : body.packed ? titleAbove.height + viewport.Layout.preferredHeight + 1.5 * th.rem : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
             spacing: 0
 
             Text {     // where you are, inside folders
