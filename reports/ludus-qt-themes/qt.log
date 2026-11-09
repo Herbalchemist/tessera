@@ -1,5 +1,41 @@
-  File "/home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/ludus.py", line 376
-    ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right'])])]
-                                                                                              ^
-SyntaxError: unmatched ')'
-exit code 1
+ludus-qt: starting
+shot theme-stock-library-1280
+shot theme-stock-home-1280
+shot theme-stock-settings-1280
+shot theme-stock-tabs-1280
+shot theme-dark-library-1280
+shot theme-dark-home-1280
+shot theme-dark-settings-1280
+shot theme-dark-tabs-1280
+shot theme-mosaic-library-1280
+shot theme-mosaic-home-1280
+shot theme-mosaic-settings-1280
+shot theme-mosaic-tabs-1280
+shot theme-mosaic-dark-library-1280
+shot theme-mosaic-dark-home-1280
+shot theme-mosaic-dark-settings-1280
+shot theme-mosaic-dark-tabs-1280
+shot theme-cartridge-pop-library-1280
+shot theme-cartridge-pop-home-1280
+shot theme-cartridge-pop-settings-1280
+shot theme-cartridge-pop-tabs-1280
+shot theme-nova-black-library-1280
+shot theme-nova-black-home-1280
+shot theme-nova-black-settings-1280
+shot theme-nova-black-tabs-1280
+shot theme-dashboard-steel-library-1280
+shot theme-dashboard-steel-home-1280
+shot theme-dashboard-steel-settings-1280
+shot theme-dashboard-steel-tabs-1280
+shot theme-indigo-cube-library-1280
+shot theme-indigo-cube-home-1280
+shot theme-indigo-cube-settings-1280
+shot theme-indigo-cube-tabs-1280
+shot theme-channel-white-library-1280
+shot theme-channel-white-home-1280
+shot theme-channel-white-settings-1280
+shot theme-channel-white-tabs-1280
+shot theme-arcade-marquee-library-1280
+shot theme-arcade-marquee-home-1280
+shot theme-arcade-marquee-settings-1280
+shot theme-arcade-marquee-tabs-1280
