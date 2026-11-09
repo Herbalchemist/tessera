@@ -60,7 +60,7 @@ Item {
                      : bar.barPill ? label.implicitWidth + 32 + (tab.kind !== "new" ? 1.1 * label.font.pixelSize + 8 : 0) + 4
                      : label.implicitWidth + 2 * (bar.look === "text" || bar.look === "pivots" ? 0 : bar.look === "chunky" ? th.clamp(14, 1.6 * th.vw, 26) : 24)
                 height: bar.look === "round" ? width
-                      : bar.look === "chunky" ? label.implicitHeight + 2 * th.clamp(10, 1.9 * th.vh, 20)
+                      : bar.look === "chunky" ? label.implicitHeight + 4 + 2 * th.clamp(10, 1.9 * th.vh, 20)
                       : bar.look === "pivots" ? label.implicitHeight + 8
                       : bar.look === "text" ? label.implicitHeight + 8
                       : bar.look === "segments" ? label.implicitHeight + 2 * th.clamp(7, 1.1 * th.vh, 12)

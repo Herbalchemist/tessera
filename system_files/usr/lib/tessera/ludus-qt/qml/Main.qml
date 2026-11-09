@@ -1009,8 +1009,8 @@ Window {
             }
             Column {
                 visible: header.nav === "left"
-                x: th.clamp(10, 1.5 * th.vw, 22)
-                y: th.clamp(14, 2.6 * th.vh, 30) + (th.parts.emblem === "cube" ? 12 * th.vh : 0)
+                x: th.parts.tabs === "chunky" ? 14 : th.clamp(10, 1.5 * th.vw, 22)
+                y: th.clamp(14, 2.6 * th.vh, 30) + (th.parts.emblem === "cube" ? 15.3 * th.vh : 0)
                 width: header.width - 2 * x
                 spacing: th.clamp(8, 1.5 * th.vh, 18)
                 HintKey { visible: header.hints; th: th; label: "LB"; anchors.horizontalCenter: parent.horizontalCenter }
