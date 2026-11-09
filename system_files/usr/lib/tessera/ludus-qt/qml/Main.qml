@@ -204,6 +204,9 @@ Window {
         if (id === "_appearance") { var t = p.theme && p.theme.themes ? p.theme.themes.filter(function (x) { return x.id === p.theme.active })[0] : null; return t ? t.name : "" }
         if (id === "_profiles") return p.profiles && p.profiles.length ? p.profiles.length + (p.profiles.length === 1 ? " profile" : " profiles") : "None yet"
         if (id === "_pin") return p.pin && p.pin.set ? "On" : "Off"
+        if (id === "_wifi") return tileNotes.wifi
+        if (id === "_bluetooth") return tileNotes.bluetooth
+        if (id === "_sound") return tileNotes.audio
         if (id === "_power") return "Sleep · Restart · Off"
         if (id === "_desktop") return "Login screen"
         if (id === "_fullludus") return "Every setting is there"
@@ -215,15 +218,122 @@ Window {
         })
     }
     // ---- menus as promises (the flows ask, wait for the answer, and carry on)
-    function pick(title, items, index) {
-        return new Promise(function (resolve) { menu.open(title, items, function (it) { resolve(it) }, index || 0, function () { resolve(null) }) })
+    function pick(title, items, index, opts) {
+        return new Promise(function (resolve) { menu.open(title, items, function (it) { resolve(it) }, index || 0, function () { resolve(null) }, opts) })
     }
+    function ask(title, start, opts) {
+        return new Promise(function (resolve) {
+            var o = Object.assign({}, opts || {})
+            o.cancel = function () { resolve(null) }
+            keyboard.open(title, start || "", function (t) { resolve(t) }, o)
+        })
+    }
+    function sleepMs(ms) { return new Promise(function (resolve) { sleeper.after(ms, resolve) }) }
+    Timer {
+        id: sleeper
+        property var waits: []
+        interval: 100; repeat: true; running: waits.length > 0
+        function after(ms, fn) { waits.push({ at: Date.now() + ms, fn: fn }); waitsChanged() }
+        onTriggered: {
+            var now = Date.now(), due = waits.filter(function (w) { return w.at <= now })
+            waits = waits.filter(function (w) { return w.at > now })
+            due.forEach(function (w) { w.fn() })
+        }
+    }
+    // a call to the main process that never throws: always an answer with ok, and an error to show
+    function safe(p) {
+        return Promise.resolve(p).then(function (r) { return r || { ok: false, error: "Something went wrong." } }, function () { return { ok: false, error: "Something went wrong." } })
+    }
+    // runs something that may need the PIN: if the main process says so, asks for it and tries once more
+    function gated(f) {
+        return safe(f()).then(function (r) {
+            if (!r.needPin) return r
+            return requirePin().then(function (ok) { return ok ? safe(f()) : { ok: false, canceled: true, error: "" } })
+        })
+    }
+    function requirePin(reason) {
+        return api.settings("pinStatus").then(function (st) {
+            if (!st || !st.set || st.unlocked) return true
+            var tries = 0
+            function again() {
+                if (tries++ >= 5) return false
+                return ask(reason || "Enter the PIN", "", { digits: true, secret: true, max: 8 }).then(function (pin) {
+                    if (pin === null) return false
+                    return api.settings("pinCheck", { pin: pin }).then(function (r) {
+                        if (r && r.ok) return true
+                        setStatus((r && r.error) || "That isn't the PIN.", true)
+                        if (r && r.wait) return false
+                        return again()
+                    })
+                })
+            }
+            return again()
+        })
+    }
+    // a menu that keeps itself fresh: cfg {title, items(st), body(st), reload(st), every}; resolves with the chosen row (null: back)
+    property var live: null
+    Timer { id: liveTimer; repeat: true; running: win.live !== null && menu.visible; onTriggered: win.liveTick() }
+    function liveList(st, cfg) {
+        var first = cfg.items(st)
+        var at = st.at ? first.findIndex(function (x) { return x.key === st.at }) : -1
+        cfg.st = st; cfg.loading = false
+        liveTimer.interval = cfg.every || 4000
+        live = cfg
+        return pick(cfg.title, first, Math.max(0, at), { body: cfg.body(st) }).then(function (it) {
+            live = null
+            if (it && it.key) st.at = it.key
+            return it
+        })
+    }
+    function liveTick() {
+        var c = live
+        if (!c || c.loading || !menu.visible || Date.now() < menu.holdUntil) return
+        c.loading = true
+        Promise.resolve(c.reload(c.st)).catch(function () {}).then(function () {
+            c.loading = false
+            if (live === c && menu.visible) menu.update(c.items(c.st), c.body(c.st))
+        })
+    }
+    // a job that takes a while (pairing, joining): shown until it is over; B or Cancel stops it
+    property var job: null
+    Timer { id: jobTimer; interval: 700; repeat: true; running: win.job !== null; onTriggered: win.jobTick() }
+    function clockText(sec) { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ":" + (sec % 60 < 10 ? "0" : "") + (sec % 60) }
+    function watchJob(which, title, body) {
+        return new Promise(function (resolve) {
+            var j = { which: which, title: title, body: body, p: { elapsed: 0, stage: "", name: "" }, canceling: false, lost: 0, polling: false, over: false, started: Date.now(), resolve: resolve }
+            j.items = function () { return j.canceling ? [{ label: "Canceling…", header: true }] : [{ label: "Cancel", op: "cancel", danger: true }] }
+            j.show = function () { menu.open(j.title, j.items(), j.stop, 0, j.stop, { body: j.body(j.p, j.canceling) }) }
+            j.stop = function () {
+                if (j.over) return
+                if (!j.canceling) { j.canceling = true; safe(api.call(which, ["cancel", {}])) }
+                j.show()
+            }
+            job = j
+            j.show()
+        })
+    }
+    function jobTick() {
+        var j = job
+        if (!j || j.polling || j.over || Date.now() - j.started < 500) return
+        j.polling = true
+        safe(api.call(j.which, ["poll", {}])).then(function (q) {
+            j.polling = false
+            if (job !== j || j.over) return
+            if (!q.ok) { if (++j.lost > 12) endJob(j, { phase: "done", result: "error", error: "Lost touch with it.", detail: "" }) }
+            else if (q.phase === "running") { j.lost = 0; j.p = q; menu.update(j.items(), j.body(q, j.canceling)) }
+            else { api.call(j.which, ["ack", {}]); endJob(j, q.phase === "done" ? q : { phase: "done", result: "error", error: "It stopped unexpectedly.", detail: "" }) }
+        })
+    }
+    function endJob(j, r) { j.over = true; job = null; if (menu.visible) menu.close(); j.resolve(r) }
     function confirmYes(question, yesLabel) {
         return pick(question, [{ label: yesLabel || "Yes", op: "yes" }, { label: "Cancel", op: "no" }], 1).then(function (r) { return Boolean(r && r.op === "yes") })
     }
     function notice(title, body) { return pick(title + (body ? "\n" + body : ""), [{ label: "OK", op: "ok" }], 0) }
     function runAction(id) {
         if (id === "_power") return flowPower()
+        if (id === "_sound") return flows.sound()
+        if (id === "_wifi") return flows.wifi()
+        if (id === "_bluetooth") return flows.bluetooth()
         if (id === "_desktop") return flowDesktop()
         if (id === "_fullludus") return confirmYes("Go back to the full Ludus?", "Go back").then(function (y) { if (y) session.useFullLudus() })
         setStatus("This setting comes to this version next. It's in the full Ludus (Settings › Go back to the full Ludus).")
@@ -235,9 +345,9 @@ Window {
             var go = ask[it.op] ? confirmYes(ask[it.op][0], ask[it.op][1]) : Promise.resolve(true)
             go.then(function (y) {
                 if (!y) return
-                api.call("power", [it.op]).then(function (r) {
-                    if (r && r.needPin) return setStatus("A PIN is set: use the full Ludus for this for now.", true)
-                    if (!r || r.ok === false) return setStatus((r && r.error) || "That did not work.", true)
+                gated(function () { return api.call("power", [it.op]) }).then(function (r) {
+                    if (r.canceled) return
+                    if (r.ok === false) return setStatus(r.error || "That did not work.", true)
                     if (it.op !== "sleep") notice(it.op === "restart" ? "Restarting…" : "Shutting down…", it.op === "restart" ? "The console is restarting. This takes a moment." : "The console is shutting down.")
                 })
             })
@@ -265,7 +375,30 @@ Window {
     }
     property int selRow: 0
     property int selCol: 0
+    // the short live notes under Wi-Fi, Bluetooth and Sound (screens.js refreshTileNotes)
+    property var tileNotes: ({ wifi: "", bluetooth: "", audio: "" })
+    property double notesAt: 0
+    property bool notesBusy: false
+    function refreshTileNotes(force) {
+        if (notesBusy || (!force && Date.now() - notesAt < 15000)) return
+        notesBusy = true
+        notesAt = Date.now()
+        api.call("summaries", []).then(function (r) {
+            notesBusy = false
+            if (!r || r.ok === false) return
+            var txt = function (v) { return typeof v === "string" ? v.slice(0, 40) : "" }
+            var next = { wifi: txt(r.wifi), bluetooth: txt(r.bluetooth), audio: txt(r.audio) }
+            if (JSON.stringify(next) === JSON.stringify(tileNotes)) return
+            tileNotes = next
+            if (page === "settings" && !stack.length) Qt.callLater(refresh)
+        })
+    }
+    function rawCall(ch, args) { return api.call(ch, args) }
+    function menuUp() { return menu.visible || keyboard.visible || job !== null }
+    function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
+    function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {
+        if (page === "settings" && ready) refreshTileNotes(false)
         var keep = tabList.length ? tabList[Math.min(tabIndex, tabList.length - 1)].id : "home"
         tabList = [{ id: "browser", title: "Browser" }].concat((view.tabOrder || []).map(function (t) { return { id: t, title: tabName(t) } })
                     .concat([{ id: "new", title: "+ Mosaic" }, { id: "settings", title: "Settings" }]))
@@ -850,5 +983,6 @@ Window {
 
     // ================================================================ overlays
     Menu { id: menu; anchors.fill: parent; th: th; z: 20 }
+    Flows { id: flows; w: win }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
 }

@@ -368,7 +368,8 @@ def shots(app, win, out):
              ('04-mosaic', ['b', '@m:couch']), ('05-folder', ['right', 'right', 'a']),
              ('06-mosaic-options-from-tabs', ['b', 'b', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
              ('08-keyboard', ['b', 'right', 'a']), ('09-settings', ['b', 'right', 'down']),
-             ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left'])]
+             ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left']),
+             ('12-wifi', ['@settings', 'a']), ('13-bluetooth', ['b', 'right', 'a']), ('14-sound', ['b', 'down', 'a'])]
     run_steps(app, win, out, steps)
     return app.exec()
 
