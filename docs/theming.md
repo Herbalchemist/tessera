@@ -157,6 +157,9 @@ Generated from the launcher's schema (`STOCK_THEME` in `main/theming.js`). The i
 | `shadow` | Tile shadow (`--shadow`) | range | 0 to 100, step 10 (%) | `100` |
 | `tabShadow` | Tab highlight shadow (`--tab-shadow`) | range | 0 to 100, step 10 (%) | `100` |
 | `selectRing` | Selection outline (`--ring`) | choice | `0px` None<br>`2px` Thin<br>`3px` Normal<br>`5px` Thick | `"3px"` |
+| `addTile` | Add tile outline (`--add-border`) | choice | `dashed` Dashed<br>`solid` Solid<br>`none` None | `"dashed"` |
+| `clockScale` | Clock size (`--clock-scale`) | range 60–180 % | | `100` |
+| `tabAlign` | Menu bar alignment (`--tab-align`) | choice | `center` Centered<br>`flex-start` Left<br>`flex-end` Right | `"center"` |
 
 ### Colors
 

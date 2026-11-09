@@ -55,6 +55,9 @@ QtObject {
     readonly property real borderW: px("borderW", "0px")
     readonly property real shadow: pct("shadow", 1)
     readonly property real tabShadow: pct("tabShadow", 1)
+    readonly property string addTile: ["dashed", "solid", "none"].indexOf(val("addTile", "dashed")) >= 0 ? val("addTile", "dashed") : "dashed"
+    readonly property real clockScale: pct("clockScale", 1)
+    readonly property string tabAlign: ["center", "flex-start", "flex-end"].indexOf(val("tabAlign", "center")) >= 0 ? val("tabAlign", "center") : "center"
     readonly property real ring: px("selectRing", "3px")
 
     // ---- background

@@ -1409,3 +1409,8 @@ body[data-input="mouse"] footer b[data-g="0"], body[data-input="mouse"] footer b
 .tour-try.done { background: color-mix(in srgb, var(--ok) 18%, transparent); }
 .tour-do { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 8px 14px; border: 0; border-radius: var(--radius); font: inherit; font-weight: 600; font-size: 0.95rem; color: var(--on-accent); background: var(--accent); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); cursor: pointer; }
 .tour-do b { display: inline-flex; min-width: 1.6em; justify-content: center; padding: 1px 6px; border-radius: 0.4em; background: color-mix(in srgb, var(--on-accent) 18%, transparent); }
+
+/* Theme Settings: the add-tile outline, the clock's size, and where the tabs sit in a bar across the screen */
+.card.kind-add, .card.big { border-style: var(--add-border, dashed); }
+#clockbar .cb-time, #clockbar .cb-date { zoom: var(--clock-scale, 1); }
+body[data-nav="top"] > header, body[data-nav="bottom"] > header, body[data-nav="bottom-dock"] > header { justify-content: var(--tab-align, center); }

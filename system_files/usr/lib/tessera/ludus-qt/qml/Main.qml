@@ -561,7 +561,8 @@ Window {
                 width: header.width - 2 * side
                 y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.headerPad
                 spacing: header.nav === "bottom-bar" ? 0 : 28
-                Item { Layout.fillWidth: header.nav !== "top-left"; visible: header.nav !== "bottom-bar" }
+                readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
+                Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" }
                 HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar" }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
@@ -579,7 +580,7 @@ Window {
                 }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 HintKey { visible: header.hints; th: th; label: "RB"; round: header.nav === "bottom-bar" }
-                Item { Layout.fillWidth: true; visible: header.nav !== "bottom-bar" }
+                Item { Layout.fillWidth: !(headerRow.alignable && th.tabAlign === "flex-end"); visible: header.nav !== "bottom-bar" }
             }
             Column {
                 visible: header.nav === "left"
@@ -616,7 +617,7 @@ Window {
                     color: th.mix(th.accent, Qt.color("#000000"), 0.1)
                     Text { anchors.centerIn: parent; text: "☺"; color: "#ffffff"; font.pixelSize: parent.height * 0.55 }
                 }
-                Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: clock.time; color: th.text; font.pixelSize: 1.05 * th.rem; font.weight: Font.DemiBold }
+                Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: clock.time; color: th.text; font.pixelSize: 1.05 * th.rem * th.clockScale; font.weight: Font.DemiBold }
             }
         }
         Row {
@@ -627,7 +628,7 @@ Window {
             spacing: th.parts.tabs === "pivots" ? 14 : 18
             layoutDirection: th.parts.tabs === "pivots" ? Qt.RightToLeft : Qt.LeftToRight
             z: 5
-            Text { anchors.verticalCenter: parent.verticalCenter; text: clock.time; color: th.text; font.pixelSize: (th.parts.tabs === "pivots" ? 1.05 : 1.15) * th.rem; font.weight: th.parts.tabs === "pivots" ? Font.Normal : Font.Medium }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: clock.time; color: th.text; font.pixelSize: (th.parts.tabs === "pivots" ? 1.05 : 1.15) * th.rem * th.clockScale; font.weight: th.parts.tabs === "pivots" ? Font.Normal : Font.Medium }
             Rectangle {
                 width: (th.parts.tabs === "pivots" ? 2.3 : 2.2) * th.rem; height: width
                 radius: th.parts.tabs === "pivots" ? 0 : width / 2
@@ -640,8 +641,8 @@ Window {
             anchors.horizontalCenter: parent.horizontalCenter
             y: header.y + header.height - header.height * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 0.58 : 0.4) - height / 2
             z: 3
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.time; color: th.text; font.pixelSize: th.clamp(1.8 * th.rem, 6.5 * th.vh, 3.6 * th.rem); font.weight: Font.DemiBold; font.letterSpacing: 2 }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.date; color: th.muted; font.pixelSize: th.clamp(0.85 * th.rem, 2.4 * th.vh, 1.3 * th.rem); font.weight: Font.DemiBold }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.time; color: th.text; font.pixelSize: th.clamp(1.8 * th.rem, 6.5 * th.vh, 3.6 * th.rem) * th.clockScale; font.weight: Font.DemiBold; font.letterSpacing: 2 }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.date; color: th.muted; font.pixelSize: th.clamp(0.85 * th.rem, 2.4 * th.vh, 1.3 * th.rem) * th.clockScale; font.weight: Font.DemiBold }
         }
         QtObject {
             id: clock

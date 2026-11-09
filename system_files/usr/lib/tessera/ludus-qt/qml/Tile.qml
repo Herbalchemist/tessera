@@ -18,6 +18,8 @@ Item {
     readonly property bool hasArt: t.art === true
     readonly property bool isAdd: t.kind === "add"
     readonly property bool dashed: isAdd || t.big === true || t.kind === "folder"
+    // add tiles follow the theme's "Add tile outline" setting; folders are always dashed
+    readonly property string outline: t.kind === "folder" ? "dashed" : dashed ? th.addTile : "solid"
     readonly property real r: th.cardRadius
 
     scale: !picked || grows ? 1 : frame === "glow" ? 1.08 : frame === "framed" ? 1 : 1.04
@@ -67,7 +69,7 @@ Item {
              : tile.t.kind === "action" ? th.mix(th.card, th.ok, 0.08)
              : th.card
         gradient: tile.look === "glossy" && !tile.isAdd ? glossy : tile.look === "bezel" && !tile.isAdd ? bezel : null
-        border.width: tile.look === "bezel" ? 3 : tile.dashed && !tile.picked ? 2 : tile.frame === "halo" && tile.picked ? Math.max(2, th.borderW) : th.borderW
+        border.width: tile.look === "bezel" ? 3 : tile.dashed && !tile.picked ? (tile.outline === "solid" ? 2 : 0) : tile.frame === "halo" && tile.picked ? Math.max(2, th.borderW) : th.borderW
         border.color: tile.frame === "halo" && tile.picked ? th.glowRing
                     : tile.look === "bezel" ? th.mix(th.border, Qt.color("#ffffff"), 0.4)
                     : tile.dashed ? (tile.picked ? "transparent" : th.border) : th.border
@@ -181,6 +183,28 @@ Item {
                 font.pixelSize: (tile.t.big === true ? 1.2 : 1) * th.rem
                 wrapMode: Text.Wrap
             }
+        }
+    }
+    Canvas {     // the dashed outline of add tiles and folders
+        anchors.fill: parent
+        visible: tile.dashed && !tile.picked && tile.outline === "dashed" && tile.look !== "bezel"
+        z: 2
+        onVisibleChanged: requestPaint()
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        Connections { target: th; function onBorderChanged() { requestPaint() } }
+        onPaint: {
+            var c = getContext("2d"), r = Math.min(tile.r, width / 2, height / 2)
+            c.clearRect(0, 0, width, height)
+            c.lineWidth = 2
+            c.strokeStyle = th.border
+            c.setLineDash([6, 4])
+            c.beginPath()
+            c.moveTo(r + 1, 1); c.lineTo(width - r - 1, 1); c.arcTo(width - 1, 1, width - 1, r + 1, r - 1)
+            c.lineTo(width - 1, height - r - 1); c.arcTo(width - 1, height - 1, width - r - 1, height - 1, r - 1)
+            c.lineTo(r + 1, height - 1); c.arcTo(1, height - 1, 1, height - r - 1, r - 1)
+            c.lineTo(1, r + 1); c.arcTo(1, 1, r + 1, 1, r - 1)
+            c.closePath(); c.stroke()
         }
     }
 }
