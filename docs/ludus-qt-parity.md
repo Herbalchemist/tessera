@@ -53,7 +53,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). first-run welcome still to do
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
-- ⬜ Add-ons: store, shards (signed / unsigned with the admin switch), widgets, themes, reload
+- 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address wait for the browser
 - 🟨 Report a problem (save, read, delete, build the GitHub issue; opening it waits for the browser)
 - 🟡 Power and Opus — sleep, restart, shut down not yet
 - ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover

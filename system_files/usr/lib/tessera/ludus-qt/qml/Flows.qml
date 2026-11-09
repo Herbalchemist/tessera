@@ -1363,4 +1363,209 @@ QtObject {
             })
         })
     }
+
+    // ------------------------------------------------------------------ Add-ons
+    function inert(label, sub) { return { label: label, sub: sub, info: true } }
+    function plural(n, one, many) { return n + " " + (n === 1 ? one : many || one + "s") }
+    // the shards request; the PIN only if main says it needs one
+    function shardsCall(op, p) {
+        return w.dev("shards", op, p).then(function (r) {
+            if (r && r.needPin) return w.requirePin().then(function (ok) { return ok ? w.dev("shards", op, p) : null })
+            return r
+        })
+    }
+    function addonsCall(op, p) {
+        return w.dev("addons", op, p).then(function (r) {
+            if (r && r.needPin) return w.requirePin().then(function (ok) { return ok ? w.dev("addons", op, p) : null })
+            return r
+        })
+    }
+    function addons() {
+        if (w.menuUp()) return
+        var st = { view: "top", op: "list", at: "" }
+        var loop = function () {
+            return w.dev("addons", st.op).then(function (info) {
+                st.op = "list"
+                if (!info || !info.widgets) { w.setStatus("Couldn't read your add-ons.", true); return null }
+                var items, title, body = ""
+                var v = st.view
+                if (v === "top") {
+                    title = "Add-ons"
+                    items = [
+                        { key: "h:inst", label: "Installed", header: true },
+                        { key: "widgets", label: "Widgets", sub: info.widgets.length + " installed" + (info.rejected.length ? " · " + plural(info.rejected.length, "problem") : ""), view: "widgets" },
+                        { key: "themes", label: "Themes", sub: info.themes.length ? info.themes.length + " installed" : "none installed", view: "themes" },
+                        { key: "packs", label: "Shards", sub: info.packs.length + " installed" + (info.rejectedPacks.length ? " · " + plural(info.rejectedPacks.length, "problem") : ""), view: "packs" },
+                        { key: "builtin", label: "Built in", sub: info.presets.map(function (x) { return x.name }).join(", "), view: "builtin" },
+                        { key: "h:more", label: "Get more", header: true },
+                        { key: "store", label: "Get add-ons", sub: "from the Tessera add-on list (needs internet)", op: "store" },
+                        { key: "folders", label: "Where to put downloads", sub: "widgets, themes, shards, art, fonts, sounds", view: "folders" },
+                        { key: "reload", label: "↻  Reload add-ons", op: "reload" }
+                    ]
+                } else if (v === "widgets") {
+                    title = "Add-ons · Widgets (Select removes one)"
+                    items = info.widgets.map(function (x) { return { key: "w:" + x.id, label: x.name, sub: [x.author, x.size.w + " × " + x.size.h + (x.resizable ? " · resizable" : "")].filter(Boolean).join(" · "), rm: { dir: "widgets", id: x.id } } })
+                    info.rejected.forEach(function (x) { items.push(Object.assign(inert("⚠  " + x.id, x.reason), { key: "x:" + x.id })) })
+                    if (!items.length) items.push(inert("No widgets installed yet", info.dirs.widgets))
+                } else if (v === "themes") {
+                    title = "Add-ons · Themes (Select to switch)"
+                    items = info.allThemes.map(function (t) { return { key: "t:" + t.id, label: t.name, sub: t.builtin ? "built in" : (t.author || ""), theme: t.id } })
+                    if (info.themes.length) items.push({ key: "rmthemes", label: "Remove a theme…", view: "rmthemes" })
+                    items.push(Object.assign(inert("Theme packs go in", info.dirs.themes), { key: "dir" }))
+                } else if (v === "rmthemes") {
+                    title = "Add-ons · Remove a theme (Select removes it)"
+                    items = info.themes.map(function (t) { return { key: "t:" + t.id, label: t.name, sub: t.author || "", rm: { dir: "themes", id: t.id } } })
+                    if (!items.length) items.push(inert("No downloaded themes", ""))
+                } else if (v === "packs") {
+                    title = "Add-ons · Shards"
+                    items = info.packs.map(function (p) { return { key: "p:" + p.id, label: p.name, sub: [p.running ? "On" : p.enabled ? "On, but not running" : "Off", p.official ? "Official" : "Unverified", p.author, p.version].filter(Boolean).join(" · "), shard: p.id } })
+                    info.rejectedPacks.forEach(function (x) { items.push(Object.assign(inert("⚠  " + x.id, x.reason), { key: "x:" + x.id })) })
+                    items.push({ key: "safety", label: "Shard safety…", view: "packsSettings" })
+                    if (!info.packs.length && !info.rejectedPacks.length) items.push(Object.assign(inert("No shards installed yet", info.dirs.packs), { key: "none" }))
+                } else if (v === "packsSettings") {
+                    title = "Add-ons · Shard safety"
+                    body = "What a shard is: A shard is real code with Tessera's own access to this device: your files, your hardware, your settings. It is not sandboxed the way a widget is, and nothing here checks that it's safe, only whose it is.\n\nOfficial: Signed by the Tessera project itself, a real check against a key only the project holds, not just a label a shard can give itself.\n\nUnverified: Nobody vouches for this one; it didn't come signed by the Tessera project. It runs with the same reach Tessera itself has: your files, your hardware, your settings. Same deal as running any program you downloaded from somewhere other than an app store. This toggle is just how you tell Tessera you're making that choice."
+                    items = [
+                        { key: "pin", label: "Require PIN to install or remove a shard", sub: info.codeAddons.pinRequired ? "On" : "Off", op: "togglePacksPin" },
+                        { key: "unv", label: "Allow unverified shards", sub: info.codeAddons.allowUnverified ? "On: anything, not just Official" : "Off: Official (signed by Tessera) only", op: "toggleUnverified" }
+                    ]
+                } else if (v === "builtin") {
+                    title = "Add-ons · Built in"
+                    items = info.presets.map(function (x) { return Object.assign(inert(x.name, x.description || ""), { key: "b:" + x.name }) })
+                } else {
+                    title = "Add-ons · Where downloads go"
+                    items = [["Widgets", info.dirs.widgets], ["Themes", info.dirs.themes], ["Shards", info.dirs.packs], ["Art", info.dirs.art], ["Fonts", info.dirs.fonts], ["Sounds", info.dirs.sounds]].map(function (x) { return Object.assign(inert(x[0], x[1]), { key: "f:" + x[0] }) })
+                }
+                var at = v === "top" ? Math.max(1, indexOfKey(items, st.at)) : 0
+                return w.pick(title, items, at, { body: body }).then(function (it) {
+                    if (!it) {
+                        if (v === "top") return null
+                        st.view = v === "rmthemes" ? "themes" : v === "packsSettings" ? "packs" : "top"
+                        return loop()
+                    }
+                    if (v === "top") st.at = it.key
+                    if (it.rm) {
+                        return w.confirmYes("Remove “" + it.label + "”? Its folder is deleted from your Tessera folder.", "Remove").then(function (y) {
+                            if (!y) return
+                            return w.requirePin().then(function (ok) {
+                                if (!ok) return
+                                return w.dev("addons", "remove", it.rm).then(function (r) {
+                                    w.setStatus(r.ok ? "Removed " + it.label + "." : r.error, !r.ok)
+                                    if (r.ok && it.rm.dir === "widgets") return w.dev("library", "none", {}).then(function (lr) { if (lr && lr.view) w.applyView(lr.view) })
+                                })
+                            })
+                        }).then(loop)
+                    }
+                    if (it.op === "store") return addonStore().then(loop)
+                    if (it.shard) return shard(it.shard).then(loop)
+                    if (it.op === "togglePacksPin" || it.op === "toggleUnverified") {
+                        var apiOp = it.op === "togglePacksPin" ? "packsPinRequired" : "packsAllowUnverified"
+                        var next = it.op === "togglePacksPin" ? !info.codeAddons.pinRequired : !info.codeAddons.allowUnverified
+                        return addonsCall(apiOp, { value: next }).then(function (r) { if (r) w.setStatus(r.ok ? "Updated." : r.error || "Couldn't change that.", !r.ok) }).then(loop)
+                    }
+                    if (it.view) st.view = it.view
+                    else if (it.op === "reload") st.op = "rescan"
+                    else if (it.theme) {
+                        return w.dev("settings", "themeUse", { id: it.theme }).then(function (r) {
+                            if (r && r.theme) w.applyTheme(r.theme)
+                            w.setStatus("Theme: " + it.label)
+                        }).then(loop)
+                    }
+                    return loop()
+                })
+            })
+        }
+        loop()
+    }
+    // One shard: what it is, on or off, its pages, and removing it
+    function shard(id) {
+        return w.dev("addons", "list").then(function (info) {
+            var s = (info.packs || []).filter(function (x) { return x.id === id })[0]
+            if (!s) return null
+            var items = []
+            if (s.running) s.panels.forEach(function (pn) { items.push({ label: pn.title, sub: "open", panel: pn.index }) })
+            items.push(s.enabled ? { label: "Turn off", op: "disable" } : { label: "Turn on", sub: s.official ? "Official: signed by Tessera" : "Unverified: nobody vouches for it", op: "enable" })
+            items.push({ label: "Remove…", op: "remove", danger: true })
+            var body = [s.description, s.official ? "Official: signed by the Tessera project." : "Unverified: " + s.reason + ". It would run with Tessera's own access to this device.", s.error ? "Not running: " + s.error : ""].filter(Boolean).join("\n\n")
+            return w.pick("Shards · " + s.name, items, 0, { body: body }).then(function (it) {
+                if (!it) return null
+                if (it.panel !== undefined) return shardPanel(id, it.panel, it.label).then(function () { return shard(id) })
+                if (it.op === "remove") {
+                    return w.confirmYes("Remove “" + s.name + "”? Its folder is deleted from your Tessera folder.", "Remove").then(function (y) {
+                        if (!y) return shard(id)
+                        return addonsCall("remove", { dir: "packs", id: id }).then(function (r) {
+                            w.setStatus(r && r.ok ? "Removed " + s.name + "." : (r && r.error) || "Couldn't remove that.", !(r && r.ok))
+                            return r && r.ok ? null : shard(id)
+                        })
+                    })
+                }
+                var go = function () {
+                    return shardsCall(it.op, { id: id }).then(function (r) { if (r) w.setStatus(r.ok ? r.message : r.error, !r.ok) }).then(function () { return shard(id) })
+                }
+                if (it.op === "enable" && !s.official) return w.confirmYes("Turn on “" + s.name + "”? It isn't signed by Tessera, and it would run with Tessera's own access to this device: your files, your hardware, your settings.", "Turn on").then(function (y) { return y ? go() : shard(id) })
+                return go()
+            })
+        })
+    }
+    // A page a shard draws: its text, and rows that can each run one of its actions
+    function shardPanel(id, panel, title) {
+        var inner = false
+        var show = function (r) {
+            if (!r) return null
+            if (!r.ok) { w.setStatus(r.error, true); return null }
+            var v = r.view
+            if (v.message) w.setStatus(v.message)
+            if (v.openUrl) return notYet("The browser")
+            var items = v.items.length ? v.items.map(function (x, i) { return x.action ? { key: "a" + i, label: x.label, sub: x.sub, act: x.action } : { key: "a" + i, label: x.label, sub: x.sub, info: true } }) : [{ label: "Nothing to show", info: true }]
+            var first = items.findIndex(function (x) { return x.act })
+            return w.pick(title, items, Math.max(0, first), { body: v.body }).then(function (it) {
+                if (!it) {
+                    if (!inner) return null
+                    inner = false
+                    return shardsCall("panel", { id: id, panel: panel }).then(show)
+                }
+                if (!it.act) return show(r)
+                return shardsCall("action", { id: id, panel: panel, action: it.act }).then(function (res) {
+                    if (res && res.ok && (res.view.items.length || res.view.body)) inner = true
+                    if (res && res.ok && !res.view.items.length && !res.view.body && !res.view.openUrl) {      // only a message: show it and stay on this page
+                        if (res.view.message) w.setStatus(res.view.message)
+                        return shardsCall("panel", { id: id, panel: panel }).then(function (again) { if (again && again.ok) delete again.view.message; return show(again) })
+                    }
+                    return show(res)
+                })
+            })
+        }
+        return shardsCall("panel", { id: id, panel: panel }).then(show)
+    }
+    // Get add-ons: the Tessera add-on list, installed with one press
+    function addonStore() {
+        w.setStatus("Getting the add-on list…")
+        return shardsCall("catalog", { fresh: true }).then(function (r) {
+            w.setStatus("")
+            if (!r) return null
+            if (!r.ok) { w.setStatus(r.error, true); return null }
+            var kinds = { shard: "Shard", widget: "Widget", theme: "Theme" }
+            var loop = function (r) {
+                var items = r.addons.map(function (a, i) {
+                    return { key: "a:" + a.id, label: a.name, addon: a, sub: [kinds[a.kind], a.version, a.installed ? (a.update ? "update from " + a.installedVersion : "installed") : fmtBytes(a.size)].filter(Boolean).join(" · ") }
+                })
+                if (!items.length) items.push({ label: "The list is empty for now", info: true })
+                return w.pick("Get add-ons", items, 0, { body: "Add-ons from the Tessera project. Shards are code: they only run once you turn them on in Add-ons > Shards." }).then(function (it) {
+                    if (!it || !it.addon) return null
+                    var a = it.addon
+                    var what = [a.description, a.author ? "By " + a.author + "." : "", a.requires ? "Needs " + a.requires + "." : "", a.kind === "shard" ? "A shard is code with Tessera's own access to this device. Installing it does not turn it on." : ""].filter(Boolean).join(" ")
+                    var verb = a.update ? "Update" : a.installed ? "Install again" : "Install"
+                    return w.confirmYes(verb + " “" + a.name + "” (" + fmtBytes(a.size) + ")? " + what, a.update ? "Update" : "Install").then(function (y) {
+                        if (!y) return loop(r)
+                        w.setStatus("Downloading " + a.name + "…")
+                        return shardsCall("install", { id: a.id }).then(function (done) {
+                            w.setStatus(done ? (done.ok ? done.message : done.error) : "", Boolean(done && !done.ok))
+                            return shardsCall("catalog", {})
+                        }).then(function (again) { return loop(again && again.ok ? again : r) })
+                    })
+                })
+            }
+            return loop(r)
+        })
+    }
 }

@@ -377,7 +377,8 @@ def shots(app, win, out):
              ('', ['b']), ('', ['b']), ('', ['right']), ('14-bluetooth', ['a']),
              ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right']),
              ('', ['b']), ('', ['down']), ('17-keyboard-menu', ['a']), ('', ['b']), ('', ['left']), ('18-controller-menu', ['a']),
-             ('', ['b']), ('', ['b']), ('', ['run:_storage']), ('', []), ('', []), ('19-storage', [])]
+             ('', ['b']), ('', ['b']), ('', ['run:_storage']), ('', []), ('', []), ('19-storage', []),
+             ('', ['b']), ('', ['run:_addons']), ('', []), ('20-addons', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 

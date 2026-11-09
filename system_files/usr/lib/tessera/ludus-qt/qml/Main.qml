@@ -345,6 +345,7 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_addons") return flows.addons()
         if (id === "_storage") return flows.storage()
         if (id === "_profiles") return flows.profiles()
         if (id === "_pin") return flows.pin()
