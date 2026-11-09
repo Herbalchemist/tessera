@@ -301,4 +301,184 @@ QtObject {
             return loop()
         }).then(function () { w.refreshTileNotes(true) })
     }
+
+    // ------------------------------------------------------------------ shared by the settings menus
+    // rows after a folded heading are left out until it is opened again
+    function folded(items, closed) {
+        var out = [], skip = false
+        items.forEach(function (it) {
+            if (it.header) { skip = Boolean(it.fold && closed[it.fold]); if (it.fold) it.label = (closed[it.fold] ? "▸ " : "▾ ") + it.label.replace(/^[▸▾] /, "") }
+            else if (skip) return
+            out.push(it)
+        })
+        return out
+    }
+    function indexOfKey(items, key) { var i = items.findIndex(function (x) { return x.key === key }); return i < 0 ? 0 : i }
+    // what is still to come in this version: said plainly, and the full Ludus does it meanwhile
+    function notYet(title) { return w.notice(title, "This part comes to this version next. It is in the full Ludus (Settings › Go back) until then.") }
+    function choose(title, table, current, apply) {
+        var opts = Object.keys(table)
+        return w.pick(title, opts.map(function (v) { return { label: table[v], sub: v === current ? "current" : "", v: v } }), Math.max(0, opts.indexOf(current))).then(function (it) { return it ? apply(it.v) : null })
+    }
+    function chooseNumber(title, current, lo, hi, step, apply) {
+        var vals = []
+        for (var v = lo; v <= hi; v += step) vals.push(v)
+        return w.pick(title, vals.map(function (x) { return { label: x + "%", sub: x === current ? "current" : "", v: x } }), Math.max(0, vals.indexOf(current))).then(function (it) { return it ? apply(it.v) : null })
+    }
+
+    // ------------------------------------------------------------------ Controller
+    readonly property var padLabels: ({
+        rumble: { off: "Off", low: "Low", normal: "Normal", high: "High" },
+        style: { split: "Left trigger = left motor, right = right", both: "Both motors together", pulse: "Pulsing" },
+        glyphs: { auto: "Automatic (match my controller)", xbox: "Xbox  (A B X Y)", playstation: "PlayStation  (✕ ○ □ △)", nintendo: "Nintendo  (B A Y X)" },
+        joycons: { ask: "Ask me: I press SL + SR, or L + R (like a Switch)", together: "Join a left and a right by themselves", separate: "Every Joy-Con its own player (sideways)" },
+        repeat: { slow: "Slower", standard: "Standard", fast: "Faster" },
+        confirm: { auto: "Automatic: the right button on Switch controllers, the bottom one on others", bottom: "The bottom button confirms, the right one goes back (every controller)", right: "The right button confirms, the bottom one goes back (every controller)" },
+        browserCursor: { right: "Right stick moves the cursor, left stick scrolls", left: "Left stick moves the cursor, right stick scrolls" },
+        guideButton: { "menu-home": "Press opens the guide, hold goes Home", "home-menu": "Press goes Home, hold opens the guide", menu: "Press or hold opens the guide" },
+        guideDesktop: { auto: "On, except while Steam is running", on: "Always on", off: "Off" },
+        oskSize: { dock: "Docked: a compact panel in the middle", wide: "Wide: bigger keys across the whole screen" },
+        guideStyle: { side: "A panel from the side", float: "A floating card in the middle", compact: "Compact: a narrow panel, smaller text" }
+    })
+    function padItems(st) {
+        var p = st.pad, L = padLabels
+        var lab = function (t, k, d) { return L[t][p[k]] || L[t][d] }
+        var remapped = Object.keys(p.remap || {}).length > 0
+        return [
+            { key: "test", label: "Test your controller", sub: "live buttons, sticks and triggers", op: "test" },
+            { key: "guideButton", label: "Guide button", sub: lab("guideButton", "guideButton", "menu-home"), op: "guideButton" },
+            { key: "guideStyle", label: "Guide style", sub: lab("guideStyle", "guideStyle", "side"), op: "guideStyle" },
+            { key: "guideDesktop", label: "Guide on the desktop", sub: lab("guideDesktop", "guideDesktop", "auto"), op: "guideDesktop" },
+            { key: "mapping", label: "Button mapping", sub: remapped ? "Changed" : "Standard", op: "mapping" },
+            { key: "h:sticks", label: "Sticks and triggers", header: true, fold: "pad.sticks" },
+            { key: "repeat", label: "Repeat speed", sub: (L.repeat[p.repeat] || "Standard") + " · holding a direction, in menus and the browser", op: "repeat" },
+            { key: "deadzone", label: "Stick deadzone", sub: p.deadzone + "%", op: "deadzone" },
+            { key: "calib", label: "Calibrate sticks", sub: "", op: "calib" },
+            { key: "trigger", label: "Trigger sensitivity", sub: p.trigger + "% to register", op: "trigger" },
+            { key: "h:rumble", label: "Vibration", header: true, fold: "pad.rumble" },
+            { key: "rumble", label: "Vibration strength", sub: L.rumble[p.rumble], op: "rumble" },
+            { key: "style", label: "Vibration style", sub: L.style[p.style], op: "style" },
+            { key: "h:labels", label: "Labels", header: true },
+            { key: "glyphs", label: "Button labels", sub: L.glyphs[p.glyphs].split("  (")[0], op: "glyphs" },
+            { key: "confirm", label: "Confirm button", sub: remapped ? "Your own (Button mapping) where set" : (L.confirm[p.confirm] || L.confirm.auto).split(":")[0].split(" confirms")[0], op: "confirm" },
+            { key: "osk", label: "On-screen keyboard", sub: (L.oskSize[p.oskSize] || L.oskSize.dock).split(":")[0], op: "oskSize" },
+            { key: "h:joycon", label: "Joy-Con", header: true },
+            { key: "grip", label: "Change grip/order", sub: "join or split Joy-Cons, see who is which player", op: "grip" },
+            { key: "joycons", label: "Joy-Con setup", sub: L.joycons[p.joycons] || L.joycons.ask, op: "joycons" },
+            { key: "h:browser", label: "Browser", header: true, fold: "pad.browser" },
+            { key: "bcursor", label: "Cursor stick", sub: p.browserCursor === "left" ? "Left stick (right stick scrolls)" : "Right stick (left stick scrolls)", op: "browserCursor" },
+            { key: "cspeed", label: "Cursor speed", sub: p.cursorSpeed + "%", op: "cursorSpeed" },
+            { key: "sspeed", label: "Scroll speed", sub: p.scrollSpeed + "%", op: "scrollSpeed" },
+            { key: "clicks", label: "Clicks", sub: "RT clicks, LT right-clicks", info: true }
+        ]
+    }
+    function padSet(st, key, value) {
+        return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) st.pad = Object.assign({}, st.pad, r.pad); else w.setStatus(r.error || "Couldn't save that.", true) })
+    }
+    function pad() {
+        if (w.menuUp()) return
+        w.dev("settings", "padGet").then(function (r) {
+            if (!r.pad) return w.notice("Controller", "Couldn't read the controller settings.")
+            var st = { pad: r.pad, at: "", closed: {} }
+            var L = padLabels
+            var choice = function (title, key) { return choose(title, L[key], st.pad[key], function (v) { return padSet(st, key, v) }) }
+            var number = function (title, key, lo, hi, step) { return chooseNumber(title, st.pad[key], lo, hi, step, function (v) { return padSet(st, key, v) }) }
+            var loop = function () {
+                var items = folded(padItems(st), st.closed)
+                return w.pick("Controller", items, indexOfKey(items, st.at)).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    if (it.info) return loop()
+                    var work = Promise.resolve()
+                    if (it.fold) st.closed[it.fold] = !st.closed[it.fold]
+                    else if (it.op === "test" || it.op === "mapping" || it.op === "calib" || it.op === "grip") work = notYet(it.label)
+                    else if (it.op === "guideButton") work = choice("The Guide button (Xbox, PS or Home button)", "guideButton")
+                    else if (it.op === "oskSize") work = choice("On-screen keyboard size", "oskSize")
+                    else if (it.op === "guideStyle") work = choice("How the guide looks (notifications sit beside it on the right)", "guideStyle")
+                    else if (it.op === "guideDesktop") work = choice("The guide in Opus (Steam takes the button for itself while it runs)", "guideDesktop")
+                    else if (it.op === "browserCursor") work = choice("In the browser, which stick moves the cursor?", "browserCursor")
+                    else if (it.op === "cursorSpeed") work = number("Cursor speed · how fast the browser cursor moves", "cursorSpeed", 10, 100, 10)
+                    else if (it.op === "scrollSpeed") work = number("Scroll speed · how fast pages scroll at full tilt", "scrollSpeed", 10, 100, 10)
+                    else if (it.op === "deadzone") work = number("Stick deadzone · ignore small movements", "deadzone", 0, 40, 5)
+                    else if (it.op === "trigger") work = number("Trigger sensitivity · how far to pull before it counts", "trigger", 0, 50, 5)
+                    else if (it.op === "rumble") work = choice("Vibration strength", "rumble")
+                    else if (it.op === "style") work = choice("Vibration style (the test uses this)", "style")
+                    else if (it.op === "glyphs") work = choice("Button labels", "glyphs")
+                    else if (it.op === "repeat") work = choice("How fast a held stick or D-pad keeps moving (in menus, on tiles and in the browser)", "repeat")
+                    else if (it.op === "confirm") work = choice("Which button confirms? By position: the other of the two goes back; the left and top buttons stay. The launcher, browser and dialogs all use this.", "confirm")
+                    else if (it.op === "joycons") work = choice("How Joy-Cons are set up", "joycons")
+                    return work.then(loop)
+                })
+            }
+            return loop()
+        })
+    }
+
+    // ------------------------------------------------------------------ Keyboard & mouse
+    readonly property var kbLabels: ({
+        hints: { auto: "Automatic (whatever I used last)", controller: "Always controller buttons", keyboard: "Always keyboard keys" },
+        wheel: { move: "Moves the selection", tabs: "Switches tabs (menus still scroll)", off: "Does nothing" }
+    })
+    function keyboardMenu() {
+        if (w.menuUp()) return
+        Promise.all([w.rawCall("__qt", ["kbm"]), w.rawCall("__qt", ["kb"])]).then(function (r) {
+            var kbm = r[0], st = { kb: r[1], at: "", closed: {} }
+            if (!kbm || !st.kb) return w.notice("Keyboard & mouse", "Couldn't read the keyboard settings.")
+            var presetTable = kbm.PRESET_NAMES
+            var set = function (op, payload) {
+                return w.dev("settings", op, payload).then(function (x) { if (x.ok) st.kb = x.kb; else if (x.error) w.setStatus(x.error, true); return x })
+            }
+            var labelsFor = function () {
+                var all = []
+                kbm.ACTIONS.forEach(function (a) { all = all.concat(st.kb.bindings[a] || []) })
+                return w.rawCall("__qt", ["keyLabels", all]).then(function (names) {
+                    var map = {}
+                    all.forEach(function (c, i) { map[c] = (names && names[i]) || c })
+                    return map
+                })
+            }
+            var loop = function () {
+                return labelsFor().then(function (names) {
+                    var k = st.kb
+                    var items = [
+                        { key: "preset", label: "Key layout", sub: presetTable[k.preset] || presetTable.standard, op: "preset" },
+                        { key: "hints", label: "Button hints", sub: kbLabels.hints[k.hints] || kbLabels.hints.auto, op: "hints" },
+                        { key: "h:keys", label: "Keys", header: true, fold: "kb.keys" }
+                    ]
+                    kbm.ACTIONS.forEach(function (a) { items.push({ key: "a:" + a, label: kbm.ACTION_LABELS[a], sub: (k.bindings[a] || []).map(function (c) { return names[c] }).join("  ·  "), act: a }) })
+                    var changed = JSON.stringify(k.bindings) !== JSON.stringify(kbm.PRESETS[k.preset])
+                    items.push({ key: "reset", label: "Reset keys to the layout", sub: changed ? "you changed some keys" : "nothing changed", op: "reset" })
+                    items.push({ key: "always", label: "Always", sub: "Volume keys change the volume. Esc + ← / → switches tabs, even inside a web page.", info: true })
+                    items.push({ key: "h:mouse", label: "Mouse", header: true, fold: "kb.mouse" })
+                    items.push({ key: "mouseHide", label: "Hide the pointer after", sub: k.mouseHide ? k.mouseHide + " s without moving" : "Never (while using the mouse)", op: "mouseHide" })
+                    items.push({ key: "wheel", label: "Scroll wheel", sub: kbLabels.wheel[k.wheel] || kbLabels.wheel.move, op: "wheel" })
+                    items.push({ key: "buttons", label: "Buttons", sub: "Click opens · right-click or the back thumb button goes back · middle click shows options · forward thumb button: next tab", info: true })
+                    items = folded(items, st.closed)
+                    return w.pick("Keyboard & mouse", items, indexOfKey(items, st.at)).then(function (it) {
+                        if (!it) return null
+                        st.at = it.key
+                        if (it.info) return loop()
+                        var work = Promise.resolve()
+                        if (it.fold) st.closed[it.fold] = !st.closed[it.fold]
+                        else if (it.act) work = notYet(it.label + " · keys")
+                        else if (it.op === "reset") work = set("kbReset", {})
+                        else if (it.op === "preset" || it.op === "hints" || it.op === "wheel") {
+                            var table = it.op === "preset" ? presetTable : kbLabels[it.op]
+                            var titles = { preset: "Key layout (the arrow keys always work)", hints: "Button hints at the bottom of the screen", wheel: "The scroll wheel" }
+                            work = choose(titles[it.op], table, k[it.op], function (v) {
+                                if (it.op === "preset" && changed && v !== k.preset)
+                                    return w.pick("Switching layout replaces the keys you changed", [{ label: "Switch", v: true }, { label: "Keep my keys" }]).then(function (ok) { if (ok && ok.v) return set("kbSet", { key: it.op, value: v }) })
+                                return set("kbSet", { key: it.op, value: v })
+                            })
+                        } else if (it.op === "mouseHide") {
+                            var vals = [1, 2, 3, 5, 10, 30, 0]
+                            work = w.pick("Hide the pointer after", vals.map(function (v) { return { label: v ? v + " second" + (v === 1 ? "" : "s") : "Never", sub: v === k.mouseHide ? "current" : "", v: v } }), Math.max(0, vals.indexOf(k.mouseHide))).then(function (c) { if (c) return set("kbSet", { key: "mouseHide", value: c.v }) })
+                        }
+                        return work.then(loop)
+                    })
+                })
+            }
+            return loop()
+        })
+    }
 }

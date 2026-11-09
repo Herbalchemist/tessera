@@ -101,6 +101,17 @@ Module._load = function (request, parent, isMain) {
 const event = { sender: webContents, senderFrame: webContents.mainFrame, reply() {} };
 async function serve(msg) {
   const { id, ch, args } = msg;
+  if (ch === '__qt') {
+    // Small helpers for the screen that the full Ludus does inside its own page: key names, the key tables.
+    try {
+      const kbm = require(path.join(LAUNCHER, 'keyboard-map.js'));
+      const op = String(args && args[0] || '');
+      if (op === 'keyLabels') return out({ id, ok: true, result: (args[1] || []).map((c) => kbm.label(String(c))) });
+      if (op === 'kbm') return out({ id, ok: true, result: { ACTIONS: kbm.ACTIONS, ACTION_LABELS: kbm.ACTION_LABELS, PRESET_NAMES: kbm.PRESET_NAMES, PRESETS: kbm.PRESETS, MAX_PER_ACTION: kbm.MAX_PER_ACTION } });
+      if (op === 'kb') return out({ id, ok: true, result: require(path.join(LAUNCHER, 'main', 'prefs')).kbPayload() });
+      return out({ id, ok: false, error: 'unknown' });
+    } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
+  }
   if (ch === '__art') {
     // A game picture, for the screen's image provider: the same answer the tessera-art:// scheme gives.
     try {

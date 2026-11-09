@@ -331,6 +331,8 @@ Window {
     function notice(title, body) { return pick(title, [{ label: "OK", op: "ok" }], 0, { body: body || "" }) }
     function runAction(id) {
         if (id === "_power") return flowPower()
+        if (id === "_pad") return flows.pad()
+        if (id === "_keyboard") return flows.keyboardMenu()
         if (id === "_sound") return flows.sound()
         if (id === "_wifi") return flows.wifi()
         if (id === "_bluetooth") return flows.bluetooth()

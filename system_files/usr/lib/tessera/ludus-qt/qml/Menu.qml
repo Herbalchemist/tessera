@@ -18,7 +18,7 @@ Rectangle {
     visible: false
     color: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
 
-    function pickable(i) { var it = items[i]; return Boolean(it) && !it.header && !it.info }
+    function pickable(i) { var it = items[i]; return Boolean(it) && (!it.header || Boolean(it.fold)) && !it.info }
     function fixSel(dir) {      // headings and notes can't be chosen: land on the next row that can
         var n = items.length, i = sel
         for (var k = 0; k < n; k++) { if (pickable(i)) { sel = i; return } i = (i + dir + n) % n }
@@ -108,7 +108,7 @@ Rectangle {
                 onModelChanged: Qt.callLater(function () { list.positionViewAtIndex(list.currentIndex, ListView.Contain) })
                 delegate: Rectangle {
                     id: row
-                    readonly property bool hdr: modelData.header === true
+                    readonly property bool hdr: modelData.header === true && !modelData.fold
                     readonly property bool hasBar: modelData.bar !== undefined && modelData.bar !== null
                     readonly property bool picked: index === menu.sel && !hdr && modelData.info !== true
                     readonly property color tone: modelData.danger ? th.danger : modelData.ok ? th.ok : th.accent
@@ -176,7 +176,7 @@ Rectangle {
                     model: {
                         var cur = menu.items[menu.sel], h = []
                         if (cur && cur.adjust) h.push(["← / →", "Adjust"])
-                        if (cur && !cur.header && !cur.info) h.push(["A", "Select"])
+                        if (cur && (!cur.header || cur.fold) && !cur.info) h.push(["A", cur.fold ? "Fold" : "Select"])
                         h.push(["B", "Back"])
                         return h
                     }
