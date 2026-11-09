@@ -2,6 +2,7 @@ ludus-qt: starting
 qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot theme-stock-library-1280
+qml: GEOM stock {"tab":{"x":458,"y":42,"w":104,"h":33},"tabs":{"x":153,"y":42,"w":973,"h":33},"tiles":{"x":25,"y":119,"w":1230,"h":493},"sel":{"x":513,"y":119,"w":236,"h":154},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-stock-home-1280
 shot theme-stock-settings-1280
 shot theme-stock-tabs-1280
@@ -12,6 +13,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-stock-library-1280
 shot theme-dark-library-1280
+qml: GEOM dark {"tab":{"x":458,"y":42,"w":104,"h":33},"tabs":{"x":153,"y":42,"w":973,"h":33},"tiles":{"x":203,"y":260,"w":1232,"h":208},"sel":{"x":554,"y":260,"w":160,"h":200},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-dark-home-1280
 shot theme-dark-settings-1280
 shot theme-dark-tabs-1280
@@ -22,6 +24,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-dark-library-1280
 shot theme-mosaic-library-1280
+qml: GEOM mosaic {"tab":{"x":458,"y":42,"w":104,"h":33},"tabs":{"x":153,"y":42,"w":973,"h":33},"tiles":{"x":25,"y":119,"w":1230,"h":493},"sel":{"x":513,"y":119,"w":236,"h":154},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-mosaic-home-1280
 shot theme-mosaic-settings-1280
 shot theme-mosaic-tabs-1280
@@ -32,6 +35,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-mosaic-library-1280
 shot theme-mosaic-dark-library-1280
+qml: GEOM mosaic-dark {"tab":{"x":458,"y":42,"w":104,"h":33},"tabs":{"x":153,"y":42,"w":973,"h":33},"tiles":{"x":25,"y":119,"w":1230,"h":493},"sel":{"x":513,"y":119,"w":236,"h":154},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-mosaic-dark-home-1280
 shot theme-mosaic-dark-settings-1280
 shot theme-mosaic-dark-tabs-1280
@@ -42,6 +46,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-mosaic-dark-library-1280
 shot theme-cartridge-pop-library-1280
+qml: GEOM cartridge-pop {"tab":{"x":506,"y":607,"w":68,"h":68},"tabs":{"x":308,"y":607,"w":663,"h":68},"tiles":{"x":63,"y":241,"w":1389,"h":216},"sel":{"x":532,"y":241,"w":216,"h":216},"footer":{"x":58,"y":687,"w":1165,"h":33}}
 shot theme-cartridge-pop-home-1280
 shot theme-cartridge-pop-settings-1280
 shot theme-cartridge-pop-tabs-1280
@@ -52,6 +57,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-cartridge-pop-library-1280
 shot theme-nova-black-library-1280
+qml: GEOM nova-black {"tab":{"x":237,"y":18,"w":48,"h":22},"tabs":{"x":92,"y":18,"w":504,"h":22},"tiles":{"x":-81,"y":192,"w":1476,"h":171},"sel":{"x":64,"y":192,"w":171,"h":171},"footer":{"x":0,"y":654,"w":1280,"h":49}}
 shot theme-nova-black-home-1280
 shot theme-nova-black-settings-1280
 shot theme-nova-black-tabs-1280
@@ -62,6 +68,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-nova-black-library-1280
 shot theme-dashboard-steel-library-1280
+qml: GEOM dashboard-steel {"tab":{"x":286,"y":18,"w":63,"h":29},"tabs":{"x":92,"y":18,"w":672,"h":29},"tiles":{"x":103,"y":89,"w":1073,"h":358},"sel":{"x":459,"y":89,"w":175,"h":175},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-dashboard-steel-home-1280
 shot theme-dashboard-steel-settings-1280
 shot theme-dashboard-steel-tabs-1280
@@ -72,6 +79,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-dashboard-steel-library-1280
 shot theme-indigo-cube-library-1280
+qml: GEOM indigo-cube {"tab":{"x":50,"y":203,"w":230,"h":43},"tabs":{"x":50,"y":105,"w":230,"h":338},"tiles":{"x":350,"y":24,"w":874,"h":914},"sel":{"x":785,"y":24,"w":209,"h":292},"footer":{"x":325,"y":690,"w":924,"h":30}}
 shot theme-indigo-cube-home-1280
 shot theme-indigo-cube-settings-1280
 shot theme-indigo-cube-tabs-1280
@@ -82,6 +90,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-indigo-cube-library-1280
 shot theme-channel-white-library-1280
+qml: GEOM channel-white {"tab":{"x":460,"y":641,"w":104,"h":33},"tabs":{"x":230,"y":641,"w":819,"h":33},"tiles":{"x":149,"y":38,"w":982,"h":450},"sel":{"x":640,"y":38,"w":239,"h":143},"footer":{"x":0,"y":533,"w":1280,"h":21}}
 shot theme-channel-white-home-1280
 shot theme-channel-white-settings-1280
 shot theme-channel-white-tabs-1280
@@ -92,6 +101,7 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-channel-white-library-1280
 shot theme-arcade-marquee-library-1280
+qml: GEOM arcade-marquee {"tab":{"x":415,"y":12,"w":161,"h":33},"tabs":{"x":93,"y":12,"w":1126,"h":33},"tiles":{"x":25,"y":77,"w":1230,"h":534},"sel":{"x":513,"y":77,"w":236,"h":167},"footer":{"x":0,"y":671,"w":1280,"h":49}}
 shot theme-arcade-marquee-home-1280
 shot theme-arcade-marquee-settings-1280
 shot theme-arcade-marquee-tabs-1280
