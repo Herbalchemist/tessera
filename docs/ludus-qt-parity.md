@@ -46,9 +46,9 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ All the IPC checks (ipcGuard) and security standards in SECURITY.md
 
 ## Settings
-- ⬜ Wi-Fi, Bluetooth
+- ✅ Wi-Fi, Bluetooth (live lists, pairing and joining with Cancel, password keyboard with symbols and Show, PIN prompt)
 - ⬜ Appearance: Theme Settings, Screens (resolution, refresh, orientation, restart), Display calibration
-- ⬜ Sound
+- ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - ⬜ Controller: test, Joy-Con setup (grips), buttons, confirm button, glyphs
 - ⬜ Keyboard & mouse
 - ⬜ Profiles, PIN
