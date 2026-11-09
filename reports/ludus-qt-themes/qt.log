@@ -50,8 +50,8 @@ qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus
 file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:152:169: Unable to assign [undefined] to QString
 shot tour-mosaic-dark-library-1280
 shot theme-cartridge-pop-library-1280
-qml: VIEWPORT cartridge-pop y=164 h=292 oneRow=true rows=1 selRow=0 header=506+92 clockTop=62
-qml: GEOM cartridge-pop {"tab":{"x":506,"y":517,"w":68,"h":68},"tabs":{"x":308,"y":517,"w":663,"h":68},"tiles":{"x":63,"y":190,"w":1389,"h":216},"sel":{"x":532,"y":190,"w":216,"h":216},"footer":{"x":58,"y":687,"w":1165,"h":33}}
+qml: VIEWPORT cartridge-pop y=178 h=292 oneRow=true rows=1 selRow=0 header=502+92 clockTop=62
+qml: GEOM cartridge-pop {"tab":{"x":506,"y":513,"w":68,"h":68},"tabs":{"x":308,"y":513,"w":663,"h":68},"tiles":{"x":63,"y":204,"w":1389,"h":216},"sel":{"x":532,"y":204,"w":216,"h":216},"footer":{"x":58,"y":687,"w":1165,"h":33}}
 shot theme-cartridge-pop-home-1280
 shot theme-cartridge-pop-settings-1280
 shot theme-cartridge-pop-tabs-1280
