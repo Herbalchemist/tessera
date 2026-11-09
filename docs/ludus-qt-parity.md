@@ -8,9 +8,9 @@ profiles are the same files in both, so switching never loses anything.
 Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Pages and navigation
-- 🟡 Tab bar (Browser, Home, Library, Apps, mosaics, + Mosaic, Settings), in all six tab looks — the Browser tab opens in the full Ludus until the browser port
+- 🟡 Tab bar (Browser, Home, Library, Apps, mosaics, + Mosaic, Settings), in all six tab looks — the Browser tab opens the built-in browser
 - 🟡 Every controller moves the screen; keyboard — mouse and pointer not yet; per-pad glyphs (Xbox / PlayStation / Nintendo) not yet
-- 🟡 Home: widgets on the 12 × 6 grid, add from the preset list, move / resize / remove, four widget styles — downloaded add-on widgets show their name until the browser engine port; the frosted style is a tinted pane (no blur of what is behind it yet)
+- 🟡 Home: widgets on the 12 × 6 grid, add from the preset list, move / resize / remove, four widget styles — downloaded add-on widgets show their name; the frosted style is a tinted pane (no blur of what is behind it yet)
 - ✅ Library and Apps lists
 - 🟡 Mosaics: make, rename, reorder, delete — per-page grid size, holding Y to lift a tab, pick-up-and-move tiles not yet
 - 🟡 Folders: open, back — new folder, rename, delete from inside not yet
@@ -32,16 +32,17 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Busy cursors, the boot art (unchanged files)
 
 ## The built-in browser
-- ⬜ Browser tab: open, leave with LB/RB, return without reloading
-- ⬜ All seven transitions (slide, zoom, fade, rise, flip, doors, none), screenshot curtain
-- ⬜ Framed or full screen; the frame shows title and address
-- ⬜ Address bubble and on-screen keyboard; Esc+Left/Right inside the page
-- ⬜ Controller as pointer inside pages; downloads
-- ⬜ PIN and guest rules for the browser
+- 🟨 Browser tab: opens from A or after a moment on the tab (bumping onto it), leaves with LB / RB / B, returns to the same page (QtWebEngine; CI shows the frame, the page itself has not run in CI)
+- 🟨 Transitions (slide, zoom, fade, rise, flip, doors, none) play on the live page; "doors" is a scale-and-fade, not two doors
+- 🟨 Framed or full screen; the frame shows the neighbouring tabs, the address with lock, title and loading line, corner brackets
+- 🟨 Address: Y opens the keyboard with the address selected and a row of www. .com .org .net / : ? =; the pull-out bubble animation is not ported (the keyboard's own field is used). Esc+Left/Right inside the page switch tabs
+- 🟨 Controller as pointer (sticks, triggers, scroll, d-pad keys) runs on the full Ludus's own pointer code, played into the page as real mouse and key events; downloads go to the Downloads folder under a cleaned name; every permission refused; pop-ups refused; http(s) only
+- ✅ PIN, profile PIN and guest rules (the same checks as the full Ludus, asked on the screen)
+- ⬜ The guide over the browser; "Back to the browser"
 
 ## People and safety
 - ⬜ PIN (set, change, remove; never waits for the admin PIN)
-- 🟨 Profiles ported (who's playing, switch, add, Guest options, profile options: rename, theme, PINs, admin, remove). Browser-leave on switch waits for the browser
+- 🟨 Profiles ported (who's playing, switch, add, Guest options, profile options: rename, theme, PINs, admin, remove). The page closes before switching
 - ⬜ Xbox games gate
 - ⬜ All the IPC checks (ipcGuard) and security standards in SECURITY.md
 
@@ -53,8 +54,8 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (the quick tour waits for the tour)
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
-- 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address wait for the browser
-- 🟨 Report a problem (save, read, delete, build the GitHub issue; opening it waits for the browser)
+- 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address open them in the browser
+- 🟨 Report a problem (save, read, delete, build the GitHub issue; opens in the browser)
 - 🟡 Power and Opus — sleep, restart, shut down not yet
 - ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover
 

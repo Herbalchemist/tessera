@@ -117,9 +117,30 @@ Item {
                     GradientStop { position: 1; color: th.bg }
                 }
             }
-            // the glow in two corners, and a fine grid in the accent like the backing of a display case
-            Rectangle { x: 0; y: 0; width: br.width * 0.6; height: br.height * 0.5; gradient: Gradient { GradientStop { position: 0; color: th.alpha(th.accent, 0.16) } GradientStop { position: 1; color: "transparent" } } }
-            Rectangle { x: br.width * 0.5; y: br.height * 0.55; width: br.width * 0.5; height: br.height * 0.45; rotation: 180; gradient: Gradient { GradientStop { position: 0; color: th.alpha(th.accent, 0.10) } GradientStop { position: 1; color: "transparent" } } }
+            // the glow in two corners (an ellipse of the accent, fading out)
+            Canvas {
+                anchors.fill: parent
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                Connections { target: th; function onAccentChanged() { requestPaint() } }
+                onPaint: {
+                    var c = getContext("2d")
+                    c.reset()
+                    var glow = function (cx, cy, rx, ry, a) {
+                        c.save()
+                        c.translate(cx, cy)
+                        c.scale(1, ry / rx)
+                        var g = c.createRadialGradient(0, 0, 0, 0, 0, rx)
+                        g.addColorStop(0, Qt.rgba(th.accent.r, th.accent.g, th.accent.b, a))
+                        g.addColorStop(0.7, Qt.rgba(th.accent.r, th.accent.g, th.accent.b, 0))
+                        c.fillStyle = g
+                        c.fillRect(-rx, -rx, 2 * rx, 2 * rx)
+                        c.restore()
+                    }
+                    glow(0, 0, width * 0.6, height * 0.5, 0.22)
+                    glow(width, height, width * 0.5, height * 0.45, 0.14)
+                }
+            }
             Canvas {
                 anchors.fill: parent
                 opacity: 0.07
