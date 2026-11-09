@@ -618,7 +618,7 @@ QtObject {
         }
         if (op === "settings") return leaveTo(function () { w.goSettings() })
         if (op === "profiles") return leaveTo(function () { profiles() })
-        if (op === "tour") return leaveTo(function () { notYet("The quick tour") })
+        if (op === "tour") return leaveTo(function () { w.runTour() })
         if (op === "report") return leaveTo(function () { report() })
         if (op === "sleep" || op === "restart" || op === "shutdown" || op === "desktop") {
             closeGuide(true)
@@ -886,6 +886,23 @@ QtObject {
             }).then(function (r) {
                 var end = updateEnd(r)
                 return end !== null ? end : "The update finished, but I couldn't tell whether anything new was installed. Open this screen again to see."
+            })
+        })
+    }
+    // Main noticed at start that the graphics card and this build don't match
+    function offerGraphics(g) {
+        if (w.menuUp() || gameOn) return w.setStatus("New graphics card? Settings > Update software can switch to the build made for it.")
+        return w.pick("New graphics card?", [
+            { label: "Switch to the " + buildName(g, g.need) + " build", sub: "Recommended", op: "go", ok: true },
+            { label: "Not now", sub: "Settings > Update software has it too", op: "later" }
+        ], 0, { body: "This machine has " + (g.cards.join(" + ") || "a different graphics card") + ", but Tessera is running the build for " + buildName(g, g.have) + ". The build made for this card gets the most out of it. Switching keeps your games, saves and settings." }).then(function (it) {
+            if (!it || it.op !== "go") return null
+            return graphicsSwitch(g, g.need)
+        }).then(function (note) {
+            if (!note) return null
+            var staged = /Restart to finish/.test(note)
+            return w.pick(staged ? "Ready" : "Graphics build", staged ? [{ label: "Restart now", op: "reboot", ok: true }, { label: "Later", op: "later" }] : [{ label: "OK" }], 0, { body: note }).then(function (x) {
+                if (x && x.op === "reboot") return w.dev("update", "reboot").then(function (r) { if (r && !r.ok) w.setStatus(r.error, true) })
             })
         })
     }
@@ -2333,7 +2350,7 @@ QtObject {
         }).then(function () {
             return w.dev("settings", "firstRunDone").then(function (r) {
                 if (r && r.prefs) takePrefs(r)
-                if (wantTour) return notYet("The quick tour")
+                if (wantTour) return w.runTour()
             })
         })
     }

@@ -22,6 +22,7 @@ Item {
     implicitWidth: down ? span : flow.implicitWidth
     implicitHeight: down ? flow.implicitHeight : flow.implicitHeight
 
+    function itemRect(i, target) { var it = rep.itemAt(i); if (!it) return null; var r = it.mapToItem(target, 0, 0, it.width, it.height); return { x: r.x, y: r.y, w: r.width, h: r.height } }
     function kindOf(id) { return id.indexOf("m:") === 0 ? "mosaic" : id }
     readonly property var tint: ({ browser: "#ff6a13", home: "#e60012", library: "#1aa7e8", apps: "#8e4dff", mosaic: "#f2a900", new: "#22b14c", settings: "#6f6f6f" })
 

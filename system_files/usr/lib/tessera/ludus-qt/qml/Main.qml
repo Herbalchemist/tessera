@@ -46,6 +46,7 @@ Window {
     property var place: null                // a widget being placed or resized on Home
     property alias padtest: padTestView
     property alias guideMenu: menu
+    property alias tour: tourView
     property alias grip: gripView
     property alias capture: captureView     // the controller test (Flows opens it)
     property string browserUrl: "https://duckduckgo.com/"
@@ -95,7 +96,41 @@ Window {
         function settings(op, p) { return call("settings", [op, p || {}]) }
         function launch(id) { return call("launch", [id]) }
         function addons(op, p) { return call("addons", [op, p || {}]) }
-        function systemInfo() { return call("systemInfo", []) }
+        // the guided tour: where its ring goes, and where to land when it ends
+    function tourRect(what) {
+        var r = null
+        if (what === "tabs") {
+            var bar = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
+            var p = bar.mapToItem(win.contentItem, 0, 0)
+            r = { x: p.x, y: p.y, w: bar.width, h: bar.height }
+        } else if (what.indexOf("tab:") === 0) {
+            var k = tabList.findIndex(function (t) { return t.id === what.slice(4) })
+            var bar2 = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
+            r = k >= 0 ? bar2.itemRect(k, win.contentItem) : null
+        } else if (what === "page") {
+            var q = viewport.mapToItem(win.contentItem, 0, 0)
+            r = { x: q.x, y: q.y, w: viewport.width, h: viewport.height }
+        } else if (what === "footer") {
+            var f = footerA.visible ? footerA : footerB
+            var fp = f.mapToItem(win.contentItem, 0, 0)
+            r = { x: fp.x, y: fp.y, w: f.width, h: f.height }
+        }
+        return r
+    }
+    function tourBack(b) {
+        if (!b) return
+        var k = Math.min(b.tab, tabList.length - 1)
+        if (k >= 0 && k !== tabIndex) goTab(k)
+        area = b.area || "tabs"
+    }
+    function tourLibrary() {
+        pick("Your games", [
+            { label: "Link a library drive or folder…", sub: "Tessera looks there for games", op: "roots" },
+            { label: "Scan for games now", sub: "Steam, Heroic, Lutris and your library folders", op: "scan" }
+        ]).then(function (it) { if (!it) return; if (it.op === "roots") flows.roots(); else flows.scan() })
+    }
+    function runTour() { if (!menu.visible && !browserOpen) tourView.open() }
+    function systemInfo() { return call("systemInfo", []) }
     }
     Connections {
         target: bridge
@@ -111,6 +146,7 @@ Window {
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
             else if (ch === "guide") flows.guideEvent(data)
+            else if (ch === "graphics" && data && data.mismatch) flows.offerGraphics(data)
             else if (ch === "pads" && data && data.type === "list") gripView.apply(data)
             else if (ch === "browser-load" && data) browser.load(String(data))
             else if (ch === "browser-cursor") browser.pointer(data)
@@ -139,6 +175,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_guide") { gripView.visible = false; flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
         else if (id === "_controls") { padTestView.visible = false; flows.controls() }
@@ -607,6 +644,7 @@ Window {
     function act(a) {
         if (!ready) return
         if (captureView.visible) return captureView.press(a)
+        if (tourView.visible || tourView.away) return tourView.press(a)
         if (gripView.visible) return gripView.press(a)
         if (padTestView.visible) return padTestView.press(a)
         if (calib.visible) return calib.press(a)
@@ -889,6 +927,7 @@ Window {
                 HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar" }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
+                    id: tabBarA
                     th: th
                     tabs: win.tabList
                     current: win.tabIndex
@@ -913,6 +952,7 @@ Window {
                 spacing: th.clamp(8, 1.5 * th.vh, 18)
                 HintKey { visible: header.hints; th: th; label: "LB"; anchors.horizontalCenter: parent.horizontalCenter }
                 TabBar {
+                    id: tabBarB
                     th: th
                     tabs: win.tabList
                     current: win.tabIndex
@@ -1055,12 +1095,14 @@ Window {
                 wrapMode: Text.Wrap
             }
             Footer {
+                id: footerA
                 visible: header.nav !== "bottom"
                 th: th
                 Layout.fillWidth: true
             }
         }
-        Footer {      // "bottom": the hints under the menu, with a line above them
+        Footer {      // "bottom"
+            id: footerB: the hints under the menu, with a line above them
             visible: header.nav === "bottom"
             th: th
             ruled: true
@@ -1138,6 +1180,7 @@ Window {
         }
     }
     Connections { target: browserInput; function onTab(d) { win.browserAct(d < 0 ? "lb" : "rb") } }
+    Tour { id: tourView; anchors.fill: parent; th: th; z: 28 }
     Grip { id: gripView; anchors.fill: parent; th: th; z: 28 }
     Capture { id: captureView; anchors.fill: parent; th: th; z: 32 }
     PadTest { id: padTestView; anchors.fill: parent; th: th; z: 27; pad: win.view.prefs && win.view.prefs.pad ? win.view.prefs.pad : ({ deadzone: 15, trigger: 10 }) }
