@@ -44,6 +44,7 @@ Window {
     property string picture: ""             // the theme's background picture (a data: URL)
     property int artRev: 0
     property var place: null                // a widget being placed or resized on Home
+    property alias padtest: padTestView     // the controller test (Flows opens it)
     property string browserUrl: "https://duckduckgo.com/"
     property bool browserOpen: false        // the page is on screen and has the controller
     property bool browserOpening: false     // asking to open it (PIN, guest checks)
@@ -133,6 +134,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
+        else if (id === "_padtest") { calib.visible = false; flows.padTest() }
         else if (id === "_browser") { calib.visible = false; browserUrl = "https://example.com/"; openBrowser(1) }
         else if (id === "_browser-url") openUrlBar()
         else runAction(id)
@@ -586,6 +588,7 @@ Window {
     // ---------------------------------------------------------------- input
     function act(a) {
         if (!ready) return
+        if (padTestView.visible) return padTestView.press(a)
         if (calib.visible) return calib.press(a)
         if (wheel.visible) return wheel.press(a)
         if (keyboard.visible) return keyboard.press(a)
@@ -1115,6 +1118,7 @@ Window {
         }
     }
     Connections { target: browserInput; function onTab(d) { win.browserAct(d < 0 ? "lb" : "rb") } }
+    PadTest { id: padTestView; anchors.fill: parent; th: th; z: 27; pad: win.view.prefs && win.view.prefs.pad ? win.view.prefs.pad : ({ deadzone: 15, trigger: 10 }) }
     Calibration { id: calib; anchors.fill: parent; th: th; z: 25; onFilter: function (c) { win.calOverrideOn = c !== undefined; win.calOverride = c === undefined ? null : c } }
     }
 }

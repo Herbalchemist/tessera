@@ -57,6 +57,71 @@ def abs_range(fd, code):
         return (-32768, 32767)
 
 
+def sys_text(n, rel):
+    try:
+        with open(os.path.join(SYS, n, 'device', rel)) as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
+# The standard layout's button numbers (the same ones the full Ludus shows) and the Linux codes behind them
+STANDARD = {0: 0x130, 1: 0x131, 2: 0x133, 3: 0x134, 4: 0x136, 5: 0x137, 8: 0x13a, 9: 0x13b, 10: 0x13d, 11: 0x13e, 16: 0x13c}
+
+
+class PadInfo:
+    """What one controller reports right now, for the controller test: its buttons by the standard
+    layout's numbers, its sticks and its triggers. (A PlayStation pad puts its right stick and
+    triggers on other axes than an Xbox one does.)"""
+    def __init__(self, fd, n):
+        self.name = sys_text(n, 'name') or 'Controller'
+        self.vendor = sys_text(n, 'id/vendor').lower() or '0000'
+        self.product = sys_text(n, 'id/product').lower() or '0000'
+        self.keys = {}
+        self.raw = {}
+        self.range = {c: abs_range(fd, c) for c in (0, 1, 2, 3, 4, 5, 9, 10)}
+        sony = self.vendor == '054c'
+        self.right = (0x02, 0x05) if sony else (0x03, 0x04)
+        self.trig = ((0x03, 0x04) if sony else (0x02, 0x05))
+
+    @property
+    def id(self):
+        """The way the full Ludus names a controller (what its saved stick calibration is keyed by)."""
+        return ('%s (STANDARD GAMEPAD Vendor: %s Product: %s)' % (self.name, self.vendor, self.product))[:80]
+
+    def feed(self, typ, code, value):
+        if typ == EV_KEY:
+            self.keys[code] = value
+        elif typ == EV_ABS:
+            self.raw[code] = value
+
+    def axis(self, code):
+        if code not in self.raw:
+            return 0.0
+        lo, hi = self.range.get(code, (-32768, 32767))
+        return max(-1.0, min(1.0, (2.0 * (self.raw[code] - lo) / (hi - lo)) - 1.0))
+
+    def trigger(self, code, button):
+        if self.keys.get(button):
+            return 1.0
+        if code in self.raw:
+            lo, hi = self.range.get(code, (0, 255))
+            return max(0.0, min(1.0, (self.raw[code] - lo) / float(hi - lo)))
+        return 0.0
+
+    def snapshot(self):
+        hx, hy = self.raw.get(HAT_X, 0), self.raw.get(HAT_Y, 0)
+        pressed = [1.0 if i in STANDARD and self.keys.get(STANDARD[i]) else 0.0 for i in range(17)]
+        pressed[6] = self.trigger(self.trig[0], 0x138)
+        pressed[7] = self.trigger(self.trig[1], 0x139)
+        pressed[12] = 1.0 if hy < 0 or self.keys.get(0x220) else 0.0
+        pressed[13] = 1.0 if hy > 0 or self.keys.get(0x221) else 0.0
+        pressed[14] = 1.0 if hx < 0 or self.keys.get(0x222) else 0.0
+        pressed[15] = 1.0 if hx > 0 or self.keys.get(0x223) else 0.0
+        return {'id': self.id, 'name': self.name, 'buttons': pressed,
+                'axes': [self.axis(0), self.axis(1), self.axis(self.right[0]), self.axis(self.right[1])]}
+
+
 class Stick:
     """Turns one pad's stick and hat into a held direction."""
     def __init__(self, fd):
@@ -85,6 +150,8 @@ class Pads:
         self.on_action = on_action
         self.paused = False
         self.open = {}      # node -> (fd, Stick)
+        self.info = {}      # node -> PadInfo
+        self.lastNode = None   # the controller touched last
         self.held = {}      # node -> (direction, next repeat time)
         self.stop = False
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -103,9 +170,13 @@ class Pads:
             except OSError:
                 continue
             self.open[n] = (fd, Stick(fd))
+            self.info[n] = PadInfo(fd, n)
 
     def close(self, n):
         fd, _ = self.open.pop(n)
+        self.info.pop(n, None)
+        if self.lastNode == n:
+            self.lastNode = None
         self.held.pop(n, None)
         try:
             os.close(fd)
@@ -149,6 +220,10 @@ class Pads:
             return
         for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
             _, _, typ, code, value = EVENT.unpack_from(data, off)
+            if n in self.info and typ in (EV_KEY, EV_ABS):
+                self.info[n].feed(typ, code, value)
+                if typ == EV_KEY or code in (0, 1, 2, 3, 4, 5, 16, 17):
+                    self.lastNode = n
             if typ == EV_KEY and code in BUTTONS and value == 1:
                 act = BUTTONS[code]
                 if act in ('up', 'down', 'left', 'right'):
@@ -164,3 +239,11 @@ class Pads:
                     self.held[n] = (after, time.monotonic() + REPEAT_DELAY)
                     if after:
                         self.emit(after)
+
+    def snapshot(self):
+        """The controller touched last (or the only one), as the test screen shows it; {} when none."""
+        n = self.lastNode if self.lastNode in self.info else next(iter(self.info), None)
+        out = self.info[n].snapshot() if n else {}
+        if out:
+            out['count'] = len(self.info)
+        return out

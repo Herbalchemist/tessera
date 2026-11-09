@@ -375,6 +375,56 @@ QtObject {
     function padSet(st, key, value) {
         return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) st.pad = Object.assign({}, st.pad, r.pad); else w.setStatus(r.error || "Couldn't save that.", true) })
     }
+    // the live test: resolves when it is closed
+    function padTest() {
+        return w.dev("settings", "padGet").then(function (r) {
+            var t = w.padtest
+            t.calib = r.calib || {}
+            if (r.pad) t.pad = r.pad
+            return new Promise(function (resolve) {
+                var done = function () { t.closed.disconnect(done); resolve() }
+                t.closed.connect(done)
+                t.open()
+            })
+        })
+    }
+    // resting offsets of the sticks: let go of everything, then the average of what they report
+    function calibratePad(st) {
+        var first = w.padtest.snapshotNow()
+        if (!first || !first.id) { w.setStatus("No controller detected. Press a button on it first.", true); return Promise.resolve() }
+        var id = first.id
+        return w.pick("Let go of both sticks and triggers, then choose Calibrate", [
+            { label: "Calibrate now", op: "go" }, { label: "Clear calibration", op: "clear" }, { label: "Cancel" }
+        ]).then(function (it) {
+            if (!it || !it.op) return
+            var offsets = null
+            var run = it.op === "go" ? (function () {
+                var sums = [0, 0, 0, 0], n = 0
+                var sample = function (i) {
+                    if (i >= 8) return Promise.resolve()
+                    return w.sleepMs(100).then(function () {
+                        var p = w.padtest.snapshotNow()
+                        if (!p || p.id !== id) return
+                        for (var k = 0; k < 4; k++) sums[k] += p.axes[k] || 0
+                        n++
+                        return sample(i + 1)
+                    })
+                }
+                return sample(0).then(function () {
+                    if (!n) return false
+                    offsets = sums.map(function (s) { return Math.abs(s / n) <= 0.4 ? s / n : 0 })     // a trigger resting at -1 isn't a drift
+                    return true
+                })
+            })() : Promise.resolve(true)
+            return run.then(function (ok) {
+                if (!ok) return w.setStatus("Lost the controller. Try again.", true)
+                return w.dev("settings", "padCalib", { id: id, offsets: offsets }).then(function (r) {
+                    if (r.ok) w.setStatus(it.op === "go" ? "Sticks calibrated." : "Calibration cleared.")
+                    else w.setStatus(r.error || "Couldn't save that.", true)
+                })
+            })
+        })
+    }
     function pad() {
         if (w.menuUp()) return
         w.dev("settings", "padGet").then(function (r) {
@@ -391,7 +441,9 @@ QtObject {
                     if (it.info) return loop()
                     var work = Promise.resolve()
                     if (it.fold) st.closed[it.fold] = !st.closed[it.fold]
-                    else if (it.op === "test" || it.op === "mapping" || it.op === "calib" || it.op === "grip") work = notYet(it.label)
+                    else if (it.op === "test") work = padTest()
+                    else if (it.op === "calib") work = calibratePad(st)
+                    else if (it.op === "mapping" || it.op === "grip") work = notYet(it.label)
                     else if (it.op === "guideButton") work = choice("The Guide button (Xbox, PS or Home button)", "guideButton")
                     else if (it.op === "oskSize") work = choice("On-screen keyboard size", "oskSize")
                     else if (it.op === "guideStyle") work = choice("How the guide looks (notifications sit beside it on the right)", "guideStyle")

@@ -417,6 +417,26 @@ class BrowserInput(QObject):
         QCoreApplication.postEvent(self.win, ev)
 
 
+class PadState(QObject):
+    """What the controller touched last reports right now (pads.py), for the controller test."""
+    def __init__(self, fake=False):
+        super().__init__()
+        self.pads = None
+        self.fake = fake
+
+    @Slot(result='QVariant')
+    def snapshot(self):
+        if self.fake:      # a build machine has no controller: a made-up one, so the picture shows something
+            b = [0.0] * 17
+            b[0] = 1.0
+            b[5] = 1.0
+            b[6] = 0.6
+            b[14] = 1.0
+            return {'id': 'Tessera test pad (STANDARD GAMEPAD Vendor: 0000 Product: 0000)', 'name': 'Tessera test pad',
+                    'buttons': b, 'axes': [0.5, -0.3, -0.2, 0.7], 'count': 1}
+        return self.pads.snapshot() if self.pads else {}
+
+
 def main():
     if check():
         sys.exit(3)
@@ -440,6 +460,8 @@ def main():
     engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
     engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
     browser_input = BrowserInput()
+    pad_state = PadState(fake=bool(shot_dir or theme_dir))
+    engine.rootContext().setContextProperty('padState', pad_state)
     engine.rootContext().setContextProperty('browserInput', browser_input)
     engine.rootContext().setContextProperty('shellData', shell_data())
     engine.rootContext().setContextProperty('calShader', bake_cal_shader())
@@ -461,6 +483,7 @@ def main():
         controllers = pads.Pads(lambda a: QTimer.singleShot(0, lambda: QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))))
         # While a game runs the main process hides the screen; the game reads its controllers itself.
         bridge.windowOp.connect(lambda op: setattr(controllers, 'paused', op == 'hide'))
+        pad_state.pads = controllers
         controllers.start()
         code = app.exec()
     bridge.stop()
@@ -527,7 +550,8 @@ def shots(app, win, out):
              ('', ['run:_calfilter-off']), ('', ['run:_calib']), ('24-calibration-brightness', ['right', 'right']),
              ('', ['a', 'a', 'a']), ('25-calibration-gamma', []), ('', ['a']), ('26-calibration-balance', []),
              ('', ['b']), ('', ['b']), ('', ['run:_browser']), ('', []), ('', []), ('27-browser', []),
-             ('', ['run:_browser-url']), ('', []), ('28-browser-address', [])]
+             ('', ['run:_browser-url']), ('', []), ('28-browser-address', []),
+             ('', ['run:_padtest']), ('', []), ('29-controller-test', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 
