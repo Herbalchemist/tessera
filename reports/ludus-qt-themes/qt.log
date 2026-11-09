@@ -1,7 +1,509 @@
 ludus-qt: starting
-qt.qml.propertyCache.append: Final member left is overridden in class QQuickColumnLayout_QML_42. The override won't be used.
-QQmlApplicationEngine failed to load component
-qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:536:13: Cannot override FINAL property
-file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:536:13: Cannot override FINAL property
-ludus-qt: the screen did not load
-exit code 1
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-stock-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-stock-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-stock-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-stock-tabs-1280
+shot theme-dark-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dark-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dark-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dark-tabs-1280
+shot theme-mosaic-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-tabs-1280
+shot theme-mosaic-dark-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-dark-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-dark-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-mosaic-dark-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-cartridge-pop-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-cartridge-pop-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-cartridge-pop-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-cartridge-pop-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-nova-black-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-nova-black-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-nova-black-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-nova-black-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-dashboard-steel-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dashboard-steel-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dashboard-steel-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-dashboard-steel-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-indigo-cube-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-indigo-cube-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-indigo-cube-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-indigo-cube-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-channel-white-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-channel-white-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-channel-white-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-channel-white-tabs-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:587:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:556:13: QML SelectionTitle: Binding loop detected for property "font.letterSpacing":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/SelectionTitle.qml:28:5
+shot theme-arcade-marquee-library-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-arcade-marquee-home-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-arcade-marquee-settings-1280
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+qml: file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:10:1: QML Main: Binding loop detected for property "curTab":
+file:///home/runner/work/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Main.qml:40:5
+shot theme-arcade-marquee-tabs-1280
