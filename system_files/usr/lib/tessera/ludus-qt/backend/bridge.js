@@ -138,3 +138,4 @@ sock.on('error', () => process.exit(0));
 // ---- the full Ludus's main process, as main.js loads it
 process.chdir(LAUNCHER);
 require(path.join(LAUNCHER, 'main.js'));
+if (process.env.LUDUS_QT_FAKE_DEVICES) require('./fake-devices')(handlers); // screenshot runs only

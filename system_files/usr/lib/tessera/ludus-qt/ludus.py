@@ -84,6 +84,8 @@ class Bridge(QObject):
         ours, theirs = socket.socketpair()
         prog, extra = node_program()
         env = dict(os.environ, TESSERA_BRIDGE_FD=str(theirs.fileno()), TESSERA_LAUNCHER_DIR=LAUNCHER, **extra)
+        if '--shot' in sys.argv or '--theme-shots' in sys.argv:
+            env['LUDUS_QT_FAKE_DEVICES'] = '1'      # no real Wi-Fi, Bluetooth or sound on a build machine
         import subprocess
         self.child = subprocess.Popen(prog + [os.path.join(HERE, 'backend', 'bridge.js')], env=env,
                                       pass_fds=(theirs.fileno(),), stdin=subprocess.DEVNULL)
@@ -369,7 +371,8 @@ def shots(app, win, out):
              ('06-mosaic-options-from-tabs', ['b', 'b', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
              ('08-keyboard', ['b', 'right', 'a']), ('09-settings', ['b', 'right', 'down']),
              ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left']),
-             ('12-wifi', ['@settings', 'a']), ('13-bluetooth', ['b', 'right', 'a']), ('14-sound', ['b', 'down', 'a'])]
+             ('12-wifi', ['@settings', 'a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
+             ('14-bluetooth', ['b', 'b', 'right', 'a']), ('15-sound', ['b', 'down', 'a', 'right', 'right'])]
     run_steps(app, win, out, steps)
     return app.exec()
 

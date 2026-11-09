@@ -328,7 +328,7 @@ Window {
     function confirmYes(question, yesLabel) {
         return pick(question, [{ label: yesLabel || "Yes", op: "yes" }, { label: "Cancel", op: "no" }], 1).then(function (r) { return Boolean(r && r.op === "yes") })
     }
-    function notice(title, body) { return pick(title + (body ? "\n" + body : ""), [{ label: "OK", op: "ok" }], 0) }
+    function notice(title, body) { return pick(title, [{ label: "OK", op: "ok" }], 0, { body: body || "" }) }
     function runAction(id) {
         if (id === "_power") return flowPower()
         if (id === "_sound") return flows.sound()
