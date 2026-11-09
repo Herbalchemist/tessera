@@ -903,6 +903,9 @@ Window {
         anchors.bottomMargin: anchors.topMargin
         anchors.leftMargin: (1 - th.use) * win.width / 2
         anchors.rightMargin: anchors.leftMargin
+        // "focus" with the menu along the bottom: title, row and menu stay together, centred between the clock and the hints
+        readonly property bool packed: th.parts.row === "focus" && th.mode === "rails" && win.page !== "new" && th.parts.nav === "bottom" && th.parts.title === "above"
+        readonly property real packedTop: clockTop.height + Math.max(0, (body.height - 4.5 * th.rem - clockTop.height - titleAbove.height - viewport.preferredHeight - header.height) / 2)
         readonly property real sideW: th.parts.tabs === "chunky" ? th.clamp(190, 21 * th.vw, 360) : th.clamp(178, 18 * th.vw, 320)
 
         // ---- the menu: a column on the left, or a strip across the top / bottom
@@ -919,6 +922,7 @@ Window {
             width: nav === "left" ? body.sideW : body.width
             height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
             y: nav === "left" ? 0
+             : body.packed ? body.packedTop + titleAbove.height + viewport.preferredHeight
              : th.navBottom ? body.height - height - (nav === "bottom" ? footerSpace : nav === "bottom-dock" ? th.clamp(4, 1 * th.vh, 12) : 0)
              : clockTop.height
             readonly property real footerSpace: 3 * th.rem
@@ -1069,8 +1073,8 @@ Window {
             readonly property bool leftAligned: sideNav || nav === "top-left" || nav === "bottom-dock" || th.parts.title === "big"
             x: sideNav ? header.x + header.width + th.clamp(14, 2 * th.vw, 34) : 0
             width: body.width - x - (sideNav && th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0)
-            y: sideNav ? 0 : th.navBottom ? clockTop.height : header.y + header.height
-            height: sideNav ? body.height : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
+            y: sideNav ? 0 : body.packed ? body.packedTop : th.navBottom ? clockTop.height : header.y + header.height
+            height: sideNav ? body.height : body.packed ? titleAbove.height + viewport.preferredHeight + 1.5 * th.rem : th.navBottom ? header.y - y + (header.nav === "bottom" ? header.footerSpace + header.height : 0) - (header.nav === "bottom" ? header.height : 0) : body.height - y
             spacing: 0
 
             Text {     // where you are, inside folders
@@ -1084,17 +1088,17 @@ Window {
                 color: th.muted
                 font.pixelSize: th.rem
             }
-            SelectionTitle { visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: th.clamp(4, 2 * th.vh, 24) }
+            SelectionTitle { id: titleAbove; visible: th.parts.title === "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true; Layout.topMargin: body.packed ? 0 : th.clamp(4, 2 * th.vh, 24) }
 
-            Item { visible: viewport.oneRow && th.rowPlace !== "top"; Layout.fillHeight: true }     // one-row page: middle or bottom
+            Item { visible: viewport.oneRow && (th.parts.row === "focus" ? !body.packed && th.parts.title !== "above" : th.rowPlace !== "top"); Layout.fillHeight: true }     // one-row page: middle or bottom
             Item {     // the tiles
                 id: viewport
                 Layout.fillWidth: true
                 // "start": only the one row shows, so the page is as tall as it (style.css data-part-row="start")
-                readonly property bool oneRow: th.parts.row === "start" && th.mode === "rails" && win.page !== "new"
+                readonly property bool oneRow: (th.parts.row === "start" || th.parts.row === "focus") && th.mode === "rails" && win.page !== "new"
                 Layout.fillHeight: !oneRow
-                Layout.preferredHeight: oneRow ? th.cardSize.h * 1.32 + 64 : -1
-                Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
+                Layout.preferredHeight: oneRow ? (th.parts.row === "start" ? th.cardSize.h * 1.32 + 64 : th.cardSize.h + 76) : -1
+                Layout.topMargin: th.parts.row === "start" ? th.clamp(12, 3 * th.vh, 34) : viewport.oneRow ? 0 : column.nav === "bottom-bar" ? th.clamp(14, 4 * th.vh, 44) : 0
                 clip: true
                 HomeGrid {
                     anchors.fill: parent
@@ -1132,7 +1136,7 @@ Window {
             }
 
             SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true }
-            Item { visible: viewport.oneRow && th.rowPlace !== "bottom"; Layout.fillHeight: true }     // a one-row page leaves the spare room here, not between its parts
+            Item { visible: viewport.oneRow && (th.parts.row === "focus" || th.rowPlace !== "bottom"); Layout.fillHeight: true }     // a one-row page leaves the spare room here, not between its parts
             Text {
                 Layout.fillWidth: true
                 Layout.leftMargin: column.leftAligned && !column.sideNav ? th.edge : 0
