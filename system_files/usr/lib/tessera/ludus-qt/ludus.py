@@ -379,8 +379,8 @@ def shots(app, win, out):
              ('', ['b']), ('', ['down']), ('17-keyboard-menu', ['a']), ('', ['b']), ('', ['left']), ('18-controller-menu', ['a']),
              ('', ['b']), ('', ['b']), ('', ['run:_storage']), ('', []), ('', []), ('19-storage', []),
              ('', ['b']), ('', ['run:_addons']), ('', []), ('20-addons', []),
-             ('', ['b']), ('', ['run:_appearance']), ('', ['a']), ('', []), ('21-theme-settings', ['b']),
-             ('', ['b']), ('', ['run:_wheel']), ('', []), ('22-color-wheel', ['right', 'right', 'rb'])]
+             ('', ['b']), ('', ['run:_appearance']), ('', ['a']), ('', []), ('21-theme-settings', []),
+             ('', ['b']), ('', ['b']), ('', ['run:_wheel']), ('', []), ('22-color-wheel', ['right', 'right', 'rb'])]
     run_steps(app, win, out, steps)
     return app.exec()
 

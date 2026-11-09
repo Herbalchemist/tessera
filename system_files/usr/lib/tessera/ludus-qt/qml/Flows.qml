@@ -1608,7 +1608,8 @@ QtObject {
                 if (!it) return null
                 st.at = it.key
                 if (it.op === "theme") return themeSettings().then(loop)
-                return notYet(it.op === "screens" ? "Screens" : "Display calibration").then(loop)
+                if (it.op === "screens") return screens().then(function (r) { return r === "restarted" ? null : loop() })
+                return notYet("Display calibration").then(loop)
             })
         }
         loop()
@@ -1792,5 +1793,109 @@ QtObject {
             })
         }
         return Promise.resolve()
+    }
+
+    // ------------------------------------------------------------------ Screens
+    readonly property var orientWord: ({ normal: "Normal", left: "Turned left", right: "Turned right", upsidedown: "Upside down" })
+    function screenName(s) { return (s.label ? s.label + " (" + s.name + ")" : s.name) + (s.internal ? " · built in" : "") }
+    function modeWord(m) { return m.width + " × " + m.height }
+    function hzWord(m) { return Math.round(m.hz || m.refresh) + " Hz" }
+    function displayList() {
+        w.setStatus("Looking at the screens…")
+        return w.dev("display", "list", {}).then(function (d) { w.setStatus(""); return d })
+    }
+    function screens() {
+        return displayList().then(function (d) {
+            if (!d || !d.ok) return w.notice("Screens", (d && d.error) || "Couldn't read the screens.")
+            if (d.nested) return w.notice("Screens", "Ludus is open on top of Opus, so it uses Opus's screen settings: the main screen, at the resolution set there. Change screens, resolution and orientation in Opus's display settings.")
+            var list = d.screens || []
+            if (!list.length) return w.notice("Screens", "No connected screen was found. (Ludus's own screen should always be listed: please make a problem report.)")
+            var set = d.settings || {}
+            var shown = list.filter(function (x) { return x.current })[0] || list[0]
+            var draft = { output: set.output || shown.name, width: set.width, height: set.height, refresh: set.refresh, orientation: set.orientation || "normal" }
+            var at = ""
+            var loop = function () {
+                var s = list.filter(function (x) { return x.name === draft.output })[0] || list[0]
+                var best = s.modes.filter(function (m) { return m.preferred })[0] || s.modes[0]
+                var res = draft.width ? draft.width + " × " + draft.height : modeWord(best) + " (the screen's own)"
+                var rate = draft.refresh ? draft.refresh + " Hz" : "the highest it offers"
+                var items = [
+                    { key: "screen", label: "Screen", sub: screenName(s), op: "screen" },
+                    { key: "res", label: "Resolution", sub: res, op: "res" },
+                    { key: "rate", label: "Refresh rate", sub: rate, op: "rate" }
+                ]
+                if (s.internal) items.push({ key: "orient", label: "Orientation", sub: orientWord[draft.orientation || "normal"], op: "orient" })
+                items.push({ key: "apply", label: "Apply", sub: "Ludus starts again with these, then asks to keep them", op: "apply", ok: true })
+                items.push({ key: "auto", label: "Use the screen's own choice", sub: "clears these settings", op: "auto" })
+                var others = list.length - 1
+                var body = ["Ludus shows on one screen at a time" + (others ? "; the other" + (others > 1 ? "s stay" : " stays") + " dark while it runs" : "") + ". Opus can use them all, mirrored or side by side.",
+                            s.internal ? "" : "Turning a screen on its side is done in Opus for external screens (Ludus can only turn a built-in screen)."].filter(Boolean).join("\n")
+                return w.pick("Screens", items, indexOfKey(items, at), { body: body }).then(function (it) {
+                    if (!it) return null
+                    at = it.key
+                    if (it.op === "screen") {
+                        return w.pick("Show Ludus on", list.map(function (x) { return { label: screenName(x), sub: x.current ? "showing Ludus now" : x.modes.length + " modes", s: x, ok: x.name === draft.output } })).then(function (c) {
+                            if (c && c.s.name !== draft.output) draft = { output: c.s.name, orientation: "normal" }
+                            return loop()
+                        })
+                    }
+                    if (it.op === "res") {
+                        var sizes = []
+                        s.modes.forEach(function (m) { if (!m.interlaced && !sizes.some(function (x) { return x.width === m.width && x.height === m.height })) sizes.push(m) })
+                        var rows = [{ label: "The screen's own (" + modeWord(best) + ")", auto: true, ok: !draft.width }].concat(sizes.map(function (m) {
+                            return { label: modeWord(m), sub: m.width === best.width && m.height === best.height ? "recommended" : "", m: m, ok: draft.width === m.width && draft.height === m.height }
+                        }))
+                        return w.pick("Resolution", rows).then(function (c) {
+                            if (c) { if (c.auto) { delete draft.width; delete draft.height; delete draft.refresh } else { draft.width = c.m.width; draft.height = c.m.height; delete draft.refresh } }
+                            return loop()
+                        })
+                    }
+                    if (it.op === "rate") {
+                        var ww = draft.width || best.width, hh = draft.height || best.height
+                        var rates = s.modes.filter(function (m) { return m.width === ww && m.height === hh && !m.interlaced })
+                        return w.pick("Refresh rate", [{ label: "The highest it offers", auto: true, ok: !draft.refresh }].concat(rates.map(function (m) { return { label: hzWord(m), sub: m.hz + " Hz", m: m, ok: draft.refresh === m.refresh } })), 0, { body: "At " + ww + " × " + hh + "." }).then(function (c) {
+                            if (c) { if (c.auto) delete draft.refresh; else { draft.width = ww; draft.height = hh; draft.refresh = c.m.refresh } }
+                            return loop()
+                        })
+                    }
+                    if (it.op === "orient") {
+                        return w.pick("Orientation", Object.keys(orientWord).map(function (k) { return { label: orientWord[k], k: k, ok: draft.orientation === k } })).then(function (c) {
+                            if (c) draft.orientation = c.k
+                            return loop()
+                        })
+                    }
+                    // apply or auto
+                    var payload = it.op === "auto" ? { auto: true } : Object.assign({ output: draft.output }, draft.width ? { width: draft.width, height: draft.height } : {}, draft.refresh ? { refresh: draft.refresh } : {}, s.internal ? { orientation: draft.orientation } : {})
+                    var go = function () { return w.dev("display", "try", payload) }
+                    return go().then(function (r) {
+                        if (r && r.needPin) return w.requirePin("Enter the admin PIN to change screens").then(function (ok) { return ok ? go() : { ok: true, cancelled: true } })
+                        return r
+                    }).then(function (r) {
+                        if (r && r.cancelled) return loop()
+                        if (!r || !r.ok) return w.notice("Can't use that", (r && r.error) || "Something went wrong.").then(displayList).then(loop)
+                        if (r.restarted) { w.setStatus("Starting Ludus again on the new settings…"); return "restarted" }
+                        return w.notice("Saved", "These are used the next time Ludus starts. You will be asked to keep them.")
+                    })
+                })
+            }
+            return loop()
+        })
+    }
+    // After a restart on new settings: keep them, or they go back by themselves in 15 seconds
+    function displayKeep() {
+        return w.dev("display", "list", {}).then(function (d) {
+            if (!d || !d.ok || !d.trying || !d.tried || d.nested) return null
+            var st = { left: 15, at: "" }
+            var items = [{ key: "keep", label: "Keep these settings", op: "keep", ok: true }, { key: "back", label: "Change back", op: "back" }]
+            return w.liveList(st, {
+                title: "Keep these screen settings?", every: 1000,
+                items: function () { return items },
+                body: function (s) { return "Can you see this clearly? If not, Ludus goes back to the settings before in " + s.left + " second" + (s.left === 1 ? "" : "s") + "." },
+                reload: function (s) { s.left -= 1; if (s.left <= 0) w.menuCancel(); return Promise.resolve() }
+            }).then(function (it) {
+                if (it && it.op === "keep") return w.dev("display", "confirm", {}).then(function () { w.setStatus("Screen settings kept.") })
+                return w.dev("display", "revert", { restart: true }).then(function (r) { w.setStatus(r && r.restarted ? "Going back to the settings before…" : "Going back to the settings before at the next start.") })
+            })
+        })
     }
 }

@@ -89,7 +89,7 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { win.applyView(data); win.ready = true }
+            if (ch === "init") { win.applyView(data); win.ready = true; keepTimer.start() }
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
             else if (ch === "game-exited") win.setStatus(data || "", Boolean(data))
         }
@@ -415,6 +415,7 @@ Window {
         })
     }
     function rawCall(ch, args) { return api.call(ch, args) }
+    function menuCancel() { if (menu.visible) menu.press("b") }
     function menuUp() { return menu.visible || keyboard.visible || wheel.visible || job !== null }
     function reloadPrefs() {      // what the tile notes read (the PIN being on or off) after a flow changed it
         dev("settings", "pinStatus").then(function (r) {
@@ -1020,6 +1021,7 @@ Window {
     // ================================================================ overlays
     Menu { id: menu; anchors.fill: parent; th: th; z: 20 }
     Flows { id: flows; w: win }
+    Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
 }
