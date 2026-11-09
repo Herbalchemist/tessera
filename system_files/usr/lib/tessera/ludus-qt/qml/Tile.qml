@@ -219,13 +219,14 @@ Item {
         }
     }
     Canvas {     // the dashed outline of add tiles and folders
+        id: dashCanvas
         anchors.fill: parent
         visible: tile.dashed && !tile.picked && tile.outline === "dashed" && tile.look !== "bezel"
         z: 2
         onVisibleChanged: requestPaint()
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
-        Connections { target: th; function onBorderChanged() { requestPaint() } }
+        Connections { target: th; function onBorderChanged() { dashCanvas.requestPaint() } }
         onPaint: {
             var c = getContext("2d"), r = Math.min(tile.r, width / 2, height / 2)
             c.clearRect(0, 0, width, height)
