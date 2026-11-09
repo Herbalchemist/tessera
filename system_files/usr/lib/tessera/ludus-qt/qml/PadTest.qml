@@ -32,10 +32,25 @@ Rectangle {
     function trig(n) { var v = snap.buttons ? snap.buttons[n] : 0; return v * 100 < (pad.trigger || 0) ? 0 : v }
     function on(n) { return snap.buttons ? snap.buttons[n] > 0.5 : false }
 
+    // Rumble follows the triggers, in the strength and style the person picked (padTest.js rumble)
+    property real rumbleAt: 0
+    function rumble() {
+        var level = ({ off: 0, low: 0.4, normal: 0.7, high: 1 })[pad.rumble]
+        if (level === undefined) level = 0.7
+        var lt = trig(6), rt = trig(7), now = Date.now()
+        if (!level || (lt <= 0 && rt <= 0) || now - rumbleAt < 180) return
+        rumbleAt = now
+        var strong = lt, weak = rt
+        if (pad.style === "both") strong = weak = Math.max(lt, rt)
+        else if (pad.style === "pulse" && Math.floor(now / 180) % 2) strong = weak = 0
+        padState.rumble(strong * level, weak * level, 220)
+    }
+
     Timer {
         interval: 33; repeat: true; running: pt.visible
         onTriggered: {
             pt.snap = padState.snapshot()
+            pt.rumble()
             art.requestPaint()
             if (pt.on(1)) {
                 if (!pt.bSince) pt.bSince = Date.now()

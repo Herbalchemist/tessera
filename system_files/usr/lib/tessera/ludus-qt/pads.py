@@ -16,6 +16,8 @@ SYS = os.environ.get('TESSERA_PADS_SYS', '/sys/class/input')
 DEV = os.environ.get('TESSERA_PADS_DEV', '/dev/input')
 EVENT = struct.Struct('llHHi')
 EV_KEY, EV_ABS = 0x01, 0x03
+EV_FF, FF_RUMBLE = 0x15, 0x50
+EVIOCSFF = (1 << 30) | (48 << 16) | (0x45 << 8) | 0x80   # upload a force-feedback effect (struct ff_effect is 48 bytes)
 BTN_SOUTH = 0x130
 # Linux button codes as an Xbox-style pad sends them (and Tessera's own Joy-Con pads, which say they are one)
 BUTTONS = {0x130: 'a', 0x131: 'b', 0x133: 'x', 0x134: 'y', 0x136: 'lb', 0x137: 'rb', 0x13b: 'start', 0x13d: 'l3', 0x13e: 'r3', 0x138: 'lt', 0x139: 'rt',
@@ -177,6 +179,7 @@ class Pads:
         self.paused = False
         self.open = {}      # node -> (fd, Stick)
         self.info = {}      # node -> PadInfo
+        self.ff = {}        # node -> [fd opened for writing or None, the rumble effect's id]
         self.lastNode = None   # the controller touched last
         self.padSettings = {}  # prefs.pad: confirm, remap
         self.capturing = None  # a function to hand the next button's role to (the Button mapping screen), and the roles it takes
@@ -200,7 +203,38 @@ class Pads:
             self.open[n] = (fd, Stick(fd))
             self.info[n] = PadInfo(fd, n)
 
+    def rumble(self, strong, weak, ms):
+        """Shake the controller touched last (strong and weak motor, 0..1, for ms). One effect per pad is
+        uploaded once and updated; a pad that can't rumble (or can't be opened for writing) is skipped."""
+        n = self.lastNode if self.lastNode in self.info else next(iter(self.info), None)
+        if n is None:
+            return False
+        ff = self.ff.get(n)
+        if ff is None:
+            try:
+                ff = [os.open(os.path.join(DEV, n), os.O_RDWR | os.O_NONBLOCK | os.O_CLOEXEC), -1]
+            except OSError:
+                ff = [None, -1]
+            self.ff[n] = ff
+        if ff[0] is None:
+            return False
+        s_, w_ = int(max(0.0, min(1.0, strong)) * 65535), int(max(0.0, min(1.0, weak)) * 65535)
+        eff = bytearray(struct.pack('=HhHHHHHxxHH', FF_RUMBLE, ff[1], 0, 0, 0, int(ms), 0, s_, w_) + bytes(28))
+        try:
+            fcntl.ioctl(ff[0], EVIOCSFF, eff)
+            ff[1] = struct.unpack_from('=h', eff, 2)[0]
+            os.write(ff[0], struct.pack('=qqHHi', 0, 0, EV_FF, ff[1], 1))
+            return True
+        except OSError:
+            return False
+
     def close(self, n):
+        ff = self.ff.pop(n, None)
+        if ff and ff[0] is not None:
+            try:
+                os.close(ff[0])
+            except OSError:
+                pass
         fd, _ = self.open.pop(n)
         self.info.pop(n, None)
         if self.lastNode == n:

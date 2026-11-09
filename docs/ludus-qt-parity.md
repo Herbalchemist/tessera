@@ -9,7 +9,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Pages and navigation
 - 🟡 Tab bar (Browser, Home, Library, Apps, mosaics, + Mosaic, Settings), in all six tab looks — the Browser tab opens the built-in browser
-- 🟡 Every controller moves the screen; keyboard — mouse and pointer not yet; per-pad glyphs (Xbox / PlayStation / Nintendo) not yet
+- 🟡 Every controller moves the screen; keyboard — mouse and pointer not yet; per-pad glyphs (Xbox / PlayStation / Nintendo) are in Settings and Button mapping
 - 🟡 Home: widgets on the 12 × 6 grid, add from the preset list, move / resize / remove, four widget styles — downloaded add-on widgets show their name; the frosted style is a tinted pane (no blur of what is behind it yet)
 - ✅ Library and Apps lists
 - 🟡 Mosaics: make, rename, reorder, delete — per-page grid size, holding Y to lift a tab, pick-up-and-move tiles not yet
@@ -50,7 +50,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ✅ Wi-Fi, Bluetooth (live lists, pairing and joining with Cancel, password keyboard with symbols and Show, PIN prompt)
 - 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" and "drive plugged in" offers ported
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
-- 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). The live controller test (buttons, sticks, triggers, raw numbers, hold B; vibration while testing not yet) stick calibration and Button mapping (keyboard and per-family controller buttons, press-the-button capture, Confirm/remap applied to Qt navigation) are ported. Change grip/order (live Joy-Con cards from the pads service) is ported too; the card layout with real Joy-Cons has not been run. Still to do: adding and removing single keys
+- 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). The live controller test (buttons, sticks, triggers, raw numbers, hold B; the triggers rumble the pad through evdev force feedback in the chosen strength and style, not yet run on a real pad) stick calibration and Button mapping (keyboard and per-family controller buttons, press-the-button capture, Confirm/remap applied to Qt navigation) are ported. Change grip/order (live Joy-Con cards from the pads service) is ported too; the card layout with real Joy-Cons has not been run. Adding, removing and moving single keys is ported, and the saved key layout (presets and custom keys) now drives Qt navigation, with the full Ludus's names for the keys (a QML table maps Qt keys to them; not yet checked on non-QWERTY layouts)
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (with the quick tour)
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds, and the "new graphics card?" prompt at start; not seen with a real card swap)

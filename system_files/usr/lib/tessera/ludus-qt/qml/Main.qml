@@ -186,6 +186,8 @@ Window {
         view = v
         if (v.prefs && v.prefs.pad) padState.setPad(v.prefs.pad)
         kbPrefs = v.prefs && v.prefs.kb ? v.prefs.kb : {}
+        var kbSig = JSON.stringify(v.prefs && v.prefs.kb || {})
+        if (kbSig !== kbSeen) { kbSeen = kbSig; loadKb() }
         if (v.artRev !== undefined) artRev = v.artRev
         loadPicture(before)
         refresh()
@@ -686,6 +688,52 @@ Window {
     Timer { id: arrive; property int dir: 1; interval: 250; onTriggered: if (page === "browser" && area === "tabs" && !browserOpen && !keyboard.visible && !menu.visible && !wheel.visible && !calib.visible && !place) openBrowser(dir) }
     // ---------------------------------------------------------------- the mouse (input.js)
     property var kbPrefs: ({})
+    // ---- keyboard: the saved key layout (Keyboard & mouse), looked up by the key's name (KeyboardEvent.code, as the full Ludus does)
+    property var kbMap: ({ ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "a", NumpadEnter: "a", Space: "a", Escape: "b", Backspace: "b", KeyX: "x", KeyY: "y", ContextMenu: "y", PageUp: "lb", PageDown: "rb", BracketLeft: "lb", BracketRight: "rb", F1: "guide", Home: "guide" })
+    property var keyCap: null
+    property string kbSeen: ""
+    readonly property var keyNames: (function () {
+        var t = {}
+        t[Qt.Key_Left] = "ArrowLeft"; t[Qt.Key_Right] = "ArrowRight"; t[Qt.Key_Up] = "ArrowUp"; t[Qt.Key_Down] = "ArrowDown"
+        t[Qt.Key_Return] = "Enter"; t[Qt.Key_Space] = "Space"; t[Qt.Key_Escape] = "Escape"; t[Qt.Key_Backspace] = "Backspace"
+        t[Qt.Key_PageUp] = "PageUp"; t[Qt.Key_PageDown] = "PageDown"; t[Qt.Key_Home] = "Home"; t[Qt.Key_End] = "End"
+        t[Qt.Key_Insert] = "Insert"; t[Qt.Key_Delete] = "Delete"; t[Qt.Key_Tab] = "Tab"; t[Qt.Key_Menu] = "ContextMenu"
+        t[Qt.Key_BracketLeft] = "BracketLeft"; t[Qt.Key_BracketRight] = "BracketRight"; t[Qt.Key_Semicolon] = "Semicolon"
+        t[Qt.Key_Apostrophe] = "Quote"; t[Qt.Key_Comma] = "Comma"; t[Qt.Key_Period] = "Period"; t[Qt.Key_Slash] = "Slash"
+        t[Qt.Key_Backslash] = "Backslash"; t[Qt.Key_Minus] = "Minus"; t[Qt.Key_Equal] = "Equal"; t[Qt.Key_QuoteLeft] = "Backquote"
+        t[Qt.Key_Back] = "BrowserBack"; t[Qt.Key_Forward] = "BrowserForward"; t[Qt.Key_HomePage] = "BrowserHome"; t[Qt.Key_Search] = "BrowserSearch"
+        t[Qt.Key_MediaPlay] = "MediaPlayPause"; t[Qt.Key_MediaTogglePlayPause] = "MediaPlayPause"; t[Qt.Key_MediaNext] = "MediaTrackNext"; t[Qt.Key_MediaPrevious] = "MediaTrackPrevious"
+        t[Qt.Key_MediaStop] = "MediaStop"
+        for (var i = 0; i < 26; i++) t[Qt.Key_A + i] = "Key" + String.fromCharCode(65 + i)
+        for (i = 0; i < 10; i++) t[Qt.Key_0 + i] = "Digit" + i
+        for (i = 1; i <= 24; i++) t[Qt.Key_F1 + i - 1] = "F" + i
+        return t
+    })()
+    function codeOf(e) {
+        var pad = (e.modifiers & Qt.KeypadModifier) !== 0
+        if (pad && e.key >= Qt.Key_0 && e.key <= Qt.Key_9) return "Numpad" + (e.key - Qt.Key_0)
+        if (pad && (e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) return "NumpadEnter"
+        if (pad && (e.key === Qt.Key_Left || e.key === Qt.Key_Right || e.key === Qt.Key_Up || e.key === Qt.Key_Down)) return keyNames[e.key]
+        if (e.key === Qt.Key_Enter) return "NumpadEnter"
+        return keyNames[e.key] || ""
+    }
+    function loadKb() {
+        rawCall("__qt", ["kb"]).then(function (k) {
+            if (!k || !k.bindings) return
+            var m = {}
+            Object.keys(k.bindings).forEach(function (a) { (k.bindings[a] || []).forEach(function (c) { if (!m[c]) m[c] = a }) })
+            kbMap = m
+        })
+    }
+    function endKeyCap(code) { var c = keyCap; if (!c) return; keyCap = null; if (menu.visible) menu.close(); c(code) }
+    // waits for the next key and hands back its name (null: cancelled with Esc or Cancel)
+    function captureKey(label) {
+        return new Promise(function (resolve) {
+            keyCap = resolve
+            menu.open("Press a key", [{ label: "Cancel", plain: true }], function () { endKeyCap(null) }, 0, function () { endKeyCap(null) }, { body: "Press the key to use for " + label + ". Esc or Cancel to stop." })
+            sleepMs(15000).then(function () { if (keyCap === resolve) endKeyCap(null) })
+        })
+    }
     property bool mouseOn: false           // the pointer shows while it is being used, and hides after a few seconds (Settings > Keyboard & mouse)
     property var hoverHold: null            // { until, id }: after a choice slides the row, leave the pointer alone for a moment
     Timer { id: mouseHide; onTriggered: win.mouseOn = false }
@@ -834,21 +882,20 @@ Window {
         id: keys
         focus: true
         Keys.onPressed: function (e) {
+            if (keyCap) { var cc = win.codeOf(e); e.accepted = true; if (cc && !e.isAutoRepeat) win.endKeyCap(cc === "Escape" ? null : cc); return }
+            var act0 = win.kbMap[win.codeOf(e)]
             var m = {}
-            m[Qt.Key_Left] = "left"; m[Qt.Key_Right] = "right"; m[Qt.Key_Up] = "up"; m[Qt.Key_Down] = "down"
-            m[Qt.Key_Return] = "a"; m[Qt.Key_Enter] = "a"; m[Qt.Key_Space] = "a"
-            m[Qt.Key_Escape] = "b"; m[Qt.Key_Backspace] = "b"
-            m[Qt.Key_Y] = "y"; m[Qt.Key_Menu] = "y"; m[Qt.Key_Q] = "lb"; m[Qt.Key_E] = "rb"
-            m[Qt.Key_PageUp] = "lb"; m[Qt.Key_PageDown] = "rb"
+            if (act0) m[e.key] = act0
             if (keyboard.visible) {
                 if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { keyboard.finish(true); e.accepted = true; return }
                 if (e.key === Qt.Key_Escape) { keyboard.finish(false); e.accepted = true; return }
                 if (e.key === Qt.Key_Backspace) { keyboard.typed = keyboard.fresh ? "" : keyboard.typed.slice(0, -1); keyboard.fresh = false; e.accepted = true; return }
                 if (e.text && e.text.length === 1 && e.text >= " " && e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter) { if (keyboard.fresh) { keyboard.typed = ""; keyboard.fresh = false } keyboard.typed += e.text; e.accepted = true; return }
             }
+            if (m[e.key] === "guide") { if (!e.isAutoRepeat) flows.guideEvent({}); e.accepted = true; return }
             if (m[e.key] !== undefined) { if (!(e.isAutoRepeat && m[e.key] === "y")) act(m[e.key]); e.accepted = true }
         }
-        Keys.onReleased: function (e) { if (e.key === Qt.Key_Y && !e.isAutoRepeat) { act("yup"); e.accepted = true } }
+        Keys.onReleased: function (e) { if (win.kbMap[win.codeOf(e)] === "y" && !e.isAutoRepeat) { act("yup"); e.accepted = true } }
     }
     Component.onCompleted: { refresh(); keys.forceActiveFocus() }
 

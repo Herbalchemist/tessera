@@ -444,6 +444,10 @@ class PadState(QObject):
         if self.pads is not None:
             self.pads.capturing = None
 
+    @Slot(float, float, int, result=bool)
+    def rumble(self, strong, weak, ms):
+        return bool(self.pads and not self.fake and self.pads.rumble(strong, weak, ms))
+
     @Slot(result='QVariant')
     def snapshot(self):
         if self.fake:      # a build machine has no controller: a made-up one, so the picture shows something

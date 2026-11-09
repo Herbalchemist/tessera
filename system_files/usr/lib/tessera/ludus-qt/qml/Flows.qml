@@ -747,7 +747,7 @@ QtObject {
             if (!kbm || !st.kb) return w.notice("Keyboard & mouse", "Couldn't read the keyboard settings.")
             var presetTable = kbm.PRESET_NAMES
             var set = function (op, payload) {
-                return w.dev("settings", op, payload).then(function (x) { if (x.ok) st.kb = x.kb; else if (x.error) w.setStatus(x.error, true); return x })
+                return w.dev("settings", op, payload).then(function (x) { if (x.ok) { st.kb = x.kb; w.loadKb() } else if (x.error) w.setStatus(x.error, true); return x })
             }
             var labelsFor = function () {
                 var all = []
@@ -756,6 +756,36 @@ QtObject {
                     var map = {}
                     all.forEach(function (c, i) { map[c] = (names && names[i]) || c })
                     return map
+                })
+            }
+            // the keys of one action: add one (press it), remove one (Y), or move one to the front (A)
+            var keyAct = function (act, at) {
+                return labelsFor().then(function (names) {
+                    var keys = st.kb.bindings[act] || []
+                    var items = [{ label: "Add a key", sub: "up to " + kbm.MAX_PER_ACTION + " keys, the first one shows in hints", op: "add" }]
+                    keys.forEach(function (code, i) { items.push({ label: names[code] || code, sub: i === 0 ? "shown in hints · A: make another one first, Y: remove" : "A: show this one in hints · Y: remove", code: code }) })
+                    return new Promise(function (resolve) {
+                        w.guideMenu.open(kbm.ACTION_LABELS[act] + " · keys", items, function (it) { resolve(it) }, at, function () { resolve(null) }, { yLabel: "Remove" })
+                    }).then(function (it) {
+                        if (!it) return null
+                        var idx = items.findIndex(function (x) { return x.label === it.label && x.code === it.code })
+                        if (it.pressedY) return it.code ? set("kbUnbind", { action: act, code: it.code }).then(function () { return keyAct(act, idx) }) : keyAct(act, idx)
+                        if (it.op === "add") {
+                            return w.captureKey(kbm.ACTION_LABELS[act]).then(function (code) {
+                                if (!code) return keyAct(act, idx)
+                                var other = ""
+                                kbm.ACTIONS.forEach(function (a) { if ((st.kb.bindings[a] || []).indexOf(code) >= 0) other = a })
+                                var go = other && other !== act
+                                    ? w.rawCall("__qt", ["keyLabels", [code]]).then(function (nm) {
+                                        return w.pick((nm && nm[0] || code) + " is used for " + kbm.ACTION_LABELS[other], [{ label: "Use it for " + kbm.ACTION_LABELS[act] + " instead", v: true }, { label: "Cancel" }]).then(function (ok) { return Boolean(ok && ok.v) })
+                                    })
+                                    : Promise.resolve(true)
+                                return go.then(function (yes) { return yes ? set("kbBind", { action: act, code: code }).then(function () { w.loadKb() }) : null }).then(function () { return keyAct(act, idx) })
+                            })
+                        }
+                        if (it.code && idx > 1) return set("kbBind", { action: act, code: it.code }).then(function () { w.loadKb(); return keyAct(act, 1) })
+                        return keyAct(act, idx)
+                    })
                 })
             }
             var loop = function () {
@@ -781,7 +811,7 @@ QtObject {
                         if (it.info) return loop()
                         var work = Promise.resolve()
                         if (it.fold) st.closed[it.fold] = !st.closed[it.fold]
-                        else if (it.act) work = notYet(it.label + " · keys")
+                        else if (it.act) work = keyAct(it.act, 0)
                         else if (it.op === "reset") work = set("kbReset", {})
                         else if (it.op === "preset" || it.op === "hints" || it.op === "wheel") {
                             var table = it.op === "preset" ? presetTable : kbLabels[it.op]
