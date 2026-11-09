@@ -298,14 +298,25 @@ Window {
     property var job: null
     Timer { id: jobTimer; interval: 700; repeat: true; running: win.job !== null; onTriggered: win.jobTick() }
     function clockText(sec) { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ":" + (sec % 60 < 10 ? "0" : "") + (sec % 60) }
-    function watchJob(which, title, body) {
+    // opts: ask (text: B or Stop first asks "Stop it?"), noAck, otherwise (what to hand back when the job just vanishes)
+    function watchJob(which, title, body, opts) {
+        opts = opts || {}
         return new Promise(function (resolve) {
-            var j = { which: which, title: title, body: body, p: { elapsed: 0, stage: "", name: "" }, canceling: false, lost: 0, polling: false, over: false, started: Date.now(), resolve: resolve }
-            j.items = function () { return j.canceling ? [{ label: "Canceling…", header: true }] : [{ label: "Cancel", op: "cancel", danger: true }] }
-            j.show = function () { menu.open(j.title, j.items(), j.stop, 0, j.stop, { body: j.body(j.p, j.canceling) }) }
-            j.stop = function () {
+            var j = { which: which, title: title, body: body, p: { elapsed: 0, stage: "", name: "" }, canceling: false, asking: false, lost: 0, polling: false, over: false, started: Date.now(), resolve: resolve, opts: opts }
+            j.items = function () {
+                if (j.canceling) return [{ label: "Stopping…", header: true }]
+                if (j.asking) return [{ label: "No, keep going", op: "no" }, { label: "Yes, stop", op: "yes", danger: true }]     // the safe answer first
+                return [{ label: "Cancel", op: "cancel", danger: true }]
+            }
+            j.text = function () { return j.asking ? opts.ask : j.body(j.p, j.canceling) }
+            j.show = function () { menu.open(j.title, j.items(), j.pressed, 0, function () { j.pressed(null) }, { body: j.text() }) }
+            j.doCancel = function () { j.canceling = true; j.asking = false; safe(api.call(which, ["cancel", {}])) }
+            j.pressed = function (it) {
                 if (j.over) return
-                if (!j.canceling) { j.canceling = true; safe(api.call(which, ["cancel", {}])) }
+                if (j.canceling) { }
+                else if (j.asking) { if (it && it.op === "yes") j.doCancel(); else j.asking = false }
+                else if (opts.ask) j.asking = true
+                else j.doCancel()
                 j.show()
             }
             job = j
@@ -320,8 +331,8 @@ Window {
             j.polling = false
             if (job !== j || j.over) return
             if (!q.ok) { if (++j.lost > 12) endJob(j, { phase: "done", result: "error", error: "Lost touch with it.", detail: "" }) }
-            else if (q.phase === "running") { j.lost = 0; j.p = q; menu.update(j.items(), j.body(q, j.canceling)) }
-            else { api.call(j.which, ["ack", {}]); endJob(j, q.phase === "done" ? q : { phase: "done", result: "error", error: "It stopped unexpectedly.", detail: "" }) }
+            else if (q.phase === "running") { j.lost = 0; j.p = q; if (!j.asking) menu.update(j.items(), j.text()) }
+            else { if (!j.opts.noAck) api.call(j.which, ["ack", {}]); endJob(j, q.phase === "done" ? q : (j.opts.otherwise || { phase: "done", result: "error", error: "It stopped unexpectedly.", detail: "" })) }
         })
     }
     function endJob(j, r) { j.over = true; job = null; if (menu.visible) menu.close(); j.resolve(r) }
@@ -333,6 +344,8 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_update") return flows.update()
+        if (id === "_report") return flows.report()
         if (id === "_sound") return flows.sound()
         if (id === "_wifi") return flows.wifi()
         if (id === "_bluetooth") return flows.bluetooth()

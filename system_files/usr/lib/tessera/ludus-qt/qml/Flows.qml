@@ -481,4 +481,275 @@ QtObject {
             return loop()
         })
     }
+
+    // ------------------------------------------------------------------ Update software
+    function fmtDate(ms) { return ms ? new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "" }
+    function buildLabel(b) { return b && b.version ? "Version " + b.version : b && b.time ? "The build from " + fmtDate(b.time) : "The new version" }
+    function buildName(g, v) { return (g && g.names && g.names[v]) || v }
+    readonly property string updateAbout: "Updates keep your games, saves and settings. The new version starts after a restart, and the previous one is kept in case you need to go back."
+    readonly property string graphicsAbout: "Tessera comes in a build for each kind of graphics card, because the NVIDIA driver is part of the system. Switching builds works like an update: your games, saves and settings stay, the new build starts after a restart, and the old one stays in the boot menu."
+    function graphicsItems(g, closed) {
+        if (!g || !g.have) return []
+        var out = [{ key: "h:gfx", label: "Graphics", header: true, fold: "update.graphics" }]
+        if (closed["update.graphics"] === undefined) closed["update.graphics"] = !g.mismatch      // opens by itself when the card and the build disagree
+        out.push({ key: "gfxcard", label: g.cards.length ? g.cards.join(" + ") : "Graphics card", sub: "This build: " + buildName(g, g.have), info: true })
+        if (g.switching) out.push({ key: "gfxready", label: "The " + buildName(g, g.need) + " build is ready", sub: "Restart to finish switching", info: true })
+        else if (g.mismatch) out.push({ key: "gfxswitch", label: "Switch to the " + buildName(g, g.need) + " build", sub: "Made for this card · games and settings stay", op: "graphics", variant: g.need })
+        out.push({ key: "gfxpick", label: "Choose a build myself…", sub: "For special setups, like an external card", op: "graphicsPick" })
+        return out
+    }
+    function updateItems(info, closed) {
+        if (!info.supported || !info.booted) return [{ key: "retry", label: "Try again", op: "retry" }]
+        var b = info.booted
+        var out = [{ key: "h:inst", label: "Installed", header: true }]
+        out.push({ key: "installed", label: ("Tessera " + (info.launcher || "")).trim(), sub: [b.version ? "System " + b.version : "", b.time ? "built " + fmtDate(b.time) : ""].filter(Boolean).join(" · "), info: true })
+        out.push({ key: "h:upd", label: "Update", header: true })
+        if (info.rollbackQueued) {
+            out.push({ key: "reboot", label: "Restart now", sub: info.rollback ? "Goes back to " + buildLabel(info.rollback) : "Goes back to the previous version", op: "reboot" })
+            return out
+        }
+        if (info.staged) out.push({ key: "reboot", label: "Restart now", sub: buildLabel(info.staged) + " is ready", op: "reboot" })
+        out.push({ key: "update", label: "Update now", sub: info.staged ? "Look for something newer" : "Get the newest version", op: "update" })
+        if (info.rollback && !info.staged) {
+            out.push({ key: "h:prev", label: "Previous version", header: true })
+            out.push({ key: "rollback", label: "Go back to the previous version", sub: buildLabel(info.rollback), op: "rollback" })
+        }
+        return out.concat(graphicsItems(info.graphics, closed))
+    }
+    function updateStart(kind, extra) {
+        var p = Object.assign({ job: kind }, extra || {})
+        var fin = function (r) { return r.ok ? null : { result: "error", error: r.error || "Couldn't start the update.", detail: "" } }
+        return w.dev("update", "start", p).then(function (r) {
+            if (!r.needPin) return fin(r)
+            return w.requirePin().then(function (ok) { return ok ? w.dev("update", "start", p).then(fin) : { result: "canceled", quiet: true } })
+        })
+    }
+    function updateEnd(r) {
+        switch (r.result) {
+        case "canceled": return r.quiet ? "" : "Stopped. Nothing was changed."
+        case "error": return r.error + (r.detail ? " (" + r.detail + ")" : "")
+        case "uptodate": return "You're up to date. This is the newest version."
+        case "rolledback": return "Done. The previous version starts after the next restart."
+        case "staged": return buildLabel(r) + " is downloaded. Restart to finish installing it."
+        default: return null
+        }
+    }
+    // follows one system job until it ends; B or Stop asks first
+    function updateWatch(kind, hint) {
+        hint = hint || {}
+        var titles = { bootmenu: "Boot menu", boot: "Boot screen", check: "Checking for updates", rollback: "Going back", graphics: "Switching graphics build" }
+        var asks = { boot: "Stop changing the boot screen?\nNothing is changed until it finishes.", bootmenu: "Stop changing the boot screen?\nNothing is changed until it finishes.", rollback: "Stop going back?\nNothing is changed until it finishes." }
+        return w.watchJob("update", titles[kind] || "Updating", function (p, stopping) {
+            if (stopping) return ""
+            var what = kind === "bootmenu" ? "Setting the boot menu to " + (hint.name || "your choice")
+                : kind === "boot" ? "Setting the boot screen to " + (hint.name || "your choice")
+                : kind === "rollback" ? "Setting up the previous version"
+                : kind === "check" ? "Looking for a newer version"
+                : kind === "graphics" ? "Downloading the " + (hint.name || "new") + " build"
+                : hint.version ? "Downloading version " + hint.version : "Downloading the update"
+            var status = [what, kind === "apply" && hint.size ? "about " + hint.size : "", w.clockText(p.elapsed)].filter(Boolean).join(" · ")
+            var big = kind === "apply" || kind === "graphics"
+            return [status, big ? "Keep the console on until this finishes." : "", big ? p.line : ""].filter(Boolean).join("\n")
+        }, { ask: asks[kind] || "Stop the update?\nWhat is already downloaded is kept for next time.", noAck: true, otherwise: { result: "unknown" } })
+    }
+    // check, then fetch if there is something to fetch; "resume" joins a job that is already running
+    function updateNow(resume) {
+        var checked = resume === "apply" ? Promise.resolve({ hint: {} }) : (resume ? Promise.resolve(null) : updateStart("check")).then(function (bad) {
+            return (bad ? Promise.resolve(bad) : updateWatch("check")).then(function (r) {
+                var end = updateEnd(r)
+                return end !== null ? { end: end } : { hint: { version: r.version, size: r.size } }
+            })
+        })
+        return checked.then(function (c) {
+            if (c.end !== undefined) return c.end
+            return (resume === "apply" ? Promise.resolve(null) : updateStart("apply")).then(function (bad) {
+                return bad ? bad : updateWatch("apply", c.hint)
+            }).then(function (r) {
+                var end = updateEnd(r)
+                return end !== null ? end : "The update finished, but I couldn't tell whether anything new was installed. Open this screen again to see."
+            })
+        })
+    }
+    function graphicsSwitch(g, variant) {
+        var why = g && g.mismatch && variant === g.need
+            ? "This machine has " + (g.cards.join(" + ") || "a different graphics card") + ", but Tessera is running the build for " + buildName(g, g.have) + "."
+            : "Switch to the " + buildName(g, variant) + " build?"
+        return w.confirmYes(why + " The " + buildName(g, variant) + " build downloads now and starts after a restart. Games, saves and settings stay.", "Switch").then(function (yes) {
+            if (!yes) return ""
+            return w.requirePin().then(function (ok) {
+                if (!ok) return ""
+                return updateStart("graphics", { variant: variant }).then(function (bad) { return bad || updateWatch("graphics", { name: buildName(g, variant) }) }).then(function (r) {
+                    var end = updateEnd(r)
+                    if (r.result === "staged") return "The " + buildName(g, variant) + " build is downloaded. Restart to finish switching."
+                    return end !== null ? end : "I couldn't tell whether that worked. Open this screen again to see."
+                })
+            })
+        })
+    }
+    function update() {
+        if (w.menuUp()) return
+        var st = { info: null, note: "", resume: "", at: "", closed: {}, done: false }
+        var loop = function () {
+            var load = Promise.resolve()
+            if (!st.info) {
+                w.setStatus("Checking what is installed…")
+                load = w.dev("update", "info").then(function (r) {
+                    w.setStatus("")
+                    if (!r.ok) { w.setStatus(r.error || "Couldn't read the system version.", true); st.done = true; return }
+                    st.info = r
+                    if (r.job) st.resume = r.job
+                })
+            }
+            return load.then(function () {
+                if (st.done) return null
+                if (st.resume) { var job = st.resume; st.resume = ""; return updateNow(job).then(function (n) { st.note = n; st.info = null; return loop() }) }
+                var info = st.info
+                var items = updateItems(info, st.closed)
+                var shown = folded(items, st.closed)
+                var problem = info.supported ? "" : [info.problem, info.detail ? "(" + info.detail + ")" : ""].filter(Boolean).join(" ")
+                var gfx = info.graphics && info.graphics.mismatch && !info.graphics.switching
+                var first = gfx ? shown.findIndex(function (x) { return x.op === "graphics" }) : shown.findIndex(function (x) { return x.op })
+                var at = st.at ? indexOfKey(shown, st.at) : Math.max(0, first)
+                var body = st.note || problem || (gfx ? "Your graphics card changed. Tessera is running the build for " + buildName(info.graphics, info.graphics.have) + "; switch to the one made for this card below." : updateAbout)
+                return w.pick("Update software", shown, at, { body: body }).then(function (it) {
+                    st.note = ""
+                    if (!it) return null
+                    if (it.info || it.fold) { st.at = it.key; if (it.fold) st.closed[it.fold] = !st.closed[it.fold]; return loop() }
+                    st.at = ""
+                    var work = Promise.resolve()
+                    if (it.op === "retry") st.info = null
+                    else if (it.op === "reboot") {
+                        work = w.requirePin().then(function (ok) {
+                            if (!ok) return
+                            return w.dev("update", "reboot").then(function (r0) {
+                                return r0.needPin ? w.requirePin().then(function (ok2) { return ok2 ? w.dev("update", "reboot") : { canceled: true } }) : r0
+                            }).then(function (r) {
+                                if (r.canceled) return
+                                if (r.ok) return w.pick("Restarting…", [{ label: "Close", op: "close" }], 0, { body: "The console is restarting. This takes a moment." }).then(function () { st.done = true })
+                                st.note = r.error || "Couldn't restart from here. Use the power button, or Opus."
+                            })
+                        })
+                    } else if (it.op === "update") {
+                        work = w.requirePin().then(function (ok) { if (ok) return updateNow("").then(function (n) { st.note = n; st.info = null }) })
+                    } else if (it.op === "graphics") {
+                        work = graphicsSwitch(info.graphics, it.variant).then(function (n) { st.note = n; st.info = null })
+                    } else if (it.op === "graphicsPick") {
+                        var g = info.graphics, opts = ["standard", "nvidia", "nvidia-open"]
+                        work = w.pick("Which build?", opts.map(function (v) { return { label: buildName(g, v), sub: v === g.have ? "running now" : v === g.need ? "suits this card" : "", v: v } }), Math.max(0, opts.indexOf(g.need || g.have)), { body: graphicsAbout }).then(function (c) {
+                            if (c && c.v !== g.have) return graphicsSwitch(g, c.v).then(function (n) { st.note = n; st.info = null })
+                        })
+                    } else if (it.op === "rollback") {
+                        work = w.confirmYes("Go back to " + buildLabel(info.rollback).toLowerCase() + "? It starts after the next restart. Your games, saves and settings are kept.", "Go back").then(function (yes) {
+                            if (!yes) return
+                            return updateStart("rollback").then(function (bad) { return bad || updateWatch("rollback") }).then(function (r) { st.note = updateEnd(r) || "I couldn't tell whether that worked. Open this screen again to see."; st.info = null })
+                        })
+                    }
+                    return work.then(loop)
+                })
+            })
+        }
+        loop().then(function () { w.refreshTileNotes(true) })
+    }
+
+    // ------------------------------------------------------------------ Report a problem
+    readonly property string issuesUrl: "https://github.com/Herbalchemist/tessera/issues"
+    readonly property int issueUrlMax: 7500
+    readonly property var issueSections: ["Tessera", "System", "Hardware", "Crashes and errors (the start before)", "Login screen log (the start before)", "Login screen log (this boot)", "Tessera session log (this session)", "Tessera session log (the session before)", "Controllers and Bluetooth (kernel, this boot)", "Settings"]
+    function reportSections(text) {
+        var out = {}, cur = null
+        String(text).split("\n").forEach(function (line) {
+            var m = /^== (.+)$/.exec(line)
+            if (m) { cur = m[1].trim(); out[cur] = [] } else if (cur) out[cur].push(line)
+        })
+        return out
+    }
+    function issueBody(r, what) {
+        var secs = reportSections(r.text)
+        var body = ["**What happened**", "", what || "_(not described)_", "", "_Sent from Tessera's Report a problem. The full report is `" + r.folder + "/" + r.name + "` on that machine: attach it here if asked._", ""].join("\n")
+        var fence = function (title, lines) { return "<details><summary>" + title + "</summary>\n\n```\n" + lines.join("\n").trim() + "\n```\n</details>\n" }
+        var room = function () { return issueUrlMax - encodeURIComponent(body).length }
+        for (var n = 0; n < issueSections.length; n++) {
+            var title = issueSections[n], lines = secs[title]
+            if (!lines || !lines.join("").trim() || lines.join("").trim() === "(nothing)") continue
+            var keep = lines.slice(-60), part = fence(title, keep)
+            while (keep.length > 3 && encodeURIComponent(part).length > room()) { keep = keep.slice(Math.ceil(keep.length / 4)); part = fence(title + " (last lines)", keep) }
+            if (encodeURIComponent(part).length > room()) break
+            body += "\n" + part
+        }
+        return body
+    }
+    function issueUrl(title, body) { return issuesUrl + "/new?title=" + encodeURIComponent(title) + "&body=" + encodeURIComponent(body) }
+    function reportRows(lines) { return lines.map(function (l) { return /^== /.test(l) ? { label: l.slice(3), header: true } : { label: l || " ", info: true } }) }
+    function openInBrowser(url) { return notYet("The browser") }      // until the built-in browser is ported
+    function reportToGitHub(r) {
+        return w.ask("What happened? (optional)", "", { max: 300 }).then(function (what) {
+            if (what === null) return reportMade(r)
+            var text = what && what.trim()
+            var title = (text ? text.split("\n")[0].slice(0, 80) : "Problem report from Tessera " + ((/launcher (\S+)/.exec(r.text) || [])[1] || "")).trim()
+            var body = issueBody(r, text)
+            var loop = function () {
+                var lines = ["Title: " + title, ""].concat(body.replace(/<\/?details>|<\/?summary>|```/g, "").split("\n")).slice(0, 700)
+                return w.pick("Report it on GitHub", [
+                    { label: "Open the issue on GitHub", sub: "in the browser: sign in to GitHub if asked, look it over, then press Submit there", op: "open" },
+                    { label: "Read what goes in it", sub: lines.length + " lines (names and addresses already replaced)", op: "read" },
+                    { label: "Just keep the saved report", op: "saved" },
+                    { label: "Nothing is sent until you press Submit on GitHub's page. GitHub issues are public.", info: true }
+                ], 0, { body: "The report is saved too: " + r.folder + "/" + r.name }).then(function (it) {
+                    if (!it) return null
+                    if (it.info) return loop()
+                    if (it.op === "read") return w.pick("What goes in the issue", lines.map(function (l) { return { label: l || " ", info: true } })).then(loop)
+                    if (it.op === "saved") return reportMade(r)
+                    return openInBrowser(issueUrl(title, body))
+                })
+            }
+            return loop()
+        })
+    }
+    function reportMade(r) {
+        var loop = function () {
+            return w.pick("Report saved", [
+                { label: "Read it", sub: "every line, before you share it", op: "read" },
+                { label: "Report it on GitHub", sub: "a new issue with this report filled in", op: "github" },
+                { label: "Open the issues page", sub: "in the browser, to describe what happened", op: "issues" },
+                { label: "Delete it", op: "delete", danger: true },
+                { label: "To share it", sub: "On " + issuesUrl.replace("https://", "") + ", start a new issue (or answer yours) and attach the file. It's in " + r.folder + " (from Opus, or copy it to a USB drive).", info: true }
+            ], 0, { body: r.folder + "/" + r.name }).then(function (it) {
+                if (!it) return null
+                if (it.info) return loop()
+                if (it.op === "read") return w.pick(r.name, reportRows(r.text.split("\n").slice(0, 900))).then(loop)
+                if (it.op === "github") return reportToGitHub(r)
+                if (it.op === "issues") return openInBrowser(issuesUrl)
+                if (it.op === "delete") return w.confirmYes("Delete " + r.name + "?", "Delete").then(function (yes) {
+                    if (!yes) return loop()
+                    return w.dev("report", "delete", { name: r.name }).then(function () { w.setStatus("Report deleted.") })
+                })
+            })
+        }
+        return loop()
+    }
+    function report() {
+        if (w.menuUp()) return
+        w.dev("report", "contents").then(function (info) {
+            if (!info.contents) return w.notice("Report a problem", info.error || "Couldn't read what a report holds.")
+            var loop = function () {
+                var items = [
+                    { label: "Report it on GitHub", sub: "opens a new issue with the report filled in; you see it first, and send it yourself", op: "github" },
+                    { label: "Save a report", sub: "only to your Tessera folder, to read or share later", op: "make" },
+                    { label: "What goes in it", header: true }
+                ].concat(info.contents.map(function (c) { return { label: c, info: true } }))
+                items.push({ label: "Never in it: PINs, passwords, Wi-Fi names. Your account and computer names, and network and hardware addresses, are replaced with [brackets].", info: true })
+                return w.pick("Report a problem", items, 0, { body: "Tessera writes a report file to the Reports folder in your Tessera folder. Nothing is sent by itself: on GitHub you see the issue before you send it." }).then(function (it) {
+                    if (!it) return null
+                    if (it.info) return loop()
+                    w.setStatus("Making the report…")
+                    return w.dev("report", "make").then(function (r) {
+                        if (!r.ok) { w.setStatus(r.error || "Couldn't make the report.", true); return null }
+                        w.setStatus("Saved " + r.folder + "/" + r.name)
+                        return it.op === "github" ? reportToGitHub(r) : reportMade(r)
+                    })
+                })
+            }
+            return loop()
+        })
+    }
 }

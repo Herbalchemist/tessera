@@ -52,9 +52,9 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
 - ⬜ Profiles, PIN
 - ⬜ Storage: drives, cleaning, hidden / ignored drives, backups and restore
-- ⬜ Update software: update, previous version, graphics build choice, boot menu settings, boot screen
+- ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
 - ⬜ Add-ons: store, shards (signed / unsigned with the admin switch), widgets, themes, reload
-- ⬜ Report a problem
+- 🟨 Report a problem (save, read, delete, build the GitHub issue; opening it waits for the browser)
 - 🟡 Power and Opus — sleep, restart, shut down not yet
 - ⬜ Tessera USB: Install Tessera (all of the installer, next to Windows), Recover
 
