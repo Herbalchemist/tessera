@@ -133,7 +133,7 @@ Window {
         else if (id === "_calfilter") { calOverride = { gamma: [1.25, 1, 0.85], gain: [1, 0.95, 0.88], black: 0.03, white: 0.95, sat: 1.3 }; calOverrideOn = true }
         else if (id === "_calfilter-off") calOverrideOn = false
         else if (id === "_calib") runCalibration("thorough")
-        else if (id === "_browser") { browserUrl = "https://example.com/"; openBrowser(1) }
+        else if (id === "_browser") { calib.visible = false; browserUrl = "https://example.com/"; openBrowser(1) }
         else if (id === "_browser-url") openUrlBar()
         else runAction(id)
     }     // screenshot runs: open a Settings flow by tile id
