@@ -96,41 +96,7 @@ Window {
         function settings(op, p) { return call("settings", [op, p || {}]) }
         function launch(id) { return call("launch", [id]) }
         function addons(op, p) { return call("addons", [op, p || {}]) }
-        // the guided tour: where its ring goes, and where to land when it ends
-    function tourRect(what) {
-        var r = null
-        if (what === "tabs") {
-            var bar = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
-            var p = bar.mapToItem(win.contentItem, 0, 0)
-            r = { x: p.x, y: p.y, w: bar.width, h: bar.height }
-        } else if (what.indexOf("tab:") === 0) {
-            var k = tabList.findIndex(function (t) { return t.id === what.slice(4) })
-            var bar2 = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
-            r = k >= 0 ? bar2.itemRect(k, win.contentItem) : null
-        } else if (what === "page") {
-            var q = viewport.mapToItem(win.contentItem, 0, 0)
-            r = { x: q.x, y: q.y, w: viewport.width, h: viewport.height }
-        } else if (what === "footer") {
-            var f = footerA.visible ? footerA : footerB
-            var fp = f.mapToItem(win.contentItem, 0, 0)
-            r = { x: fp.x, y: fp.y, w: f.width, h: f.height }
-        }
-        return r
-    }
-    function tourBack(b) {
-        if (!b) return
-        var k = Math.min(b.tab, tabList.length - 1)
-        if (k >= 0 && k !== tabIndex) goTab(k)
-        area = b.area || "tabs"
-    }
-    function tourLibrary() {
-        pick("Your games", [
-            { label: "Link a library drive or folder…", sub: "Tessera looks there for games", op: "roots" },
-            { label: "Scan for games now", sub: "Steam, Heroic, Lutris and your library folders", op: "scan" }
-        ]).then(function (it) { if (!it) return; if (it.op === "roots") flows.roots(); else flows.scan() })
-    }
-    function runTour() { if (!menu.visible && !browserOpen) tourView.open() }
-    function systemInfo() { return call("systemInfo", []) }
+        function systemInfo() { return call("systemInfo", []) }
     }
     Connections {
         target: bridge
@@ -512,6 +478,40 @@ Window {
     function applyTheme(t) { if (t) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { theme: t }) })) }
     function holdMenu(ms) { menu.holdUntil = Date.now() + ms }
     function pickColor(title, start) { return new Promise(function (resolve) { wheel.open(title, start, resolve) }) }
+    // the guided tour: where its ring goes, and where to land when it ends
+    function tourRect(what) {
+        var r = null
+        if (what === "tabs") {
+            var bar = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
+            var p = bar.mapToItem(win.contentItem, 0, 0)
+            r = { x: p.x, y: p.y, w: bar.width, h: bar.height }
+        } else if (what.indexOf("tab:") === 0) {
+            var k = tabList.findIndex(function (t) { return t.id === what.slice(4) })
+            var bar2 = tabBarA.visible && tabBarA.width > 0 ? tabBarA : tabBarB
+            r = k >= 0 ? bar2.itemRect(k, win.contentItem) : null
+        } else if (what === "page") {
+            var q = viewport.mapToItem(win.contentItem, 0, 0)
+            r = { x: q.x, y: q.y, w: viewport.width, h: viewport.height }
+        } else if (what === "footer") {
+            var f = footerA.visible ? footerA : footerB
+            var fp = f.mapToItem(win.contentItem, 0, 0)
+            r = { x: fp.x, y: fp.y, w: f.width, h: f.height }
+        }
+        return r
+    }
+    function tourBack(b) {
+        if (!b) return
+        var k = Math.min(b.tab, tabList.length - 1)
+        if (k >= 0 && k !== tabIndex) goTab(k)
+        area = b.area || "tabs"
+    }
+    function tourLibrary() {
+        pick("Your games", [
+            { label: "Link a library drive or folder…", sub: "Tessera looks there for games", op: "roots" },
+            { label: "Scan for games now", sub: "Steam, Heroic, Lutris and your library folders", op: "scan" }
+        ]).then(function (it) { if (!it) return; if (it.op === "roots") flows.roots(); else flows.scan() })
+    }
+    function runTour() { if (!menu.visible && !browserOpen) tourView.open() }
     function systemInfo() { return api.systemInfo() }
     function goSettings() { var i = tabList.findIndex(function (t) { return t.id === "settings" }); if (i >= 0) { goTab(i); area = "content" } }
     function dismissAll() { if (menu.visible) menu.close() }
