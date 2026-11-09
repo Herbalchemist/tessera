@@ -17,8 +17,8 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟡 Options menu — add a game / app from a file, scan for games, change picture, rename item, remove from library, delete files not yet
 - ⬜ Game art (automatic and chosen pictures)
 - ⬜ Recently played
-- ⬜ Hover-to-select with the mouse, with the edge-scroll pause
-- 🟨 The tour (first start, and from the guide) and Welcome: ported, compared side by side with the full Ludus (ring hugs the tiles, same card and buttons; the game lists differ only because the two sample libraries differ)
+- 🟨 Mouse: hover selects (with the pause after a row slides), click opens a tile or a tab, the wheel (move / tabs / off), right click = back, middle = options, side buttons, pointer hides after the set time. Written, builds clean in CI; not yet tried with a real mouse. Widgets on Home do not follow the pointer yet
+- 🟨 The tour (first start, and from the guide) and Welcome: ported and compared side by side in all ten stock themes (Library and Home steps); ring, card and buttons match. Remaining: the ring in tall grids ends about 70 px short at the bottom; the sample game lists differ
 - 🟡 Status line and messages — shown under the tiles; the full set of messages not yet
 
 ## Themes and customization (docs/theming.md)
@@ -75,5 +75,5 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 
 ## Checks before the switch
 - ⬜ Every QA check of the current Ludus has a Qt counterpart that passes
-- ⬜ Side-by-side screenshots: every factory theme × every shell, both versions
+- 🟨 Side-by-side screenshots: every stock theme, Library / Home / Settings / Tabs plus the tour, with layout numbers (CI "themes" job). Layout within 0-2 px in nine of ten; Indigo Cube within about 8 px. Still differing: Channel White tab icons and soft tile borders, Indigo Cube glow on the cube, Arcade Marquee tile title height. Other shells and add-on themes not yet
 - ⬜ A week as an opt-in on real hardware with no regressions
