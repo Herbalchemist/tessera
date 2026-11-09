@@ -119,10 +119,11 @@ Item {
             }
             // the glow in two corners (an ellipse of the accent, fading out)
             Canvas {
+                id: glowArt
                 anchors.fill: parent
                 onWidthChanged: requestPaint()
                 onHeightChanged: requestPaint()
-                Connections { target: th; function onAccentChanged() { requestPaint() } }
+                Connections { target: th; function onAccentChanged() { glowArt.requestPaint() } }
                 onPaint: {
                     var c = getContext("2d")
                     c.reset()
