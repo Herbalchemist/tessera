@@ -372,7 +372,8 @@ def shots(app, win, out):
              ('08-keyboard', ['b', 'right', 'a']), ('09-settings', ['b', 'right', 'down']),
              ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left']),
              ('12-wifi', ['@settings', 'a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
-             ('14-bluetooth', ['b', 'b', 'right', 'a']), ('15-sound', ['b', 'down', 'a', 'right', 'right'])]
+             ('', ['b']), ('', ['b']), ('', ['right']), ('14-bluetooth', ['a']),
+             ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right'])])]
     run_steps(app, win, out, steps)
     return app.exec()
 
