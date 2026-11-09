@@ -914,7 +914,7 @@ Window {
             // style.css: header padding 28 + the tab port's margin -22 and padding 36 put a pill 42px down, and 22px of room under it
             readonly property bool plainTop: nav === "top" && ["pills", "text", "pivots"].indexOf(th.parts.tabs) >= 0
             readonly property real topPad: plainTop ? 42 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad + 4 : headerPad
-            readonly property real botPad: plainTop ? 22 : nav === "top-left" && th.parts.tabs !== "segments" ? headerPad - 4 : headerPad
+            readonly property real botPad: plainTop ? 22 : nav === "top-left" && th.parts.tabs !== "segments" ? (th.parts.row === "start" ? 1 : headerPad - 10) : headerPad
             x: nav === "left" ? (th.parts.tabs === "chunky" ? th.clamp(14, 2.4 * th.vw, 40) : 0) : 0
             width: nav === "left" ? body.sideW : body.width
             height: nav === "left" ? body.height : nav === "bottom-bar" ? th.clamp(118, 23 * th.vh, 230) * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 1.43 : 1) : headerRow.height + topPad + botPad
