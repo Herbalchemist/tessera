@@ -1131,6 +1131,7 @@ Window {
             }
 
             SelectionTitle { visible: th.parts.title !== "above"; th: th; text: win.titleText; leftAligned: column.leftAligned; inset: !column.sideNav; Layout.fillWidth: true }
+            Item { visible: viewport.oneRow; Layout.fillHeight: true }     // a one-row page leaves the spare room here, not between its parts
             Text {
                 Layout.fillWidth: true
                 Layout.leftMargin: column.leftAligned && !column.sideNav ? th.edge : 0
