@@ -1008,4 +1008,359 @@ QtObject {
         }
         loop().then(function () { w.reloadPrefs() })
     }
+
+    // ------------------------------------------------------------------ Storage
+    function fmtBytes(n) {
+        if (n === null || n === undefined || isNaN(n)) return "–"
+        var u = ["B", "KB", "MB", "GB", "TB"], i = 0, v = n
+        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+        return (i >= 3 ? v.toFixed(v >= 100 ? 0 : 1) : Math.round(v)) + " " + u[i]
+    }
+    function lib(op, p) {
+        return w.dev("library", op, p).then(function (r) {
+            if (r && r.view) w.applyView(r.view)
+            if (r) w.setStatus(r.ok ? r.message : r.error, !r.ok)
+            return r || { ok: false }
+        })
+    }
+    function takePrefs(r) {
+        if (r && r.prefs) w.applyView(Object.assign({}, w.view, { prefs: Object.assign({}, w.view.prefs, r.prefs) }))
+    }
+    function frac(n, total) { return total > 0 ? Math.max(0, n) / total : 0 }
+    function driveRow(d, measured) {
+        var other = Math.max(0, d.used - d.games - d.tessera)
+        var low = !d.muted && (d.free < 10 * 1073741824 || d.free / d.total < 0.1)
+        var parts = measured
+            ? [{ c: "g", n: d.games, t: "Games & apps" }, { c: "t", n: d.tessera, t: "Tessera" }, { c: "o", n: other, t: "Other" }, { c: "f", n: d.free, t: "Free" }]
+            : [{ c: "o", n: d.used, t: "Used" }, { c: "f", n: d.free, t: "Free" }]
+        var tags = [d.system ? "Main storage" : d.external ? "Plugged in" : "", d.library ? "Game library" : "", low ? "Low space" : "", d.muted ? "Warnings off" : "", measured ? "" : "Measuring…"].filter(Boolean)
+        return {
+            key: "d:" + d.key, label: d.name, sub: fmtBytes(d.free) + " free of " + fmtBytes(d.total), op: "drive", drive: d, danger: false,
+            segs: parts.filter(function (x) { return x.n > 0 }).map(function (x) { return { c: x.c, frac: frac(x.n, d.total) } }),
+            legend: parts.filter(function (x) { return x.n > 0 || x.c === "f" }).map(function (x) { return x.t + " " + fmtBytes(x.n) }).join("  ·  ") + (tags.length ? "    " + tags.join(" · ") : "")
+        }
+    }
+    function storageItems(ov, measured, hint) {
+        var items = [{ key: "h:drives", label: "Drives", header: true }]
+        ov.drives.forEach(function (d) { items.push(driveRow(d, measured)) })
+        items.push({ key: "h:games", label: "Games & apps", header: true })
+        items.push({ key: "manage", label: "Manage games by size", sub: "Biggest first", op: "manage" })
+        items.push({ key: "scan", label: "Scan for games", sub: "Look for new games now", op: "scan" })
+        items.push({ key: "add", label: "Add a game library", sub: "Point Tessera at a folder of games", op: "add" })
+        items.push({ key: "roots", label: "Library folders", sub: "See or stop scanning", op: "roots" })
+        items.push({ key: "install", label: "New games install to", sub: ov.install || "Tessera folder", op: "install" })
+        items.push({ key: "h:vault", label: "Tessera folder", header: true })
+        var parts = (ov.vault.parts || []).filter(function (x) { return x.bytes > 0 }).sort(function (a, b) { return b.bytes - a.bytes })
+        var vrow = { key: "vault", label: ov.vault.path, sub: measured ? fmtBytes(ov.vault.bytes) : "", op: "vault" }
+        if (parts.length) {
+            vrow.segs = parts.map(function (x, i) { return { c: i === 0 ? "g" : i === 1 ? "t" : "o", frac: frac(x.bytes, ov.vault.bytes) } })
+            vrow.legend = parts.map(function (x) { return x.name + " " + fmtBytes(x.bytes) }).join("  ·  ")
+        } else vrow.legend = ""
+        if (!parts.length) vrow.sub = measured ? "Empty so far" : "Measuring…"
+        items.push(vrow)
+        items.push({ key: "downloads", label: "Downloads", sub: "See or clear what you downloaded", op: "downloads" })
+        items.push({ key: "h:house", label: "Housekeeping", header: true })
+        items.push({ key: "clean", label: "Clean up", sub: hint || "Broken and duplicate entries, old logs", op: "clean" })
+        items.push({ key: "backup", label: "Back up my setup", sub: "Layout, library and settings", op: "backup" })
+        items.push({ key: "restore", label: "Restore a backup", sub: "Put a saved setup back", op: "restore" })
+        items.push({ key: "drives", label: "Name your drives", sub: "Friendly names for disks", op: "drives" })
+        items.push({ key: "hidden", label: "Hidden drives", sub: ov.hiddenCount ? ov.hiddenCount + " hidden" : "None", op: "hidden" })
+        return items
+    }
+    function storage() {
+        if (w.menuUp()) return
+        var st = { at: "games" }
+        var loop = function () {
+            return w.dev("storage", "overview", {}).then(function (ov) {
+                if (!ov || !ov.ok) { w.setStatus((ov && ov.error) || "Couldn't read your drives.", true); return null }
+                st.ov = ov; st.measured = Boolean(ov.measured); st.hint = ""
+                return w.liveList(st, {
+                    title: "Storage", every: 1200,
+                    items: function (s) { return storageItems(s.ov, s.measured, s.hint) },
+                    body: function () { return "" },
+                    reload: function (s) {      // measuring folders takes a moment on a big library: drives first, the rest after
+                        if (s.measured) return Promise.resolve()
+                        return w.dev("storage", "overview", { measure: true }).then(function (r) {
+                            if (!r || !r.ok) return
+                            s.ov = r; s.measured = true
+                            return w.dev("storage", "cleanScan", {}).then(function (sc) {
+                                var n = sc && sc.ok ? sc.broken + sc.dupes + sc.orphans : 0
+                                s.hint = n ? n + " thing" + (n === 1 ? "" : "s") + " to tidy" : "Nothing to tidy right now"
+                            })
+                        })
+                    }
+                }).then(function (it) {
+                    if (!it) return null
+                    var again = function () { return loop() }
+                    switch (it.op) {
+                    case "drive": return driveMenu(it.drive).then(again)
+                    case "manage": return manage().then(again)
+                    case "scan": return scan().then(again)
+                    case "add": return browse("addRoot").then(again)
+                    case "roots": return roots().then(again)
+                    case "install": return installTo().then(again)
+                    case "vault": w.setStatus("Your games, apps, themes and downloads live in " + (st.ov.vault.path || "~/Tessera") + "."); return again()
+                    case "downloads": return downloads().then(again)
+                    case "clean": return clean().then(again)
+                    case "backup": return w.requirePin().then(function (ok) { return ok ? browse("backupTo") : null }).then(again)
+                    case "restore": return restore().then(again)
+                    case "drives": return drives().then(again)
+                    case "hidden": return hidden().then(again)
+                    }
+                    return again()
+                })
+            })
+        }
+        loop()
+    }
+    function driveMenu(d) {
+        var items = []
+        if (!d.library && !d.system) items.push({ label: "Use for games", sub: "Make a Games folder and scan it", op: "use" })
+        if (d.ejectable) items.push({ label: "Eject safely", sub: "Then it can be unplugged", op: "eject" })
+        items.push({ label: "Name this drive…", op: "name" })
+        items.push({ label: "Low space warning", sub: d.muted ? "Off · Select to turn on" : "On · Select to turn off", op: "mute" })
+        items.push({ label: "Hide this drive", sub: "Brings back from Hidden drives", op: "hide" })
+        return w.pick(d.name + " · " + fmtBytes(d.free) + " free of " + fmtBytes(d.total), items).then(function (it) {
+            if (!it) return null
+            return w.requirePin().then(function (ok) {
+                if (!ok) return null
+                if (it.op === "name") return renameDrive(d.key, "").then(function (y) { if (y) w.setStatus("Renamed.") })
+                var call = it.op === "mute" ? w.dev("storage", "muteDrive", { key: d.key, muted: !d.muted })
+                    : it.op === "hide" ? w.dev("storage", "hideDrive", { key: d.key, hidden: true })
+                    : w.dev("storage", it.op === "use" ? "useDrive" : "eject", { key: d.key })
+                return call.then(function (r) {
+                    if (!r) return null
+                    if (r.prefs) { takePrefs(r); r.message = it.op === "hide" ? d.name + " is hidden." : d.muted ? "Low space warning is on for " + d.name + "." : "Low space warning is off for " + d.name + "." }
+                    w.setStatus(r.message || r.error, !r.ok)
+                    if (r.ok && it.op === "use") return scan()
+                })
+            })
+        })
+    }
+    function hidden() {
+        return w.dev("storage", "hiddenDrives", {}).then(function (r) {
+            var items = (r.drives || []).length
+                ? r.drives.map(function (d) { return { label: d.name, sub: fmtBytes(d.total) + " · Select to show again", key: d.key } })
+                : [{ label: "No hidden drives", sub: "Hide one from its menu in Storage", header: true }]
+            return w.pick("Hidden drives", items, 0).then(function (it) {
+                if (!it || !it.key) return null
+                return w.requirePin().then(function (ok) {
+                    if (!ok) return
+                    return w.dev("storage", "hideDrive", { key: it.key, hidden: false }).then(function (u) { takePrefs(u); w.setStatus(it.label + " is showing again.") })
+                }).then(hidden)
+            })
+        })
+    }
+    function manage() {
+        var build = function (res, measured) {
+            var total = res.games.reduce(function (a, g) { return a + (g.bytes || 0) }, 0)
+            var max = Math.max.apply(null, [1].concat(res.games.map(function (g) { return g.bytes || 0 })))
+            var items = [{ key: "h:top", label: measured ? "Biggest first · " + fmtBytes(total) + " in all" : "Biggest first · measuring…", header: true }]
+            if (!res.games.length) items.push({ key: "h:none", label: "No games or apps yet", header: true })
+            res.games.forEach(function (g) {
+                var row = { key: "g:" + g.id, id: g.id, game: g, label: g.title,
+                    sub: g.offline ? (g.offline === "drive" ? "Drive not connected" : "Files missing") : g.bytes === null ? "Measuring…" : fmtBytes(g.bytes) }
+                if (!g.offline && g.bytes !== null) {
+                    row.segs = [{ c: g.deletable ? "g" : "o", frac: frac(g.bytes, max) }, { c: "f", frac: 1 - frac(g.bytes, max) }]
+                    row.legend = g.drive || ""
+                }
+                items.push(row)
+            })
+            if (res.games.some(function (g) { return g.bytes })) items.push({ key: "h:note", label: "Bright bars: files you can delete here  ·  Grey: outside your Tessera folder", header: true })
+            return items
+        }
+        return w.dev("storage", "games", {}).then(function (r) {
+            if (!r || !r.ok) return null
+            var st = { res: r, measured: false, at: "" }
+            return w.liveList(st, {
+                title: "Manage games by size", every: 1200,
+                items: function (s) { return build(s.res, s.measured) },
+                body: function () { return "" },
+                reload: function (s) {
+                    if (s.measured) return Promise.resolve()
+                    return w.dev("storage", "games", { measure: true }).then(function (res) { if (res && res.ok) { s.res = res; s.measured = true } })
+                }
+            }).then(function (it) {
+                if (!it) return null
+                if (!it.game) return manage()
+                var g = it.game, menu = []
+                if (g.deletable) menu.push({ label: "Delete the files…", sub: g.bytes ? "Frees " + fmtBytes(g.bytes) : "", op: "files" })
+                menu.push({ label: "Remove from library…", sub: "Keeps the files", op: "remove" })
+                return w.pick(g.title, menu).then(function (pk) {
+                    if (!pk) return
+                    return w.requirePin().then(function (ok) {
+                        if (!ok) return
+                        if (pk.op === "files") return w.confirmYes("Delete “" + g.title + "” and its files from your Tessera folder? This can't be undone.", "Delete files").then(function (y) { if (y) return lib("deleteFiles", { id: g.id }) })
+                        return w.confirmYes("Remove “" + g.title + "” from your library?", "Remove (files are kept)").then(function (y) { if (y) return lib("deleteItem", { id: g.id }) })
+                    })
+                }).then(manage)
+            })
+        })
+    }
+    function installTo() {
+        return w.dev("storage", "installRoots", {}).then(function (r) {
+            var items = r.roots.map(function (x, i) { return { label: x.name, sub: [x.current ? "✓ in use" : "", x.free !== null ? fmtBytes(x.free) + " free" : ""].filter(Boolean).join("  ·  "), i: i } })
+            var cur = 0
+            r.roots.forEach(function (x, i) { if (x.current) cur = i })
+            return w.pick("New games install to", items, cur).then(function (it) {
+                if (!it) return null
+                return w.requirePin().then(function (ok) {
+                    if (!ok) return
+                    return w.dev("storage", "setInstallRoot", { index: it.i }).then(function (res) { w.setStatus(res.message || res.error, !res.ok) })
+                })
+            })
+        })
+    }
+    function downloads() {
+        return w.dev("storage", "downloads", {}).then(function (d) {
+            var items = [{ label: d.count ? d.count + " item" + (d.count === 1 ? "" : "s") + " · " + fmtBytes(d.bytes) : "Nothing downloaded", sub: d.path, header: true }]
+            if (d.count) items.push({ label: "Clear Downloads…", sub: "Deletes what is inside, keeps the folder", op: "clear" })
+            return w.pick("Downloads", items, 1).then(function (it) {
+                if (!it || it.op !== "clear") return null
+                return w.requirePin().then(function (ok) {
+                    if (!ok) return null
+                    return w.confirmYes("Delete everything in Downloads (" + fmtBytes(d.bytes) + ")? This can't be undone.", "Clear Downloads").then(function (y) {
+                        if (!y) return null
+                        return w.dev("storage", "clearDownloads", {}).then(function (r) { w.setStatus(r.message || r.error, !r.ok) })
+                    })
+                })
+            })
+        })
+    }
+    function clean() {
+        return w.dev("storage", "cleanScan", {}).then(function (s) {
+            var rows = [
+                { what: "broken", label: "Broken entries", sub: s.broken ? s.broken + " whose files are gone" : "None", n: s.broken },
+                { what: "dupes", label: "Duplicate entries", sub: s.dupes ? s.dupes + " pointing at the same game" : "None", n: s.dupes },
+                { what: "orphans", label: "Stray tiles", sub: s.orphans ? s.orphans + " left over in mosaics" : "None", n: s.orphans },
+                { what: "logs", label: "Old logs", sub: s.logFiles > 1 ? s.logFiles + " files · " + fmtBytes(s.logBytes) : "None", n: s.logFiles > 1 ? s.logFiles : 0 }
+            ]
+            var on = {}
+            rows.forEach(function (r) { on[r.what] = r.n > 0 })
+            var st = { at: "" }
+            var loop = function () {
+                var items = [{ key: "h", label: "Games on an unplugged drive are not touched", header: true }]
+                rows.forEach(function (r) { items.push({ key: r.what, what: r.what, label: r.label, sub: (on[r.what] ? "✓ " : r.n ? "Skip · " : "") + r.sub, n: r.n }) })
+                items.push({ key: "go", label: "Clean up selected", op: "go", ok: true })
+                return w.pick("Clean up", items, indexOfKey(items, st.at || "go")).then(function (it) {
+                    if (!it) return null
+                    st.at = it.key
+                    if (it.what) { if (it.n) on[it.what] = !on[it.what]; return loop() }
+                    var what = rows.filter(function (r) { return on[r.what] }).map(function (r) { return r.what })
+                    if (!what.length) { w.setStatus("Nothing selected."); return loop() }
+                    return w.requirePin().then(function (ok) {
+                        if (!ok) return loop()
+                        return w.dev("storage", "cleanRun", { what: what }).then(function (r) {
+                            if (r.ok) return w.dev("library", "refresh", {}).then(function (v) { if (v && v.view) w.applyView(v.view); w.setStatus(r.message) })
+                            w.setStatus(r.message || r.error, !r.ok)
+                        })
+                    })
+                })
+            }
+            return loop()
+        })
+    }
+    function restore() {
+        return w.requirePin().then(function (ok) {
+            if (!ok) return null
+            return w.confirmYes("Restore a backup? It replaces your layout, library and settings. A copy of what you have now is kept.", "Choose a backup folder").then(function (y) { return y ? browse("restoreFrom") : null })
+        })
+    }
+    // Name a drive, in your words
+    function renameDrive(key, current) {
+        return w.ask("Name this drive (empty = automatic name)", current || "").then(function (name) {
+            if (name === null) return false
+            return w.dev("settings", "driveName", { key: key, name: name }).then(function () { return true })
+        })
+    }
+    function drives() {
+        var st = { at: "" }
+        var loop = function () {
+            return w.dev("settings", "drives").then(function (r) {
+                var items = (r.drives || []).map(function (d) { return { key: d.key, label: d.name, sub: d.tech, custom: d.custom } })
+                if (!items.length) items.push({ label: "No extra drives found", sub: "Plug one in and open this again", header: true })
+                return w.pick("Your drives · Select to rename", items, indexOfKey(items, st.at)).then(function (it) {
+                    if (!it) return null
+                    if (!it.key) return loop()
+                    st.at = it.key
+                    return renameDrive(it.key, it.custom ? it.label : "").then(loop)
+                })
+            })
+        }
+        return loop()
+    }
+    function roots() {
+        return w.dev("settings", "get").then(function (r) {
+            var items = [{ label: "+  Add a folder…", op: "add" }, { label: "Name your drives…", op: "drives" }]
+            r.roots.forEach(function (p, i) { items.push({ label: p.name, sub: p.tech || "Select to remove", op: "rm", i: i }) })
+            return w.pick("Library folders (scanned for games)", items).then(function (it) {
+                if (!it) return null
+                if (it.op === "add") return browse("addRoot").then(roots)
+                if (it.op === "drives") return drives().then(roots)
+                return w.confirmYes("Stop scanning " + it.label + "?", "Remove from list (files are not touched)").then(function (y) {
+                    if (!y) return
+                    return w.dev("settings", "removeRoot", { index: it.i })
+                }).then(roots)
+            })
+        })
+    }
+    // Look for new games, then pick which to add
+    function scan(into) {
+        w.setStatus("Scanning your library folders…")
+        return w.dev("scan", "run").then(function (r) {
+            if (!r || !r.found) { w.setStatus("Couldn't scan.", true); return null }
+            if (!r.found.length) return w.setStatus(r.notes || "No new games found. Heroic, Lutris and installed games are checked automatically; add library folders for Steam and PS5 games.", Boolean(r.notes))
+            w.setStatus(r.notes || "", Boolean(r.notes))
+            var on = {}
+            r.found.forEach(function (f) { on[f.cid] = !f.optional })
+            var st = { at: "" }
+            var loop = function () {
+                var items = [{ key: "go", label: "Add selected games", op: "go", ok: true }]
+                r.found.forEach(function (f) { items.push({ key: "c:" + f.cid, cid: f.cid, label: f.title, sub: (on[f.cid] ? "✓ Adding · " : "Skipping · ") + f.source }) })
+                return w.pick("Found " + r.found.length + " new game" + (r.found.length === 1 ? "" : "s"), items, indexOfKey(items, st.at || "go")).then(function (it) {
+                    if (!it) { w.setStatus("Nothing added."); return null }
+                    st.at = it.key
+                    if (it.cid !== undefined) { on[it.cid] = !on[it.cid]; return loop() }
+                    var cids = r.found.filter(function (f) { return on[f.cid] }).map(function (f) { return f.cid })
+                    return w.dev("scan", "add", { cids: cids, into: into }).then(function (res) {
+                        if (res.view) w.applyView(res.view)
+                        w.setStatus(res.ok ? res.message : res.error, !res.ok)
+                    })
+                })
+            }
+            return loop()
+        })
+    }
+    // Browse folders through main; we only ever say "enter entry N"
+    function browse(purpose, into, item) {
+        return w.dev("browse", "start", { purpose: purpose, into: into, item: item }).then(function (r) { return browseShow(r, purpose) })
+    }
+    function browseShow(r, purpose) {
+        if (!r || r.error) { w.setStatus((r && r.error) || "Could not open that.", true); return Promise.resolve(null) }
+        var items = []
+        if (r.canUp) items.push({ key: "up", label: "⬆  Up one level", op: "up" })
+        if (r.canChooseHere) items.push({ key: "here", label: purpose === "backupTo" ? "✔  Save the backup in this folder" : purpose === "restoreFrom" ? "✔  Restore from this folder" : "✔  Use this folder", op: "here" })
+        r.entries.forEach(function (e, i) { items.push({ key: "e:" + i, label: e.isDir && !r.renamable ? e.name + "/" : e.name, sub: e.sub, drv: e.key, op: e.isDir ? "enter" : "choose", i: i }) })
+        var index = r.canUp ? (r.entries.length ? 1 + Number(Boolean(r.canChooseHere)) : 0) : 0
+        var next = function (res) { return browseShow(res, purpose) }
+        return w.pick(r.crumb + (r.truncated ? "  (first 500 shown)" : ""), items, index, { yLabel: r.renamable ? "Rename" : "" }).then(function (it) {
+            if (!it) {
+                if (r.canUp) return w.dev("browse", "up").then(next)
+                return w.dev("browse", "close").then(function () { return null })
+            }
+            if (it.pressedY) {
+                if (!it.drv) return browseShow(r, purpose)
+                return renameDrive(it.drv, "").then(function () { return w.dev("browse", "refresh") }).then(next)
+            }
+            if (it.op === "up") return w.dev("browse", "up").then(next)
+            if (it.op === "enter") return w.dev("browse", "enter", { index: it.i }).then(next)
+            return w.dev("browse", "choose", { index: it.op === "here" ? -1 : it.i }).then(function (res) {
+                if (res.error) { w.setStatus(res.error, true); return browseShow(r, purpose) }
+                if (res.view) w.applyView(res.view)
+                if (res.theme) w.applyTheme(res.theme)
+                w.setStatus(res.message)
+                return res
+            })
+        })
+    }
 }

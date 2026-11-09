@@ -110,6 +110,7 @@ Window {
         })
     }
     // A page the way qa/theme-shots.cjs shows it: library (two to the right), home, settings, or the tab bar.
+    function shotRun(id) { runAction(id) }     // screenshot runs: open a Settings flow by tile id
     function shotView(v) {
         var id = v === "tabs" ? "library" : v
         var i = tabList.findIndex(function (t) { return t.id === id })
@@ -344,6 +345,7 @@ Window {
         if (id === "_power") return flowPower()
         if (id === "_pad") return flows.pad()
         if (id === "_keyboard") return flows.keyboardMenu()
+        if (id === "_storage") return flows.storage()
         if (id === "_profiles") return flows.profiles()
         if (id === "_pin") return flows.pin()
         if (id === "_update") return flows.update()

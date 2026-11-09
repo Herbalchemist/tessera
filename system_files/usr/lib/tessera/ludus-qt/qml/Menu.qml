@@ -112,13 +112,14 @@ Rectangle {
                 delegate: Rectangle {
                     id: row
                     readonly property bool hdr: modelData.header === true && !modelData.fold
-                    readonly property bool hasBar: modelData.bar !== undefined && modelData.bar !== null
+                    readonly property bool hasSegs: modelData.segs !== undefined && modelData.segs !== null
+                    readonly property bool hasBar: (modelData.bar !== undefined && modelData.bar !== null) || hasSegs
                     readonly property bool picked: index === menu.sel && !hdr && modelData.info !== true
                     readonly property color tone: modelData.danger ? th.danger : modelData.ok ? th.ok : th.accent
                     readonly property color ink: modelData.danger ? th.dangerInk : modelData.ok ? th.okInk : th.accentInk
                     readonly property bool toned: modelData.danger === true || modelData.ok === true
                     width: list.width
-                    height: hdr ? lbl.implicitHeight + 24 : Math.max(lbl.implicitHeight, sub.implicitHeight) + 28 + (hasBar ? 0.95 * th.rem + 12 : 0)
+                    height: hdr ? lbl.implicitHeight + 24 : Math.max(lbl.implicitHeight, sub.implicitHeight) + 28 + (hasBar ? 0.95 * th.rem + 12 : 0) + (hasSegs && modelData.legend ? 0.9 * th.rem + 6 : 0)
                     radius: 10
                     color: picked ? tone : toned ? th.alpha(tone, 0.16) : "transparent"
                     border.width: toned ? (picked ? 2 : 1) : picked && th.pastel ? 2 : 0
@@ -147,7 +148,7 @@ Rectangle {
                         font.pixelSize: 0.85 * th.rem
                     }
                     Row {     // a level bar (Sound): the filled part, then the rest
-                        visible: row.hasBar
+                        visible: row.hasBar && !row.hasSegs
                         x: 18
                         y: parent.height - height - 14
                         width: parent.width - 36
@@ -155,12 +156,41 @@ Rectangle {
                         spacing: 3
                         Rectangle {
                             id: filled
-                            width: Math.max(3, (parent.width - 3) * Math.max(0, Math.min(100, row.hasBar ? modelData.bar.pct : 0)) / 100)
+                            width: Math.max(3, (parent.width - 3) * Math.max(0, Math.min(100, row.hasBar && !row.hasSegs ? modelData.bar.pct : 0)) / 100)
                             height: parent.height
                             radius: 3
-                            color: row.hasBar && modelData.bar.mute ? (row.picked ? th.alpha(row.ink, 0.5) : th.alpha(th.text, 0.38)) : (row.picked ? row.ink : th.accent)
+                            color: row.hasBar && !row.hasSegs && modelData.bar.mute ? (row.picked ? th.alpha(row.ink, 0.5) : th.alpha(th.text, 0.38)) : (row.picked ? row.ink : th.accent)
                         }
-                        Rectangle { width: Math.max(0, parent.width - filled.width - 3); height: parent.height; radius: 3; color: row.picked ? th.alpha(row.ink, 0.2) : th.alpha(th.text, 0.13); visible: row.hasBar && modelData.bar.pct < 100 }
+                        Rectangle { width: Math.max(0, parent.width - filled.width - 3); height: parent.height; radius: 3; color: row.picked ? th.alpha(row.ink, 0.2) : th.alpha(th.text, 0.13); visible: row.hasBar && !row.hasSegs && modelData.bar.pct < 100 }
+                    }
+                    Row {     // a usage bar in parts (Storage): games, Tessera, other, free
+                        visible: row.hasSegs
+                        x: 18
+                        y: lbl.y + lbl.implicitHeight + 8
+                        width: parent.width - 36
+                        height: 0.95 * th.rem
+                        spacing: 2
+                        Repeater {
+                            model: row.hasSegs ? modelData.segs : []
+                            delegate: Rectangle {
+                                width: Math.max(3, parent.width * modelData.frac - 2)
+                                height: parent.height
+                                radius: 3
+                                readonly property real a: modelData.c === "f" ? 0.2 : modelData.c === "o" ? 0.45 : modelData.c === "t" ? 0.75 : 1
+                                color: row.picked ? th.alpha(row.ink, a) : modelData.c === "f" ? th.alpha(th.text, 0.13) : modelData.c === "o" ? th.alpha(th.text, 0.45) : modelData.c === "t" ? th.mix(th.accent, th.text, 0.5) : th.accent
+                            }
+                        }
+                    }
+                    Text {
+                        visible: row.hasSegs && !!modelData.legend
+                        x: 18
+                        y: parent.height - implicitHeight - 8
+                        width: parent.width - 36
+                        text: modelData.legend || ""
+                        elide: Text.ElideRight
+                        color: row.picked ? row.ink : th.muted
+                        opacity: 0.8
+                        font.pixelSize: 0.75 * th.rem
                     }
                     MouseArea {
                         anchors.fill: parent

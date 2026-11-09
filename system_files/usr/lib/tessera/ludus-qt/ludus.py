@@ -341,6 +341,8 @@ def run_steps(app, win, out, steps, wait=900, first=2500):
         for a in acts:
             if a.startswith('@'):
                 QMetaObject.invokeMethod(win, 'shotView', Q_ARG('QVariant', a[1:]))
+            elif a.startswith('run:'):
+                QMetaObject.invokeMethod(win, 'shotRun', Q_ARG('QVariant', a[4:]))
             elif a.startswith('theme:'):
                 QMetaObject.invokeMethod(win, 'useTheme', Q_ARG('QVariant', a[6:]))
                 pause = 1800   # the theme, then its background picture
@@ -374,7 +376,8 @@ def shots(app, win, out):
              ('12-wifi', ['@settings', 'a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
              ('', ['b']), ('', ['b']), ('', ['right']), ('14-bluetooth', ['a']),
              ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right']),
-             ('', ['b']), ('', ['down']), ('17-keyboard-menu', ['a']), ('', ['b']), ('', ['left']), ('18-controller-menu', ['a'])]
+             ('', ['b']), ('', ['down']), ('17-keyboard-menu', ['a']), ('', ['b']), ('', ['left']), ('18-controller-menu', ['a']),
+             ('', ['b']), ('', ['b']), ('', ['run:_storage']), ('', []), ('', []), ('19-storage', [])]
     run_steps(app, win, out, steps)
     return app.exec()
 

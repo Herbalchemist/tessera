@@ -51,7 +51,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). Still to do: the live test, button mapping, calibration, grip/order, adding and removing single keys
 - 🟨 PIN ported (set, change, remove, lock, browser, Xbox). first-run welcome still to do
-- ⬜ Storage: drives, cleaning, hidden / ignored drives, backups and restore
+- 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds; the "new graphics card?" prompt at start is still to do)
 - ⬜ Add-ons: store, shards (signed / unsigned with the admin switch), widgets, themes, reload
 - 🟨 Report a problem (save, read, delete, build the GitHub issue; opening it waits for the browser)
