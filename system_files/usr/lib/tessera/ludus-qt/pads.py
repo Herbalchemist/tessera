@@ -26,7 +26,7 @@ ABS_X, ABS_Y, HAT_X, HAT_Y = 0x00, 0x01, 0x10, 0x11
 ROLE_ACTION = ['a', 'b', 'x', 'y', 'lb', 'rb']
 POSITION = {0x130: 0, 0x131: 1, 0x133: 2, 0x134: 3, 0x136: 4, 0x137: 5}
 # position of every button the capture screen takes (the standard layout's numbers)
-CAPTURE_POSITION = dict(POSITION, **{0x138: 6, 0x139: 7, 0x13a: 8, 0x13b: 9, 0x13d: 10, 0x13e: 11, 0x13c: 16})
+CAPTURE_POSITION = {**POSITION, 0x138: 6, 0x139: 7, 0x13a: 8, 0x13b: 9, 0x13d: 10, 0x13e: 11, 0x13c: 16}
 
 
 def family_of(vendor, name=''):

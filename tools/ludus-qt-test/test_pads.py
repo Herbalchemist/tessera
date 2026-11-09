@@ -85,5 +85,40 @@ class PadsTest(unittest.TestCase):
         self.assertIsNone(s.direction())
 
 
+class ReadingButtonsTest(unittest.TestCase):
+    def test_roles(self):
+        # Xbox and PlayStation confirm with the bottom button, Nintendo with the right one ("auto")
+        self.assertEqual(pads.role_of(0, 'xbox', {}), 0)
+        self.assertEqual(pads.role_of(0, 'nintendo', {}), 1)
+        self.assertEqual(pads.role_of(1, 'nintendo', {}), 0)
+        self.assertEqual(pads.role_of(2, 'nintendo', {}), 2)            # the left and top buttons never move
+        self.assertEqual(pads.role_of(0, 'xbox', {'confirm': 'right'}), 1)
+        self.assertEqual(pads.role_of(0, 'nintendo', {'confirm': 'bottom'}), 0)
+        self.assertEqual(pads.role_of(7, 'xbox', {'confirm': 'right'}), 7)
+
+    def test_remap_wins(self):
+        pad = {'confirm': 'right', 'remap': {'xbox': [1, 0, 3, 2, 5, 4]}}
+        self.assertEqual(pads.role_of(0, 'xbox', pad), 1)
+        self.assertEqual(pads.role_of(4, 'xbox', pad), 5)
+        self.assertEqual(pads.role_of(0, 'playstation', pad), 1)        # no remap for it: "confirm" applies
+        bad = {'remap': {'xbox': [0, 0, 0, 0, 0, 0]}}
+        self.assertEqual(pads.role_of(2, 'xbox', bad), 2)               # a broken list is ignored
+
+    def test_family(self):
+        self.assertEqual(pads.family_of('054c'), 'playstation')
+        self.assertEqual(pads.family_of('057e'), 'nintendo')
+        self.assertEqual(pads.family_of('045e', 'Xbox Wireless Controller'), 'xbox')
+
+    def test_snapshot(self):
+        i = pads.PadInfo.__new__(pads.PadInfo)
+        i.name, i.vendor, i.product = 'Pad', '045e', '0b12'
+        i.keys, i.raw, i.range = {0x130: 1, 0x13d: 1}, {pads.HAT_Y: 1, 0: 32767, 2: 255}, {0: (-32768, 32767), 2: (0, 255)}
+        i.right, i.trig = (3, 4), (2, 5)
+        s = i.snapshot()
+        self.assertEqual((s['buttons'][0], s['buttons'][10], s['buttons'][13], s['buttons'][1]), (1.0, 1.0, 1.0, 0.0))
+        self.assertAlmostEqual(s['axes'][0], 1.0)
+        self.assertEqual(s['buttons'][6], 1.0)                          # a fully pulled left trigger
+
+
 if __name__ == '__main__':
     unittest.main()
