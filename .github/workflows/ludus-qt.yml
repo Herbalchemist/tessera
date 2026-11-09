@@ -28,6 +28,12 @@ jobs:
           mkdir -p /tmp/ludus-qt-out
           "$q" --qt6 -o system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag.qsb system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag
           cp system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag.qsb /tmp/ludus-qt-out/
+      - name: What Qt WebEngine offers here
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/ludus-qt-out
+          { rpm -qa | grep -i "webengine\|pyside" ; dnf -q list available '*webengine*' 2>&1 | head; python3 -c "import PySide6.QtWebEngineQuick as m; print('QtWebEngineQuick', m)"; python3 -c "import PySide6.QtWebEngineCore as m; print('QtWebEngineCore', m)"; python3 -c "import PySide6.QtMultimedia as m; print('QtMultimedia ok')"; } > /tmp/ludus-qt-out/webengine-probe.txt 2>&1 || true
+          cat /tmp/ludus-qt-out/webengine-probe.txt
       - name: Draw the screens
         env:
           QT_QPA_PLATFORM: xcb
