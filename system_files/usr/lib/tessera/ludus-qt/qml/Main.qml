@@ -982,14 +982,15 @@ Window {
                 readonly property real side: header.nav === "top-left" ? th.edge : header.nav === "bottom-bar" ? th.clamp(18, 4 * th.vw, 70) : 0
                 x: side + (header.nav === "top-left" && th.parts.tabs !== "segments" ? 6 : 0)
                 width: header.width - 2 * side
-                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) + (th.parts.tabs === "pills" ? 11 : 0) : header.topPad
+                y: header.nav === "bottom-bar" ? header.height - height - th.clamp(12, 3.2 * th.vh, 32) : header.topPad
                 spacing: header.nav === "bottom-bar" ? 0 : th.parts.tabs === "segments" ? th.clamp(6, 1 * th.vw, 16) : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
                 Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" && header.nav !== "top-left" }
-                HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar" }
+                HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
                     id: tabBarA
+                    transform: Translate { y: tabBarA.barPill ? 11 : 0 }
                     th: th
                     tabs: win.tabList
                     current: win.tabIndex
@@ -1003,7 +1004,7 @@ Window {
                     Layout.preferredHeight: implicitHeight
                 }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
-                HintKey { visible: header.hints; th: th; label: "RB"; round: header.nav === "bottom-bar" }
+                HintKey { visible: header.hints; th: th; label: "RB"; round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
                 Item { Layout.fillWidth: !(headerRow.alignable && th.tabAlign === "flex-end"); visible: header.nav !== "bottom-bar" }
             }
             Column {

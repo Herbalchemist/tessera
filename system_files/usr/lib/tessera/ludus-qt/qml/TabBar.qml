@@ -88,6 +88,7 @@ Item {
                 }
                 Rectangle {
                     id: shape
+                    visible: bar.look !== "segments" || tab.active
                     anchors.fill: parent
                     radius: bar.look === "round" || bar.look === "chunky" || (bar.look === "pills" && !bar.down) ? height / 2
                           : bar.look === "pills" && bar.down ? th.radius * 0.72 : 0
@@ -148,6 +149,7 @@ Item {
                     Behavior on opacity { enabled: th.motion; NumberAnimation { duration: 200 } }
                 }
                 Shape {     // bar pills: the tab's line icon before its name
+                    id: pillIcon
                     visible: bar.barPill && tab.kind !== "new"
                     x: label.x - width - 8
                     y: (parent.height - height) / 2
@@ -160,7 +162,7 @@ Item {
                         fillColor: "transparent"
                         capStyle: ShapePath.RoundCap
                         joinStyle: ShapePath.RoundJoin
-                        scale: Qt.size(parent.width / 24, parent.width / 24)
+                        scale: Qt.size(pillIcon.width / 24, pillIcon.width / 24)
                         PathSvg { path: tabIcons[tab.kind] || "" }
                     }
                 }
