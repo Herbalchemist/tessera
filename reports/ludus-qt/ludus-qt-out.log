@@ -1,6 +1,6 @@
 ludus-qt: starting
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
 shot 01-library
 shot 02-options
 shot 03-add-to-which-mosaic
@@ -36,20 +36,20 @@ shot 30-button-mapping
 shot 31-grip-order
 shot 32-guide
 shot 33-tour-start
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
 shot 34-tour-tabs
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
 shot 36-tour-library
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:125:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Tour.qml:126:169: Unable to assign [undefined] to QString
 shot 35-tour-end
