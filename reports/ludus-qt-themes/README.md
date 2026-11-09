@@ -1,6 +1,6 @@
 # Factory themes: the full Ludus (left) and Ludus (Qt) (right)
 
-Commit 9c9d5a0. Same library, 1280x720.
+Commit 8c05e8e. Same library, 1280x720.
 
 ### theme-arcade-marquee-home-1280
 ![theme-arcade-marquee-home-1280](theme-arcade-marquee-home-1280.png)
