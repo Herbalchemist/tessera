@@ -139,13 +139,39 @@ Rectangle {
     function redraw() {
         if (!def) { rects = []; return }
         rects = pattern(def, work)
-        if (def.kind === "gamma" && lineStep !== idx) { lineStep = idx; lines.requestPaint() }
         var f
         if (compare) f = null
         else if (def.layers && def.layers.length === 0) f = null      // gamma steps measure the screen as it is
         else f = fromWork(work, mode, def.layers)
         filter(f)
         tick++
+    }
+    readonly property var lineRect: region(0.62, 0.5)
+    // a 2 x 2 BMP, made here: which of its pixels are lit says how much light the lines give
+    function tileOf(light, tint) {
+        var hi = [Math.round(tint[0] * 255), Math.round(tint[1] * 255), Math.round(tint[2] * 255)]
+        var lit = function (x, y) {
+            if (light === 0.5) return y === 0
+            if (light === 0.25) return x === 0 && y === 0
+            return !(x === 0 && y === 0)
+        }
+        var bytes = []
+        var le = function (v, n) { for (var k = 0; k < n; k++) bytes.push((v >> (8 * k)) & 255) }
+        bytes.push(0x42, 0x4d); le(70, 4); le(0, 4); le(54, 4)                       // file header
+        le(40, 4); le(2, 4); le(2, 4); le(1, 2); le(24, 2); le(0, 4); le(16, 4); le(0, 4); le(0, 4); le(0, 4); le(0, 4)     // 2 x 2, 24 bits, no compression
+        for (var row = 1; row >= 0; row--) {      // bottom row first
+            for (var x = 0; x < 2; x++) {
+                var on = lit(x, row)
+                bytes.push(on ? hi[2] : 0, on ? hi[1] : 0, on ? hi[0] : 0)
+            }
+            bytes.push(0, 0)
+        }
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", out = ""
+        for (var i = 0; i < bytes.length; i += 3) {
+            var n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0)
+            out += chars[(n >> 18) & 63] + chars[(n >> 12) & 63] + (i + 1 < bytes.length ? chars[(n >> 6) & 63] : "=") + (i + 2 < bytes.length ? chars[n & 63] : "=")
+        }
+        return "data:image/bmp;base64," + out
     }
     function summary() {
         var w = work
@@ -208,31 +234,14 @@ Rectangle {
             }
         }
     }
-    Canvas {      // the fine lines of a gamma step: drawn once per step, the middle square changes on top
-        id: lines
-        x: 0; y: 0; width: cal.width; height: cal.height
+    Image {       // the fine lines of a gamma step: a 2 x 2 pixel tile, repeated (the middle square sits on top)
+        x: cal.lineRect.x; y: cal.lineRect.y; width: cal.lineRect.w; height: cal.lineRect.h
         visible: Boolean(cal.def && cal.def.kind === "gamma")
-        renderTarget: Canvas.Image
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            var d = cal.def
-            if (!d || d.kind !== "gamma") return
-            var r = cal.region(0.62, 0.5)
-            var img = ctx.createImageData(r.w, r.h)
-            var hi = [d.tint[0] * 255, d.tint[1] * 255, d.tint[2] * 255]
-            for (var y = 0; y < r.h; y++) {
-                for (var x = 0; x < r.w; x++) {
-                    var lit
-                    if (d.light === 0.5) lit = y % 2 === 0
-                    else if (d.light === 0.25) lit = x % 2 === 0 && y % 2 === 0
-                    else lit = !(x % 2 === 0 && y % 2 === 0)
-                    var i = (y * r.w + x) * 4
-                    img.data[i] = lit ? hi[0] : 0; img.data[i + 1] = lit ? hi[1] : 0; img.data[i + 2] = lit ? hi[2] : 0; img.data[i + 3] = 255
-                }
-            }
-            ctx.putImageData(img, r.x, r.y)
-        }
+        source: cal.def && cal.def.kind === "gamma" ? cal.tileOf(cal.def.light, cal.def.tint) : ""
+        fillMode: Image.Tile
+        smooth: false
+        mipmap: false
+        cache: false
     }
     Column {
         x: 0.04 * cal.width; y: 0.012 * cal.height

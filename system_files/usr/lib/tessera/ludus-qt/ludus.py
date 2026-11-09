@@ -189,6 +189,9 @@ def bake_cal_shader():
     """The display calibration shader (qml/calibrate.frag), built here for this machine's graphics with
     Qt's own shader tools. Returns its file address, or '' if it can't be built: the screen is then drawn
     without the correction (the full Ludus's page draws it with an SVG filter instead)."""
+    built = os.path.join(HERE, 'qml', 'calibrate.frag.qsb')      # built ahead (qsb), when the image has it
+    if os.path.exists(built):
+        return QUrl.fromLocalFile(built).toString()
     try:
         import tempfile
         from PySide6.QtShaderTools import QShaderBaker

@@ -17,10 +17,17 @@ jobs:
     container: registry.fedoraproject.org/fedora:latest
     steps:
       - name: Tools
-        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative mesa-dri-drivers xorg-x11-server-Xvfb dejavu-sans-fonts google-noto-sans-fonts
+        run: dnf -y -q install git nodejs python3 python3-pyside6 qt6-qtdeclarative qt6-qtshadertools mesa-dri-drivers xorg-x11-server-Xvfb dejavu-sans-fonts google-noto-sans-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Tests
         run: python3 -m unittest discover -v tools/ludus-qt-test
+      - name: Build the calibration shader
+        run: |
+          q=$(command -v qsb || ls /usr/lib64/qt6/bin/qsb /usr/libexec/qt6/qsb 2>/dev/null | head -1)
+          echo "qsb: $q"
+          mkdir -p /tmp/ludus-qt-out
+          "$q" --qt6 -o system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag.qsb system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag
+          cp system_files/usr/lib/tessera/ludus-qt/qml/calibrate.frag.qsb /tmp/ludus-qt-out/
       - name: Draw the screens
         env:
           QT_QPA_PLATFORM: xcb
