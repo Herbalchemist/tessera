@@ -996,7 +996,7 @@ Window {
                 Rectangle {
                     width: parent.height; height: width; radius: width / 2
                     color: th.mix(th.accent, Qt.color("#000000"), 0.1)
-                    Text { anchors.centerIn: parent; text: "☺"; color: "#ffffff"; font.pixelSize: parent.height * 0.55 }
+                    PersonIcon { anchors.centerIn: parent; width: parent.width * 0.68; height: width; ink: "#ffffff" }
                 }
                 Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: clock.time; color: th.text; font.pixelSize: 1.05 * th.rem * th.clockScale; font.weight: Font.DemiBold }
             }
@@ -1014,7 +1014,7 @@ Window {
                 width: (th.parts.tabs === "pivots" ? 2.3 : 2.2) * th.rem; height: width
                 radius: th.parts.tabs === "pivots" ? 0 : width / 2
                 color: th.parts.tabs === "pivots" ? th.accent : th.alpha(th.text, 0.18)
-                Text { anchors.centerIn: parent; text: "☺"; color: th.parts.tabs === "pivots" ? "#ffffff" : th.text; font.pixelSize: parent.height * 0.6 }
+                PersonIcon { anchors.centerIn: parent; width: parent.width * 0.68; height: width; ink: th.parts.tabs === "pivots" ? "#ffffff" : th.text }
             }
         }
         Column {
