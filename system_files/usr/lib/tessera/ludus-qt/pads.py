@@ -272,6 +272,13 @@ class Pads:
                 self.emit(act)
             elif typ == EV_KEY and code in BUTTONS and value == 0 and BUTTONS[code] in ('up', 'down', 'left', 'right'):
                 self.held[n] = (None, 0)
+            elif typ == EV_KEY and code in BUTTONS and value == 0:
+                released = BUTTONS[code]
+                if code in POSITION:
+                    info = self.info.get(n)
+                    released = ROLE_ACTION[role_of(POSITION[code], family_of(info.vendor, info.name) if info else 'xbox', self.padSettings)]
+                if released == 'y':
+                    self.emit('yup')     # the Y button let go: a tap opens options, holding 3 s picks a tab up
             elif typ == EV_ABS:
                 before = stick.direction()
                 stick.feed(code, value)

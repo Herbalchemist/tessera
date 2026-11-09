@@ -12,6 +12,7 @@ Item {
     property int current: 0
     property bool focused: false
     signal tapped(int i)
+    property string liftedId: ""          // a tab picked up with Y held: it lifts, grows and wiggles
     property real span: 800                 // width available (across) or height (down)
     readonly property string look: th.parts.tabs
     readonly property bool down: th.vertical
@@ -59,6 +60,17 @@ Item {
                     cursorShape: tab.Window.window && tab.Window.window.mouseOn ? Qt.ArrowCursor : Qt.BlankCursor
                     onClicked: bar.tapped(index)
                 }
+                readonly property bool lifted: bar.liftedId !== "" && modelData.id === bar.liftedId
+                z: lifted ? 5 : 0
+                Rectangle {
+                    visible: tab.lifted
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    radius: height / 2 > 20 ? 20 : height / 2
+                    color: "transparent"
+                    border.width: 3
+                    border.color: th.accent
+                }
                 readonly property bool active: index === bar.current
                 readonly property bool lit: active && bar.focused
                 readonly property string kind: bar.kindOf(modelData.id)
@@ -75,8 +87,9 @@ Item {
                       : bar.look === "segments" ? label.implicitHeight + 2 * th.clamp(7, 1.1 * th.vh, 12)
                       : bar.down ? label.implicitHeight + 2 * th.clamp(8, 1.2 * th.vh, 14)
                       : label.implicitHeight + 16
-                transform: Translate { x: bar.look === "chunky" && tab.lit ? 10 : 0 }
-                scale: bar.look === "chunky" && tab.lit ? 1.04 : 1
+                transform: Translate { x: bar.look === "chunky" && tab.lit ? 10 : 0; y: tab.lifted ? -6 : 0 }
+                scale: tab.lifted ? 1.1 : bar.look === "chunky" && tab.lit ? 1.04 : 1
+                SequentialAnimation on rotation { running: tab.lifted && th.motion; loops: Animation.Infinite; NumberAnimation { to: 1.5; duration: 250 } NumberAnimation { to: -1.5; duration: 250 } onRunningChanged: if (!running) tab.rotation = 0 }
                 Behavior on scale { enabled: th.motion; NumberAnimation { duration: 200 } }
 
                 // the glow ring around a focused pill / round tab

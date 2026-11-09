@@ -735,7 +735,43 @@ Window {
     }
 
     // ---------------------------------------------------------------- input
-    function act(a) {
+    // Hold Y for 3 seconds on a mosaic tab to pick it up, then move it with left/right; any other press puts it down (input.js)
+    property string reorderId: ""
+    property bool yTap: false
+    Timer {
+        id: liftTimer
+        interval: 3000
+        onTriggered: {
+            win.yTap = false
+            var id = win.liftTarget()
+            if (!id || menuUp()) return
+            win.area = "tabs"
+            win.reorderId = id
+        }
+    }
+    function liftTarget() {
+        var id = area === "tabs" ? (tabList[tabIndex] ? tabList[tabIndex].id : "") : page
+        return (view.tabOrder || []).indexOf(id) >= 0 && !stack.length ? id : ""
+    }
+    function yUp() {
+        var pending = liftTimer.running
+        liftTimer.stop()
+        if (yTap && pending) { yTap = false; act("y", true) }
+        yTap = false
+    }
+    function reorderPress(a) {
+        if (a === "left" || a === "right") {
+            var id = reorderId
+            dev("library", "moveTab", { id: id, dir: a === "left" ? -1 : 1 }).then(function (r) {
+                if (r && r.view) applyView(r.view)
+                var k = tabList.findIndex(function (t) { return t.id === id }); if (k >= 0) tabIndex = k
+            })
+            return
+        }
+        reorderId = ""
+    }
+    function act(a, tapped) {
+        if (a === "yup") return yUp()
         if (!ready) return
         if (captureView.visible) return captureView.press(a)
         if (tourView.visible || tourView.away) return tourView.press(a)
@@ -747,6 +783,8 @@ Window {
         if (menu.visible) return menu.press(a)
         if (browserOpen || browserOpening || browser.moving || Date.now() < browserQuiet) return    // the page has the controller (the main process reads it for the page)
         if (place) return placePress(a)
+        if (reorderId) return reorderPress(a)
+        if (a === "y" && !tapped && liftTarget()) { yTap = true; liftTimer.restart(); return }
         if (a === "lb" || a === "rb") {
             var bd = a === "lb" ? -1 : 1
             goTab(tabIndex + bd); area = "tabs"
@@ -802,8 +840,9 @@ Window {
                 if (e.key === Qt.Key_Backspace) { keyboard.typed = keyboard.fresh ? "" : keyboard.typed.slice(0, -1); keyboard.fresh = false; e.accepted = true; return }
                 if (e.text && e.text.length === 1 && e.text >= " " && e.key !== Qt.Key_Return && e.key !== Qt.Key_Enter) { if (keyboard.fresh) { keyboard.typed = ""; keyboard.fresh = false } keyboard.typed += e.text; e.accepted = true; return }
             }
-            if (m[e.key] !== undefined) { act(m[e.key]); e.accepted = true }
+            if (m[e.key] !== undefined) { if (!(e.isAutoRepeat && m[e.key] === "y")) act(m[e.key]); e.accepted = true }
         }
+        Keys.onReleased: function (e) { if (e.key === Qt.Key_Y && !e.isAutoRepeat) { act("yup"); e.accepted = true } }
     }
     Component.onCompleted: { refresh(); keys.forceActiveFocus() }
 
@@ -1056,6 +1095,7 @@ Window {
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
                     id: tabBarA
+                    liftedId: win.reorderId
                     onTapped: function (i) { win.clickTab(i) }
                     transform: Translate { y: tabBarA.barPill ? 11 : 0 }
                     th: th
@@ -1083,6 +1123,7 @@ Window {
                 HintKey { visible: header.hints; th: th; label: "LB"; anchors.horizontalCenter: parent.horizontalCenter }
                 TabBar {
                     id: tabBarB
+                    liftedId: win.reorderId
                     onTapped: function (i) { win.clickTab(i) }
                     th: th
                     tabs: win.tabList
