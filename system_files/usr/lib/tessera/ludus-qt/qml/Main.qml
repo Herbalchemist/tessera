@@ -96,7 +96,7 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { keepTimer.start(); startTimer.payload = data; startTimer.start() } }
+            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { keepTimer.start(); if (!shotMode) { startTimer.payload = data; startTimer.start() } } }
             else if (ch === "drive-added" && data) flows.offerDrive(data)
             else if (ch === "display-new" && data) flows.displayNew(data)
             else if (ch === "launch-failed" && data) win.setStatus(data, true)
