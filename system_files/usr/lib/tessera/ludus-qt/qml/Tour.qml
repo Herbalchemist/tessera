@@ -150,7 +150,7 @@ Item {
             Rectangle {
                 visible: Boolean(tour.st.tryTabs); width: parent.width; height: visible ? tryT.implicitHeight + 16 : 0; radius: th.radius
                 color: tour.tried ? th.alpha(th.ok, 0.18) : th.alpha(th.accent, 0.14)
-                Text { id: tryT; x: 12; y: 8; width: parent.width - 24; wrapMode: Text.Wrap; color: th.text; font.weight: Font.DemiBold; font.pixelSize: 0.95 * th.rem; text: tour.tried ? "✓ " + tour.st.triedText : tour.st.tryText }
+                Text { id: tryT; x: 12; y: 8; width: parent.width - 24; wrapMode: Text.Wrap; color: th.text; font.weight: Font.DemiBold; font.pixelSize: 0.95 * th.rem; text: tour.tried ? "✓ " + (tour.st.triedText || "") : (tour.st.tryText || "") }
             }
             Item { width: 1; height: tour.st.op ? 12 : 0 }
             Rectangle {
