@@ -6,6 +6,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Shapes
 
 Window {
     id: win
@@ -938,20 +939,29 @@ Window {
                 border.width: Math.max(th.borderW, 1)
                 border.color: th.mix(th.border, th.accent, 0.3)
             }
-            Rectangle {     // bottom-bar: a curved bar along the bottom
+            Shape {     // bottom-bar: a bar along the bottom, curved up in the middle (an ellipse across the whole width)
+                id: barShape
                 visible: header.nav === "bottom-bar"
                 x: -body.anchors.leftMargin
                 width: win.width
                 height: parent.height + body.anchors.bottomMargin
-                topLeftRadius: th.clamp(34, 8 * th.vh, 80)
-                topRightRadius: topLeftRadius
-                gradient: Gradient {
-                    GradientStop { position: 0; color: th.mix(th.panel, Qt.color("#ffffff"), 0.75) }
-                    GradientStop { position: 0.7; color: th.panel }
-                    GradientStop { position: 1; color: th.mix(th.panel, Qt.color("#000000"), 0.08) }
+                readonly property real ry: th.clamp(34, 8 * th.vh, 80)
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                    strokeColor: th.alpha(th.border, 0.85)
+                    strokeWidth: 3
+                    fillGradient: LinearGradient {
+                        x1: 0; y1: 0; x2: 0; y2: barShape.height
+                        GradientStop { position: 0; color: th.mix(th.panel, Qt.color("#ffffff"), 0.75) }
+                        GradientStop { position: 0.7; color: th.panel }
+                        GradientStop { position: 1; color: th.mix(th.panel, Qt.color("#000000"), 0.08) }
+                    }
+                    startX: 0; startY: barShape.height + 3
+                    PathLine { x: 0; y: barShape.ry }
+                    PathArc { x: barShape.width / 2; y: 0; radiusX: barShape.width / 2; radiusY: barShape.ry; direction: PathArc.Clockwise }
+                    PathArc { x: barShape.width; y: barShape.ry; radiusX: barShape.width / 2; radiusY: barShape.ry; direction: PathArc.Clockwise }
+                    PathLine { x: barShape.width; y: barShape.height + 3 }
                 }
-                border.width: 3
-                border.color: th.alpha(th.border, 0.85)
             }
             Rectangle {     // segments: a band across, lined above and below
                 visible: th.parts.tabs === "segments" && (header.nav === "top" || header.nav === "top-left")
@@ -1054,7 +1064,7 @@ Window {
         Column {
             visible: th.parts.clock === "bar" && th.parts.nav === "bottom-bar"
             anchors.horizontalCenter: parent.horizontalCenter
-            y: header.y + header.height - header.height * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 0.58 : 0.4) - height / 2
+            y: header.y + header.height - header.height * (["round", "chunky"].indexOf(th.parts.tabs) >= 0 ? 0.58 : 0.4) - height
             z: 3
             Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.time; color: th.text; font.pixelSize: th.clamp(1.8 * th.rem, 6.5 * th.vh, 3.6 * th.rem) * th.clockScale; font.weight: Font.DemiBold; font.letterSpacing: 2 }
             Text { anchors.horizontalCenter: parent.horizontalCenter; text: clock.date; color: th.muted; font.pixelSize: th.clamp(0.85 * th.rem, 2.4 * th.vh, 1.3 * th.rem) * th.clockScale; font.weight: Font.DemiBold }

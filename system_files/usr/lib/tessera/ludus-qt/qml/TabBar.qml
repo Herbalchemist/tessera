@@ -13,7 +13,9 @@ Item {
     property real span: 800                 // width available (across) or height (down)
     readonly property string look: th.parts.tabs
     readonly property bool down: th.vertical
+    readonly property bool barPill: look === "pills" && th.parts.nav === "bottom-bar"     // small outlined pills with icons, in the curved bar
     readonly property real gap: look === "segments" ? 0
+                              : barPill ? th.clamp(8, 1 * th.vw, 16)
                               : down ? th.clamp(4, 0.8 * th.vh, 10)
                               : look === "text" ? th.clamp(18, 2.4 * th.vw, 40)
                               : look === "pivots" ? th.clamp(20, 2.6 * th.vw, 44)
@@ -55,6 +57,7 @@ Item {
                 width: bar.look === "round" ? th.clamp(46, 9.5 * th.vh, 96)
                      : bar.down ? bar.span
                      : bar.look === "segments" ? Math.max(segW, label.implicitWidth + 2 * th.clamp(12, 1.8 * th.vw, 30))
+                     : bar.barPill ? label.implicitWidth + 32 + (tab.kind !== "new" ? 1.1 * label.font.pixelSize + 8 : 0) + 4
                      : label.implicitWidth + 2 * (bar.look === "text" || bar.look === "pivots" ? 0 : bar.look === "chunky" ? th.clamp(14, 1.6 * th.vw, 26) : 24)
                 height: bar.look === "round" ? width
                       : bar.look === "chunky" ? label.implicitHeight + 2 * th.clamp(10, 1.9 * th.vh, 20)
@@ -70,6 +73,7 @@ Item {
                 // the glow ring around a focused pill / round tab
                 Rectangle {
                     visible: tab.lit && (bar.look === "pills" || bar.look === "round" || bar.look === "chunky")
+                    z: -1
                     anchors.fill: shape
                     anchors.margins: bar.look === "round" ? -8 : -3
                     radius: height / 2
@@ -87,12 +91,13 @@ Item {
                     anchors.fill: parent
                     radius: bar.look === "round" || bar.look === "chunky" || (bar.look === "pills" && !bar.down) ? height / 2
                           : bar.look === "pills" && bar.down ? th.radius * 0.72 : 0
-                    color: bar.look === "pills" ? (tab.lit ? th.accent : tab.active ? th.alpha(th.accent, 0.14) : "transparent")
+                    color: bar.barPill ? (tab.active ? th.card : th.alpha(th.card, 0.65))
+                         : bar.look === "pills" ? (tab.lit ? th.accent : tab.active ? th.alpha(th.accent, 0.14) : "transparent")
                          : bar.look === "segments" ? (tab.active ? th.alpha(th.accent, 0.22) : "transparent")
                          : bar.look === "round" ? th.card : "transparent"
                     gradient: bar.look !== "chunky" ? null : tab.lit ? chunkyLit : tab.active ? chunkyOn : chunkyOff
-                    border.width: bar.look === "round" && tab.active && !tab.lit ? 2 : 0
-                    border.color: th.alpha(th.accent, 0.45)
+                    border.width: bar.barPill ? 2 : bar.look === "round" && tab.active && !tab.lit ? 2 : 0
+                    border.color: bar.barPill ? (tab.lit ? th.accent : tab.active ? th.mix(th.border, th.accent, 0.5) : th.border) : th.alpha(th.accent, 0.45)
                     Gradient { id: chunkyOff; GradientStop { position: 0; color: th.mix(th.border, th.panel, 0.3) } GradientStop { position: 0.7; color: th.panel } }
                     Gradient { id: chunkyOn; GradientStop { position: 0; color: th.mix(th.border, th.accent, 0.35) } GradientStop { position: 0.75; color: th.panel } }
                     Gradient { id: chunkyLit; GradientStop { position: 0; color: th.mix(th.border, th.accent, 0.6) } GradientStop { position: 0.8; color: th.mix(th.panel, th.accent, 0.15) } }
@@ -142,19 +147,38 @@ Item {
                     font.weight: Font.Bold
                     Behavior on opacity { enabled: th.motion; NumberAnimation { duration: 200 } }
                 }
+                Shape {     // bar pills: the tab's line icon before its name
+                    visible: bar.barPill && tab.kind !== "new"
+                    x: label.x - width - 8
+                    y: (parent.height - height) / 2
+                    width: 1.1 * label.font.pixelSize
+                    height: width
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath {
+                        strokeColor: label.color
+                        strokeWidth: 1.8
+                        fillColor: "transparent"
+                        capStyle: ShapePath.RoundCap
+                        joinStyle: ShapePath.RoundJoin
+                        scale: Qt.size(parent.width / 24, parent.width / 24)
+                        PathSvg { path: tabIcons[tab.kind] || "" }
+                    }
+                }
                 Text {
                     id: label
                     visible: bar.look !== "round"
                     anchors.verticalCenter: parent.verticalCenter
-                    x: bar.look === "segments" ? (parent.width - implicitWidth) / 2
+                    x: bar.barPill ? (parent.width - implicitWidth - (tab.kind !== "new" ? 1.1 * font.pixelSize + 8 : 0)) / 2 + (tab.kind !== "new" ? 1.1 * font.pixelSize + 8 : 0)
+                     : bar.look === "segments" ? (parent.width - implicitWidth) / 2
                      : bar.down || bar.look === "chunky" ? (bar.look === "chunky" ? th.clamp(14, 1.6 * th.vw, 26) : th.clamp(10, 1 * th.vw, 16))
                      : (parent.width - implicitWidth) / 2
                     text: modelData.title
-                    font.pixelSize: (bar.look === "pivots" ? 1.7 : bar.look === "text" ? 1.15 : bar.look === "chunky" ? 1.25 : 1.35) * th.rem
+                    font.pixelSize: (bar.barPill ? 1.0 : bar.look === "pivots" ? 1.7 : bar.look === "text" ? 1.15 : bar.look === "chunky" ? 1.25 : 1.35) * th.rem
                     font.weight: bar.look === "pivots" ? (tab.active ? Font.Normal : Font.Light)
                                : bar.look === "chunky" ? Font.ExtraBold
                                : bar.look === "text" ? (tab.active ? Font.Bold : Font.Medium) : Font.DemiBold
-                    color: bar.look === "pills" ? (tab.lit ? th.accentInk : tab.active ? th.accent : th.muted)
+                    color: bar.barPill ? (tab.active ? th.text : th.muted)
+                         : bar.look === "pills" ? (tab.lit ? th.accentInk : tab.active ? th.accent : th.muted)
                          : bar.look === "chunky" ? (tab.lit ? "#ffffff" : tab.active ? th.text : th.alpha(th.text, 0.75))
                          : bar.look === "pivots" ? (tab.active ? th.text : th.alpha(th.text, 0.45))
                          : bar.look === "text" ? (tab.active ? th.text : th.muted)
