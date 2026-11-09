@@ -1,4 +1,6 @@
 ludus-qt: starting
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Browser.qml:125: ReferenceError: requestPaint is not defined
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Browser.qml:125: ReferenceError: requestPaint is not defined
 shot 01-library
 shot 02-options
 shot 03-add-to-which-mosaic
