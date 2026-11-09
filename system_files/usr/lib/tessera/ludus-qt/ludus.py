@@ -185,17 +185,16 @@ class ArtProvider(QQuickAsyncImageProvider):
 
 def shell_data():
     """The arrangements and their parts, from the full Ludus's own shell-layout.js (run as is)."""
-    from PySide6.QtQml import QJSEngine
-    eng = QJSEngine()
+    import subprocess
+    prog, extra = node_program()
+    code = ("const m = require(process.argv[1]); console.log(JSON.stringify("
+            "{ parts: m.PARTS, presets: m.PRESETS, presetParts: m.PRESET_PARTS }))")
     try:
-        src = open(os.path.join(LAUNCHER, 'shell-layout.js'), encoding='utf-8').read()
-    except OSError:
-        return {}
-    r = eng.evaluate('var module = { exports: {} };\n' + src + '\nJSON.stringify({ parts: module.exports.PARTS, presets: module.exports.PRESETS, presetParts: module.exports.PRESET_PARTS })')
-    try:
-        return json.loads(r.toString())
-    except ValueError:
-        print('ludus-qt: shell-layout.js:', r.toString(), file=sys.stderr)
+        r = subprocess.run(prog + ['-e', code, os.path.join(LAUNCHER, 'shell-layout.js')], env=dict(os.environ, **extra),
+                           capture_output=True, text=True, timeout=20, check=True)
+        return json.loads(r.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        print('ludus-qt: shell-layout.js:', e, file=sys.stderr)
         return {}
 
 

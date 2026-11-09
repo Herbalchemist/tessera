@@ -49,8 +49,8 @@ Item {
     readonly property real portPad: mode !== "rails" ? 0 : rowPart === "start" ? 26 : 28
     readonly property real rowGap: mode === "rails" ? 24 : gGap
     readonly property real rowH: titleH + portPad * 2 + ch * grow + rowGap
-    readonly property real top: mode === "rails" ? 0 : padv
-    readonly property real fullH: top + rows.length * rowH
+    readonly property real rowsTop: mode === "rails" ? 0 : padv
+    readonly property real fullH: rowsTop + rows.length * rowH
     Text { id: titleProbe; visible: false; text: "Ag"; font.pixelSize: 1.2 * th.rem; font.weight: Font.DemiBold }
 
     function tileW(t) { return t && t.big ? bigW : cw }
@@ -67,7 +67,7 @@ Item {
     onPageKeyChanged: memo.ty = 0
     function placeY() {
         if (!rows.length) return 0
-        var t = top + selRow * rowH, b = t + rowH
+        var t = rowsTop + selRow * rowH, b = t + rowH
         if (mode === "rails") return height / 2 - (t + rowH / 2)
         var minTy = Math.min(0, height - fullH)
         var y = memo.ty
@@ -104,7 +104,7 @@ Item {
                 readonly property int col: root.mode === "rails" ? (root.cols[r] || 0) : (here ? root.selCol : -1)
                 readonly property int pick: root.active && here ? (root.mode === "rails" ? col : root.selCol) : -1
                 readonly property bool near: Math.abs(r - root.selRow) <= (root.mode === "rails" ? 2 : root.grid.rows + 1)
-                y: root.top + r * root.rowH
+                y: root.rowsTop + r * root.rowH
                 width: root.width
                 height: root.rowH
                 opacity: {
