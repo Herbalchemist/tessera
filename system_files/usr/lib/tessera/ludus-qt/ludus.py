@@ -373,7 +373,7 @@ def shots(app, win, out):
              ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left']),
              ('12-wifi', ['@settings', 'a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
              ('', ['b']), ('', ['b']), ('', ['right']), ('14-bluetooth', ['a']),
-             ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right'])])]
+             ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right'])]
     run_steps(app, win, out, steps)
     return app.exec()
 
