@@ -2413,11 +2413,11 @@ QtObject {
     property var usbMenu: null          // the progress menu open now (an install, a backup, a disk check)
     function usbFlow(which) {
         usbShown = true
-        return w.api.call("__flow", ["start", which]).then(function (r) {
+        return w.rawCall("__flow", ["start", which]).then(function (r) {
             if (r === false) w.setStatus("That is already open.")
         })
     }
-    function usbAnswer(id, v) { if (id) w.api.call("__flow", ["answer", id, v]) }
+    function usbAnswer(id, v) { if (id) w.rawCall("__flow", ["answer", id, v]) }
     function flowUi(d) {
         if (d.kind === "status") return w.setStatus(d.text, d.error)
         if (d.kind === "pick") {
@@ -2432,7 +2432,7 @@ QtObject {
     // B on the progress menu asks the flow (a backup or a check stops; an install ignores it) and the menu stays
     function showProgress() {
         var m = usbMenu
-        w.guideMenu.open(m.title, m.items, function () {}, 0, function () { w.api.call("__flow", ["back"]); if (usbMenu === m) showProgress() }, { body: m.body })
+        w.guideMenu.open(m.title, m.items, function () {}, 0, function () { w.rawCall("__flow", ["back"]); if (usbMenu === m) showProgress() }, { body: m.body })
     }
     function startup(payload) {
         var p = (payload && payload.prefs) || {}
