@@ -22,6 +22,9 @@ Rectangle {
     property bool notesHidden: false
     property string xLabel: ""
     property string yPanel: ""
+    property string hA: "A"          // the names of the buttons in the hints at the bottom: they follow the controller, keyboard or mouse in use
+    property string hB: "B"
+    property string hY: "Y"
     property string gstyle: ""       // the guide's look (Settings > Controller > Guide style): side, float or compact; "" is an ordinary menu
     readonly property bool sideLike: gstyle === "side" || gstyle === "compact"
     readonly property real fz: gstyle === "compact" ? 0.85 : 1
@@ -265,9 +268,9 @@ Rectangle {
                     model: {
                         var cur = menu.items[menu.sel], h = []
                         if (cur && cur.adjust) h.push(["← / →", "Adjust"])
-                        if (cur && (!cur.header || cur.fold) && !cur.info) h.push(["A", cur.fold ? "Fold" : "Select"])
-                        if (menu.yLabel && cur && (!cur.header || cur.fold) && !cur.info) h.push(["Y", menu.yLabel])
-                        h.push(["B", "Back"])
+                        if (cur && (!cur.header || cur.fold) && !cur.info) h.push([menu.hA, cur.fold ? "Fold" : "Select"])
+                        if (menu.yLabel && cur && (!cur.header || cur.fold) && !cur.info) h.push([menu.hY, menu.yLabel])
+                        h.push([menu.hB, "Back"])
                         return h
                     }
                     Text {

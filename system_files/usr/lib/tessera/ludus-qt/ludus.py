@@ -574,8 +574,11 @@ def qa_checks(app, win):
     KC = {'Q': 16, 'W': 17, 'E': 18, 'A': 30, 'S': 31, 'D': 32, 'Z': 44}     # Linux key numbers of keys by where they are on a QWERTY keyboard
     checks = [
         ('Library is shown', ['@library'], 'tab', None),
+        ('Hints show the controller buttons to begin with', [], 'hint', 'A|LB|A'),
         ('Back goes up to the tabs', ['b'], 'base', None),
         ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', '{b1}/tabs'),
+        ('After a key, hints show keys', [], 'hint', 'Enter|PgUp|Enter'),
+        ('After the mouse, A reads Click', ['run:_mouse'], 'hint', 'Click|PgUp|Click'),
         ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', '{b1}/tabs'),
         ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', '{b}/tabs'),
         ('The WASD layout is chosen', ['run:_kb-wasd'], 'keys', '["up","left","left","a"]'),

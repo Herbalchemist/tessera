@@ -156,6 +156,7 @@ Window {
         else if (String(id).indexOf("_geom:") === 0) { geom(String(id).slice(6)) }
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
+        else if (id === "_mouse") mouseSeen()
         else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
         else if (id === "_keycap") { qaCap = "waiting"; captureKey("Test").then(function (c) { qaCap = c || "none" }) }
         else if (id === "_flowui-pick") flows.flowUi({ id: 0, kind: "pick", title: "Welcome to Tessera", items: [{ label: "Install Tessera", ok: true }, { label: "Try it first", plain: true }], index: 0, body: "x", welcome: true })
@@ -707,6 +708,7 @@ Window {
     // ---- keyboard: the saved key layout (Keyboard & mouse), looked up by the key's name (KeyboardEvent.code, as the full Ludus does)
     property var kbMap: ({ ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "a", NumpadEnter: "a", Space: "a", Escape: "b", Backspace: "b", KeyX: "x", KeyY: "y", ContextMenu: "y", PageUp: "lb", PageDown: "rb", BracketLeft: "lb", BracketRight: "rb", F1: "guide", Home: "guide" })
     property var keyCap: null
+    property var kbOrder: ({})              // the saved layout: action -> its keys, first one is the one hints show
     property string kbSeen: ""
     // ---- Qt counterparts of the full Ludus's QA checks (ludus.py --qa): small questions about what the screen is doing
     property string qaOut: ""
@@ -717,6 +719,8 @@ Window {
         else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])
         else if (name === "key") qaOut = codeOf(qaKey)
         else if (name === "cap") qaOut = qaCap
+        else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
+        else if (name === "mouse") { mouseSeen(); qaOut = "ok" }
         else qaOut = "?"
     }
     property string qaCap: ""
@@ -783,6 +787,14 @@ Window {
             var m = {}
             Object.keys(k.bindings).forEach(function (a) { (k.bindings[a] || []).forEach(function (c) { if (!m[c]) m[c] = a }) })
             kbMap = m
+            kbOrder = k.bindings
+            var all = []
+            Object.keys(m).forEach(function (c) { all.push(c) })
+            rawCall("__qt", ["keyLabels", all]).then(function (names) {
+                var t = {}
+                all.forEach(function (c, i) { t[c] = (names && names[i]) || c })
+                keyNames2 = t
+            })
         })
     }
     function endKeyCap(code) { var c = keyCap; if (!c) return; keyCap = null; if (menu.visible) menu.close(); c(code) }
@@ -794,11 +806,41 @@ Window {
             sleepMs(15000).then(function () { if (keyCap === resolve) endKeyCap(null) })
         })
     }
+    // ---- button hints follow what the person last touched: the controller's buttons, keyboard keys, or Click / Right-click (look.js hintMode, hintName)
+    property string inputMode: "pad"
+    property string padFam: "xbox"
+    property var keyNames2: ({})            // key code -> its short name (Enter, PgUp)
+    readonly property var roleAction: ({ 0: "a", 1: "b", 2: "x", 3: "y", 4: "lb", 5: "rb", 12: "up", 13: "down", 14: "left", 15: "right", 16: "guide" })
+    function hintMode() {
+        var h = (view.prefs && view.prefs.kb && view.prefs.kb.hints) || "auto"
+        if (h === "controller") return "pad"
+        if (h === "keyboard") return inputMode === "mouse" ? "mouse" : "keyboard"
+        return inputMode
+    }
+    function roleName(n) {
+        var pad = view.prefs && view.prefs.pad ? view.prefs.pad : {}
+        var set = flows.glyphSets[pad.glyphs] || flows.glyphSets[padFam]
+        var b = flows.mapPhysical(n, flows.padMapFor(padFam, pad))
+        return set[b] || "Button " + b
+    }
+    function hintName(n) {
+        var m = hintMode()
+        if (m === "pad") return roleName(n)
+        if (m === "mouse" && n === 0) return "Click"
+        if (m === "mouse" && n === 1) return "Right-click"
+        var a = roleAction[n], codes = a && kbMap ? Object.keys(kbMap).filter(function (c) { return kbMap[c] === a }) : []
+        // the first key of the action, in the order of the saved layout
+        var first = a && kbOrder[a] ? kbOrder[a][0] : (codes[0] || "")
+        return (first && keyNames2[first]) || roleName(n)
+    }
+    function footItems() { return [[hintName(0), "Open"], [hintName(1), "Back"], [hintName(3), "Options"], [hintName(4) + " / " + hintName(5), "Switch tab"]] }
+    function setInput(m) { if (inputMode !== m) inputMode = m }
     property bool mouseOn: false           // the pointer shows while it is being used, and hides after a few seconds (Settings > Keyboard & mouse)
     property var hoverHold: null            // { until, id }: after a choice slides the row, leave the pointer alone for a moment
     Timer { id: mouseHide; onTriggered: win.mouseOn = false }
     function mouseSeen() {
         mouseOn = true
+        setInput("mouse")
         var secs = kbPrefs && isFinite(kbPrefs.mouseHide) ? kbPrefs.mouseHide : 3
         if (secs > 0) { mouseHide.interval = secs * 1000; mouseHide.restart() } else mouseHide.stop()
     }
@@ -885,7 +927,7 @@ Window {
         reorderId = ""
     }
     // the screen's own code calls act(a, tapped); a call from outside (ludus.py, which can only pass one thing) comes here
-    function padAct(a) { act(a, false) }
+    function padAct(a) { setInput("pad"); padFam = flows.padFamily(); act(a, false) }
     function act(a, tapped) {
         if (a === "yup") return yUp()
         if (!ready) return
@@ -944,6 +986,7 @@ Window {
         id: keys
         focus: true
         Keys.onPressed: function (e) {
+            if (!keyCap) win.setInput("keyboard")
             if (keyCap) { var cc = win.codeOf(e); e.accepted = true; if (cc && !e.isAutoRepeat) win.endKeyCap(cc === "Escape" ? null : cc); return }
             var act0 = win.kbMap[win.codeOf(e)]
             var m = {}
@@ -1212,7 +1255,7 @@ Window {
                 spacing: header.nav === "bottom-bar" ? 0 : th.parts.tabs === "segments" ? th.clamp(6, 1 * th.vw, 16) : 28
                 readonly property bool alignable: header.nav === "top" || header.nav === "bottom" || header.nav === "bottom-dock"
                 Item { Layout.fillWidth: header.nav !== "top-left" && !(headerRow.alignable && th.tabAlign === "flex-start"); visible: header.nav !== "bottom-bar" && header.nav !== "top-left" }
-                HintKey { visible: header.hints; th: th; label: "LB"; round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
+                HintKey { visible: header.hints; th: th; label: win.hintName(4); round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
                 TabBar {
                     id: tabBarA
@@ -1232,7 +1275,7 @@ Window {
                     Layout.preferredHeight: implicitHeight
                 }
                 Item { Layout.fillWidth: true; visible: header.nav === "bottom-bar" }
-                HintKey { visible: header.hints; th: th; label: "RB"; round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
+                HintKey { visible: header.hints; th: th; label: win.hintName(5); round: header.nav === "bottom-bar"; transform: Translate { y: header.nav === "bottom-bar" ? -th.clamp(4, 1 * th.vh, 10) : 0 } }
                 Item { Layout.fillWidth: !(headerRow.alignable && th.tabAlign === "flex-end"); visible: header.nav !== "bottom-bar" }
             }
             Column {
@@ -1241,7 +1284,7 @@ Window {
                 y: th.clamp(14, 2.6 * th.vh, 30) + (th.parts.emblem === "cube" ? 15.3 * th.vh : 0)
                 width: header.width - 2 * x
                 spacing: th.clamp(8, 1.5 * th.vh, 18)
-                HintKey { visible: header.hints; th: th; label: "LB"; anchors.horizontalCenter: parent.horizontalCenter }
+                HintKey { visible: header.hints; th: th; label: win.hintName(4); anchors.horizontalCenter: parent.horizontalCenter }
                 TabBar {
                     id: tabBarB
                     liftedId: win.reorderId
@@ -1259,7 +1302,7 @@ Window {
                         Translate { y: tabBarB.height / 2 }
                     ]
                 }
-                HintKey { visible: header.hints; th: th; label: "RB"; anchors.horizontalCenter: parent.horizontalCenter }
+                HintKey { visible: header.hints; th: th; label: win.hintName(5); anchors.horizontalCenter: parent.horizontalCenter }
             }
         }
 
@@ -1400,6 +1443,7 @@ Window {
             }
             Footer {
                 id: footerA
+                items: win.footItems()
                 visible: header.nav !== "bottom"
                 th: th
                 Layout.fillWidth: true
@@ -1407,6 +1451,7 @@ Window {
         }
         Footer {      // "bottom": the hints under the menu, with a line above them
             id: footerB
+            items: win.footItems()
             visible: header.nav === "bottom"
             th: th
             ruled: true
@@ -1467,7 +1512,7 @@ Window {
     }
 
     // ================================================================ overlays
-    Menu { id: menu; anchors.fill: parent; th: th; z: 20 }
+    Menu { id: menu; anchors.fill: parent; th: th; z: 20; hA: win.hintName(0); hB: win.hintName(1); hY: win.hintName(3) }
     Flows { id: flows; w: win }
     Timer { id: startTimer; interval: 700; property var payload: null; onTriggered: flows.startup(payload) }     // first run, who is playing
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
