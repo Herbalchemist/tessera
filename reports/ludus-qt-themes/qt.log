@@ -6,11 +6,11 @@ shot theme-stock-home-1280
 shot theme-stock-settings-1280
 shot theme-stock-tabs-1280
 shot tour-stock-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-stock-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-dark-library-1280
@@ -20,11 +20,11 @@ shot theme-dark-home-1280
 shot theme-dark-settings-1280
 shot theme-dark-tabs-1280
 shot tour-dark-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-dark-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-mosaic-library-1280
@@ -34,11 +34,11 @@ shot theme-mosaic-home-1280
 shot theme-mosaic-settings-1280
 shot theme-mosaic-tabs-1280
 shot tour-mosaic-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-mosaic-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-mosaic-dark-library-1280
@@ -48,11 +48,11 @@ shot theme-mosaic-dark-home-1280
 shot theme-mosaic-dark-settings-1280
 shot theme-mosaic-dark-tabs-1280
 shot tour-mosaic-dark-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-mosaic-dark-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-cartridge-pop-library-1280
@@ -62,11 +62,11 @@ shot theme-cartridge-pop-home-1280
 shot theme-cartridge-pop-settings-1280
 shot theme-cartridge-pop-tabs-1280
 shot tour-cartridge-pop-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-cartridge-pop-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-nova-black-library-1280
@@ -76,11 +76,11 @@ shot theme-nova-black-home-1280
 shot theme-nova-black-settings-1280
 shot theme-nova-black-tabs-1280
 shot tour-nova-black-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-nova-black-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-dashboard-steel-library-1280
@@ -90,11 +90,11 @@ shot theme-dashboard-steel-home-1280
 shot theme-dashboard-steel-settings-1280
 shot theme-dashboard-steel-tabs-1280
 shot tour-dashboard-steel-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-dashboard-steel-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-indigo-cube-library-1280
@@ -104,11 +104,11 @@ shot theme-indigo-cube-home-1280
 shot theme-indigo-cube-settings-1280
 shot theme-indigo-cube-tabs-1280
 shot tour-indigo-cube-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-indigo-cube-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-channel-white-library-1280
@@ -118,11 +118,11 @@ shot theme-channel-white-home-1280
 shot theme-channel-white-settings-1280
 shot theme-channel-white-tabs-1280
 shot tour-channel-white-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-channel-white-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot theme-arcade-marquee-library-1280
@@ -132,10 +132,10 @@ shot theme-arcade-marquee-home-1280
 shot theme-arcade-marquee-settings-1280
 shot theme-arcade-marquee-tabs-1280
 shot tour-arcade-marquee-home-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
 shot tour-arcade-marquee-library-1280
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_61::act(QVariant)
+QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
