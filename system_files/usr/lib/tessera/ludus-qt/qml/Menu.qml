@@ -173,9 +173,10 @@ Rectangle {
                     readonly property bool picked: index === menu.sel && !hdr && modelData.info !== true
                     readonly property color tone: modelData.danger ? th.danger : modelData.ok ? th.ok : th.accent
                     readonly property color ink: modelData.danger ? th.dangerInk : modelData.ok ? th.okInk : th.accentInk
+                    readonly property bool stacked: menu.gstyle === "compact" && !hdr && (modelData.sub || "") !== ""     // the narrow panel puts the small words under the name
                     readonly property bool toned: modelData.danger === true || modelData.ok === true
                     width: list.width
-                    height: hdr ? lbl.implicitHeight + 24 : Math.max(lbl.implicitHeight, sub.implicitHeight) + 28 + (hasBar ? 0.95 * th.rem + 12 : 0) + (hasSegs && modelData.legend ? 0.9 * th.rem + 6 : 0)
+                    height: hdr ? lbl.implicitHeight + 24 : (stacked ? lbl.implicitHeight + sub.implicitHeight + 2 : Math.max(lbl.implicitHeight, sub.implicitHeight)) + 28 + (hasBar ? 0.95 * th.rem + 12 : 0) + (hasSegs && modelData.legend ? 0.9 * th.rem + 6 : 0)
                     radius: 10
                     color: picked ? tone : toned ? th.alpha(tone, 0.16) : "transparent"
                     border.width: toned ? (picked ? 2 : 1) : picked && th.pastel ? 2 : 0
@@ -183,8 +184,8 @@ Rectangle {
                     Text {
                         id: lbl
                         x: 18
-                        y: row.hdr ? 16 : row.hasBar ? 14 : (row.height - implicitHeight) / 2
-                        width: parent.width - 36 - (sub.text ? sub.width + 24 : 0)
+                        y: row.hdr ? 16 : row.hasBar ? 14 : row.stacked ? 14 : (row.height - implicitHeight) / 2
+                        width: parent.width - 36 - (sub.text && !row.stacked ? sub.width + 24 : 0)
                         text: row.hdr ? String(modelData.label).toUpperCase() : modelData.label
                         font.letterSpacing: row.hdr ? 0.08 * 0.85 * th.rem : 0
                         elide: Text.ElideRight
@@ -193,10 +194,9 @@ Rectangle {
                     }
                     Text {
                         id: sub
-                        anchors.right: parent.right
-                        anchors.rightMargin: 18
-                        anchors.baseline: lbl.baseline
-                        width: Math.min(implicitWidth, parent.width * 0.55)
+                        x: row.stacked ? 18 : parent.width - 18 - width
+                        y: row.stacked ? lbl.y + lbl.implicitHeight + 2 : lbl.y + lbl.baselineOffset - baselineOffset
+                        width: row.stacked ? parent.width - 36 : Math.min(implicitWidth, parent.width * 0.55)
                         text: modelData.sub || ""
                         elide: Text.ElideRight
                         color: row.picked ? row.ink : row.toned ? th.mix(row.tone, th.text, 0.55) : th.muted
