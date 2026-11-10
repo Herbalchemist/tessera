@@ -228,8 +228,6 @@ qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:150:17: QML Text: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 shot 32-guide
 QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
@@ -238,8 +236,6 @@ shot 32b-guide-float
 QMetaObject::invokeMethod: No such method Main_QMLTYPE_62::act(QVariant)
 Candidates are:
     act(QVariant,QVariant)
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
