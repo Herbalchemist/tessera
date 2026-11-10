@@ -119,6 +119,32 @@ class ReadingButtonsTest(unittest.TestCase):
         self.assertAlmostEqual(s['axes'][0], 1.0)
         self.assertEqual(s['buttons'][6], 1.0)                          # a fully pulled left trigger
 
+    def test_rumble_is_safe_without_a_pad_that_can_shake(self):
+        p = pads.Pads(lambda a: None)
+        self.assertFalse(p.rumble(1, 1, 200))                      # no controller at all
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        pads.SYS, pads.DEV = os.path.join(tmp, 'sys'), os.path.join(tmp, 'dev')
+        os.makedirs(pads.DEV)
+        caps = os.path.join(pads.SYS, 'event3', 'device', 'capabilities')
+        os.makedirs(caps)
+        with open(os.path.join(caps, 'key'), 'w') as f:
+            f.write('7fdb000000000000 0 0 0 0')
+        os.mkfifo(os.path.join(pads.DEV, 'event3'))
+        p.rescan()
+        p.lastNode = 'event3'
+        self.assertFalse(p.rumble(0.5, 0.5, 200))                  # a pipe takes no force-feedback request; no crash
+        for fd, _ in p.open.values():
+            os.close(fd)
+        p.open.clear()
+
+    def test_the_force_feedback_effect_is_the_size_the_kernel_expects(self):
+        eff = struct.pack('=HhHHHHHxxHH', pads.FF_RUMBLE, -1, 0, 0, 0, 220, 0, 100, 200) + bytes(28)
+        self.assertEqual(len(eff), 48)
+        self.assertEqual(struct.unpack_from('=HH', eff, 16), (100, 200))   # the two motors sit right after the replay block
+        self.assertEqual(pads.EVIOCSFF & 0xff, 0x80)
+        self.assertEqual((pads.EVIOCSFF >> 16) & 0x3fff, 48)
+
 
 if __name__ == '__main__':
     unittest.main()
