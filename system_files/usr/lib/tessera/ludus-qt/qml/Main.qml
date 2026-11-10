@@ -146,6 +146,7 @@ Window {
         else if (String(id).indexOf("_geom:") === 0) { geom(String(id).slice(6)) }
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
+        else if (id === "_guide-float" || id === "_guide-compact") { shotGuide = id.slice(7); gripView.visible = false; flows.guideEvent({ action: "menu" }) }
         else if (id === "_guide") { gripView.visible = false; flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
         else if (id === "_controls") { padTestView.visible = false; flows.controls() }
@@ -692,6 +693,7 @@ Window {
     property var kbMap: ({ ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "a", NumpadEnter: "a", Space: "a", Escape: "b", Backspace: "b", KeyX: "x", KeyY: "y", ContextMenu: "y", PageUp: "lb", PageDown: "rb", BracketLeft: "lb", BracketRight: "rb", F1: "guide", Home: "guide" })
     property var keyCap: null
     property string kbSeen: ""
+    property string shotGuide: ""        // picture runs only: draw the guide in this style
     readonly property var keyNames: (function () {
         var t = {}
         t[Qt.Key_Left] = "ArrowLeft"; t[Qt.Key_Right] = "ArrowRight"; t[Qt.Key_Up] = "ArrowUp"; t[Qt.Key_Down] = "ArrowDown"
@@ -709,7 +711,37 @@ Window {
         for (i = 1; i <= 24; i++) t[Qt.Key_F1 + i - 1] = "F" + i
         return t
     })()
+    // The key's place on the keyboard (what the full Ludus binds), so a binding keeps working on AZERTY,
+    // Dvorak and the rest. Qt reports the place as the scan code: the Linux key number plus an offset
+    // (8 with the usual key tables); the offset is learned from keys every layout has in the same place.
+    property int scanOff: 8
+    readonly property var placeNames: (function () {
+        var t = { 1: "Escape", 12: "Minus", 13: "Equal", 14: "Backspace", 15: "Tab", 26: "BracketLeft", 27: "BracketRight", 28: "Enter", 39: "Semicolon", 40: "Quote", 41: "Backquote",
+                  43: "Backslash", 51: "Comma", 52: "Period", 53: "Slash", 57: "Space", 69: "NumLock", 71: "Numpad7", 72: "Numpad8", 73: "Numpad9", 75: "Numpad4", 76: "Numpad5", 77: "Numpad6",
+                  79: "Numpad1", 80: "Numpad2", 81: "Numpad3", 82: "Numpad0", 87: "F11", 88: "F12", 96: "NumpadEnter", 102: "Home", 103: "ArrowUp", 104: "PageUp", 105: "ArrowLeft",
+                  106: "ArrowRight", 107: "End", 108: "ArrowDown", 109: "PageDown", 110: "Insert", 111: "Delete", 139: "ContextMenu", 158: "BrowserBack", 159: "BrowserForward",
+                  163: "MediaTrackNext", 164: "MediaPlayPause", 165: "MediaTrackPrevious", 166: "MediaStop", 172: "BrowserHome", 217: "BrowserSearch" }
+        var i, d = 1
+        for (i = 2; i <= 10; i++) t[i] = "Digit" + d++
+        t[11] = "Digit0"
+        "QWERTYUIOP".split("").forEach(function (c, j) { t[16 + j] = "Key" + c })
+        "ASDFGHJKL".split("").forEach(function (c, j) { t[30 + j] = "Key" + c })
+        "ZXCVBNM".split("").forEach(function (c, j) { t[44 + j] = "Key" + c })
+        for (i = 0; i < 10; i++) t[59 + i] = "F" + (i + 1)
+        return t
+    })()
     function codeOf(e) {
+        var sc = e.nativeScanCode
+        if (sc > 0) {
+            if (e.key === Qt.Key_Escape) scanOff = sc - 1
+            else if (e.key === Qt.Key_Space) scanOff = sc - 57
+            else if (e.key === Qt.Key_Return && !(e.modifiers & Qt.KeypadModifier)) scanOff = sc - 28
+            var place = placeNames[sc - scanOff]
+            if (place) return place
+        }
+        return nameOf(e)
+    }
+    function nameOf(e) {
         var pad = (e.modifiers & Qt.KeypadModifier) !== 0
         if (pad && e.key >= Qt.Key_0 && e.key <= Qt.Key_9) return "Numpad" + (e.key - Qt.Key_0)
         if (pad && (e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) return "NumpadEnter"

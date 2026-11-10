@@ -579,6 +579,8 @@ def shots(app, win, out):
              ('', ['run:_controls']), ('', []), ('30-button-mapping', []),
              ('', ['b', 'b']), ('', ['run:_grip']), ('', []), ('31-grip-order', []),
              ('', ['b']), ('', ['run:_guide']), ('', []), ('', []), ('32-guide', []),
+             ('', ['b']), ('', ['run:_guide-float']), ('', []), ('', []), ('32b-guide-float', []),
+             ('', ['b']), ('', ['run:_guide-compact']), ('', []), ('', []), ('32c-guide-compact', []),
              ('', ['b']), ('', ['run:_tour']), ('', []), ('33-tour-start', []), ('', ['a', 'a']), ('', []), ('34-tour-tabs', []), ('', ['a']), ('', []), ('36-tour-library', []), ('', ['a', 'a', 'a', 'a', 'a']), ('', []), ('35-tour-end', [])]
     run_steps(app, win, out, steps)
     return app.exec()

@@ -567,7 +567,8 @@ QtObject {
             if (wifi && wifi.ok && wifi.present && wifi.radio) { var c2 = (wifi.networks || []).find(function (n) { return n.active || n.connected || n.inUse }); if (c2) bits.push(c2.ssid) }
             if (who) bits.push(who.name)
             guideAll = items
-            var opts = { body: bits.join("  ·  "), stay: true, notes: notes() }
+            var gs = w.view.prefs && w.view.prefs.pad ? w.view.prefs.pad.guideStyle : "side"
+            var opts = { body: bits.join("  ·  "), stay: true, notes: notes(), guide: ["side", "float", "compact"].indexOf(w.shotGuide || gs) >= 0 ? (w.shotGuide || gs) : "side" }
             var menuItems = folded(items, guideClosed)
             opts.onX = function () { notesHidden = !notesHidden; guideNotes() }
             opts.onY = function () {

@@ -22,9 +22,20 @@ Rectangle {
     property bool notesHidden: false
     property string xLabel: ""
     property string yPanel: ""
+    property string gstyle: ""       // the guide's look (Settings > Controller > Guide style): side, float or compact; "" is an ordinary menu
+    readonly property bool sideLike: gstyle === "side" || gstyle === "compact"
+    readonly property real fz: gstyle === "compact" ? 0.85 : 1
     property double holdUntil: 0     // don't redraw underneath a hand that is still turning a bar
     visible: false
-    color: Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
+    color: gstyle === "float" ? Qt.rgba(0, 0, 0, 0.5) : sideLike ? "transparent" : Qt.rgba(8 / 255, 11 / 255, 15 / 255, 0.82)
+    gradient: sideLike ? sideScrim : null
+    Gradient {
+        id: sideScrim
+        orientation: Gradient.Horizontal
+        GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.55) }
+        GradientStop { position: 0.6; color: Qt.rgba(0, 0, 0, 0.25) }
+        GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.1) }
+    }
 
     function pickable(i) { var it = items[i]; return Boolean(it) && (!it.header || Boolean(it.fold)) && !it.info }
     function fixSel(dir) {      // headings and notes can't be chosen: land on the next row that can
@@ -46,6 +57,8 @@ Rectangle {
         heading = h
         body = (opts && opts.body) || ""
         yLabel = (opts && opts.yLabel) || ""
+        gstyle = (opts && opts.guide) || ""
+        if (sideLike && !visible) slide.restart()
         stay = Boolean(opts && opts.stay); onX = (opts && opts.onX) || null; onY = (opts && opts.onY) || null
         notes = (opts && opts.notes) || []; notesHidden = false; xLabel = ""; yPanel = ""
         holdUntil = 0
@@ -56,7 +69,7 @@ Rectangle {
         visible = true
         th.moved("m|" + h + "|" + sel)
     }
-    function close() { visible = false; done = null; canceled = null; stay = false; onX = null; onY = null; notes = [] }
+    function close() { gstyle = ""; visible = false; done = null; canceled = null; stay = false; onX = null; onY = null; notes = [] }
     function press(a) {
         if (!items.length) { if (a === "b" || a === "a") close(); return }
         if (a === "up" || a === "down") {
@@ -102,25 +115,31 @@ Rectangle {
     }
     Rectangle {
         id: box
-        anchors.centerIn: parent
-        width: Math.min(47.5 * th.rem, 90 * th.vw)
-        height: content.height + 56
-        radius: th.radius + 4
+        // the guide's side panel hangs from the left edge (its left corners are off screen); the floating card is bigger and rounder
+        readonly property real off: menu.sideLike ? th.radius + 8 : 0
+        property real slideX: 0
+        x: menu.sideLike ? -off + slideX : (menu.width - width) / 2
+        y: menu.sideLike ? 0 : (menu.height - height) / 2
+        width: menu.sideLike ? Math.min((menu.gstyle === "compact" ? 21 : 30) * th.rem, 92 * th.vw) + off : menu.gstyle === "float" ? Math.min(47.5 * th.rem, 90 * th.vw) : Math.min(47.5 * th.rem, 90 * th.vw)
+        height: menu.sideLike ? menu.height : menu.gstyle === "float" ? Math.min(content.height + 56, 88 * th.vh) : content.height + 56
+        radius: menu.gstyle === "float" ? th.radius + 10 : th.radius + (menu.sideLike ? 8 : 4)
+        opacity: menu.sideLike ? 0.94 : 1
+        NumberAnimation on slideX { id: slide; running: false; from: -400; to: 0; duration: th.motion ? 220 : 0; easing.type: Easing.OutCubic }
         color: th.panel
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.6); shadowBlur: 1; blurMax: 64; shadowVerticalOffset: 24 }
         MouseArea { anchors.fill: parent }
         Column {
             id: content
-            x: 32
-            y: 28
-            width: box.width - 64
+            x: 32 + box.off
+            y: menu.sideLike ? Math.max(18, Math.min(40, 0.04 * menu.height)) : 28
+            width: box.width - 64 - box.off
             spacing: 0
             Text {
                 width: parent.width
                 text: menu.heading
                 color: th.muted
-                font.pixelSize: 1.3 * th.rem
+                font.pixelSize: (menu.sideLike ? (menu.gstyle === "compact" ? 1.25 : 1.6) : 1.3) * th.rem
                 font.weight: Font.DemiBold
                 wrapMode: Text.Wrap
                 bottomPadding: menu.body ? 8 : 16
@@ -138,7 +157,7 @@ Rectangle {
             ListView {
                 id: list
                 width: parent.width
-                height: Math.min(contentHeight, 56 * th.vh)
+                height: menu.sideLike ? Math.max(120, menu.height - content.y - 28 - (content.height - list.height) - 40) : Math.min(contentHeight, 56 * th.vh)
                 clip: true
                 interactive: false
                 model: menu.items
@@ -170,7 +189,7 @@ Rectangle {
                         font.letterSpacing: row.hdr ? 0.08 * 0.85 * th.rem : 0
                         elide: Text.ElideRight
                         color: row.picked ? row.ink : row.toned ? th.mix(row.tone, th.text, 0.55) : (modelData.dim || row.hdr || modelData.info) ? th.muted : th.text
-                        font.pixelSize: (row.hdr ? 0.85 : 1.3) * th.rem
+                        font.pixelSize: (row.hdr ? 0.85 : 1.3) * (menu.gstyle === "compact" ? 0.78 : menu.sideLike ? 0.9 : 1) * th.rem
                     }
                     Text {
                         id: sub
