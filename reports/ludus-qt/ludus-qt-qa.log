@@ -1,15 +1,13 @@
 ludus-qt: starting
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_91::act(QVariant)
-Candidates are:
-    act(QVariant,QVariant)
-FAIL Starts on the Library tab with the tabs focused  (got 'library/2/content', wanted 'library/2/tabs')
-FAIL Right arrow moves to the next tab  (got 'library/2/content', wanted 'library/3/tabs')
-FAIL The standard layout has no WASD: D does nothing  (got 'library/2/content', wanted 'library/3/tabs')
-FAIL Q / E are not bound in the standard layout; PgUp and [ switch tabs  (got 'home/1/tabs', wanted 'library/2/tabs')
+ok   Library is shown
+ok   Back goes up to the tabs
+FAIL Right arrow moves to the next tab  (got 'apps/3/tabs', wanted 'library/3/tabs')
+FAIL The standard layout has no WASD: D does nothing  (got 'apps/3/tabs', wanted 'library/3/tabs')
+ok   Q / E are not bound in the standard layout; PgUp and [ switch tabs
 ok   The WASD layout is chosen
-FAIL WASD: D moves to the next tab  (got 'library/2/tabs', wanted 'library/3/tabs')
-FAIL WASD: A moves back  (got 'home/1/tabs', wanted 'library/2/tabs')
-FAIL Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left  (got 'home/1/tabs', wanted 'library/2/tabs')
+FAIL WASD: D moves to the next tab  (got 'apps/3/tabs', wanted 'library/3/tabs')
+ok   WASD: A moves back
+ok   Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left
 ok   The place of a key is told apart from its letter (Z reported, W place)
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
@@ -18,19 +16,13 @@ file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:1
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 ok   Guide key (F1) opens the guide
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_91::act(QVariant)
-Candidates are:
-    act(QVariant,QVariant)
-FAIL B closes it  (got 'open/side', wanted 'closed/')
-FAIL and the menu is gone  (got 'open|Guide', wanted 'closed|')
+ok   B closes it
+FAIL and the menu is gone  (got 'closed|Guide', wanted 'closed|')
 ok   The floating guide is a card in the middle
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:160:17: QML ListView: Binding loop detected for property "height"
 ok   The compact guide is a narrow panel
-QMetaObject::invokeMethod: No such method Main_QMLTYPE_91::act(QVariant)
-Candidates are:
-    act(QVariant,QVariant)
 ok   Back to the standard layout
-qa: 15 checks, 9 failed
+qa: 16 checks, 4 failed
