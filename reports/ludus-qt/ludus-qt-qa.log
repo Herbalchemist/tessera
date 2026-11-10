@@ -26,11 +26,9 @@ file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:1
 ok   The compact guide is a narrow panel
 ok   Install and Recover: a question from the flow opens as a menu
 ok   and an answer closes it
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Flows.qml:2435: TypeError: Cannot call method 'call' of undefined
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Flows.qml:2435: TypeError: Cannot call method 'call' of undefined
-FAIL Their progress screen stays up when B is pressed  (got 'closed', wanted 'open')
+ok   Their progress screen stays up when B is pressed
 ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 22 checks, 1 failed
+qa: 22 checks, 0 failed
