@@ -878,6 +878,8 @@ Window {
         }
         reorderId = ""
     }
+    // the screen's own code calls act(a, tapped); a call from outside (ludus.py, which can only pass one thing) comes here
+    function padAct(a) { act(a, false) }
     function act(a, tapped) {
         if (a === "yup") return yUp()
         if (!ready) return
