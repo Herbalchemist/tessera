@@ -573,7 +573,7 @@ def qa_checks(app, win):
     keyboard, as an AZERTY or a QWERTY keyboard would report it)."""
     KC = {'Q': 16, 'W': 17, 'E': 18, 'A': 30, 'S': 31, 'D': 32, 'Z': 44}     # Linux key numbers of keys by where they are on a QWERTY keyboard
     checks = [
-        ('Starts on the Library tab with the tabs focused', ['@library'], 'base', None),
+        ('Starts on the Library tab with the tabs focused', ['@library', 'b'], 'base', None),
         ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', 'library/{b1}/tabs'),
         ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', 'library/{b1}/tabs'),
         ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', 'library/{b}/tabs'),
@@ -584,6 +584,7 @@ def qa_checks(app, win):
         ('The place of a key is told apart from its letter (Z reported, W place)', [], 'key', None),
         ('Guide key (F1) opens the guide', ['key:Key_F1:59'], 'guide', 'open/side'),
         ('B closes it', ['b'], 'guide', 'closed/'),
+        ('and the menu is gone', [], 'menu', 'closed|'),
         ('The floating guide is a card in the middle', ['run:_guide-float'], 'guide', 'open/float'),
         ('The compact guide is a narrow panel', ['run:_guide-compact'], 'guide', 'open/compact'),
         ('Back to the standard layout', ['b', 'run:_kb-standard'], 'keys', '["","","left","a"]'),
