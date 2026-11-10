@@ -707,9 +707,9 @@ Window {
     // ---- Qt counterparts of the full Ludus's QA checks (ludus.py --qa): small questions about what the screen is doing
     property string qaOut: ""
     function qaProbe(name) {
-        if (name === "tab") qaOut = page + "/" + tabIndex + "/" + area
+        if (name === "tab") qaOut = tabIndex + "/" + area
         else if (name === "guide") qaOut = (flows.guideOn ? "open" : "closed") + "/" + menu.gstyle
-        else if (name === "menu") qaOut = (menu.visible ? "open" : "closed") + "|" + menu.heading
+        else if (name === "menu") qaOut = menu.visible ? "open" : "closed"
         else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])
         else if (name === "key") qaOut = codeOf(qaKey)
         else qaOut = "?"

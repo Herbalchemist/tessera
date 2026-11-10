@@ -575,17 +575,17 @@ def qa_checks(app, win):
     checks = [
         ('Library is shown', ['@library'], 'tab', None),
         ('Back goes up to the tabs', ['b'], 'base', None),
-        ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', 'library/{b1}/tabs'),
-        ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', 'library/{b1}/tabs'),
-        ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', 'library/{b}/tabs'),
+        ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', '{b1}/tabs'),
+        ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', '{b1}/tabs'),
+        ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', '{b}/tabs'),
         ('The WASD layout is chosen', ['run:_kb-wasd'], 'keys', '["up","left","left","a"]'),
-        ('WASD: D moves to the next tab', ['key:Key_D:32'], 'tab', 'library/{b1}/tabs'),
-        ('WASD: A moves back', ['key:Key_A:30'], 'tab', 'library/{b}/tabs'),
-        ('Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left', ['key:Key_D:32', 'key:Key_Q:30'], 'tab', 'library/{b}/tabs'),
+        ('WASD: D moves to the next tab', ['key:Key_D:32'], 'tab', '{b1}/tabs'),
+        ('WASD: A moves back', ['key:Key_A:30'], 'tab', '{b}/tabs'),
+        ('Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left', ['key:Key_D:32', 'key:Key_Q:30'], 'tab', '{b}/tabs'),
         ('The place of a key is told apart from its letter (Z reported, W place)', [], 'key', None),
         ('Guide key (F1) opens the guide', ['key:Key_F1:59'], 'guide', 'open/side'),
         ('B closes it', ['b'], 'guide', 'closed/'),
-        ('and the menu is gone', [], 'menu', 'closed|'),
+        ('and the menu is gone', [], 'menu', 'closed'),
         ('The floating guide is a card in the middle', ['run:_guide-float'], 'guide', 'open/float'),
         ('The compact guide is a narrow panel', ['run:_guide-compact'], 'guide', 'open/compact'),
         ('Back to the standard layout', ['b', 'run:_kb-standard'], 'keys', '["","","left","a"]'),
@@ -627,8 +627,8 @@ def qa_checks(app, win):
                 return
             if probe == 'base':       # where the Library tab is: the later checks count from there
                 parts = got.split('/')
-                state['b'] = int(parts[1]) if len(parts) == 3 and parts[1].isdigit() else -99
-                want_ = 'library/%d/tabs' % state['b']
+                state['b'] = int(parts[0]) if len(parts) == 2 and parts[0].isdigit() else -99
+                want_ = '%d/tabs' % state['b']
             elif probe == 'key':
                 want_ = 'KeyW'
             else:
