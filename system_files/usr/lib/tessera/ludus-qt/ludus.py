@@ -471,6 +471,9 @@ def main():
         if hasattr(os, 'geteuid') and os.geteuid() == 0:     # a build container: Chromium's sandbox needs a user
             os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--no-sandbox')
         QtWebEngineQuick.initialize()                      # before the application is made
+    guide_only = '--guide' in sys.argv or os.environ.get('TESSERA_GUIDE_ONLY') == '1'
+    if guide_only:
+        os.environ['TESSERA_GUIDE_ONLY'] = '1'     # the main process (the bridge) is the full Ludus's own, which then makes its guide-only helper
     app = QGuiApplication(sys.argv)
     app.setApplicationName('Ludus')
     bridge = Bridge()
@@ -480,6 +483,7 @@ def main():
     engine.addImageProvider('art', ArtProvider(bridge))
     engine.rootContext().setContextProperty('bridge', bridge)
     engine.rootContext().setContextProperty('session', session)
+    engine.rootContext().setContextProperty('guideOnly', guide_only)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
     engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
     engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
@@ -506,7 +510,11 @@ def main():
     else:
         controllers = pads.Pads(lambda a: QTimer.singleShot(0, lambda: QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))))
         # While a game runs the main process hides the screen; the game reads its controllers itself.
-        bridge.windowOp.connect(lambda op: setattr(controllers, 'paused', op == 'hide'))
+        controllers.paused = guide_only     # the helper reads no pad until its guide is up
+        def window_op(op):
+            controllers.paused = op == 'hide'
+            QMetaObject.invokeMethod(win, 'windowOp', Q_ARG('QVariant', op))
+        bridge.windowOp.connect(window_op)
         pad_state.pads = controllers
         controllers.start()
         code = app.exec()

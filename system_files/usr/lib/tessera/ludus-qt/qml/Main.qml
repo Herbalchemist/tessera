@@ -12,9 +12,19 @@ Window {
     id: win
     width: 1280
     height: 720
-    visible: true
-    visibility: shotMode ? Window.Windowed : Window.FullScreen
-    color: th.bg
+    // the Opus helper (--guide): only the guide, in a hidden see-through window that comes up over the desktop
+    property bool hidden: guideOnly
+    visible: !hidden
+    flags: guideOnly ? (Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool) : Qt.Window
+    visibility: shotMode || guideOnly ? Window.Windowed : Window.FullScreen
+    color: guideOnly ? "transparent" : th.bg
+    // the main process hides the screen while a game runs, and shows it again after
+    function windowOp(op) {
+        if (op === "hide") hidden = true
+        else if (op === "show") { hidden = false; Qt.callLater(function () { win.raise(); win.requestActivate() }) }
+        else if (op === "focus") requestActivate()
+    }
+    onActiveChanged: if (guideOnly && !active && !hidden && flows.guideOn) flows.closeGuide(false)     // clicked away on the desktop
     title: "Ludus"
 
     Theme {
@@ -107,7 +117,7 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { keepTimer.start(); if (!shotMode) { startTimer.payload = data; startTimer.start() } } }
+            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { if (!guideOnly) keepTimer.start(); if (!shotMode && !guideOnly) { startTimer.payload = data; startTimer.start() } } }
             else if (ch === "flow-ui" && data) flows.flowUi(data)
             else if (ch === "drive-added" && data) flows.offerDrive(data)
             else if (ch === "display-new" && data) flows.displayNew(data)
@@ -929,7 +939,10 @@ Window {
         }
         Keys.onReleased: function (e) { if (win.kbMap[win.codeOf(e)] === "y" && !e.isAutoRepeat) { act("yup"); e.accepted = true } }
     }
-    Component.onCompleted: { refresh(); keys.forceActiveFocus() }
+    Component.onCompleted: {
+        if (guideOnly) { x = Screen.virtualX; y = Screen.virtualY; width = Screen.desktopAvailableWidth; height = Screen.desktopAvailableHeight }
+        refresh(); keys.forceActiveFocus()
+    }
 
     // ---------------------------------------------------------------- doing things
     function activate() {
@@ -1067,6 +1080,7 @@ Window {
         onWheel: function (e) { win.wheelPress(e.angleDelta.x, e.angleDelta.y) }
     }
     Item {
+        visible: !guideOnly
         id: stage
         anchors.fill: parent
         layer.enabled: win.calOn && calShader !== ""
@@ -1080,6 +1094,7 @@ Window {
             fragmentShader: calShader
         }
     Backdrop {
+        visible: !guideOnly
         anchors.fill: parent
         th: th
         picture: win.picture
@@ -1088,6 +1103,7 @@ Window {
 
     // "Screen area used": everything inside a safe area (TVs that crop the edges)
     Item {
+        visible: !guideOnly
         id: body
         anchors.fill: parent
         anchors.topMargin: (1 - th.use) * win.height / 2
@@ -1382,7 +1398,7 @@ Window {
 
     // ---- emblem: a turning cube over the menu
     Item {
-        visible: th.parts.emblem === "cube"
+        visible: !guideOnly && th.parts.emblem === "cube"
         width: 8.4 * th.vh
         height: width
         x: th.parts.nav === "left" ? body.anchors.leftMargin + header.x + header.width / 2 - width / 2 : th.edge

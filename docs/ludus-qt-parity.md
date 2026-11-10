@@ -60,7 +60,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Tessera USB: Install Tessera (next to Windows too) and Recover run the full Ludus's own step code unchanged in the bridge (`backend/flowhost.js`); their menus, questions and progress go to the Qt menus. Entry points: first screen on the USB, Settings > Tessera USB, the guide. Not yet run on a real USB; needs a live-USB test
 
 ## Around the screen
-- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked. Still to do: the floating and compact guide styles (side panel only for now), the Opus helper mode (guide over the desktop), (the installer entry is done)
+- 🟨 Guide: panel with Go, quick settings (volume, Wi-Fi, Bluetooth, batteries), profiles, help, power, notifications panel (X/Y), Resume/Close for a running game. Picture-checked in all three styles (side panel, floating card, compact). The Opus helper (guide over the desktop) is written (`ludus.py --guide`: a hidden see-through always-on-top window that the main process shows when Guide is pressed, with Return to Ludus and no Home/Settings/Help; clicking away closes it) but has not been run on a real desktop; `usr/bin/tessera-guide` still starts the Electron one until the Qt screen is the default. The screen now also hides while a game runs and comes back after, as the full Ludus's window does
 - ⬜ Steam: library import, launching, Big Picture
 - ✅ Starting games and apps; coming back when they end
 - ⬜ Game logs and "exited with code" messages with details

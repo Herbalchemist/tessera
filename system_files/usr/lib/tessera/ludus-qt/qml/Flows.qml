@@ -488,6 +488,7 @@ QtObject {
         if (w.guideMenu.visible) w.guideMenu.close()
         if (w.browserOpen) browserInput.setActive(true)
         if (gameOn && !stay) resumeGame()
+        if (guideOnly && !stay) w.dev("guide", "hideHelper")     // the desktop helper: the see-through window goes away again
     }
     function resumeGame() {
         if (!gameOn) return
@@ -518,16 +519,19 @@ QtObject {
             if (st.running && !gameOn) gameOn = { title: st.title || "Game", since: st.since || Date.now() }
             var out = audio && audio.ok ? audio.outputs.find(function (o) { return o.isDefault }) : null
             var items = []
-            if (w.view.prefs && w.view.prefs.live) items.push({ label: "Install Tessera", sub: "on this computer", op: "install", ok: true })
+            if (w.view.prefs && w.view.prefs.live && !guideOnly) items.push({ label: "Install Tessera", sub: "on this computer", op: "install", ok: true })
             if (gameOn) {
                 items.push({ label: "Playing · " + gameOn.title, header: true })
                 items.push({ label: "Resume " + gameOn.title, sub: "started " + ago(gameOn.since), op: "resume" })
                 items.push({ label: "Close " + gameOn.title, op: "closeGame", danger: true })
             }
             items.push({ label: "Go", header: true })
-            items.push({ label: "Home", op: "home" })
-            if (w.browserOpen) items.push({ label: "Back to the browser", op: "close" })
-            items.push({ label: "Settings", op: "settings" })
+            if (guideOnly) items.push({ label: "Return to Ludus", sub: "Closes Opus and starts Ludus", op: "returnTessera" })
+            else {
+                items.push({ label: "Home", op: "home" })
+                if (w.browserOpen) items.push({ label: "Back to the browser", op: "close" })
+                items.push({ label: "Settings", op: "settings" })
+            }
             items.push({ label: "Quick settings", header: true })
             if (out) {
                 var vol = { label: "Volume", sub: out.mute ? "Muted" : out.volume + "%", op: "mute", adjust: function (dir) {
@@ -552,15 +556,17 @@ QtObject {
             items.push({ label: "Profiles", header: true })
             ;(prof.profiles || []).forEach(function (pr) { items.push({ label: pr.name, sub: pr.id === prof.active ? "playing now" : "", op: "profile", id: pr.id }) })
             if ((prof.profiles || []).length && (!prof.guest || prof.guest.show !== false || !prof.active)) items.push({ label: "Guest", sub: prof.active ? "" : "playing now", op: "profile", id: null })
-            items.push({ label: (prof.profiles || []).length ? "Manage profiles…" : "Add a profile…", op: "profiles" })
-            items.push({ label: "Help", header: true })
-            items.push({ label: "Take the tour", sub: "a quick look around Tessera", op: "tour" })
-            items.push({ label: "Report a problem", sub: "a file to attach to an issue; nothing is sent", op: "report" })
+            if (!guideOnly) {
+                items.push({ label: (prof.profiles || []).length ? "Manage profiles…" : "Add a profile…", op: "profiles" })
+                items.push({ label: "Help", header: true })
+                items.push({ label: "Take the tour", sub: "a quick look around Tessera", op: "tour" })
+                items.push({ label: "Report a problem", sub: "a file to attach to an issue; nothing is sent", op: "report" })
+            }
             items.push({ label: "Power", header: true, fold: "guide.power" })
             items.push({ label: "Sleep", op: "sleep" })
             items.push({ label: "Restart", op: "restart" })
             items.push({ label: "Shut down", op: "shutdown" })
-            items.push({ label: "Opus", op: "desktop" })
+            if (!guideOnly) items.push({ label: "Opus", op: "desktop" })
             var who = (prof.profiles || []).find(function (p) { return p.id === prof.active })
             var bits = [Qt.formatTime(new Date(), "h:mm AP")]
             if (info.battery && info.battery.present && info.battery.pct !== null) bits.push("Battery " + info.battery.pct + "%" + (info.battery.charging ? " ⚡" : ""))
@@ -586,6 +592,7 @@ QtObject {
         var op = it.op, m = w.guideMenu
         var leaveTo = function (fn) { closeGuide(true); fn() }
         if (it.fold) { guideClosed[it.fold] = !guideClosed[it.fold]; var keep = m.sel; m.items = folded(guideAll, guideClosed); m.sel = keep; return }
+        if (op === "returnTessera") return w.dev("guide", "returnToTessera")
         if (op === "close") return closeGuide(true)
         if (op === "resume") return closeGuide(false)
         if (op === "home") return guideHome()
