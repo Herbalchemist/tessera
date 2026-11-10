@@ -222,7 +222,7 @@ Rectangle {
                     Row {     // a usage bar in parts (Storage): games, Tessera, other, free
                         visible: row.hasSegs
                         x: 18
-                        y: lbl.y + lbl.implicitHeight + 8
+                        y: lbl.y + lbl.implicitHeight + 8 + (row.stacked ? sub.implicitHeight + 2 : 0)
                         width: parent.width - 36
                         height: 0.95 * th.rem
                         spacing: 2

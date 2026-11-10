@@ -146,8 +146,8 @@ Window {
         else if (String(id).indexOf("_geom:") === 0) { geom(String(id).slice(6)) }
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
-        else if (id === "_guide-float" || id === "_guide-compact") { shotGuide = id.slice(7); gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
-        else if (id === "_guide") { gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
+        else if (id === "_guide-float" || id === "_guide-compact") { shotGuide = id.slice(7); flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
+        else if (id === "_guide") { flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
         else if (id === "_controls") { padTestView.visible = false; flows.controls() }
         else if (id === "_padtest") { calib.visible = false; keyboard.visible = false; browser.shown = false; flows.padTest() }
@@ -568,7 +568,7 @@ Window {
     function runTour() { if (!menu.visible && !browserOpen) tourView.open() }
     function systemInfo() { return api.systemInfo() }
     function goSettings() { var i = tabList.findIndex(function (t) { return t.id === "settings" }); if (i >= 0) { goTab(i); area = "content" } }
-    function dismissAll() { if (menu.visible) menu.close() }
+    function dismissAll() { if (menu.visible) menu.close(); live = null }
     function dev(ch, op, p) { return safe(api.call(ch, [op, p || {}])) }
     function refresh() {
         if (page === "settings" && ready) refreshTileNotes(false)
