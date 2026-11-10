@@ -588,6 +588,12 @@ def qa_checks(app, win):
         ('and the menu is gone', [], 'menu', 'closed'),
         ('The floating guide is a card in the middle', ['run:_guide-float'], 'guide', 'open/float'),
         ('The compact guide is a narrow panel', ['run:_guide-compact'], 'guide', 'open/compact'),
+        ('Install and Recover: a question from the flow opens as a menu', ['run:_flowui-pick'], 'menu', 'open'),
+        ('and an answer closes it', ['a'], 'menu', 'closed'),
+        ('Their progress screen stays up when B is pressed', ['run:_flowui-progress', 'b'], 'menu', 'open'),
+        ('and goes when the flow ends', ['run:_flowui-end'], 'menu', 'closed'),
+        ('Pressing a key to bind it: the key comes back by its place', ['run:_keycap', 'key:Key_J:36'], 'cap', 'KeyJ'),
+        ('Esc cancels the capture', ['run:_keycap', 'key:Key_Escape:1'], 'cap', 'none'),
         ('Back to the standard layout', ['b', 'run:_kb-standard'], 'keys', '["","","left","a"]'),
     ]
     failed = []

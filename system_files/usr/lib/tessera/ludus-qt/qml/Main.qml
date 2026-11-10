@@ -157,6 +157,10 @@ Window {
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
+        else if (id === "_keycap") { qaCap = "waiting"; captureKey("Test").then(function (c) { qaCap = c || "none" }) }
+        else if (id === "_flowui-pick") flows.flowUi({ id: 0, kind: "pick", title: "Welcome to Tessera", items: [{ label: "Install Tessera", ok: true }, { label: "Try it first", plain: true }], index: 0, body: "x", welcome: true })
+        else if (id === "_flowui-progress") flows.flowUi({ id: 0, kind: "progress", title: "Installing Tessera", items: [{ label: "Copying", sub: "10%", info: true, plain: true }], body: "Copying · 10%" })
+        else if (id === "_flowui-end") flows.flowUi({ id: 0, kind: "progress-close" })
         else if (id === "_guide-float" || id === "_guide-compact") { shotGuide = id.slice(7); flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
         else if (id === "_guide") { flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
@@ -712,8 +716,10 @@ Window {
         else if (name === "menu") qaOut = menu.visible ? "open" : "closed"
         else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])
         else if (name === "key") qaOut = codeOf(qaKey)
+        else if (name === "cap") qaOut = qaCap
         else qaOut = "?"
     }
+    property string qaCap: ""
     property var qaKey: ({ key: 0, nativeScanCode: 0, modifiers: 0 })
     property string shotGuide: ""        // picture runs only: draw the guide in this style
     readonly property var keyNames: (function () {
