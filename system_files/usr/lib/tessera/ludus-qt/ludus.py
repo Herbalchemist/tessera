@@ -467,6 +467,7 @@ def main():
     print('ludus-qt: starting', flush=True)
     shot_dir = sys.argv[sys.argv.index('--shot') + 1] if '--shot' in sys.argv else None
     theme_dir = sys.argv[sys.argv.index('--theme-shots') + 1] if '--theme-shots' in sys.argv else None
+    qa_dir = sys.argv[sys.argv.index('--qa') + 1] if '--qa' in sys.argv else None
     if QtWebEngineQuick is not None:
         if hasattr(os, 'geteuid') and os.geteuid() == 0:     # a build container: Chromium's sandbox needs a user
             os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--no-sandbox')
@@ -484,11 +485,11 @@ def main():
     engine.rootContext().setContextProperty('bridge', bridge)
     engine.rootContext().setContextProperty('session', session)
     engine.rootContext().setContextProperty('guideOnly', guide_only)
-    engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir))
+    engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir or qa_dir))
     engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
     engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
     browser_input = BrowserInput()
-    pad_state = PadState(fake=bool(shot_dir or theme_dir))
+    pad_state = PadState(fake=bool(shot_dir or theme_dir or qa_dir))
     engine.rootContext().setContextProperty('padState', pad_state)
     engine.rootContext().setContextProperty('browserInput', browser_input)
     engine.rootContext().setContextProperty('shellData', shell_data())
@@ -507,6 +508,8 @@ def main():
         code = shots(app, win, shot_dir)
     elif theme_dir:
         code = theme_shots(app, win, theme_dir)
+    elif qa_dir:
+        code = qa_checks(app, win)
     else:
         controllers = pads.Pads(lambda a: QTimer.singleShot(0, lambda: QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))))
         # While a game runs the main process hides the screen; the game reads its controllers itself.
@@ -560,6 +563,78 @@ def run_steps(app, win, out, steps, wait=900, first=2500):
             QTimer.singleShot(50, step)
         QTimer.singleShot(pause, grab)
     QTimer.singleShot(first, step)   # first: the main process sends the page its first view
+
+
+def qa_checks(app, win):
+    """Qt counterparts of the full Ludus's QA checks that are about the screen (qa/keyboard.cjs, input.cjs,
+    guide.cjs): what a key does, the key layouts, the guide. (What the main process decides is checked by
+    the full Ludus's own qa/ checks: it is the same code.) Each check is (name, actions, probe, expected);
+    an action is a press, '@page', 'run:id' or 'key:QtKeyName:linux key number' (a key at a place on the
+    keyboard, as an AZERTY or a QWERTY keyboard would report it)."""
+    KC = {'Q': 16, 'W': 17, 'E': 18, 'A': 30, 'S': 31, 'D': 32, 'Z': 44}     # Linux key numbers of keys by where they are on a QWERTY keyboard
+    checks = [
+        ('Starts on the Library tab with the tabs focused', ['@library'], 'base', None),
+        ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', 'library/{b1}/tabs'),
+        ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', 'library/{b1}/tabs'),
+        ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', 'library/{b}/tabs'),
+        ('The WASD layout is chosen', ['run:_kb-wasd'], 'keys', '["up","left","left","a"]'),
+        ('WASD: D moves to the next tab', ['key:Key_D:32'], 'tab', 'library/{b1}/tabs'),
+        ('WASD: A moves back', ['key:Key_A:30'], 'tab', 'library/{b}/tabs'),
+        ('Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left', ['key:Key_D:32', 'key:Key_Q:30'], 'tab', 'library/{b}/tabs'),
+        ('The place of a key is told apart from its letter (Z reported, W place)', [], 'key', None),
+        ('Guide key (F1) opens the guide', ['key:Key_F1:59'], 'guide', 'open/side'),
+        ('B closes it', ['b'], 'guide', 'closed/'),
+        ('The floating guide is a card in the middle', ['run:_guide-float'], 'guide', 'open/float'),
+        ('The compact guide is a narrow panel', ['run:_guide-compact'], 'guide', 'open/compact'),
+        ('Back to the standard layout', ['b', 'run:_kb-standard'], 'keys', '["","","left","a"]'),
+    ]
+    failed = []
+    state = {'i': 0}
+
+    def key(name, evdev):
+        k = getattr(Qt, name)
+        QCoreApplication.postEvent(win, QKeyEvent(QEvent.KeyPress, k, Qt.NoModifier, evdev + 8, 0, 0, ''))
+        QCoreApplication.postEvent(win, QKeyEvent(QEvent.KeyRelease, k, Qt.NoModifier, evdev + 8, 0, 0, ''))
+
+    def step():
+        if state['i'] >= len(checks):
+            print('qa: %d checks, %d failed' % (len(checks), len(failed)), flush=True)
+            app.exit(1 if failed else 0)
+            return
+        name, acts, probe, want = checks[state['i']]
+        state['i'] += 1
+        for a in acts:
+            if a.startswith('@'):
+                QMetaObject.invokeMethod(win, 'shotView', Q_ARG('QVariant', a[1:]))
+            elif a.startswith('run:'):
+                QMetaObject.invokeMethod(win, 'shotRun', Q_ARG('QVariant', a[4:]))
+            elif a.startswith('key:'):
+                _, k, n = a.split(':')
+                key(k, int(n))
+            else:
+                QMetaObject.invokeMethod(win, 'act', Q_ARG('QVariant', a))
+
+        def check():
+            if probe == 'key':    # the Qt key says Z, the place says W: the place wins
+                win.setProperty('qaKey', {'key': int(Qt.Key_Z), 'nativeScanCode': KC['W'] + 8, 'modifiers': 0})
+            QMetaObject.invokeMethod(win, 'qaProbe', Q_ARG('QVariant', 'tab' if probe == 'base' else probe))
+            got = win.property('qaOut')
+            if probe == 'base':       # where the Library tab is: the later checks count from there
+                parts = got.split('/')
+                state['b'] = int(parts[1]) if len(parts) == 3 and parts[1].isdigit() else -99
+                want_ = 'library/%d/tabs' % state['b']
+            elif probe == 'key':
+                want_ = 'KeyW'
+            else:
+                want_ = want.format(b=state['b'], b1=state['b'] + 1)
+            ok = got == want_
+            print(('ok   ' if ok else 'FAIL ') + name + ('' if ok else '  (got %r, wanted %r)' % (got, want_)), flush=True)
+            if not ok:
+                failed.append(name)
+            QTimer.singleShot(50, step)
+        QTimer.singleShot(1800 if probe == 'guide' else 700, check)
+    QTimer.singleShot(2500, step)
+    return app.exec()
 
 
 def shots(app, win, out):

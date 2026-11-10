@@ -156,6 +156,7 @@ Window {
         else if (String(id).indexOf("_geom:") === 0) { geom(String(id).slice(6)) }
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
+        else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
         else if (id === "_guide-float" || id === "_guide-compact") { shotGuide = id.slice(7); flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
         else if (id === "_guide") { flows.closeGuide(false); live = null; gripView.visible = false; wheel.visible = false; if (menu.visible) menu.close(); flows.guideEvent({ action: "menu" }) }
         else if (id === "_grip") { padTestView.visible = false; flows.grip() }
@@ -703,6 +704,17 @@ Window {
     property var kbMap: ({ ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "a", NumpadEnter: "a", Space: "a", Escape: "b", Backspace: "b", KeyX: "x", KeyY: "y", ContextMenu: "y", PageUp: "lb", PageDown: "rb", BracketLeft: "lb", BracketRight: "rb", F1: "guide", Home: "guide" })
     property var keyCap: null
     property string kbSeen: ""
+    // ---- Qt counterparts of the full Ludus's QA checks (ludus.py --qa): small questions about what the screen is doing
+    property string qaOut: ""
+    function qaProbe(name) {
+        if (name === "tab") qaOut = page + "/" + tabIndex + "/" + area
+        else if (name === "guide") qaOut = (flows.guideOn ? "open" : "closed") + "/" + menu.gstyle
+        else if (name === "menu") qaOut = (menu.visible ? "open" : "closed") + "|" + menu.heading
+        else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])
+        else if (name === "key") qaOut = codeOf(qaKey)
+        else qaOut = "?"
+    }
+    property var qaKey: ({ key: 0, nativeScanCode: 0, modifiers: 0 })
     property string shotGuide: ""        // picture runs only: draw the guide in this style
     readonly property var keyNames: (function () {
         var t = {}

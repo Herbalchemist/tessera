@@ -51,6 +51,18 @@ jobs:
           echo "$n pictures"
           ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/ludus-qt-out.log
           [ "$n" -ge 11 ]
+      - name: Qt checks (what keys and the guide do)
+        env:
+          QT_QPA_PLATFORM: xcb
+          DISPLAY: ':99'
+          XDG_RUNTIME_DIR: /tmp/rt
+          QT_FORCE_STDERR_LOGGING: '1'
+          PYTHONUNBUFFERED: '1'
+        run: |
+          HOME=/tmp/home TESSERA_DATA_DIR=/tmp/data TESSERA_LAUNCHER_DIR=$PWD/system_files/usr/lib/tessera/launcher timeout 120 python3 -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --qa /tmp/ludus-qt-out > /tmp/ludus-qt-qa.log 2>&1 && ok=1 || ok=0
+          cat /tmp/ludus-qt-qa.log
+          mkdir -p /tmp/ludus-qt-out && cp /tmp/ludus-qt-qa.log /tmp/ludus-qt-out/
+          [ "$ok" = 1 ]
       - name: Publish to the reports branch
         if: always()
         run: |
