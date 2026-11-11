@@ -158,6 +158,10 @@ Window {
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_mouse") mouseSeen()
         else if (id === "_pad") setInput("pad")
+        else if (String(id).indexOf("_qa:answers:") === 0) qaAnswers = String(id).slice(12).split(",")
+        else if (String(id) === "_qa:pinset") flows.setPin(null).then(function (ok) { qaOut2 = ok ? "set" : "not set" })
+        else if (String(id) === "_qa:lock") dev("settings", "pinLock")
+        else if (String(id) === "_qa:gate") desktopGate().then(function (ok) { qaOut2 = ok ? "open" : "shut" })
         else if (String(id).indexOf("_remap:") === 0) { var rm = String(id).slice(7) === "none" ? null : [0, 1, 2, 3, 5, 4]; dev("settings", "padRemap", { family: flows.padFamily(), map: rm }).then(function (r) { if (r && r.ok) setPad(r.pad) }) }
         else if (String(id).indexOf("_conf:") === 0) flows.padSet({ pad: padPrefs || {} }, "confirm", String(id).slice(6))
         else if (String(id).indexOf("_point:") === 0) { var pp = String(id).split(":"); pointTile(parseInt(pp[1]), parseInt(pp[2]), "q" + pp[1] + pp[2]) }
@@ -297,7 +301,9 @@ Window {
     function pick(title, items, index, opts) {
         return new Promise(function (resolve) { menu.open(title, items, function (it) { resolve(it) }, index || 0, function () { resolve(null) }, opts) })
     }
+    property var qaAnswers: []          // --qa only: what to type into the next keyboards ("-" cancels one)
     function ask(title, start, opts) {
+        if (shotMode && qaAnswers.length) { var qa = qaAnswers[0]; qaAnswers = qaAnswers.slice(1); return Promise.resolve(qa === "-" ? null : qa) }
         return new Promise(function (resolve) {
             var o = Object.assign({}, opts || {})
             o.cancel = function () { resolve(null) }
@@ -453,9 +459,21 @@ Window {
             })
         })
     }
+    property int qaLeft: 0
+    property string qaOut2: ""
+    // leaving for Opus: the full Ludus asks its main process, which wants the PIN first when one is set (webView.js quit); the same check here
+    function desktopGate() {
+        return requirePin("Enter the PIN to switch to Opus").then(function (ok) {
+            if (!ok) return false
+            if (shotMode) { qaLeft++; return true }
+            setStatus("Closing Tessera…")
+            session.goToOpus()
+            return true
+        })
+    }
     function flowDesktop() {
         confirmYes(session.inSession ? "Switch to Opus?  Ludus will close and the login screen will appear (choose Opus there).  To come back later, choose Return to Ludus in the application menu."
-                                     : "Switch to Opus?  Ludus will close and the desktop will be shown again.", "Switch").then(function (y) { if (y) { setStatus("Closing Tessera…"); session.goToOpus() } })
+                                     : "Switch to Opus?  Ludus will close and the desktop will be shown again.", "Switch").then(function (y) { if (y) return desktopGate() })
     }
     property var rows: []
     function currentRows() {
@@ -755,6 +773,7 @@ Window {
         else if (name === "cap") qaOut = qaCap
         else if (name === "sel") qaOut = area + "/" + selRow + "/" + selCol
         else if (name === "area") qaOut = area
+        else if (name === "qa2") qaOut = qaOut2 + "/" + qaLeft
         else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
         else if (name === "mouse") { mouseSeen(); qaOut = "ok" }
         else qaOut = "?"
