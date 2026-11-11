@@ -1,50 +1,6 @@
-# Optional Electron integration checks
+# qa/
 
-These checks run Tessera's actual launcher with temporary library/settings data and a local HTTP test page. They do not launch games, change your installed system, reboot, use your real library, or require a physical controller. The synthetic gamepad test exercises the renderer polling loop; it does not emulate Linux USB/Bluetooth hardware.
-
-From the repository root on a Linux desktop with Node.js and npm:
-
-```bash
-npm --prefix qa ci
-npm --prefix qa test
-```
-
-For a headless Linux machine with Xvfb installed:
-
-```bash
-xvfb-run -a npm --prefix qa test
-```
-
-The harness uses the QA-installed, pinned Electron executable. Set `TESSERA_ELECTRON` to use another installed executable. Pass an absolute launcher directory as the script's first argument if needed. Results and screenshots are written to `qa-output/` in the current working directory by default; override that with `TESSERA_QA_OUTPUT`.
-
-The suite checks four shell arrangements at 1920×1080 and 1280×720, selected-card and controller-hint visibility, Home/Settings content preservation, saved structural-theme values, invalid shell rejection, a virtual D-pad movement, browser Tab/Enter activation, isolated browser configuration, address-keyboard cancellation, browser exit actions, and main-process PIN checks. It currently records 35 checks, covering every factory theme.
-
-Six more checks drive the embedded browser with stand-in controller input (fed through a `TESSERA_DEV=1` hook in place of a physical pad), and one takes screenshots of the factory themes with a fictional library:
-
-```bash
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/browser-pointer.cjs      # cursor, analog scroll, trigger clicks, stick swap
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/browser-transitions.cjs  # every entrance/exit animation, resume, Esc+arrow chord
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/guide.cjs                # the guide (launcher, over a game, over the browser), first-run setup, desktop helper
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/keyboard.cjs             # keyboard & mouse: input-aware hints, key layouts, rebinding, the guided tour
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/installer.cjs            # Install Tessera from the USB (with a stand-in for the USB's root helper)
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/graphics.cjs             # a graphics card swap: noticed at start, matching build offered and switched to
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/addons.cjs               # Get add-ons (a stand-in list), shards turned on/off, their pages and library sources, Shard safety
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/input.cjs                # the one input system: what buttons do on Xbox and Nintendo pads, with either Confirm button choice, and the hints
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/profiles.cjs             # profiles: each person's own pages, controls, browser logins and theme; switching, restart, removing
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/report.cjs               # Report a problem: made only when asked, readable on screen, nothing personal in it
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/boot-screen.cjs          # Theme Settings > Boot screen: the four choices, the job it starts, refused while an update waits
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/steam-library.cjs        # Steam games saved before quiet launches load with quiet arguments; a rescan adds no duplicates
-xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/recovery.cjs            # Recover on the USB: finds the install, suggested repairs, password only on the helper's input, report
-ART_DIR=/path/to/pictures xvfb-run -a -s "-screen 0 1920x1080x24 -noreset" node qa/theme-shots.cjs
-```
-
-Under Xvfb, now and then Electron loses its X connection and exits ("X connection error received" in its output), most often in `installer.cjs`. It happens with older launcher code too and isn't Tessera's doing; run that check again.
-
-The harness passes `--no-sandbox` because the containerized test environment does not permit normal Chromium sandbox startup. That is a **test-only launch flag**; production launcher code still configures context isolation, Node disabled, and renderer sandboxing. These tests verify the configuration and bridge isolation, not the operating system's enforcement of Chromium sandboxing. Do not use the QA launch flags for your normal browser session.
-
-Physical-controller testing, controller device permissions and hotplug under Gamescope, OS image boot, suspend/resume, system services, and update/rollback behavior still need target-machine or VM validation. The deterministic tests run separately:
-
-```bash
-npm --prefix system_files/usr/lib/tessera/launcher run check
-npm --prefix system_files/usr/lib/tessera/launcher test
-```
+The Electron page's checks are gone with Electron. What's left in `to-port/` are main-process checks
+(Steam library, report, installer, recovery) that still need Node-test or Qt-driver counterparts; they
+can't run as they are. The rest were ported (see `docs/ludus-qt-parity.md`, `launcher/test/`, and
+`ludus.py --qa`).

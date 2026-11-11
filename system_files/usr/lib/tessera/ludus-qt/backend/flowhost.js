@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Install Tessera and Recover (on the live USB), for the Qt screen.
-// The steps are the full Ludus's own (launcher/renderer/installer.js and recovery.js), run here as they
+// The steps (installer-steps.js and recovery-steps.js, beside this file), run here as they
 // are, so nothing in them is rewritten or can drift: they are plain "ask, wait for the answer, go on"
 // code, which the screen's QML (no async/await) can't run. Their menus and questions go to the screen:
 //   event flow-ui { id, kind: pick | ask | progress | progress-set | progress-close | status, ... }
@@ -62,8 +62,8 @@ module.exports = function flowHost({ handlers, out, launcher, event }) {
   let loaded = false;
   function load() {
     if (loaded) return;
-    for (const f of ['installer.js', 'recovery.js']) {
-      vm.runInContext(fs.readFileSync(path.join(launcher, 'renderer', f), 'utf8'), ctx, { filename: f });
+    for (const f of ['installer-steps.js', 'recovery-steps.js']) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), ctx, { filename: f });
     }
     loaded = true;
   }

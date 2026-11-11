@@ -318,10 +318,10 @@ def svg_paths(markup):
 
 
 def tab_icons():
-    """The tab bar's line icons, from the full Ludus's home.js."""
+    """The tab bar's line icons (icons.js)."""
     import re
     try:
-        src = open(os.path.join(LAUNCHER, 'renderer', 'home.js'), encoding='utf-8').read()
+        src = open(os.path.join(HERE, 'icons.js'), encoding='utf-8').read()
     except OSError:
         return {}
     m = re.search(r'const TAB_ICONS = \{(.*?)\n\};', src, re.S)
@@ -329,11 +329,11 @@ def tab_icons():
 
 
 def setting_icons():
-    """The Settings tiles' line icons, from the full Ludus's look.js (its ICONS table, run as it is)."""
+    """The Settings tiles' line icons (icons.js: its ICONS table, run as it is)."""
     import re
     import subprocess
     try:
-        src = open(os.path.join(LAUNCHER, 'renderer', 'look.js'), encoding='utf-8').read()
+        src = open(os.path.join(HERE, 'icons.js'), encoding='utf-8').read()
     except OSError:
         return {}
     m = re.search(r'\nconst ICONS = \{.*?\n\};', src, re.S)

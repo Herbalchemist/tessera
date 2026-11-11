@@ -70,32 +70,7 @@ const reqs = [...main.matchAll(/require\('\.\/main\/(\w+)'\)/g)].map((m) => m[1]
 if (reqs[0] !== 'config' || reqs[1] !== 'ipcGuard') fail('Requests checked for their sender', `${L}/main.js`, 'ipcGuard must be required right after config, before anything adds a handler');
 if (!/event\.senderFrame === win\.webContents\.mainFrame/.test(read(`${L}/main/ipcGuard.js`))) fail('Requests checked for their sender', `${L}/main/ipcGuard.js`, 'main-frame check missing');
 
-// 8. The page: a strict Content Security Policy (only Tessera's own scripts; nothing inline)
-const html = read(`${L}/index.html`);
-const csp = (/http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(html) || [])[1] || '';
-if (!/default-src 'none'/.test(csp) || !/script-src 'self'(;|$)/.test(csp) || /unsafe-inline|unsafe-eval|\*/.test(csp)) fail('Strict page policy', `${L}/index.html`, csp || 'no Content-Security-Policy');
-
-// 9. No cross-site scripting: HTML is only ever built from Tessera's own fixed text. Names, titles
-//    and anything from outside go in with textContent. innerHTML takes string literals, or a
-//    constant made of string literals.
-for (const f of tracked.filter((x) => x.startsWith(`${L}/renderer/`) && x.endsWith('.js'))) {
-  const t = read(f);
-  for (const m of t.matchAll(/\.(innerHTML|outerHTML)\s*\+?=([\s\S]*?);[ \t]*(\n|$)/g)) {
-    const rhs = m[2].trim();
-    const line = t.slice(0, m.index).split('\n').length;
-    const literalOnly = /^(\s*('[^'\\]*'|"[^"\\]*")\s*\+?\s*)+$/.test(rhs);
-    const constant = /^[A-Z][A-Z0-9_]*$/.test(rhs) && new RegExp(`const ${rhs} = '[^'\\\\]*';`).test(t);
-    const iconMap = /^`<svg viewBox="0 0 24 24">\$\{TAB_ICONS\[tabKind\(id\)\] \|\| TAB_ICONS\.mosaic\}<\/svg>`$/.test(rhs) && /const TAB_ICONS = \{(\s*\w+: '[^'\\]*',)+\s*\};/.test(t);
-    if (!literalOnly && !constant && !iconMap) fail('No HTML from outside text', `${f}:${line}`, rhs.slice(0, 60));
-  }
-  if (/insertAdjacentHTML|document\.write|\.srcdoc\s*=/.test(t)) fail('No HTML from outside text', f, 'insertAdjacentHTML / document.write / srcdoc');
-}
-
-// 10. Supported, pinned software: Electron is an exact version
-const ev = read(`${L}/electron-version`).trim();
-if (!/^\d+\.\d+\.\d+$/.test(ev)) fail('Pinned Electron', `${L}/electron-version`, ev);
-
-// 11. GitHub Actions are pinned to a commit, not a moving tag
+// 8. GitHub Actions are pinned to a commit, not a moving tag
 for (const f of tracked.filter((x) => x.startsWith('.github/workflows/'))) {
   lines(f).forEach((line, i) => {
     const m = /^\s*-?\s*uses:\s*([^\s#]+)/.exec(line);

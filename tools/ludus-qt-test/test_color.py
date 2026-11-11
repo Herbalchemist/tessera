@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# The Qt screens' color code is the full Ludus's, word for word (gen_color.py), and it runs.
+# The Qt screens' color code (qml/color.js) runs.
 import os
 import shutil
 import subprocess
@@ -7,17 +7,13 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import gen_color  # noqa: E402
+COLOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'system_files', 'usr', 'lib', 'tessera', 'ludus-qt', 'qml', 'color.js')
 
 
 class ColorTest(unittest.TestCase):
-    def test_same_as_the_full_ludus(self):
-        with open(gen_color.OUT, encoding='utf-8') as f:
-            self.assertEqual(f.read(), gen_color.generate(), 'look.js changed: run tools/ludus-qt-test/gen_color.py')
-
     @unittest.skipUnless(shutil.which('node'), 'needs node')
     def test_it_runs(self):
-        js = open(gen_color.OUT).read().replace('.pragma library', '')
+        js = open(COLOR).read().replace('.pragma library', '')
         out = subprocess.run(['node', '-e', js + '\nconsole.log(onColor("#ffffff"), onColor("#000000"), JSON.stringify(nextPastel("dark")))'],
                              capture_output=True, text=True, check=True).stdout.split()
         self.assertEqual(out[:2], ['#10151c', '#ffffff'])

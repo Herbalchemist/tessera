@@ -1,9 +1,9 @@
-Tessera is a Linux gaming OS (an image built on Bazzite/Fedora with bootc) with an Electron launcher.
+Tessera is a Linux gaming OS (an image built on Bazzite/Fedora with bootc) with a Qt (QML) launcher UI running a Node main process.
 Pay particular attention to:
 - The launcher's main process (system_files/usr/lib/tessera/launcher/main/*.js) handles requests from
   its page over IPC. Every request is checked for its sender (main/ipcGuard.js); handlers must
   validate every field, and anything privileged must require the admin PIN (pinLock.pinOk) and,
-  for Guest, guestDenies(). Flag handlers that trust renderer input, paths that can escape the
+  for Guest, guestDenies(). Flag handlers that trust input from the screen, paths that can escape the
   Tessera folder, and new privileged operations without the PIN check.
 - Programs are started with execFile/spawn and argument lists, never a shell.
 - Root-run scripts (system_files/usr/libexec/tessera/*, usr/bin/*) and the systemd units and polkit

@@ -1,19 +1,7 @@
-# Dependabot keeps what Tessera is built and tested with up to date: the GitHub Actions in the
-# workflows and the test tools in qa/. Electron itself is pinned in
-# system_files/usr/lib/tessera/launcher/electron-version, which Dependabot can't read; the weekly
-# run of launcher-tests.yml fails when a newer patch of that Electron line is out.
+# Dependabot keeps what Tessera is built with up to date: the GitHub Actions in the workflows.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/qa"
-    schedule:
-      interval: "weekly"
-    # Electron stays on the line the image ships (electron-version); moving to a new major line is a
-    # tested change of its own, made before the line's end of support.
-    ignore:
-      - dependency-name: "electron"
-        update-types: ["version-update:semver-major"]
