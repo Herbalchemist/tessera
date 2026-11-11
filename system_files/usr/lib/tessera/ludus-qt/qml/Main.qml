@@ -476,7 +476,7 @@ Window {
         }
         if (op === "add") return dev("profiles", "add", { name: name, start: "fresh" }).then(function (r) { qaIds[name] = r.id; qaOut2 = r.ok ? "added" : "failed" })
         if (op === "pin") return dev("profiles", "setPin", { id: qaIds[name], pin: w[2] }).then(function (r) { qaOut2 = r.ok ? "pin" : "failed " + (r.error || "") })
-        if (op === "switch") return flows.switchProfile(name === "Guest" ? "" : qaIds[name], name).then(function () { return report() })
+        if (op === "switch") return flows.switchProfile(name === "Guest" ? null : qaIds[name], name).then(function () { return report() })
         if (op === "who") return report()
     }
     property string qaOut2: ""
