@@ -16,6 +16,9 @@ ok   The guide (a menu) is opened
 ok   With a menu open the pointer leaves the selection alone
 ok   B closes that menu
 ok   and B again goes back up to the tabs
+ok   Hints follow the pad again after a button
+FAIL Confirm on the right button: the hints swap A and B  (got 'A|LB|A', wanted 'B|LB|B')
+ok   and back to the bottom button
 ok   The standard layout has no WASD: D does nothing
 ok   Q / E are not bound in the standard layout; PgUp and [ switch tabs
 ok   The WASD layout is chosen
@@ -43,4 +46,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 30 checks, 0 failed
+qa: 33 checks, 1 failed
