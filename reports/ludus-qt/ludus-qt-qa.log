@@ -55,12 +55,13 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-FAIL Profiles: Kid and Mom are added  (got 'open/2', wanted 'added/2')
+ok   The admin PIN is entered to add people
+ok   Profiles: Kid and Mom are added
 ok   
-FAIL Switching to Kid makes Kid the one playing  (got 'Guest/unlocked/2', wanted 'Kid/unlocked/2')
+ok   Switching to Kid makes Kid the one playing
 ok   Mom gets a login PIN of her own
-FAIL Switching to Mom with a wrong PIN, then giving up, changes nothing  (got 'Guest/locked/2', wanted 'Kid/locked/2')
+ok   Switching to Mom with a wrong PIN, then giving up, changes nothing
 ok   the right PIN switches to Mom
 ok   and Mom's PIN did not unlock the admin
 ok   Guest is open to anyone and still locked down
-qa: 50 checks, 3 failed
+qa: 51 checks, 0 failed
