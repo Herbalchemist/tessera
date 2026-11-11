@@ -162,6 +162,7 @@ Window {
         else if (String(id) === "_qa:pinset") flows.setPin(null).then(function (ok) { qaOut2 = ok ? "set" : "not set" })
         else if (String(id).indexOf("_qa:prof:") === 0) qaProf(String(id).slice(9))
         else if (String(id) === "_qa:lock") dev("settings", "pinLock")
+        else if (String(id) === "_qa:frame") qaFrame.active = true
         else if (String(id) === "_qa:unlock") requirePin("Enter the PIN").then(function (ok) { qaOut2 = ok ? "open" : "shut" })
         else if (String(id) === "_qa:welcome") { flows.welcomed = false; flows.welcome().then(function () { return dev("settings", "pinStatus") }).then(function (st) { qaOut2 = st && st.firstRun ? "first" : "done" }) }
         else if (String(id) === "_qa:gate") desktopGate().then(function (ok) { qaOut2 = ok ? "open" : "shut" })
@@ -791,6 +792,7 @@ Window {
         else if (name === "sel") qaOut = area + "/" + selRow + "/" + selCol
         else if (name === "area") qaOut = area
         else if (name === "tour") qaOut = (tourView.visible ? "on" : "off") + "/" + tourView.i + "/" + page + "/" + (tourView.tried ? "tried" : "-")
+        else if (name === "frame") qaOut = !qaFrame.item ? "off" : qaFrame.item.view.loadProgress < 100 ? "loading" : qaFrame.item.view.title
         else if (name === "qa2") qaOut = qaOut2 + "/" + qaLeft
         else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
         else if (name === "mouse") { mouseSeen(); qaOut = "ok" }
@@ -1599,6 +1601,7 @@ Window {
     // ================================================================ overlays
     Menu { id: menu; anchors.fill: parent; th: th; z: 20; hA: win.hintName(0); hB: win.hintName(1); hY: win.hintName(3) }
     Flows { id: flows; w: win }
+    Loader { id: qaFrame; active: false; width: 200; height: 100; x: -400; source: "AddonFrame.qml"; onLoaded: item.wid = "qa-hello" }     // --qa only: an add-on widget loaded the way a Home card does
     Timer { id: startTimer; interval: 700; property var payload: null; onTriggered: flows.startup(payload) }     // first run, who is playing
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }

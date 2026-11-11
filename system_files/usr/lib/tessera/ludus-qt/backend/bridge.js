@@ -183,6 +183,17 @@ async function serve(msg) {
       return out({ id, ok: r.status === 200 && body, result: body ? { type: (r.headers || {})['Content-Type'] || '', data: body.toString('base64') } : null });
     } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
   }
+  if (ch === '__widget') {
+    // A file of an add-on widget, for the web view's tessera-widget:// scheme: the same answer (and the same
+    // refusals: its own folder only, known file types) the full Ludus's scheme gave.
+    try {
+      const addons = require(path.join(LAUNCHER, 'main', 'addons'));
+      const r = addons.serveWidget(String(args && args[0] || ''), String(args && args[1] || '/'));
+      const body = r.body ? Buffer.from(r.body) : null;
+      const hd = r.headers || {};
+      return out({ id, ok: true, result: { status: r.status, type: hd['Content-Type'] || '', csp: hd['Content-Security-Policy'] || '', data: body ? body.toString('base64') : '' } });
+    } catch (e) { return out({ id, ok: false, error: String(e && e.message || e) }); }
+  }
   const h = handlers.get(ch);
   if (!h) return out({ id, ok: false, error: 'Unknown request: ' + ch });
   try {

@@ -40,6 +40,13 @@ try:                                  # the built-in browser (the page is QtWebE
     from PySide6.QtWebEngineQuick import QtWebEngineQuick  # noqa: E402
 except ImportError:
     QtWebEngineQuick = None
+try:                                  # add-on widgets: their own scheme, and a view that can reach nothing else
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice  # noqa: E402
+    from PySide6.QtWebEngineCore import (QWebEngineUrlRequestInterceptor, QWebEngineUrlRequestJob,  # noqa: E402
+                                         QWebEngineUrlScheme, QWebEngineUrlSchemeHandler)
+    from PySide6.QtWebEngineQuick import QQuickWebEngineProfile  # noqa: E402
+except ImportError:
+    QWebEngineUrlScheme = None
 from PySide6.QtQuick import QQuickAsyncImageProvider, QQuickImageResponse, QQuickTextureFactory, QQuickWindow  # noqa: E402,F401
 
 import pads  # noqa: E402
@@ -124,6 +131,82 @@ class Bridge(QObject):
             self.child.wait(3)
         except Exception:   # noqa: BLE001
             self.child.kill()
+
+
+WIDGET_SCHEME = b'tessera-widget'
+
+
+def inject_csp(html, csp):
+    """The page's own policy, as a <meta> at the very top (a custom scheme can't send headers): scripts from
+    its own files, no network. A second, looser policy in the page can only narrow it further."""
+    if not csp:
+        return html
+    tag = ('<meta http-equiv="Content-Security-Policy" content="%s">' % csp.replace('"', '&quot;')).encode()
+    return tag + html
+
+
+if QWebEngineUrlScheme is not None:
+    class WidgetHandler(QWebEngineUrlSchemeHandler):
+        """tessera-widget://<id>/<file>: asked of the main process, which serves only that widget's own folder."""
+        def __init__(self, bridge):
+            super().__init__()
+            self.bridge = bridge
+            self.jobs = {}
+            bridge.reply.connect(self.got, Qt.QueuedConnection)
+
+        def requestStarted(self, job):
+            url = job.requestUrl()
+            rid = self.bridge.new_art_id()
+            self.jobs[rid] = job
+            job.destroyed.connect(lambda *_: self.jobs.pop(rid, None))
+            QMetaObject.invokeMethod(self.bridge, 'request', Qt.QueuedConnection, Q_ARG(int, rid), Q_ARG(str, '__widget'),
+                                     Q_ARG('QVariantList', [url.host(), url.path()]))
+
+        def got(self, rid, m):
+            job = self.jobs.pop(rid, None)
+            if job is None:
+                return
+            try:
+                r = m.get('result') if m.get('ok') else None
+                if not r or r.get('status') != 200:
+                    job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
+                    return
+                import base64
+                data = base64.b64decode(r.get('data') or '')
+                kind = (r.get('type') or 'application/octet-stream').split(';')[0].strip()
+                if kind == 'text/html':
+                    data = inject_csp(data, r.get('csp') or '')
+                buf = QBuffer(job)
+                buf.setData(QByteArray(data))
+                buf.open(QIODevice.OpenModeFlag.ReadOnly)
+                job.reply(kind.encode(), buf)
+            except RuntimeError:        # the view has gone and taken the request with it
+                pass
+
+    class WidgetGuard(QWebEngineUrlRequestInterceptor):
+        """A widget has no network: nothing but its own scheme (and the pictures it holds as data) is loaded."""
+        def interceptRequest(self, info):
+            if info.requestUrl().scheme() not in ('tessera-widget', 'data'):
+                info.block(True)
+
+
+def widget_profile(bridge):
+    """The one off-the-record profile every add-on widget view uses, or None where this can't be made."""
+    if QtWebEngineQuick is None or QWebEngineUrlScheme is None:
+        return None
+    try:
+        prof = QQuickWebEngineProfile()
+        handler = WidgetHandler(bridge)
+        guard = WidgetGuard()
+        prof.installUrlSchemeHandler(WIDGET_SCHEME, handler)
+        prof.setUrlRequestInterceptor(guard)
+        prof.setPersistentCookiesPolicy(QQuickWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
+        prof.setHttpCacheType(QQuickWebEngineProfile.HttpCacheType.NoCache)
+        prof._keep = (handler, guard)
+        return prof
+    except Exception as e:   # noqa: BLE001
+        print('ludus-qt: add-on widgets unavailable:', e, file=sys.stderr, flush=True)
+        return None
 
 
 class ArtResponse(QQuickImageResponse):
@@ -436,6 +519,11 @@ def main():
     if QtWebEngineQuick is not None:
         if hasattr(os, 'geteuid') and os.geteuid() == 0:     # a build container: Chromium's sandbox needs a user
             os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--no-sandbox')
+        if QWebEngineUrlScheme is not None:
+            scheme = QWebEngineUrlScheme(WIDGET_SCHEME)     # add-on widgets' own scheme (before the application is made)
+            scheme.setSyntax(QWebEngineUrlScheme.Syntax.Host)
+            scheme.setFlags(QWebEngineUrlScheme.Flag.SecureScheme)
+            QWebEngineUrlScheme.registerScheme(scheme)
         QtWebEngineQuick.initialize()                      # before the application is made
     guide_only = '--guide' in sys.argv or os.environ.get('TESSERA_GUIDE_ONLY') == '1'
     if guide_only:
@@ -453,6 +541,8 @@ def main():
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir or qa_dir))
     engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
     engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
+    wprof = None if guide_only else widget_profile(bridge)
+    engine.rootContext().setContextProperty('widgetProfile', wprof)
     browser_input = BrowserInput()
     pad_state = PadState(fake=bool(shot_dir or theme_dir or qa_dir))
     engine.rootContext().setContextProperty('padState', pad_state)
@@ -538,6 +628,7 @@ def qa_checks(app, win):
     keyboard, as an AZERTY or a QWERTY keyboard would report it)."""
     KC = {'Q': 16, 'W': 17, 'E': 18, 'A': 30, 'S': 31, 'D': 32, 'Z': 44}     # Linux key numbers of keys by where they are on a QWERTY keyboard
     checks = [
+        ('An add-on widget loads from its own folder, runs its script, and has no network', ['run:_qa:frame'], 'frame', 'ran'),
         ('Library is shown', ['@library'], 'tab', None),
         ('Back goes up to the tabs', ['b'], 'base', None),
         ('Hints show the controller buttons once a pad is used', ['run:_pad'], 'hint', 'A|LB|A'),
@@ -653,7 +744,7 @@ def qa_checks(app, win):
             if not ok:
                 failed.append(name)
             QTimer.singleShot(50, step)
-        QTimer.singleShot(1800 if probe == 'guide' else 700, check)
+        QTimer.singleShot(1800 if probe == 'guide' else 4000 if probe == 'frame' else 700, check)
     QTimer.singleShot(2500, step)
     return app.exec()
 

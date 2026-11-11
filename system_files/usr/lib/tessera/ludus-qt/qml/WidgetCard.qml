@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Ludus (Qt): one Home widget, in the theme's widget style (style.css .card.kind-inlay, data-wg):
 // frosted (a wash of the card color), clear glass (a see-through pane with a diagonal shine),
-// outline, or solid. The built-in widgets are drawn here (core.js INLAYS); downloaded add-on widgets
-// run in a sandboxed frame in the full Ludus and show their name here until the browser engine port.
+// outline, or solid. The built-in widgets are drawn here; downloaded add-on widgets run in a
+// sandboxed web view (AddonFrame.qml).
 import QtQuick
 import QtQuick.Effects
 
@@ -138,13 +138,20 @@ Item {
             }
         }
     }
-    Column {     // an add-on widget, or one whose add-on isn't installed
-        visible: card.kind === "addon" || card.kind === "missing"
+    Loader {     // an add-on widget: the page it made, in a sandboxed web view
+        id: frameLoader
+        anchors.fill: parent
+        clip: true
+        active: card.kind === "addon" && webEngine && !!widgetProfile && card.visible && !shotMode
+        source: "AddonFrame.qml"
+        onLoaded: item.wid = String(card.t.widget)
+    }
+    Column {     // a widget whose add-on isn't installed (or can't be shown on this screen)
+        visible: card.kind === "missing" || (card.kind === "addon" && !frameLoader.active)
         x: card.inset; width: parent.width - 2 * card.inset
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
         Text { text: card.kind === "missing" ? "NOT INSTALLED" : "ADD-ON WIDGET"; color: card.small; font.pixelSize: 0.85 * th.rem; font.weight: Font.DemiBold; font.letterSpacing: 0.05 * th.rem }
         Text { text: card.t.title || ""; color: th.text; font.pixelSize: 1.3 * th.rem; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-        Text { visible: card.kind === "addon"; text: "Shown in the full Ludus for now"; color: card.small; font.pixelSize: 0.85 * th.rem; elide: Text.ElideRight; width: parent.width }
     }
 }

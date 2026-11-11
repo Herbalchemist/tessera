@@ -86,6 +86,29 @@ class BridgeTest(unittest.TestCase):
         self.assertIn('roots', self.ask('settings', 'get')['result'])
         self.assertFalse(self.ask('nothing')['ok'])
 
+    def test_an_addon_widget_is_served_from_its_own_folder_only(self):
+        import base64
+        wd = os.path.join(self.tmp, 'data', 'Tessera', 'Widgets', 'hello')
+        os.makedirs(wd)
+        with open(os.path.join(wd, 'manifest.json'), 'w') as f:
+            json.dump({'name': 'Hello'}, f)
+        with open(os.path.join(wd, 'index.html'), 'w') as f:
+            f.write('<p>hi</p><script src="w.js"></script>')
+        with open(os.path.join(wd, 'w.js'), 'w') as f:
+            f.write('1')
+        with open(os.path.join(self.tmp, 'data', 'Tessera', 'Widgets', 'secret.txt'), 'w') as f:
+            f.write('no')
+        self.pump(lambda m: m.get('event') == 'init')
+        self.ask('addons', 'rescan')
+        r = self.ask('__widget', 'hello', '/')['result']
+        self.assertEqual(r['status'], 200)
+        self.assertTrue(r['type'].startswith('text/html'))
+        self.assertIn("connect-src 'none'", r['csp'])                         # no network, whatever the page says
+        self.assertIn('<p>hi</p>', base64.b64decode(r['data']).decode())
+        self.assertEqual(self.ask('__widget', 'hello', '/w.js')['result']['status'], 200)
+        for who, where in (('hello', '/../secret.txt'), ('hello', '/%2e%2e/secret.txt'), ('nobody', '/'), ('hello', '/manifest.exe')):
+            self.assertEqual(self.ask('__widget', who, where)['result']['status'], 404, (who, where))
+
     def test_launching_a_game(self):
         self.pump(lambda m: m.get('event') == 'init')
         self.ask('launch', 'g0')
