@@ -6,6 +6,7 @@ ok   Right arrow moves to the next tab
 ok   After a key, hints show keys
 ok   After the mouse, A reads Click
 ok   Pointing at a tile selects it
+FAIL Y opens the options  (got 'closed', wanted 'open')
 FAIL With a menu open the pointer leaves the selection alone  (got 'content/0/0', wanted 'content/0/1')
 ok   B closes that menu
 ok   and B again goes back up to the tabs
@@ -38,4 +39,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 29 checks, 5 failed
+qa: 30 checks, 6 failed
