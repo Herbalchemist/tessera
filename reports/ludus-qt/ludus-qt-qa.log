@@ -28,17 +28,17 @@ ok   Mom gets a login PIN of her own
 ok   Switching to Mom with a wrong PIN, then giving up, changes nothing
 ok   the right PIN switches to Mom
 ok   and Mom's PIN did not unlock the admin
-FAIL Guest is open to anyone and still locked down  (got 'Mom/locked/2', wanted 'Guest/locked/2')
+ok   Guest is open to anyone and still locked down
 ok   Hints follow the pad again after a button
-ok   Confirm on the right button: the hints swap A and B
+FAIL Confirm on the right button: the hints swap A and B  (got 'A|LB|A', wanted 'B|LB|B')
 ok   and back to the bottom button
 FAIL Button mapping: the bumpers are swapped  (got 'content', wanted 'tabs')
-ok   and the hints say RB where LB was
+FAIL and the hints say RB where LB was  (got 'A|LB|A', wanted 'A|RB|A')
 FAIL Clearing the mapping  (got 'content', wanted 'tabs')
 ok   puts them back
 FAIL The standard layout has no WASD: D does nothing  (got '1/content', wanted '3/tabs')
 FAIL Q / E are not bound in the standard layout; PgUp and [ switch tabs  (got '0/tabs', wanted '2/tabs')
-ok   The WASD layout is chosen
+FAIL The WASD layout is chosen  (got '["","","left","a"]', wanted '["up","left","left","a"]')
 FAIL WASD: D moves to the next tab  (got '0/tabs', wanted '3/tabs')
 FAIL WASD: A moves back  (got '0/tabs', wanted '2/tabs')
 FAIL Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left  (got '0/tabs', wanted '2/tabs')
@@ -63,4 +63,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 50 checks, 10 failed
+qa: 50 checks, 12 failed
