@@ -373,7 +373,7 @@ QtObject {
         ]
     }
     function padSet(st, key, value) {
-        return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) { st.pad = Object.assign({}, st.pad, r.pad); padState.setPad(st.pad) } else w.setStatus(r.error || "Couldn't save that.", true) })
+        return w.dev("settings", "padSet", { key: key, value: value }).then(function (r) { if (r.ok) { st.pad = Object.assign({}, st.pad, r.pad); w.setPad(st.pad) } else w.setStatus(r.error || "Couldn't save that.", true) })
     }
     // ------------------------------------------------------------------ Button mapping (input-actions.js)
     readonly property var glyphSets: ({
@@ -432,13 +432,13 @@ QtObject {
                         if (it.info) return loop()
                         if (it.fold) { st.closed[it.fold] = !st.closed[it.fold]; return loop() }
                         if (it.op === "reset") return w.dev("settings", "resetKeys").then(loop)
-                        if (it.op === "padReset") return (changed ? w.dev("settings", "padRemap", { family: fam, map: null }).then(function (r) { if (r.ok) padState.setPad(r.pad) }) : Promise.resolve()).then(loop)
+                        if (it.op === "padReset") return (changed ? w.dev("settings", "padRemap", { family: fam, map: null }).then(function (r) { if (r.ok) w.setPad(r.pad) }) : Promise.resolve()).then(loop)
                         if (it.role !== undefined) {
                             return press(it.label, [0, 1, 2, 3, 4, 5], "Press the button it's on now (" + roleName(it.role) + ") to keep it. Esc cancels.").then(function (n) {
                                 if (n === null) return loop()
                                 var next = mapAssign(map, it.role, mapPhysical(n, map))
                                 return w.dev("settings", "padRemap", { family: fam, map: next }).then(function (r) {
-                                    if (r.ok) padState.setPad(r.pad); else w.setStatus("Couldn't change that.", true)
+                                    if (r.ok) w.setPad(r.pad); else w.setStatus("Couldn't change that.", true)
                                 }).then(loop)
                             })
                         }

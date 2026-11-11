@@ -158,7 +158,7 @@ Window {
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_mouse") mouseSeen()
         else if (id === "_pad") setInput("pad")
-        else if (String(id).indexOf("_conf:") === 0) flows.padSet({ pad: (view.prefs && view.prefs.pad) || {} }, "confirm", String(id).slice(6))
+        else if (String(id).indexOf("_conf:") === 0) flows.padSet({ pad: padPrefs || {} }, "confirm", String(id).slice(6))
         else if (String(id).indexOf("_point:") === 0) { var pp = String(id).split(":"); pointTile(parseInt(pp[1]), parseInt(pp[2]), "q" + pp[1] + pp[2]) }
         else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
         else if (id === "_keycap") { qaCap = "waiting"; captureKey("Test").then(function (c) { qaCap = c || "none" }) }
@@ -204,7 +204,7 @@ Window {
     function applyView(v) {
         var before = view.prefs && view.prefs.theme ? view.prefs.theme.rev + ":" + view.prefs.theme.active : ""
         view = v
-        if (v.prefs && v.prefs.pad) padState.setPad(v.prefs.pad)
+        if (v.prefs && v.prefs.pad) setPad(v.prefs.pad)
         kbPrefs = v.prefs && v.prefs.kb ? v.prefs.kb : {}
         var kbSig = JSON.stringify(v.prefs && v.prefs.kb || {})
         if (kbSig !== kbSeen) { kbSeen = kbSig; loadKb() }
@@ -812,6 +812,8 @@ Window {
         })
     }
     // ---- button hints follow what the person last touched: the controller's buttons, keyboard keys, or Click / Right-click (look.js hintMode, hintName)
+    property var padPrefs: ({})              // prefs.pad (Confirm button, Button mapping) as last saved: the hints read it
+    function setPad(p) { padPrefs = p; padState.setPad(p) }
     property string inputMode: "pad"
     property string padFam: "xbox"
     property var keyNames2: ({})            // key code -> its short name (Enter, PgUp)
@@ -823,7 +825,7 @@ Window {
         return inputMode
     }
     function roleName(n) {
-        var pad = view.prefs && view.prefs.pad ? view.prefs.pad : {}
+        var pad = padPrefs || {}
         var set = flows.glyphSets[pad.glyphs] || flows.glyphSets[padFam]
         var b = flows.mapPhysical(n, flows.padMapFor(padFam, pad))
         return set[b] || "Button " + b
