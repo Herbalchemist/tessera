@@ -160,6 +160,7 @@ Window {
         else if (id === "_pad") setInput("pad")
         else if (String(id).indexOf("_qa:answers:") === 0) qaAnswers = String(id).slice(12).split(",")
         else if (String(id) === "_qa:pinset") flows.setPin(null).then(function (ok) { qaOut2 = ok ? "set" : "not set" })
+        else if (String(id).indexOf("_qa:prof:") === 0) qaProf(String(id).slice(9))
         else if (String(id) === "_qa:lock") dev("settings", "pinLock")
         else if (String(id) === "_qa:gate") desktopGate().then(function (ok) { qaOut2 = ok ? "open" : "shut" })
         else if (String(id).indexOf("_remap:") === 0) { var rm = String(id).slice(7) === "none" ? null : [0, 1, 2, 3, 5, 4]; dev("settings", "padRemap", { family: flows.padFamily(), map: rm }).then(function (r) { if (r && r.ok) setPad(r.pad) }) }
@@ -460,6 +461,24 @@ Window {
         })
     }
     property int qaLeft: 0
+    property var qaIds: ({})
+    // --qa only: people on the real screens' paths (add, switch, a login PIN of their own), then who is playing and whether the admin is unlocked
+    function qaProf(what) {
+        var w = what.split(":"), op = w[0], name = w[1]
+        var report = function () {
+            return dev("profiles", "list").then(function (r) {
+                return dev("settings", "pinStatus").then(function (st) {
+                    var who = ""
+                    ;(r.profiles || []).forEach(function (p) { if (p.id === r.active) who = p.name })
+                    qaOut2 = (who || "Guest") + "/" + (st && st.unlocked ? "unlocked" : "locked")
+                })
+            })
+        }
+        if (op === "add") return dev("profiles", "add", { name: name, start: "fresh" }).then(function (r) { qaIds[name] = r.id; qaOut2 = r.ok ? "added" : "failed" })
+        if (op === "pin") return dev("profiles", "setPin", { id: qaIds[name], pin: w[2] }).then(function (r) { qaOut2 = r.ok ? "pin" : "failed " + (r.error || "") })
+        if (op === "switch") return flows.switchProfile(name === "Guest" ? "" : qaIds[name], name).then(function () { return report() })
+        if (op === "who") return report()
+    }
     property string qaOut2: ""
     // leaving for Opus: the full Ludus asks its main process, which wants the PIN first when one is set (webView.js quit); the same check here
     function desktopGate() {
