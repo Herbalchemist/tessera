@@ -16,6 +16,11 @@ ok   The guide (a menu) is opened
 ok   With a menu open the pointer leaves the selection alone
 ok   B closes that menu
 ok   and B again goes back up to the tabs
+ok   A PIN is set through the PIN screen (typed twice)
+ok   The PIN is locked again
+ok   Opus gate: a wrong PIN, then giving up, stays shut
+ok   Opus gate: the right PIN opens it
+ok   and while unlocked it does not ask again
 ok   Hints follow the pad again after a button
 ok   Confirm on the right button: the hints swap A and B
 ok   and back to the bottom button
@@ -50,4 +55,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 37 checks, 0 failed
+qa: 42 checks, 0 failed
