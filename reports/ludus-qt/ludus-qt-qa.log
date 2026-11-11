@@ -20,8 +20,7 @@ ok   Hints follow the pad again after a button
 ok   Confirm on the right button: the hints swap A and B
 ok   and back to the bottom button
 ok   Button mapping: the bumpers are swapped
-FAIL and the hints say RB where LB was  (got 'B|LB|B', wanted 'A|RB|A')
-FAIL DEBUG  (got 'B|LB xbox pad {"browserCursor":"right","confirm":"bottom","cursorSpeed":50,"deadzone":15,"glyphs":"auto","guideButton":"menu-home","guideDesktop":"auto","guideStyle":"side","joycons":"ask","oskSize":"dock","remap":{"xbox":[0,1,2,3,5,4]},"repeat":"standard","rumble":"normal","scrollSpeed":50,"style":"split","trigger":8}', wanted 'x')
+ok   and the hints say RB where LB was
 ok   Clearing the mapping
 ok   puts them back
 ok   The standard layout has no WASD: D does nothing
@@ -51,4 +50,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 38 checks, 2 failed
+qa: 37 checks, 0 failed
