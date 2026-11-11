@@ -1,11 +1,127 @@
 ludus-qt: starting
-[610:645:1111/191708.483581:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[610:645:1111/192426.089022:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
 <Unknown File>: QML QQuickWebEngineProfile: Please use WebEngineProfilePrototype for profile creation from 6.9, as this function will be deprecated in the future releases
+ok   Library is shown
+ok   Back goes up to the tabs
 js: Refused to connect to 'http://127.0.0.1:9/' because it violates the following Content Security Policy directive: "connect-src 'none'".
 
 js: Fetch API cannot load http://127.0.0.1:9/. Refused to connect because it violates the document's Content Security Policy.
-Traceback (most recent call last):
-  File "/__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/ludus.py", line 741, in check
-    want_ = want.format(b=state['b'], b1=state['b'] + 1)
-                          ~~~~~^^^^^
-KeyError: 'b'
+ok   An add-on widget loads from its own folder, runs its script, and has no network
+ok   Hints show the controller buttons once a pad is used
+ok   Right arrow moves to the next tab
+ok   After a key, hints show keys
+ok   After the mouse, A reads Click
+ok   Pointing at a tile selects it
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+ok   The guide (a menu) is opened
+ok   With a menu open the pointer leaves the selection alone
+ok   B closes that menu
+ok   and B again goes back up to the tabs
+ok   A PIN is set through the PIN screen (typed twice)
+ok   The PIN is locked again
+ok   Opus gate: a wrong PIN, then giving up, stays shut
+ok   Opus gate: the right PIN opens it
+ok   and while unlocked it does not ask again
+ok   Hints follow the pad again after a button
+ok   Confirm on the right button: the hints swap A and B
+ok   and back to the bottom button
+ok   Button mapping: the bumpers are swapped
+ok   and the hints say RB where LB was
+ok   Clearing the mapping
+ok   puts them back
+ok   The standard layout has no WASD: D does nothing
+ok   Q / E are not bound in the standard layout; PgUp and [ switch tabs
+ok   The WASD layout is chosen
+ok   WASD: D moves to the next tab
+ok   WASD: A moves back
+ok   Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left
+ok   The place of a key is told apart from its letter (Z reported, W place)
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+ok   Guide key (F1) opens the guide
+ok   B closes it
+ok   and the menu is gone
+ok   The floating guide is a card in the middle
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+ok   The compact guide is a narrow panel
+ok   Install and Recover: a question from the flow opens as a menu
+ok   and an answer closes it
+ok   Their progress screen stays up when B is pressed
+ok   and goes when the flow ends
+ok   Pressing a key to bind it: the key comes back by its place
+ok   Esc cancels the capture
+ok   Back to the standard layout
+ok   The admin PIN is entered to add people
+ok   Profiles: Kid and Mom are added
+ok   
+ok   Switching to Kid makes Kid the one playing
+ok   Mom gets a login PIN of her own
+ok   Switching to Mom with a wrong PIN, then giving up, changes nothing
+ok   the right PIN switches to Mom
+ok   and Mom's PIN did not unlock the admin
+ok   Guest is open to anyone and still locked down
+ok   The tour opens at its first step
+ok   A goes on to the Tabs step
+ok   RB in the tour switches tabs and the step notes it
+ok   A: the Home step shows the Home tab
+ok   A: the Library step shows the Library tab
+ok   B goes back a step
+ok   Y leaves the tour where it started
+ok   First run: the welcome starts
+ok   Get started, skip a name, keep the look, skip the PIN
+ok   
+ok   
+ok   
+ok   Take a quick tour ends the welcome, marks first run done, and starts the tour
+ok   
+ok   The tour from the welcome can be left too
+qa: 67 checks, 0 failed
+Fatal Python error: Segmentation fault
+
+Current thread 0x00007f3b06925640 [python3] (most recent call first):
+
+Current thread's C stack trace (most recent call first):
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_DumpStack+0x4c [0x7f3b07001165]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x39cecb [0x7f3b0700aecb]
+  Binary file "/lib64/libc.so.6", at +0x94070 [0x7f3b06b04070]
+  Binary file "/lib64/libQt6WebEngineQuick.so.6", at _ZN19QQuickWebEngineView10setProfileEP22QQuickWebEngineProfile+0x14 [0x7f3afed93b84]
+  Binary file "/lib64/libQt6Qml.so.6", at +0x4489c5 [0x7f3b002459c5]
+  Binary file "/lib64/libQt6Qml.so.6", at _ZN11QQmlBinding8doUpdateERKN24QQmlJavaScriptExpression13DeleteWatcherE6QFlagsIN16QQmlPropertyData9WriteFlagEERN3QV45ScopeE+0x1b1 [0x7f3b00240651]
+  Binary file "/lib64/libQt6Qml.so.6", at _ZN11QQmlBinding6updateE6QFlagsIN16QQmlPropertyData9WriteFlagEE+0x169 [0x7f3b00240e39]
+  Binary file "/lib64/libQt6Qml.so.6", at _ZN12QQmlNotifier10emitNotifyEP20QQmlNotifierEndpointPPv+0x2e0 [0x7f3b002f5620]
+  Binary file "/lib64/libQt6Core.so.6", at +0x3fa72a [0x7f3b0534172a]
+  Binary file "/lib64/libQt6Core.so.6", at +0x3faa37 [0x7f3b05341a37]
+  Binary file "/lib64/libQt6Core.so.6", at _ZN7QObject9destroyedEPS_+0x47 [0x7f3b053380b7]
+  Binary file "/lib64/libQt6Core.so.6", at _ZN7QObjectD1Ev+0x7c6 [0x7f3b0533cf76]
+  Binary file "/usr/lib/python3.15/site-packages/PySide6/QtWebEngineQuick.cpython-315-x86_64-linux-gnu.so", at +0x10755 [0x7f3afedf1755]
+  Binary file "/lib64/libshiboken6.cpython-315-x86_64-linux-gnu.so.6.11", at +0x4e184 [0x7f3b060c2184]
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x42a33a [0x7f3b0709833a]
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x42717e [0x7f3b0709517e]
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x42715f [0x7f3b0709515f]
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x3d2833 [0x7f3b07040833]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x55b4f2 [0x7f3b071c94f2]
+  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x556b56 [0x7f3b071c4b56]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x556a36 [0x7f3b071c4a36]
+  Binary file "/lib64/libpython3.15.so.1.0", at +0x22bd1c [0x7f3b06e99d1c]
+  Binary file "/lib64/libpython3.15.so.1.0", at Py_BytesMain+0x3c [0x7f3b0714aefc]
+  Binary file "/lib64/libc.so.6", at +0x7d301 [0x7f3b06aed301]
+  Binary file "/lib64/libc.so.6", at __libc_start_main+0x88 [0x7f3b06aed418]
+  Binary file "python3", at _start+0x25 [0x55f975911095]
+
+Extension modules: shiboken6.Shiboken, PySide6.QtCore, PySide6.QtGui, PySide6.QtNetwork, PySide6.QtQml, PySide6.QtWidgets, PySide6.QtPrintSupport, PySide6.QtWebChannel, PySide6.QtWebEngineCore, PySide6.QtWebEngineQuick, PySide6.QtOpenGL, PySide6.QtQuick (total: 12)
+timeout: the monitored command dumped core
