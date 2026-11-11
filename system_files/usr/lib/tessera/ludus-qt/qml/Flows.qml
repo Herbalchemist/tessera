@@ -389,7 +389,8 @@ QtObject {
     // a map says how a controller's buttons are read: a remap list, or true when the right button confirms
     function padMapFor(family, pad) {
         var r = pad && pad.remap && pad.remap[family]
-        if (r && r.length === 6 && r.slice().sort().join() === "0,1,2,3,4,5") return r
+        // a list that came over the bridge can be a Qt sequence, not a JS array (Array.isArray says no, and a map that is not an array reads as "swap A and B"): copy it
+        if (r && r.length === 6) { var cp = []; for (var i = 0; i < 6; i++) cp.push(Number(r[i])); if (cp.slice().sort().join() === "0,1,2,3,4,5") return cp }
         var c = pad && pad.confirm
         return c === "right" || (c !== "bottom" && c !== "right" && family === "nintendo")
     }
