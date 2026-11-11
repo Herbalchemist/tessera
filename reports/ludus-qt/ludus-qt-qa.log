@@ -1,7 +1,7 @@
 ludus-qt: starting
 ok   Library is shown
 ok   Back goes up to the tabs
-ok   Hints show the controller buttons to begin with
+ok   Hints show the controller buttons once a pad is used
 ok   Right arrow moves to the next tab
 ok   After a key, hints show keys
 ok   After the mouse, A reads Click
