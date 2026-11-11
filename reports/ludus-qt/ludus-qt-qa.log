@@ -1,5 +1,5 @@
 ludus-qt: starting
-[610:645:1111/192426.089022:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[610:645:1111/193151.327835:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
 <Unknown File>: QML QQuickWebEngineProfile: Please use WebEngineProfilePrototype for profile creation from 6.9, as this function will be deprecated in the future releases
 ok   Library is shown
 ok   Back goes up to the tabs
@@ -86,42 +86,4 @@ ok   Take a quick tour ends the welcome, marks first run done, and starts the to
 ok   
 ok   The tour from the welcome can be left too
 qa: 67 checks, 0 failed
-Fatal Python error: Segmentation fault
-
-Current thread 0x00007f3b06925640 [python3] (most recent call first):
-
-Current thread's C stack trace (most recent call first):
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_DumpStack+0x4c [0x7f3b07001165]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x39cecb [0x7f3b0700aecb]
-  Binary file "/lib64/libc.so.6", at +0x94070 [0x7f3b06b04070]
-  Binary file "/lib64/libQt6WebEngineQuick.so.6", at _ZN19QQuickWebEngineView10setProfileEP22QQuickWebEngineProfile+0x14 [0x7f3afed93b84]
-  Binary file "/lib64/libQt6Qml.so.6", at +0x4489c5 [0x7f3b002459c5]
-  Binary file "/lib64/libQt6Qml.so.6", at _ZN11QQmlBinding8doUpdateERKN24QQmlJavaScriptExpression13DeleteWatcherE6QFlagsIN16QQmlPropertyData9WriteFlagEERN3QV45ScopeE+0x1b1 [0x7f3b00240651]
-  Binary file "/lib64/libQt6Qml.so.6", at _ZN11QQmlBinding6updateE6QFlagsIN16QQmlPropertyData9WriteFlagEE+0x169 [0x7f3b00240e39]
-  Binary file "/lib64/libQt6Qml.so.6", at _ZN12QQmlNotifier10emitNotifyEP20QQmlNotifierEndpointPPv+0x2e0 [0x7f3b002f5620]
-  Binary file "/lib64/libQt6Core.so.6", at +0x3fa72a [0x7f3b0534172a]
-  Binary file "/lib64/libQt6Core.so.6", at +0x3faa37 [0x7f3b05341a37]
-  Binary file "/lib64/libQt6Core.so.6", at _ZN7QObject9destroyedEPS_+0x47 [0x7f3b053380b7]
-  Binary file "/lib64/libQt6Core.so.6", at _ZN7QObjectD1Ev+0x7c6 [0x7f3b0533cf76]
-  Binary file "/usr/lib/python3.15/site-packages/PySide6/QtWebEngineQuick.cpython-315-x86_64-linux-gnu.so", at +0x10755 [0x7f3afedf1755]
-  Binary file "/lib64/libshiboken6.cpython-315-x86_64-linux-gnu.so.6.11", at +0x4e184 [0x7f3b060c2184]
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x42a33a [0x7f3b0709833a]
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x42717e [0x7f3b0709517e]
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x42715f [0x7f3b0709515f]
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x3d2833 [0x7f3b07040833]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x55b4f2 [0x7f3b071c94f2]
-  Binary file "/lib64/libpython3.15.so.1.0", at _Py_Dealloc+0x72 [0x7f3b07025d12]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x556b56 [0x7f3b071c4b56]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x556a36 [0x7f3b071c4a36]
-  Binary file "/lib64/libpython3.15.so.1.0", at +0x22bd1c [0x7f3b06e99d1c]
-  Binary file "/lib64/libpython3.15.so.1.0", at Py_BytesMain+0x3c [0x7f3b0714aefc]
-  Binary file "/lib64/libc.so.6", at +0x7d301 [0x7f3b06aed301]
-  Binary file "/lib64/libc.so.6", at __libc_start_main+0x88 [0x7f3b06aed418]
-  Binary file "python3", at _start+0x25 [0x55f975911095]
-
-Extension modules: shiboken6.Shiboken, PySide6.QtCore, PySide6.QtGui, PySide6.QtNetwork, PySide6.QtQml, PySide6.QtWidgets, PySide6.QtPrintSupport, PySide6.QtWebChannel, PySide6.QtWebEngineCore, PySide6.QtWebEngineQuick, PySide6.QtOpenGL, PySide6.QtQuick (total: 12)
-timeout: the monitored command dumped core
+QSocketNotifier: Invalid socket 6 and type 'Read', disabling...

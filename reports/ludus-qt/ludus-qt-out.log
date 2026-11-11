@@ -1,5 +1,5 @@
 ludus-qt: starting
-[493:528:1111/192239.605836:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[494:529:1111/193004.448194:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
 <Unknown File>: QML QQuickWebEngineProfile: Please use WebEngineProfilePrototype for profile creation from 6.9, as this function will be deprecated in the future releases
 shot 01-library
 shot 02-options
@@ -51,3 +51,4 @@ shot 33-tour-start
 shot 34-tour-tabs
 shot 36-tour-library
 shot 35-tour-end
+QSocketNotifier: Invalid socket 6 and type 'Read', disabling...
