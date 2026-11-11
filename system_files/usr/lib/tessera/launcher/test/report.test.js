@@ -1,31 +1,50 @@
 'use strict';
-// "Report a problem": personal details are taken out before the file is written.
+// Report a problem, on the real main process: nothing is made until asked, a report lands in the
+// vault's reports folder, carries no home folder, computer name, IP address or PIN hash, and can be deleted.
+// (The screens that show it are checked by ludus.py --qa.)
 const test = require('node:test');
+test.after(() => { setImmediate(() => process.exit()); });
 const assert = require('node:assert');
-const Module = require('module');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const H = require('./xbox-harness');
 
-// report.js is a main-process part: stand-ins for Electron and the parts it uses.
-const orig = Module.prototype.require;
-Module.prototype.require = function (id) {
-  if (id === 'electron') return { ipcMain: { handle() {} }, screen: { getAllDisplays: () => [] } };
-  if (this.filename && this.filename.endsWith('report.js') && id.startsWith('./')) return id === './ipc' ? { safe: (f) => f } : {};
-  return orig.apply(this, arguments);
-};
-const { scrub } = require('../main/report');
-Module.prototype.require = orig;
+const LAUNCHER = path.join(__dirname, '..');
 
-test('the account, home folder and computer name are replaced', () => {
-  const who = { user: 'aleck', home: '/var/home/aleck', host: 'aleck-pc' };
-  const out = scrub('ran /var/home/aleck/.local/bin/x as aleck on aleck-pc (Aleck-PC)', who);
-  assert.strictEqual(out, 'ran ~/.local/bin/x as [user] on [computer] ([computer])');
-  assert.doesNotMatch(scrub('user aleck logged in', who), /aleck/);
-});
-test('network and hardware addresses, and e-mail addresses, are replaced', () => {
-  const out = scrub('wlan0 a4:5e:60:12:ab:cd got 192.168.1.42 and fe80:0:0:0:1c2:3d4:5e6:7f8, mail me@example.com', { user: 'x1', host: 'h1' });
-  assert.doesNotMatch(out, /a4:5e|192\.168|fe80|example\.com/);
-  assert.match(out, /\[hardware address\].*\[ip\].*\[ip\].*\[e-mail\]/);
-});
-test("what isn't personal stays readable", () => {
-  const text = 'kernel 7.2.11-ogc4.1.fc44 at 12:34:56, launcher 0.36.0, 127.0.0.1, Vendor=045e Product=0b13';
-  assert.strictEqual(scrub(text, { user: 'zed', home: '/home/zed', host: 'box' }), text);
+test('report: made only when asked, scrubbed, deletable', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'report-'));
+  const data = path.join(tmp, 'data');
+  fs.mkdirSync(data, { recursive: true });
+  fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ firstRunDone: true, pin: { salt: '0'.repeat(32), hash: '1'.repeat(64) } }));
+  const state = path.join(tmp, 'state', 'tessera');
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(path.join(state, 'session.log'), `session start\nlauncher at ${path.join(tmp, 'home')}/x on ${os.hostname()} via 192.168.4.20\n`);
+  for (const k of Object.keys(require.cache)) if (k.startsWith(LAUNCHER + path.sep) && !k.includes(path.sep + 'test' + path.sep)) delete require.cache[k];
+  const h = await H.load({ launcher: LAUNCHER, tmp });
+  const R = (op, p) => h.call('report', op, p || {});
+
+  const c = await R('contents');
+  assert.ok(c.ok && c.contents.length >= 6, 'it says what goes in it');
+  const rep = c.folder;
+  assert.strictEqual(fs.existsSync(rep) ? fs.readdirSync(rep).length : 0, 0, 'nothing is made until asked');
+
+  const r = await R('make');
+  assert.ok(r.ok, r.error);
+  const files = fs.readdirSync(rep);
+  assert.strictEqual(files.length, 1);
+  assert.match(files[0], /^tessera-report-\d{8}-\d{6}\.txt$/);
+  assert.strictEqual(r.name, files[0]);
+  const text = fs.readFileSync(path.join(rep, files[0]), 'utf8');
+  for (const s of ['== Tessera', '== System', '== Hardware', '== Starting up', '== Tessera session log (this session)', '== Settings']) assert.ok(text.includes(s), `has ${s}`);
+  assert.ok(!text.includes(path.join(tmp, 'home')), 'no home folder');
+  if (os.hostname().length > 1 && os.hostname() !== 'localhost') assert.ok(!text.includes(os.hostname()), 'no computer name');
+  assert.ok(!text.includes('192.168.4.20'), 'no IP address');
+  assert.ok(!/[0-9a-f]{64}/.test(text), 'not even the PIN hash');
+  assert.strictEqual(r.text, text);
+
+  assert.strictEqual((await R('delete', { name: '../../etc/passwd' })).ok, false, 'only report names');
+  assert.ok((await R('delete', { name: r.name })).ok);
+  assert.strictEqual(fs.readdirSync(rep).length, 0);
+  assert.strictEqual((await R('nope')).ok, false);
 });

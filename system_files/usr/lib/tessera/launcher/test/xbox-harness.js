@@ -41,7 +41,7 @@ async function load(opts) {
   };
   // spawn() is recorded and never really runs a program
   const realCp = require('child_process');
-  const cp = { ...realCp, spawn: (file, args, o) => { (opts.spawned || []).push({ file, args, cwd: o && o.cwd }); const { EventEmitter } = require('events'); const e = new EventEmitter(); e.pid = 0; return e; } };
+  const cp = opts.realSpawn ? realCp : { ...realCp, spawn: (file, args, o) => { (opts.spawned || []).push({ file, args, cwd: o && o.cwd }); const { EventEmitter } = require('events'); const e = new EventEmitter(); e.pid = 0; return e; } };
   const orig = Module._load;
   Module._load = function (req, parent, ...a) {
     if (req === 'electron') return fake;
