@@ -588,6 +588,7 @@ def qa_checks(app, win):
         ('Confirm on the right button: the hints swap A and B', ['run:_conf:right'], 'hint', 'B|LB|B'),
         ('and back to the bottom button', ['run:_conf:bottom'], 'hint', 'A|LB|A'),
         ('Button mapping with the bumpers swapped: the hints say RB where LB was', ['run:_remap:swap'], 'hint', 'A|RB|A'),
+        ('DEBUG pad prefs', [], 'padp', 'x'),
         ('and clearing the mapping puts them back', ['run:_remap:none'], 'hint', 'A|LB|A'),
         ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', '{b1}/tabs'),
         ('Q / E are not bound in the standard layout; PgUp and [ switch tabs', ['key:Key_Q:16', 'key:Key_PageUp:104'], 'tab', '{b}/tabs'),
