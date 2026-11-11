@@ -37,7 +37,7 @@ async function load(opts) {
   const fake = {
     app, BrowserWindow: FakeWindow, Menu: { setApplicationMenu: noop },
     ipcMain: { handle: (c, f) => { handlers[c] = f; }, on: (c, f) => { listeners[c] = f; }, once: noop },
-    protocol: { registerSchemesAsPrivileged: noop, handle: noop }, session: deep(), screen: deep(), shell: deep(), dialog: deep(),
+    net: { fetch: (...a) => fetch(...a) }, protocol: { registerSchemesAsPrivileged: noop, handle: noop }, session: deep(), screen: deep(), shell: deep(), dialog: deep(),
   };
   // spawn() is recorded and never really runs a program
   const realCp = require('child_process');
