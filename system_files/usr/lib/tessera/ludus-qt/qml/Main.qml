@@ -157,6 +157,7 @@ Window {
         else if (String(id).indexOf("_tour:") === 0) { tourView.openAt(parseInt(String(id).slice(6))) }
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_mouse") mouseSeen()
+        else if (String(id).indexOf("_point:") === 0) { var pp = String(id).split(":"); pointTile(parseInt(pp[1]), parseInt(pp[2]), "q" + pp[1] + pp[2]) }
         else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
         else if (id === "_keycap") { qaCap = "waiting"; captureKey("Test").then(function (c) { qaCap = c || "none" }) }
         else if (id === "_flowui-pick") flows.flowUi({ id: 0, kind: "pick", title: "Welcome to Tessera", items: [{ label: "Install Tessera", ok: true }, { label: "Try it first", plain: true }], index: 0, body: "x", welcome: true })
@@ -719,6 +720,8 @@ Window {
         else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])
         else if (name === "key") qaOut = codeOf(qaKey)
         else if (name === "cap") qaOut = qaCap
+        else if (name === "sel") qaOut = area + "/" + selRow + "/" + selCol
+        else if (name === "area") qaOut = area
         else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
         else if (name === "mouse") { mouseSeen(); qaOut = "ok" }
         else qaOut = "?"
