@@ -580,7 +580,7 @@ def qa_checks(app, win):
         ('After a key, hints show keys', [], 'hint', 'Enter|PgUp|Enter'),
         ('After the mouse, A reads Click', ['run:_mouse'], 'hint', 'Click|PgUp|Click'),
         ('Pointing at a tile selects it', ['run:_point:0:1'], 'sel', 'content/0/1'),
-        ('Y opens the options', ['y'], 'menu', 'open'),
+        ('The guide (a menu) is opened', ['key:Key_F1:59'], 'menu', 'open'),
         ('With a menu open the pointer leaves the selection alone', ['run:_point:0:0'], 'sel', 'content/0/1'),
         ('B closes that menu', ['b'], 'menu', 'closed'),
         ('and B again goes back up to the tabs', ['b'], 'area', 'tabs'),
