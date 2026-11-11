@@ -13,9 +13,9 @@ shot 11-tabs-browser
 shot 11b-settings-page
 shot 11c-settings-lower
 shot 12-wifi
+shot 13-wifi-password
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
-shot 13-wifi-password
 shot 14-bluetooth
 shot 15-sound
 shot 16-sound-volume
