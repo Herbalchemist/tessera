@@ -64,4 +64,19 @@ ok   Switching to Mom with a wrong PIN, then giving up, changes nothing
 ok   the right PIN switches to Mom
 ok   and Mom's PIN did not unlock the admin
 ok   Guest is open to anyone and still locked down
-qa: 51 checks, 0 failed
+ok   The tour opens at its first step
+ok   A goes on to the Tabs step
+ok   RB in the tour switches tabs and the step notes it
+ok   A: the Home step shows the Home tab
+ok   A: the Library step shows the Library tab
+ok   B goes back a step
+ok   Y leaves the tour where it started
+ok   First run: the welcome starts
+ok   Get started, skip a name, keep the look, skip the PIN
+ok   
+ok   
+ok   
+ok   Take a quick tour ends the welcome, marks first run done, and starts the tour
+ok   
+ok   The tour from the welcome can be left too
+qa: 66 checks, 0 failed
