@@ -628,9 +628,9 @@ def qa_checks(app, win):
     keyboard, as an AZERTY or a QWERTY keyboard would report it)."""
     KC = {'Q': 16, 'W': 17, 'E': 18, 'A': 30, 'S': 31, 'D': 32, 'Z': 44}     # Linux key numbers of keys by where they are on a QWERTY keyboard
     checks = [
-        ('An add-on widget loads from its own folder, runs its script, and has no network', ['run:_qa:frame'], 'frame', 'ran'),
         ('Library is shown', ['@library'], 'tab', None),
         ('Back goes up to the tabs', ['b'], 'base', None),
+        ('An add-on widget loads from its own folder, runs its script, and has no network', ['run:_qa:frame'], 'frame', 'ran'),
         ('Hints show the controller buttons once a pad is used', ['run:_pad'], 'hint', 'A|LB|A'),
         ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', '{b1}/tabs'),
         ('After a key, hints show keys', [], 'hint', 'Enter|PgUp|Enter'),
