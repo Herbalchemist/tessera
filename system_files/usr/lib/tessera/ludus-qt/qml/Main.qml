@@ -163,6 +163,7 @@ Window {
         else if (String(id).indexOf("_qa:prof:") === 0) qaProf(String(id).slice(9))
         else if (String(id) === "_qa:lock") dev("settings", "pinLock")
         else if (String(id) === "_qa:unlock") requirePin("Enter the PIN").then(function (ok) { qaOut2 = ok ? "open" : "shut" })
+        else if (String(id) === "_qa:welcome") { flows.welcomed = false; flows.welcome().then(function () { return dev("settings", "pinStatus") }).then(function (st) { qaOut2 = st && st.firstRun ? "first" : "done" }) }
         else if (String(id) === "_qa:gate") desktopGate().then(function (ok) { qaOut2 = ok ? "open" : "shut" })
         else if (String(id).indexOf("_remap:") === 0) { var rm = String(id).slice(7) === "none" ? null : [0, 1, 2, 3, 5, 4]; dev("settings", "padRemap", { family: flows.padFamily(), map: rm }).then(function (r) { if (r && r.ok) setPad(r.pad) }) }
         else if (String(id).indexOf("_conf:") === 0) flows.padSet({ pad: padPrefs || {} }, "confirm", String(id).slice(6))
@@ -793,6 +794,7 @@ Window {
         else if (name === "cap") qaOut = qaCap
         else if (name === "sel") qaOut = area + "/" + selRow + "/" + selCol
         else if (name === "area") qaOut = area
+        else if (name === "tour") qaOut = (tourView.visible ? "on" : "off") + "/" + tourView.i + "/" + page + "/" + (tourView.tried ? "tried" : "-")
         else if (name === "qa2") qaOut = qaOut2 + "/" + qaLeft
         else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
         else if (name === "mouse") { mouseSeen(); qaOut = "ok" }

@@ -80,7 +80,7 @@ export TESSERA_RESTART_FILE="$RESTART"
 NO_DISPLAY=""
 fails=0
 # Ludus (Qt), the new Ludus being built: used when chosen (Settings > System > Try the new Ludus,
-# which writes "qt" here), when it says it may run (no PIN or profiles yet), and until it fails to
+# which writes "qt" here), when it says it may run, and until it fails to
 # start once; then the full Ludus comes back by itself.
 QT_LUDUS=/usr/lib/tessera/ludus-qt/ludus.py
 QT_CHOICE="${XDG_CONFIG_HOME:-$HOME/.config}/tessera/ludus"

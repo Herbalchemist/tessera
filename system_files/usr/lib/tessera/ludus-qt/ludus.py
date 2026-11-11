@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Ludus (Qt): Tessera's console screen in Qt 6 + QML. First version: tabs, mosaics and folders,
-the Library and Apps, starting games and apps, every controller. Anything it doesn't have yet
-(PIN, profiles, themes, the browser tab, Settings) stays in the full Ludus, which it can go
-back to at any time (Settings tab, or by failing to start: the session falls back by itself).
+"""Ludus (Qt): Tessera's console screen in Qt 6 + QML, with the full Ludus's main process behind it
+(PIN, profiles, themes, Settings, the browser). The full Ludus (Electron) stays available: Settings
+can switch back to it at any time, and the session falls back by itself if this fails to start.
 
   ludus.py               the screen
-  ludus.py --check       exit 0 if this version may run here, 3 (and why) if not
+  ludus.py --check       exit 0 if this version may run here
   ludus.py --shot DIR    draw each screen into DIR/*.png and quit (for the build's screenshots)
   ludus.py --theme-shots DIR   every factory theme, named like qa/theme-shots.cjs (side by side)
 """
@@ -26,29 +25,9 @@ DATA_DIR = os.environ.get('TESSERA_DATA_DIR') or os.path.join(
 CHOICE = os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'), '.config'), 'tessera', 'ludus')
 
 
-def locked_down(settings=None):
-    """What this version has no screens for yet, and must never let anyone around: a PIN, profiles
-    (and their guest limits). While any is set up it doesn't run; the full Ludus is used."""
-    if settings is None:
-        try:
-            with open(os.path.join(DATA_DIR, 'settings.json'), encoding='utf-8') as f:
-                settings = json.load(f)
-        except (OSError, ValueError):
-            settings = {}
-    if not isinstance(settings, dict):
-        return None
-    if settings.get('pin'):
-        return 'a PIN is set'
-    if isinstance(settings.get('profiles'), list) and settings['profiles']:
-        return 'profiles are set up'
-    return None
-
-
 def check():
-    why = locked_down()
-    if why:
-        print('ludus-qt: not used, %s (the full Ludus keeps those safe)' % why, file=sys.stderr)
-        return 3
+    """Always fine to run: the PIN, profiles and guest limits are enforced by the main process (the same
+    code as the full Ludus), and every screen that needs them asks for them."""
     return 0
 
 
@@ -624,6 +603,21 @@ def qa_checks(app, win):
         ('the right PIN switches to Mom', ['run:_qa:answers:5678', 'run:_qa:prof:switch:Mom'], 'qa2', 'Mom/locked/2'),
         ("and Mom's PIN did not unlock the admin", ['run:_qa:prof:who'], 'qa2', 'Mom/locked/2'),
         ('Guest is open to anyone and still locked down', ['run:_qa:prof:switch:Guest'], 'qa2', 'Guest/locked/2'),
+        ('The tour opens at its first step', ['run:_tour'], 'tour', 'on/0/home/-'),
+        ('A goes on to the Tabs step', ['a'], 'tour', 'on/1/home/-'),
+        ('RB in the tour switches tabs and the step notes it', ['rb'], 'tour', 'on/1/library/tried'),
+        ('A: the Home step shows the Home tab', ['a'], 'tour', 'on/2/home/-'),
+        ('A: the Library step shows the Library tab', ['a'], 'tour', 'on/3/library/-'),
+        ('B goes back a step', ['b'], 'tour', 'on/2/home/-'),
+        ('Y leaves the tour where it started', ['y'], 'tour', 'off/2/home/-'),
+        ('First run: the welcome starts', ['run:_qa:welcome'], 'menu', 'open'),
+        ('Get started, skip a name, keep the look, skip the PIN', ['a'], 'menu', 'open'),
+        ('', ['b'], 'menu', 'open'),
+        ('', ['b'], 'menu', 'open'),
+        ('', ['b'], 'menu', 'open'),
+        ('Take a quick tour ends the welcome, marks first run done, and starts the tour', ['down', 'a'], 'tour', 'on/0/home/-'),
+        ('', [], 'qa2', 'done/2'),
+        ('The tour from the welcome can be left too', ['y'], 'tour', 'off/0/home/-'),
     ]
     failed = []
     state = {'i': 0}

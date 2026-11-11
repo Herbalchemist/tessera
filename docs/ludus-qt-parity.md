@@ -18,7 +18,7 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - ⬜ Game art (automatic and chosen pictures)
 - ⬜ Recently played
 - 🟨 Mouse: hover selects (with the pause after a row slides), click opens a tile or a tab, the wheel (move / tabs / off), right click = back, middle = options, side buttons, pointer hides after the set time. Written, builds clean in CI; not yet tried with a real mouse. Widgets on Home do not follow the pointer yet
-- 🟨 The tour (first start, and from the guide) and Welcome: ported and compared side by side in all ten stock themes (Library and Home steps); ring, card and buttons match. Remaining: the ring in tall grids ends about 70 px short at the bottom; the sample game lists differ
+- 🟨 The tour (first start, and from the guide) and Welcome: ported and compared side by side in all ten stock themes (Library and Home steps); ring, card and buttons match. Remaining: the ring in tall grids ends about 70 px short at the bottom; the sample game lists differ Qt checks walk the steps (next, back, try-it, leave).
 - 🟡 Status line and messages — shown under the tiles; the full set of messages not yet
 
 ## Themes and customization (docs/theming.md)
@@ -41,8 +41,8 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 The guide over the browser; "Back to the browser" (the guide opens over the page and hands it back on close; not run with a live page yet)
 
 ## People and safety
-- ⬜ PIN (set, change, remove; never waits for the admin PIN)
-- 🟨 Profiles ported (who's playing, switch, add, Guest options, profile options: rename, theme, PINs, admin, remove). The page closes before switching
+- ✅ PIN (set, change, remove; never waits for the admin PIN): checked on the Qt screens (typed twice, wrong PIN then give up, Opus switch asks first)
+- 🟨 Profiles ported (who's playing, switch, add, Guest options, profile options: rename, theme, PINs, admin, remove). The page closes before switching Qt checks: add, switch, a profile's own PIN (wrong then right), it never unlocks admin, Guest stays limited.
 - ⬜ Xbox games gate
 - ⬜ All the IPC checks (ipcGuard) and security standards in SECURITY.md
 
@@ -51,12 +51,12 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - 🟨 Appearance, Theme Settings (every setting type, color wheel, boot screen, boot menu, save/rename/overwrite/delete). Screens ported (with the keep-or-revert countdown). Display calibration ported (steps, test patterns, a shader over the whole screen; Y toggles "as it was" instead of hold). "New screen plugged in" and "drive plugged in" offers ported
 - ✅ Sound (volume bars with left/right, mute, outputs, microphone, headset mode)
 - 🟨 Controller and Keyboard & mouse menus (choices, deadzone, vibration, key layout, mouse). The live controller test (buttons, sticks, triggers, raw numbers, hold B; the triggers rumble the pad through evdev force feedback in the chosen strength and style, not yet run on a real pad) stick calibration and Button mapping (keyboard and per-family controller buttons, press-the-button capture, Confirm/remap applied to Qt navigation) are ported. Change grip/order (live Joy-Con cards from the pads service) is ported too; the card layout with real Joy-Cons has not been run. Adding, removing and moving single keys is ported, and the saved key layout (presets and custom keys) now drives Qt navigation, with the full Ludus's names for the keys (keys are matched by their place on the keyboard, so AZERTY and Dvorak keep working; the scan-code offset is learned from Esc, Space and Enter; not run on a real keyboard)
-- 🟨 PIN ported (set, change, remove, lock, browser, Xbox). the first-run welcome ported (with the quick tour)
+- ✅ PIN ported (set, change, remove, lock, browser, Xbox); the first-run welcome ported (with the quick tour), both with Qt checks
 - 🟨 Storage ported (drives with usage bars, manage by size, scan, library folders, install location, downloads, clean up, backup, restore, drive names, hidden drives). Not yet: "drive plugged in" offer
 - ✅ Update software (check, download, restart, go back, graphics builds, and the "new graphics card?" prompt at start; not seen with a real card swap)
 - 🟨 Add-ons ported (widgets, themes, shards with safety settings, built in, get add-ons, download folders). Shard pages that open a web address open them in the browser
 - 🟨 Report a problem (save, read, delete, build the GitHub issue; opens in the browser)
-- 🟡 Power and Opus — sleep, restart, shut down not yet
+- 🟡 Power and Opus — sleep, restart, shut down not yet; switching to Opus asks for the PIN first (checked)
 - 🟨 Tessera USB: Install Tessera (next to Windows too) and Recover run the full Ludus's own step code unchanged in the bridge (`backend/flowhost.js`); their menus, questions and progress go to the Qt menus. Entry points: first screen on the USB, Settings > Tessera USB, the guide. Not yet run on a real USB; needs a live-USB test
 
 ## Around the screen
@@ -74,6 +74,6 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - Text in widgets shrinks to fit instead of being cut off
 
 ## Checks before the switch
-- 🟨 QA checks. The full Ludus's qa/ checks that test the main process (addons, profiles and PINs, installer and recovery helpers, graphics, report, boot screen, Steam library, screens' trial and restart) test code the Qt version runs unchanged, so they apply to it as they are. The ones that drive the Electron page need a Qt counterpart: `ludus.py --qa` (run in CI after the pictures) has 16 so far, and also found a real bug (controller presses were being dropped). Done: key layouts by place on the keyboard (standard and WASD, AZERTY-style key reports), tab keys, Guide key, the guide in its three styles. Hints now follow the controller, keyboard or mouse (footer, tab keys, menu bottom row; checked in --qa). Pointer-over selecting a tile (and being ignored with a menu open) is checked in --qa. Confirm button choice showing in the hints is checked in --qa (it found that the hints kept the old buttons after the setting changed; fixed). Still to write: key capture/binding, the guided tour steps (keyboard.cjs), "who's playing" and profile switching at the screen (profiles.cjs), screens settings flow (screens.cjs), browser pointer and transitions (browser-*.cjs, needs QtWebEngine in CI), first-run setup (guide.cjs)
+- 🟨 QA checks. The full Ludus's qa/ checks that test the main process (addons, profiles and PINs, installer and recovery helpers, graphics, report, boot screen, Steam library, screens' trial and restart) test code the Qt version runs unchanged, so they apply to it as they are. The ones that drive the Electron page need a Qt counterpart: `ludus.py --qa` (run in CI after the pictures) has 16 so far, and also found a real bug (controller presses were being dropped). Done: key layouts by place on the keyboard (standard and WASD, AZERTY-style key reports), tab keys, Guide key, the guide in its three styles. Hints now follow the controller, keyboard or mouse (footer, tab keys, menu bottom row; checked in --qa). Pointer-over selecting a tile (and being ignored with a menu open) is checked in --qa. Confirm button choice showing in the hints is checked in --qa (it found that the hints kept the old buttons after the setting changed; fixed). Still to write: key capture/binding, the guided tour steps (keyboard.cjs), "who's playing" and profile switching at the screen (profiles.cjs), screens settings flow (screens.cjs), browser pointer and transitions (browser-*.cjs, needs QtWebEngine in CI), first-run setup (guide.cjs) The Qt run is now 59 checks.
 - 🟨 Side-by-side screenshots: every stock theme, Library / Home / Settings / Tabs plus the tour, with layout numbers (CI "themes" job). Layout within 0-2 px in nine of ten; Indigo Cube within about 8 px. Still differing: Channel White tab icons and soft tile borders, Indigo Cube glow on the cube, Arcade Marquee tile title height. Other shells and add-on themes not yet
 - ⬜ A week as an opt-in on real hardware with no regressions
