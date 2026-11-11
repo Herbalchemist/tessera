@@ -10,8 +10,9 @@
 # When it is started from the desktop (tessera-return, "Return to Ludus") TESSERA_NESTED=1 is
 # set: the same thing runs on top of the desktop, and leaving it shows the desktop again.
 
-APP=/usr/lib/tessera/launcher
-ELECTRON="$APP/node_modules/electron/dist/electron"
+# Ludus: the console screen (Qt 6 + QML, in ludus-qt/), with the launcher's main process behind it
+# (launcher/, run by the system's Node).
+LUDUS=/usr/lib/tessera/ludus-qt/ludus.py
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
 LOG="$STATE/session.log"
 LEAVE="$STATE/leave-requested"
@@ -62,8 +63,8 @@ rm -f "$LEAVE"
 
 # Without the launcher program there is nothing to run. Say so in the log and end the session
 # (the login screen is the way to the desktop) instead of starting Gamescope with nothing in it.
-if [ ! -x "$ELECTRON" ]; then
-  echo "launcher program missing or not executable: $ELECTRON" >>"$LOG"
+if [ ! -f "$LUDUS" ] || ! python3 -c 'import PySide6.QtQuick' 2>>"$LOG"; then
+  echo "Ludus missing or its Qt pieces (PySide6) are not installed: $LUDUS" >>"$LOG"
   exit 1
 fi
 
@@ -79,22 +80,9 @@ RESTART="$STATE/restart-requested"
 export TESSERA_RESTART_FILE="$RESTART"
 NO_DISPLAY=""
 fails=0
-# Ludus (Qt), the new Ludus being built: used when chosen (Settings > System > Try the new Ludus,
-# which writes "qt" here), when it says it may run, and until it fails to
-# start once; then the full Ludus comes back by itself.
-QT_LUDUS=/usr/lib/tessera/ludus-qt/ludus.py
-QT_CHOICE="${XDG_CONFIG_HOME:-$HOME/.config}/tessera/ludus"
-QT_FAILED="$STATE/ludus-qt-failed"
 while true; do
   started=$(date +%s)
-  PROGRAM=("$ELECTRON" "$APP")
-  USING_QT=""
-  if [ "$(cat "$QT_CHOICE" 2>/dev/null)" = qt ] && [ ! -e "$QT_FAILED" ] && [ -f "$QT_LUDUS" ] \
-     && python3 -c 'import PySide6.QtQuick' 2>/dev/null && python3 "$QT_LUDUS" --check 2>>"$LOG"; then
-    PROGRAM=(python3 "$QT_LUDUS")
-    USING_QT=1
-    echo "using Ludus (Qt)" >>"$LOG"
-  fi
+  PROGRAM=(python3 "$LUDUS")
   rm -f "$LEAVE" "$RESTART"
   # Settings > Screens: which screen, its resolution and refresh, a built-in screen's orientation
   # (display-info reads the screens from the driver; a setting being tried is used for one start).
@@ -106,14 +94,6 @@ while true; do
   gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "${FX_ARGS[@]}" -- "${PROGRAM[@]}" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
-
-  # Ludus (Qt) ended badly: the full Ludus from now on (until it's chosen again), and no count
-  # against the session, which only ends after the full Ludus fails too.
-  if [ -n "$USING_QT" ] && [ ! -e "$LEAVE" ] && [ ! -e "$RESTART" ] && { [ "$code" -ne 0 ] || [ $(( $(date +%s) - started )) -lt "$EARLY_EXIT_SECS" ]; }; then
-    echo "Ludus (Qt) failed (code $code): back to the full Ludus" >>"$LOG"
-    touch "$QT_FAILED"
-    continue
-  fi
 
   # Ludus asked to start again (new screen settings): no failure, no leaving.
   if [ -e "$RESTART" ]; then

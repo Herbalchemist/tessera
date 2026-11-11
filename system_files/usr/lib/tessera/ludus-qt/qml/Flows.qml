@@ -314,8 +314,6 @@ QtObject {
         return out
     }
     function indexOfKey(items, key) { var i = items.findIndex(function (x) { return x.key === key }); return i < 0 ? 0 : i }
-    // what is still to come in this version: said plainly, and the full Ludus does it meanwhile
-    function notYet(title) { return w.notice(title, "This part comes to this version next. It is in the full Ludus (Settings › Go back) until then.") }
     function choose(title, table, current, apply) {
         var opts = Object.keys(table)
         return w.pick(title, opts.map(function (v) { return { label: table[v], sub: v === current ? "current" : "", v: v } }), Math.max(0, opts.indexOf(current))).then(function (it) { return it ? apply(it.v) : null })

@@ -268,14 +268,13 @@ Window {
         return []
     }
     // ---------------------------------------------------------------- Settings (look.js SETTINGS_ROWS)
-    // Everything here is also in the full Ludus; what is marked soon opens there until it is ported.
     readonly property var settingsDef: [
         { id: "_cat_connect", title: "Connections", tiles: [["_wifi", "Wi-Fi", "wifi"], ["_bluetooth", "Bluetooth", "bluetooth"]] },
         { id: "_cat_look", title: "Picture & sound", tiles: [["_appearance", "Appearance", "theme"], ["_sound", "Sound", "sound"]] },
         { id: "_cat_pads", title: "Controllers", tiles: [["_pad", "Controller", "pad"], ["_keyboard", "Keyboard & mouse", "keyboard"]] },
         { id: "_cat_people", title: "People", tiles: [["_profiles", "Profiles", "profiles"], ["_pin", "PIN", "pin"]] },
         { id: "_cat_system", title: "System", tiles: [["_storage", "Storage", "storage"], ["_update", "Update software", "update"], ["_addons", "Add-ons", "addons"],
-                                                      ["_report", "Report a problem", "report"], ["_fullludus", "Go back to the full Ludus", "update"]] },
+                                                      ["_report", "Report a problem", "report"]] },
         { id: "_cat_power", title: "Power", tiles: [["_power", "Power", "power"], ["_desktop", "Opus", "desktop"]] }
     ]
     function settingNote(id) {
@@ -291,7 +290,6 @@ Window {
         if (id === "_install") return "on this computer"
         if (id === "_recover") return "a Tessera that won't start"
         if (id === "_desktop") return "Login screen"
-        if (id === "_fullludus") return "Every setting is there"
         return ""
     }
     function settingsRows() {
@@ -444,8 +442,6 @@ Window {
         if (id === "_install") return flows.usbFlow("install")
         if (id === "_recover") return flows.usbFlow("recover")
         if (id === "_desktop") return flowDesktop()
-        if (id === "_fullludus") return confirmYes("Go back to the full Ludus?", "Go back").then(function (y) { if (y) session.useFullLudus() })
-        setStatus("This setting comes to this version next. It's in the full Ludus (Settings › Go back to the full Ludus).")
     }
     function flowPower() {
         var ask = { restart: ["Restart the console?", "Restart"], shutdown: ["Shut the console down?", "Shut down"] }

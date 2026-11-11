@@ -10,7 +10,6 @@
 
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
 LEAVE="${TESSERA_LEAVE_FILE:-$STATE/leave-requested}"
-APP=/usr/lib/tessera/launcher
 
 case "${1:-gamescope}" in
   gamescope|game|gamemode) exit 0 ;;
@@ -28,5 +27,5 @@ if command -v steam >/dev/null 2>&1; then
 fi
 sleep 1
 # then Ludus: its end is the end of Gamescope, and the note above says it was asked for
-pkill -TERM -f "$APP/node_modules/electron/dist/electron $APP" 2>/dev/null
+pkill -TERM -f "ludus-qt/ludus.py" 2>/dev/null
 exit 0

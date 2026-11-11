@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Ludus (Qt): its tests, and pictures of its screens drawn by Qt itself (on a virtual X screen, on
 # Fedora with the same PySide6 the image installs). Pictures go to the "reports" branch
-# (reports/ludus-qt/). Then every factory theme drawn by the full Ludus (qa/theme-shots.cjs) and by
-# Ludus (Qt) on the same library, side by side (reports/ludus-qt-themes/): the parity check.
+# (reports/ludus-qt/). Then every factory theme drawn by Ludus (reports/ludus-qt-themes/).
 name: Ludus (Qt)
 on:
   workflow_dispatch:
   push:
     branches: [main, 'feat/**', 'fix/**', 'test/**']
-    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/**, qa/theme-shots.cjs, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
+    paths: [system_files/usr/lib/tessera/ludus-qt/**, system_files/usr/lib/tessera/launcher/**, tools/ludus-qt-test/**, .github/workflows/ludus-qt.yml]
 permissions:
   contents: write
 jobs:
@@ -88,14 +87,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q xvfb imagemagick fonts-dejavu-core libegl1 libgl1-mesa-dri libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-image0 libxcb-render-util0
           python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q PySide6
-          npm --prefix qa ci
-          npm --prefix qa install --no-save "electron@$(tr -d '[:space:]v' < system_files/usr/lib/tessera/launcher/electron-version)"
-      - name: The full Ludus, every factory theme
-        env:
-          TESSERA_QA_OUTPUT: /tmp/full
-          TOUR_SHOTS: '1'
-        run: xvfb-run -a -s "-screen 0 1920x1080x24" node qa/theme-shots.cjs | tee /tmp/full.log
-      - name: Ludus (Qt), every factory theme
+      - name: Every factory theme
         env:
           QT_QPA_PLATFORM: xcb
           XDG_RUNTIME_DIR: /tmp/rt
@@ -107,50 +99,13 @@ jobs:
             timeout 600 xvfb-run -a -s "-screen 0 1920x1080x24" /tmp/venv/bin/python -X faulthandler system_files/usr/lib/tessera/ludus-qt/ludus.py --theme-shots /tmp/qt > /tmp/qt.log 2>&1 || echo "exit code $?" >> /tmp/qt.log
           cat /tmp/qt.log
           ! grep -E "qrc:|file:.*(Error|error|TypeError|ReferenceError)|is not a function|is not defined" /tmp/qt.log
-      - name: Side by side
+      - name: Collect
         if: always()
         run: |
           mkdir -p /tmp/out
-          {
-            echo "# Factory themes: the full Ludus (left) and Ludus (Qt) (right)"
-            echo; echo "Commit ${GITHUB_SHA::7}. Same library, 1280x720."; echo
-          } > /tmp/out/README.md
-          missing=0
-          for f in /tmp/full/theme-*.png; do
-            b=$(basename "$f"); q=/tmp/qt/$b
-            if [ -f "$q" ]; then
-              convert "$f" "$q" -bordercolor '#ff00ff' -border 0 +append -resize 1920x "/tmp/out/$b"
-              echo "### ${b%.png}" >> /tmp/out/README.md; echo "![${b%.png}]($b)" >> /tmp/out/README.md; echo >> /tmp/out/README.md
-            else
-              missing=$((missing + 1)); echo "missing in Qt: $b"
-            fi
-          done
-          : > /tmp/out/tour-diff.txt
-          for f in /tmp/full/tour-*.png; do
-            b=$(basename "$f"); q=/tmp/qt/$b
-            if [ -f "$q" ]; then
-              convert "$f" "$q" +append -resize 1920x "/tmp/out/$b"
-              echo "$b $(compare -metric RMSE "$f" "$q" null: 2>&1 | tr -d '\n')" >> /tmp/out/tour-diff.txt
-            fi
-          done
-          sort -t'(' -k2 -n -r /tmp/out/tour-diff.txt | head -40
-          python3 - <<'PY' > /tmp/out/geometry.txt || true
-          import json, glob, os, re
-          q = {}
-          for line in open('/tmp/qt.log', errors='replace'):
-              m = re.search(r'GEOM (\S+) (\{.*\})', line)
-              if m: q[m.group(1)] = json.loads(m.group(2))
-          for f in sorted(glob.glob('/tmp/full/geom-*.json')):
-              name = os.path.basename(f)[5:-5]; e = json.load(open(f)); t = q.get(name)
-              print('==', name)
-              for k in ('tab', 'tabs', 'tiles', 'sel', 'footer'):
-                  a = e.get(k); b = t.get(k) if t else None
-                  d = '' if not a or not b else '  diff x%+d y%+d w%+d h%+d' % (b['x'] - a['x'], b['y'] - a['y'], b['w'] - a['w'], b['h'] - a['h'])
-                  print('  %-7s full %s | qt %s%s' % (k, a, b, d))
-          PY
-          cat /tmp/out/geometry.txt | head -80
-          cp /tmp/qt.log /tmp/full.log /tmp/out/ 2>/dev/null || true
-          echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pairs, $missing missing"
+          cp /tmp/qt/*.png /tmp/out/ 2>/dev/null || true
+          cp /tmp/qt.log /tmp/out/ 2>/dev/null || true
+          echo "$(ls /tmp/out/*.png 2>/dev/null | wc -l) pictures"
       - name: Publish to the reports branch
         if: always()
         run: |

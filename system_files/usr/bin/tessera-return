@@ -23,7 +23,7 @@ say() {
 }
 
 # Is the launcher open? It leaves its process id in launcher.pid while it runs. (The desktop guide
-# helper, tessera-guide, runs the same Electron program, so the program alone can't tell.)
+# helper, tessera-guide, runs the same program, so the program alone can't tell.)
 PIDFILE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera/launcher.pid"
 if [ -f "$PIDFILE" ] && pid=$(cat "$PIDFILE" 2>/dev/null) && [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
   say "Tessera is already open."

@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# On every push and pull request: Tessera's security standards (SECURITY.md), the launcher's unit
-# tests and lint, and its Electron checks (qa/) on the exact Electron version the image ships.
-# Weekly, and on every push: fails when a newer patch of that Electron line is out, so a Chromium
-# security fix never waits (Dependabot can't read electron-version).
+# On every push and pull request: Tessera's security standards (SECURITY.md) and the main process's
+# unit tests and lint. (Ludus's own checks are in ludus-qt.yml.)
 name: Launcher tests
 on:
   push:
@@ -19,17 +17,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Security standards
         run: node tools/security-check.cjs
-  electron-current:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Electron is the newest patch of its line
-        run: |
-          have=$(tr -d '[:space:]v' < system_files/usr/lib/tessera/launcher/electron-version)
-          line=${have%%.*}
-          newest=$(npm view "electron@${line}" version --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=[].concat(JSON.parse(s));v.sort((a,b)=>{const x=a.split(".").map(Number),y=b.split(".").map(Number);return x[0]-y[0]||x[1]-y[1]||x[2]-y[2];});console.log(v.pop());})')
-          echo "image: $have, newest $line.x: $newest"
-          if [ "$have" != "$newest" ]; then echo "::error title=Electron behind::electron-version is $have; $newest is out (Chromium security fixes). Update system_files/usr/lib/tessera/launcher/electron-version."; exit 1; fi
   launcher:
     runs-on: ubuntu-24.04
     steps:
@@ -40,19 +27,3 @@ jobs:
           npm --prefix system_files/usr/lib/tessera/launcher run check
       - name: Joy-Con service tests
         run: python3 -m unittest discover tools/joycons-test
-      - name: Test tools, with the Electron the image ships
-        run: |
-          sudo apt-get update -q && sudo apt-get install -y -q xvfb
-          npm --prefix qa ci
-          npm --prefix qa install --no-save "electron@$(tr -d '[:space:]v' < system_files/usr/lib/tessera/launcher/electron-version)"
-      - name: Electron checks (qa/)
-        run: |
-          set +e; status=0
-          export TESSERA_QA_OUTPUT=/tmp/qa-output
-          (cd qa && xvfb-run -a node electron-smoke.cjs) || status=1
-          for s in browser-pointer browser-transitions guide keyboard installer graphics addons input profiles report boot-screen steam-library recovery screens; do
-            ok=0
-            for try in 1 2; do xvfb-run -a -s "-screen 0 1280x720x24 -noreset" node qa/$s.cjs > /tmp/qa-$s.log 2>&1 && { ok=1; break; }; done
-            if [ $ok = 1 ]; then echo "PASS $s"; else echo "::error title=qa/$s::$(tail -c 900 /tmp/qa-$s.log | sed 's/%/%25/g' | awk 1 ORS=%0A)"; status=1; fi
-          done
-          exit $status

@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Ludus (Qt): Tessera's console screen in Qt 6 + QML, with the full Ludus's main process behind it
-(PIN, profiles, themes, Settings, the browser). The full Ludus (Electron) stays available: Settings
-can switch back to it at any time, and the session falls back by itself if this fails to start.
+"""Ludus: Tessera's console screen, in Qt 6 + QML. The library, themes, profiles, PIN, storage,
+updates, add-ons and the rest of the main process run beside it in Node (backend/bridge.js).
 
   ludus.py               the screen
   ludus.py --check       exit 0 if this version may run here
@@ -22,7 +21,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LAUNCHER = os.environ.get('TESSERA_LAUNCHER_DIR', '/usr/lib/tessera/launcher')
 DATA_DIR = os.environ.get('TESSERA_DATA_DIR') or os.path.join(
     os.environ.get('XDG_DATA_HOME') or os.path.join(os.path.expanduser('~'), '.local', 'share'), 'tessera')
-CHOICE = os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'), '.config'), 'tessera', 'ludus')
 
 
 def check():
@@ -48,11 +46,7 @@ import pads  # noqa: E402
 
 
 def node_program():
-    """What runs the full Ludus's main process: the Electron that ships with it, as plain Node
-    (always there, the version that code is tested on), else the system's node."""
-    electron = os.path.join(LAUNCHER, 'node_modules', 'electron', 'dist', 'electron')
-    if os.access(electron, os.X_OK):
-        return [electron], {'ELECTRON_RUN_AS_NODE': '1'}
+    """What runs the main process (backend/bridge.js): the system's Node."""
     return [os.environ.get('TESSERA_NODE') or shutil.which('node') or 'node'], {}
 
 
@@ -278,15 +272,7 @@ def setting_icons():
 
 
 class Session(QObject):
-    """Leaving: back to the full Ludus, or to Opus."""
-    @Slot()
-    def useFullLudus(self):
-        try:
-            os.remove(CHOICE)
-        except OSError:
-            pass
-        self._touch('TESSERA_RESTART_FILE')
-
+    """Leaving: to Opus."""
     @Slot()
     def goToOpus(self):
         self._touch('TESSERA_LEAVE_FILE')

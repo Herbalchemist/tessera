@@ -7,11 +7,11 @@
 # Settings > Controller > Guide on the desktop turns it off, or on even while Steam is running
 # (by default it steps aside for Steam, which takes the Guide button for itself).
 
-APP=/usr/lib/tessera/launcher
-ELECTRON="$APP/node_modules/electron/dist/electron"
+LUDUS=/usr/lib/tessera/ludus-qt/ludus.py
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/tessera"
-[ -x "$ELECTRON" ] || exit 0
+[ -f "$LUDUS" ] || exit 0
 mkdir -p "$STATE"
 export TESSERA_GUIDE_ONLY=1
 # X11 (XWayland) so the window can stay on top of everything; native Wayland windows can't ask for that.
-exec "$ELECTRON" --ozone-platform=x11 "$APP" --tessera-guide >>"$STATE/guide.log" 2>&1
+export QT_QPA_PLATFORM=xcb
+exec python3 "$LUDUS" --guide >>"$STATE/guide.log" 2>&1

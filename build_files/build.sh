@@ -22,53 +22,17 @@ fi
 # tessera-fix-graphics (switching builds after a graphics card swap) is a Python script.
 command -v python3 >/dev/null || dnf5 install -y python3
 
-### Tessera launcher
-# Node is only needed here, to fetch Electron into the launcher folder.
-dnf5 install -y nodejs npm wtype
-# Ludus (Qt), the new Ludus being built: Qt 6 is already in the image (KDE); this is its Python side.
-dnf5 install -y python3-pyside6
-# Which Electron: the version in launcher/electron-version (one line, like 38.2.0) if that
-# file exists, so every build uses the same one and an update only carries what really
-# changed. Without the file the newest is used, as before.
-ELECTRON_VERSION=latest
-if [ -f /usr/lib/tessera/launcher/electron-version ]; then
-  ELECTRON_VERSION="$(tr -d '[:space:]v' < /usr/lib/tessera/launcher/electron-version)"
-fi
-# npm keeps its cache and its logs in a home directory, and Electron's installer keeps its
-# download there too. In a bootc image /root is a link to /var/roothome, which does not exist
-# while the image is being built, so npm stopped with "ENOTDIR ... mkdir '/root'". Give it a
-# scratch home on the tmpfs the Containerfile mounts at /tmp, and remove it again afterwards so
-# that no cache or download ends up in the image.
-NPM_HOME=/tmp/tessera-npm
-mkdir -p "$NPM_HOME"
-HOME="$NPM_HOME" \
-npm_config_cache="$NPM_HOME/cache" \
-npm_config_update_notifier=false \
-npm_config_fund=false \
-npm_config_audit=false \
-  npm install --prefix /usr/lib/tessera/launcher --omit=dev --save-exact "electron@${ELECTRON_VERSION}"
-# Older Electron packages fetched the actual program (dist/electron) in a postinstall script while
-# the package was being installed. Newer ones have no such script: the program is fetched by Electron's own
-# installer (the "install-electron" command) when it is first needed. So a build could finish
-# "successfully" with no Electron program inside and the console would boot to the desktop.
-# Run the installer ourselves when the program is not there yet (the download is cached in the
-# scratch home and thrown away below), and stop the build if there is still no program.
-ELECTRON_PKG=/usr/lib/tessera/launcher/node_modules/electron
-if [ ! -x "$ELECTRON_PKG/dist/electron" ]; then
-  HOME="$NPM_HOME" \
-  XDG_CACHE_HOME="$NPM_HOME/cache-xdg" \
-  electron_config_cache="$NPM_HOME/cache-electron" \
-    node "$ELECTRON_PKG/install.js"
-fi
-if [ ! -x "$ELECTRON_PKG/dist/electron" ]; then
-  echo "Electron was installed but $ELECTRON_PKG/dist/electron is missing: the console could not start" >&2
-  exit 1
-fi
-rm -rf "$NPM_HOME"
-# Tessera is English only. Electron ships dozens of other translations (about 40 MB) that are never used.
-if [ -d /usr/lib/tessera/launcher/node_modules/electron/dist/locales ]; then
-  find /usr/lib/tessera/launcher/node_modules/electron/dist/locales -type f ! -name 'en-US.pak' -delete
-fi
+### Ludus (Tessera's console screen: Qt 6 + QML, with the main process in Node beside it)
+# Node runs the main process (the launcher folder: library, themes, profiles, PIN, updates, add-ons).
+# Qt 6 is already in the image (KDE); python3-pyside6 is the Python side of the screen.
+dnf5 install -y nodejs wtype python3-pyside6
+# The console cannot start without these: fail the build now rather than ship an image that drops
+# back to the login screen.
+command -v node >/dev/null || { echo "node is missing: Ludus's main process could not run" >&2; exit 1; }
+python3 -c 'import PySide6.QtQuick' || { echo "PySide6 (QtQuick) is missing: Ludus could not start" >&2; exit 1; }
+# The built-in browser (and add-on widgets) are QtWebEngine's: without it the console still starts.
+python3 -c 'import PySide6.QtWebEngineQuick' || echo "WARNING: PySide6 has no QtWebEngineQuick: the browser would not open" >&2
+[ -f /usr/lib/tessera/ludus-qt/ludus.py ] || { echo "ludus-qt/ludus.py is missing" >&2; exit 1; }
 
 ### Tessera's name and look over Bazzite's (boot menu, About, logos, splash, wallpaper, terminal,
 ### the computer's name). See branding.sh for what changes and what stays Bazzite's.
