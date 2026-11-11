@@ -725,7 +725,6 @@ Window {
         else if (name === "cap") qaOut = qaCap
         else if (name === "sel") qaOut = area + "/" + selRow + "/" + selCol
         else if (name === "area") qaOut = area
-        else if (name === "padp") qaOut = JSON.stringify(padPrefs)
         else if (name === "hint") qaOut = hintName(0) + "|" + hintName(4) + "|" + footItems()[0][0]
         else if (name === "mouse") { mouseSeen(); qaOut = "ok" }
         else qaOut = "?"
