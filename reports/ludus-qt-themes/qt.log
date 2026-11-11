@@ -1,4 +1,8 @@
 ludus-qt: starting
+Failed to create Vulkan instance: -9
+Failed to create platform Vulkan instance
+GLX: No DRI3 Extension.
+<Unknown File>: QML QQuickWebEngineProfile: Please use WebEngineProfilePrototype for profile creation from 6.9, as this function will be deprecated in the future releases
 shot theme-stock-library-1280
 qml: VIEWPORT stock y=113 h=511 oneRow=false rows=3 selRow=0 header=0+97 clockTop=0
 qml: GEOM stock {"tab":{"x":458,"y":42,"w":104,"h":33},"tabs":{"x":153,"y":42,"w":973,"h":33},"tiles":{"x":25,"y":119,"w":1230,"h":493},"sel":{"x":513,"y":119,"w":236,"h":154},"footer":{"x":0,"y":671,"w":1280,"h":49}}
