@@ -460,13 +460,40 @@ Window {
     property var rows: []
     function currentRows() {
         var base = baseRows()
-        if (th.mode === "rails" || (page === "home" && !stack.length) || (page === "settings" && !stack.length)) return base
+        if (th.mode === "rails" || (page === "home" && !stack.length)) return base
         if (base.length === 1 && base[0].tiles.length === 1 && base[0].tiles[0].big) return base
         var per = th.mode === "flow" ? gridNow.cols + 2 : gridNow.cols
+        var out = [], i
+        var hasCats = base.some(function (r) { return r.cat })
+        if (hasCats && th.mode === "grid" && th.val("setPack", false) === true) {
+            // Settings, groups side by side: whole groups share a row while they fit, in their own order; each keeps its title above its own tiles
+            var row = null
+            var flush = function () { if (row) out.push(row); row = null }
+            base.forEach(function (r) {
+                if (r.tiles.length > per) {
+                    flush()
+                    for (var k = 0; k < r.tiles.length; k += per) out.push({ id: r.id + ":" + k / per, title: k === 0 ? r.title : "", cat: true, tiles: r.tiles.slice(k, k + per) })
+                    return
+                }
+                if (row && row.tiles.length + r.tiles.length > per) flush()
+                if (!row) row = { id: r.id, title: r.title, cat: true, tiles: [], segs: [] }
+                else row.id += "+" + r.id
+                row.segs.push({ title: r.title, n: r.tiles.length })
+                row.tiles = row.tiles.concat(r.tiles)
+            })
+            flush()
+            return out.length ? out : base
+        }
+        if (hasCats) {
+            // a page in groups (Settings): each group is cut into rows of its own, and its title sits above the first
+            base.forEach(function (r) {
+                for (var k = 0; k < r.tiles.length; k += per) out.push({ id: r.id + ":" + k / per, title: k === 0 ? r.title : "", cat: true, tiles: r.tiles.slice(k, k + per) })
+            })
+            return out.length ? out : base
+        }
         var tiles = []
         base.forEach(function (r) { tiles = tiles.concat(r.tiles) })
-        var out = []
-        for (var i = 0; i < tiles.length; i += per) out.push({ id: "grid:" + (i / per), title: "", tiles: tiles.slice(i, i + per) })
+        for (i = 0; i < tiles.length; i += per) out.push({ id: "grid:" + (i / per), title: "", tiles: tiles.slice(i, i + per) })
         return out.length ? out : base
     }
     function cur() {
@@ -614,9 +641,12 @@ Window {
 
     function goTab(i) {
         arrive.stop()
+        var from = tabIndex
         tabIndex = (i + tabList.length) % tabList.length
         stack = []
         refresh()
+        // however you got to the Browser tab (keys, bumpers, mouse, wheel), staying on it a moment opens it, and leaving closes it
+        if (page === "browser" && !browserOpen && ready) { arrive.dir = tabIndex >= from ? 1 : -1; arrive.restart() }
     }
 
     // ---------------------------------------------------------------- the browser (browserTab.js)
@@ -1139,7 +1169,7 @@ Window {
         })
     }
     readonly property string titleText: area !== "content" && !tour.visible
-        ? (page === "new" ? "Press A to create a mosaic" : page === "browser" ? "Press A to open your browser" : tabName(page))
+        ? (page === "new" ? "Press " + hintName(0) + " to create a mosaic" : page === "browser" ? "Press " + hintName(0) + " to open your browser" : tabName(page))
         : (selTile && !selTile.big ? selTile.title : "")
 
     // ================================================================ the screen
@@ -1443,7 +1473,7 @@ Window {
                     visible: win.page === "new"
                     spacing: 10
                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "A new mosaic"; color: th.text; font.pixelSize: 1.6 * th.rem; font.weight: Font.DemiBold }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Press A to make one and name it."; color: th.muted; font.pixelSize: 1.1 * th.rem }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Press " + win.hintName(0) + " to make one and name it."; color: th.muted; font.pixelSize: 1.1 * th.rem }
                 }
             }
 

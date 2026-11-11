@@ -47,7 +47,11 @@ Item {
     readonly property real gap: mode !== "rails" ? gGap : rowPart === "start" ? th.clamp(10, 1.2 * th.vw, 18) : th.railGap
     readonly property real grow: mode === "rails" && rowPart === "start" ? 1.32 : 1
     readonly property bool titles: mode === "rails" && rowPart !== "focus" && rowPart !== "start"
-    readonly property real titleH: titles ? titleProbe.implicitHeight + 6 : 0
+    // Settings in grid and flow: each group keeps its title (style.css .rows.cats .row h2.cat) above the first row of its tiles
+    readonly property bool cats: mode !== "rails" && rows.length > 0 && rows[0].cat === true
+    readonly property real catFont: 1.05 * th.rem
+    readonly property real catH: cats ? catFont * 1.5 + 12 : 0
+    readonly property real titleH: titles ? titleProbe.implicitHeight + 6 : catH
     readonly property real portPad: mode !== "rails" ? 0 : rowPart === "start" ? 26 : 28
     readonly property real rowGap: mode === "rails" ? 24 : gGap
     readonly property real rowH: titleH + portPad * 2 + ch * grow + rowGap
@@ -119,6 +123,32 @@ Item {
                 }
                 Behavior on opacity { NumberAnimation { duration: th.motion ? 200 : 0 } }
 
+                Row {      // the group's title, over its tiles (or one title for each group that shares the row)
+                    id: catTitle
+                    visible: root.cats && Boolean(rowItem.row.title)
+                    x: rail.x + (rowItem.row.segs && rowItem.row.segs.length > 1 ? 0 : 4)
+                    y: 2
+                    spacing: root.gap
+                    Repeater {
+                        model: rowItem.row.segs && rowItem.row.segs.length > 1 ? rowItem.row.segs : [{ title: rowItem.row.title, n: 0 }]
+                        delegate: Item {
+                            width: modelData.n > 0 ? modelData.n * root.cw + (modelData.n - 1) * root.gap : catText.implicitWidth
+                            height: catText.implicitHeight
+                            Rectangle { visible: modelData.n > 0 && index > 0; width: 2; height: parent.height; x: -root.gap / 2 - 1; color: th.alpha(th.text, 0.16) }
+                            Text {
+                                id: catText
+                                x: modelData.n > 0 ? (index > 0 ? 10 : 4) : 0
+                                width: modelData.n > 0 ? parent.width - x : implicitWidth
+                                text: modelData.title
+                                elide: Text.ElideRight
+                                color: th.muted
+                                font.pixelSize: root.catFont
+                                font.letterSpacing: 0.08 * root.catFont
+                                font.capitalization: Font.AllUppercase
+                            }
+                        }
+                    }
+                }
                 Text {
                     visible: root.titles
                     x: 56
@@ -144,7 +174,7 @@ Item {
                         x: {
                             var row = rowItem.row
                             if (root.mode === "grid") {
-                                var full = (th.parts.card === "metro" || th.parts.card === "bezel") && !(row.tiles.length === 1 && row.tiles[0].big)
+                                var full = (th.parts.card === "metro" || th.parts.card === "bezel" || row.cat === true) && !(row.tiles.length === 1 && row.tiles[0].big)
                                     ? root.grid.cols * root.cw + (root.grid.cols - 1) * root.gap : w
                                 return (root.width - Math.min(full, root.width)) / 2
                             }

@@ -149,7 +149,7 @@ Item {
             }
             Shape {
                 id: iconShape
-                width: parent.width * 0.46; height: width
+                width: Math.min(parent.width, parent.height) * 0.46; height: width     // style.css: the svg is 46% wide and 46% tall, whichever is smaller
                 x: (parent.width - width) / 2; y: parent.height * 0.15
                 layer.enabled: true
                 layer.samples: 4
@@ -194,7 +194,7 @@ Item {
                 font.weight: Font.Light
             }
             Text {   // GAME / APP / FOLDER
-                visible: !tile.isAdd && !tile.hasArt && text !== ""
+                visible: !tile.isAdd && !tile.hasArt && !ico.visible && text !== ""
                 width: parent.width
                 horizontalAlignment: words.centered ? Text.AlignHCenter : Text.AlignLeft
                 text: (tile.t.offline ? (tile.t.offline === "drive" ? "Drive not connected" : "Files missing")
@@ -220,8 +220,19 @@ Item {
                 style: tile.hasArt ? Text.Raised : Text.Normal
                 styleColor: Qt.rgba(0, 0, 0, 0.6)
             }
+            Text {   // an icon tile: the title first, then its status (style.css .card.has-ico small { order: 2 })
+                visible: ico.visible && !tile.hasArt && (tile.t.sub || "") !== ""
+                width: parent.width
+                horizontalAlignment: words.centered ? Text.AlignHCenter : Text.AlignLeft
+                text: (tile.t.sub || "").toUpperCase()
+                color: th.muted
+                font.pixelSize: 0.8 * th.rem
+                font.weight: Font.Medium
+                font.letterSpacing: 0.06 * 0.8 * th.rem
+                elide: Text.ElideRight
+            }
             Text {   // the line under a big empty tile
-                visible: (tile.t.sub || "") !== ""
+                visible: (tile.t.big === true || tile.isAdd) && (tile.t.sub || "") !== ""
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: tile.t.sub || ""
