@@ -672,7 +672,7 @@ def shots(app, win, out):
              ('06-mosaic-options-from-tabs', ['b', 'b', 'y']), ('07-delete-confirm', ['down', 'down', 'down', 'a']),
              ('08-keyboard', ['b', 'right', 'a']), ('09-settings', ['b', 'right', 'down']),
              ('10-home', ['@home']), ('11-tabs-browser', ['@tabs', 'left', 'left']),
-             ('11b-settings-page', ['@settings']), ('11c-settings-lower', ['down', 'down', 'down', 'down']), ('', ['@settings']), ('12-wifi', ['a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
+             ('', ['b']), ('11b-settings-page', ['@settings']), ('11c-settings-lower', ['down', 'down', 'down', 'down']), ('', ['@settings']), ('12-wifi', ['a']), ('13-wifi-password', ['down', 'down', 'down', 'a']),
              ('', ['b']), ('', ['b']), ('', ['right']), ('14-bluetooth', ['a']),
              ('', ['b']), ('', ['down']), ('15-sound', ['a']), ('16-sound-volume', ['right', 'right']),
              ('', ['b']), ('', ['down']), ('17-keyboard-menu', ['a']), ('', ['b']), ('', ['left']), ('18-controller-menu', ['a']),
