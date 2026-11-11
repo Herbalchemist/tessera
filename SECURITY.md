@@ -18,7 +18,7 @@ own and no web API. Those are marked **Doesn't apply**, with what Tessera does i
 
 | Standard | How Tessera meets it | Checked |
 |---|---|---|
-| **Row-level security** | Doesn't apply: there is no database. Instead, each profile's pages, controls, browser storage and theme are kept apart, and what Guest may do is decided in the main process (`profiles.guestDenies`), not by what the screen shows. | Tests (`qa/profiles.cjs`) |
+| **Row-level security** | Doesn't apply: there is no database. Instead, each profile's pages, controls, browser storage and theme are kept apart, and what Guest may do is decided in the main process (`profiles.guestDenies`), not by what the screen shows. | Tests (`launcher/test/profiles.test.js`) |
 | **Tight CORS** | Doesn't apply: Tessera runs no web server and offers no web API. The launcher page loads only its own files under a strict Content-Security-Policy. Widgets run in sandboxed frames with no access to the page. Web pages in the built-in browser get no Tessera API, every permission they ask for is refused, and the main process ignores any request that isn't from the launcher's own page (`main/ipcGuard.js`). | Yes |
 | **Parameterized SQL** | Doesn't apply: there is no SQL. The same rule for commands: programs are started with `execFile`/`spawn` and a list of arguments, never a shell or a command string, so text from outside can't become a command. | Yes |
 | **Verified e-mail addresses** | Doesn't apply: Tessera never asks for an e-mail address. Signing in is the computer's own account; profiles and PINs are local. | — |

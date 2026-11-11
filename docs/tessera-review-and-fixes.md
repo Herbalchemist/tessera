@@ -114,7 +114,7 @@ npm --prefix system_files/usr/lib/tessera/launcher run check
 npm --prefix system_files/usr/lib/tessera/launcher test
 ```
 
-For optional Linux desktop/headless Electron tests, follow `qa/README.md`. That harness creates its own temporary library and settings; it does not use your real data or launch a game.
+The Node tests in `system_files/usr/lib/tessera/launcher/test` (`node --test test/*.test.js`) make their own temporary library and settings; they do not use your real data or launch a game. `ludus.py --qa` drives the Qt screen the same way.
 
 Before building or rebasing a personal image, test your actual controller on a non-production launcher copy. Check address entry, focus-next, activation, both exits, held directions, disconnect/reconnect, and return from the keyboard. Record the controller model and whether it uses USB or Bluetooth. Also try all shell arrangements with your real Home widgets and TV calibration. Keep your current OS image available for rollback. **Running `bootc upgrade` against the existing public image will not install these unpublished source changes.**
 
