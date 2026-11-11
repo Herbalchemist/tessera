@@ -589,6 +589,7 @@ def qa_checks(app, win):
         ('and back to the bottom button', ['run:_conf:bottom'], 'hint', 'A|LB|A'),
         ('Button mapping: the bumpers are swapped', ['run:_remap:swap'], 'area', 'tabs'),
         ('and the hints say RB where LB was', [], 'hint', 'A|RB|A'),
+        ('DEBUG', [], 'hintdbg', 'x'),
         ('Clearing the mapping', ['run:_remap:none'], 'area', 'tabs'),
         ('puts them back', [], 'hint', 'A|LB|A'),
         ('The standard layout has no WASD: D does nothing', ['key:Key_D:32'], 'tab', '{b1}/tabs'),
