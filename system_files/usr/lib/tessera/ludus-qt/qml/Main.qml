@@ -158,6 +158,7 @@ Window {
         else if (id === "_tour") { gripView.visible = false; if (menu.visible) menu.close(); tourView.open() }
         else if (id === "_mouse") mouseSeen()
         else if (id === "_pad") setInput("pad")
+        else if (String(id).indexOf("_remap:") === 0) { var rm = String(id).slice(7) === "none" ? null : [0, 1, 2, 3, 5, 4]; dev("settings", "padRemap", { family: flows.padFamily(), map: rm }).then(function (r) { if (r && r.ok) setPad(r.pad) }) }
         else if (String(id).indexOf("_conf:") === 0) flows.padSet({ pad: padPrefs || {} }, "confirm", String(id).slice(6))
         else if (String(id).indexOf("_point:") === 0) { var pp = String(id).split(":"); pointTile(parseInt(pp[1]), parseInt(pp[2]), "q" + pp[1] + pp[2]) }
         else if (id === "_kb-wasd" || id === "_kb-standard") rawCall("settings", ["kbSet", { key: "preset", value: id.slice(4) }]).then(loadKb)
