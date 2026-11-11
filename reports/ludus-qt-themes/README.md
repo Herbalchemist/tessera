@@ -1,4 +1,4 @@
 # Factory themes: the full Ludus (left) and Ludus (Qt) (right)
 
-Commit 613ed0d. Same library, 1280x720.
+Commit 7c9b232. Same library, 1280x720.
 
