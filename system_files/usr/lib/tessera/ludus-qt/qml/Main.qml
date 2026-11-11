@@ -842,7 +842,17 @@ Window {
         return (first && keyNames2[first]) || roleName(n)
     }
     function footItems() { return [[hintName(0), "Open"], [hintName(1), "Back"], [hintName(3), "Options"], [hintName(4) + " / " + hintName(5), "Switch tab"]] }
-    function setInput(m) { if (inputMode !== m) inputMode = m }
+    // until something is pressed, the hints go by what is plugged in: controller buttons with a controller, keys without one
+    property bool inputUsed: false
+    function setInput(m) { inputUsed = true; if (inputMode !== m) inputMode = m }
+    Timer {
+        interval: 1500; repeat: true; running: !win.inputUsed && !win.guideOnly
+        onTriggered: {
+            var sn = padState.snapshot(), m = sn && sn.count > 0 ? "pad" : "keyboard"
+            if (win.inputMode !== m) win.inputMode = m
+            if (m === "pad") win.padFam = flows.padFamily()
+        }
+    }
     property bool mouseOn: false           // the pointer shows while it is being used, and hides after a few seconds (Settings > Keyboard & mouse)
     property var hoverHold: null            // { until, id }: after a choice slides the row, leave the pointer alone for a moment
     Timer { id: mouseHide; onTriggered: win.mouseOn = false }

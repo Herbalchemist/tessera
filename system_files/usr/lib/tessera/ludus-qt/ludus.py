@@ -575,7 +575,7 @@ def qa_checks(app, win):
     checks = [
         ('Library is shown', ['@library'], 'tab', None),
         ('Back goes up to the tabs', ['b'], 'base', None),
-        ('Hints show the controller buttons to begin with', [], 'hint', 'A|LB|A'),
+        ('Hints show the controller buttons once a pad is used', ['run:_pad'], 'hint', 'A|LB|A'),
         ('Right arrow moves to the next tab', ['key:Key_Right:106'], 'tab', '{b1}/tabs'),
         ('After a key, hints show keys', [], 'hint', 'Enter|PgUp|Enter'),
         ('After the mouse, A reads Click', ['run:_mouse'], 'hint', 'Click|PgUp|Click'),
