@@ -6,21 +6,25 @@ ok   Right arrow moves to the next tab
 ok   After a key, hints show keys
 ok   After the mouse, A reads Click
 ok   Pointing at a tile selects it
-FAIL Y opens the options  (got 'closed', wanted 'open')
-FAIL With a menu open the pointer leaves the selection alone  (got 'content/0/0', wanted 'content/0/1')
-ok   B closes that menu
-ok   and B again goes back up to the tabs
-ok   The standard layout has no WASD: D does nothing
-FAIL Q / E are not bound in the standard layout; PgUp and [ switch tabs  (got '3/tabs', wanted '2/tabs')
-ok   The WASD layout is chosen
-FAIL WASD: D moves to the next tab  (got '4/tabs', wanted '3/tabs')
-FAIL WASD: A moves back  (got '3/tabs', wanted '2/tabs')
-FAIL Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left  (got '3/tabs', wanted '2/tabs')
-ok   The place of a key is told apart from its letter (Z reported, W place)
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+ok   The guide (a menu) is opened
+ok   With a menu open the pointer leaves the selection alone
+ok   B closes that menu
+ok   and B again goes back up to the tabs
+ok   The standard layout has no WASD: D does nothing
+ok   Q / E are not bound in the standard layout; PgUp and [ switch tabs
+ok   The WASD layout is chosen
+ok   WASD: D moves to the next tab
+ok   WASD: A moves back
+ok   Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left
+ok   The place of a key is told apart from its letter (Z reported, W place)
+qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
+file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
 qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
 file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
 ok   Guide key (F1) opens the guide
@@ -39,4 +43,4 @@ ok   and goes when the flow ends
 ok   Pressing a key to bind it: the key comes back by its place
 ok   Esc cancels the capture
 ok   Back to the standard layout
-qa: 30 checks, 6 failed
+qa: 30 checks, 0 failed
