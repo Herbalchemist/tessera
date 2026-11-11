@@ -1,82 +1,11 @@
 ludus-qt: starting
-ok   Library is shown
-ok   Back goes up to the tabs
-ok   Hints show the controller buttons once a pad is used
-ok   Right arrow moves to the next tab
-ok   After a key, hints show keys
-ok   After the mouse, A reads Click
-ok   Pointing at a tile selects it
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:153:17: QML Text: Binding loop detected for property "height"
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-ok   The guide (a menu) is opened
-ok   With a menu open the pointer leaves the selection alone
-ok   B closes that menu
-ok   and B again goes back up to the tabs
-ok   A PIN is set through the PIN screen (typed twice)
-ok   The PIN is locked again
-ok   Opus gate: a wrong PIN, then giving up, stays shut
-ok   Opus gate: the right PIN opens it
-ok   and while unlocked it does not ask again
-ok   Hints follow the pad again after a button
-ok   Confirm on the right button: the hints swap A and B
-ok   and back to the bottom button
-ok   Button mapping: the bumpers are swapped
-ok   and the hints say RB where LB was
-ok   Clearing the mapping
-ok   puts them back
-ok   The standard layout has no WASD: D does nothing
-ok   Q / E are not bound in the standard layout; PgUp and [ switch tabs
-ok   The WASD layout is chosen
-ok   WASD: D moves to the next tab
-ok   WASD: A moves back
-ok   Keys count by where they are: on AZERTY the key in the A place reports Q, and still means left
-ok   The place of a key is told apart from its letter (Z reported, W place)
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-ok   Guide key (F1) opens the guide
-ok   B closes it
-ok   and the menu is gone
-ok   The floating guide is a card in the middle
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-qml: file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-file:///__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/qml/Menu.qml:163:17: QML ListView: Binding loop detected for property "height"
-ok   The compact guide is a narrow panel
-ok   Install and Recover: a question from the flow opens as a menu
-ok   and an answer closes it
-ok   Their progress screen stays up when B is pressed
-ok   and goes when the flow ends
-ok   Pressing a key to bind it: the key comes back by its place
-ok   Esc cancels the capture
-ok   Back to the standard layout
-ok   The admin PIN is entered to add people
-ok   Profiles: Kid and Mom are added
-ok   
-ok   Switching to Kid makes Kid the one playing
-ok   Mom gets a login PIN of her own
-ok   Switching to Mom with a wrong PIN, then giving up, changes nothing
-ok   the right PIN switches to Mom
-ok   and Mom's PIN did not unlock the admin
-ok   Guest is open to anyone and still locked down
-ok   The tour opens at its first step
-ok   A goes on to the Tabs step
-ok   RB in the tour switches tabs and the step notes it
-ok   A: the Home step shows the Home tab
-ok   A: the Library step shows the Library tab
-ok   B goes back a step
-ok   Y leaves the tour where it started
-ok   First run: the welcome starts
-ok   Get started, skip a name, keep the look, skip the PIN
-ok   
-ok   
-ok   
-ok   Take a quick tour ends the welcome, marks first run done, and starts the tour
-ok   
-ok   The tour from the welcome can be left too
-qa: 66 checks, 0 failed
+[610:645:1111/191708.483581:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+<Unknown File>: QML QQuickWebEngineProfile: Please use WebEngineProfilePrototype for profile creation from 6.9, as this function will be deprecated in the future releases
+js: Refused to connect to 'http://127.0.0.1:9/' because it violates the following Content Security Policy directive: "connect-src 'none'".
+
+js: Fetch API cannot load http://127.0.0.1:9/. Refused to connect because it violates the document's Content Security Policy.
+Traceback (most recent call last):
+  File "/__w/tessera/tessera/system_files/usr/lib/tessera/ludus-qt/ludus.py", line 741, in check
+    want_ = want.format(b=state['b'], b1=state['b'] + 1)
+                          ~~~~~^^^^^
+KeyError: 'b'
