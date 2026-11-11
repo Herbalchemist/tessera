@@ -577,7 +577,16 @@ def main():
         controllers.start()
         code = app.exec()
     bridge.stop()
-    sys.exit(code)
+    # Web views go before the profile they use, and then we leave at once: Chromium's own threads and Python's
+    # teardown don't agree on the order, and the end of a run must not be a crash.
+    for o in engine.rootObjects():
+        o.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    QCoreApplication.processEvents()
+    wprof = None
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code or 0)
 
 
 def run_steps(app, win, out, steps, wait=900, first=2500):
