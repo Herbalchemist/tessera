@@ -748,7 +748,7 @@ def qa_checks(app, win):
             elif probe == 'key':
                 want_ = 'KeyW'
             else:
-                want_ = want.format(b=state['b'], b1=state['b'] + 1)
+                want_ = want.format(b=state.get('b', 0), b1=state.get('b', 0) + 1)
             ok = got == want_
             print(('ok   ' if ok else 'FAIL ') + name + ('' if ok else '  (got %r, wanted %r)' % (got, want_)), flush=True)
             if not ok:
