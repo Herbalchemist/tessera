@@ -117,7 +117,7 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { if (!guideOnly) keepTimer.start(); if (!shotMode && !guideOnly) { startTimer.payload = data; startTimer.start() } } }
+            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { win.startOnHome(); if (!guideOnly) keepTimer.start(); if (!shotMode && !guideOnly) { startTimer.payload = data; startTimer.start() } } }
             else if (ch === "flow-ui" && data) flows.flowUi(data)
             else if (ch === "drive-added" && data) flows.offerDrive(data)
             else if (ch === "display-new" && data) flows.displayNew(data)
@@ -564,6 +564,11 @@ Window {
             if (r && r.set !== undefined) applyView(Object.assign({}, view, { prefs: Object.assign({}, view.prefs, { pin: r }) }))
         })
     }
+    function startOnHome() {      // Ludus opens on Home; the Browser tab opens the browser only when you switch to it
+        arrive.stop()
+        var i = tabList.findIndex(function (t) { return t.id === "home" })
+        if (i >= 0 && i !== tabIndex) { tabIndex = i; stack = []; refresh() }
+    }
     function goHome() {       // after switching who is playing: their Home, cursor on it
         stack = []
         var i = tabList.findIndex(function (t) { return t.id === "home" })
@@ -659,6 +664,7 @@ Window {
         tabList = [{ id: "browser", title: "Browser" }].concat((view.tabOrder || []).map(function (t) { return { id: t, title: tabName(t) } })
                     .concat([{ id: "new", title: "+ Mosaic" }, { id: "settings", title: "Settings" }]))
         var i = tabList.findIndex(function (t) { return t.id === keep })
+        if (i < 0) i = tabList.findIndex(function (t) { return t.id === "home" })      // a tab that went away: Home, never the Browser tab in front of it
         tabIndex = i >= 0 ? i : Math.min(tabIndex, tabList.length - 1)
         if (stack.length && !folderTitle(stack[stack.length - 1])) stack = []
         rows = currentRows()
@@ -783,7 +789,8 @@ Window {
     // ---- Qt counterparts of the full Ludus's QA checks (ludus.py --qa): small questions about what the screen is doing
     property string qaOut: ""
     function qaProbe(name) {
-        if (name === "tab") qaOut = tabIndex + "/" + area
+        if (name === "page") qaOut = page
+        else if (name === "tab") qaOut = tabIndex + "/" + area
         else if (name === "guide") qaOut = (flows.guideOn ? "open" : "closed") + "/" + menu.gstyle
         else if (name === "menu") qaOut = menu.visible ? "open" : "closed"
         else if (name === "keys") qaOut = JSON.stringify([kbMap.KeyW || "", kbMap.KeyA || "", kbMap.ArrowLeft || "", kbMap.Space || ""])

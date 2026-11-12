@@ -74,6 +74,6 @@ Status: ✅ done and tested · 🟡 partly · ⬜ not yet
 - Text in widgets shrinks to fit instead of being cut off
 
 ## Checks before the switch
-- 🟨 QA checks. Electron is gone, with its page checks. Ported: add-ons and shards, profiles and PINs, graphics, boot screen, screens, display and system jobs, Steam library, report, installer and recovery (Node tests in `launcher/test/`; the installer and recovery ones run the real step code and answer it like the screen), and everything that drives the screen (`ludus.py --qa`, 67 checks, including the guided tour, first-run setup, profile switching and add-on widgets).
+- 🟨 QA checks. Electron is gone, with its page checks. Ported: add-ons and shards, profiles and PINs, graphics, boot screen, screens, display and system jobs, Steam library, report, installer and recovery (Node tests in `launcher/test/`; the installer and recovery ones run the real step code and answer it like the screen), and everything that drives the screen (`ludus.py --qa`, 68 checks, including the guided tour, first-run setup, profile switching and add-on widgets).
 - 🟨 Side-by-side screenshots: every stock theme, Library / Home / Settings / Tabs plus the tour, with layout numbers (CI "themes" job). Layout within 0-2 px in nine of ten; Indigo Cube within about 8 px. Still differing: Channel White tab icons and soft tile borders, Indigo Cube glow on the cube, Arcade Marquee tile title height. Other shells and add-on themes not yet
 - ⬜ A week as an opt-in on real hardware with no regressions
