@@ -24,10 +24,10 @@ terminal-font: "Tessera Regular 16"
   text = "This start: the login screen (Opus).      Enter  start      O  boot options"
 }
 + image {
-  left = 50%-142
-  top = 100%-100
-  width = 284
-  height = 57
+  left = 50%-110
+  top = 96%-44
+  width = 219
+  height = 44
   file = "wordmark.png"
 }
 + boot_menu {

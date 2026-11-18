@@ -16,20 +16,10 @@ const BR = path.join(ROOT, 'system_files/usr/share/tessera/branding');
 const SYM = JSON.parse(fs.readFileSync(path.join(__dirname, 'symbol.json'), 'utf8'));
 const ACCENT = '#b4a7ff';
 
-// the four spots (slots.cjs), in the boot animation's 84-unit frame. The wait screen shows them
-// 30% bigger than the animation's own 128 px frames, and its wordmark to match (splash.txt):
-// 128 x 1.3 = 166, and 44 x 1.3 = 57 tall for the wordmark.
+// the four spots (slots.cjs), in the boot animation's 84-unit frame; the wait screen shows them
+// 30% bigger than the animation's own 128 px frames (128 x 1.3 = 166, see splash.txt)
 const SYMBOL = 166;
-const WORD_H = 57;
 const slots = () => `<svg xmlns="http://www.w3.org/2000/svg" width="${SYMBOL}" height="${SYMBOL}" viewBox="-10 -10 84 84">${slotsBody()}</svg>`;
-
-// the wordmark: "Tessera" in Inter Bold with its T built from stones, at the wait screen's height
-const WORD_SVG = fs.readFileSync(path.join(BR, 'tessera-wordmark.svg'), 'utf8');
-const wordWidth = (h) => {
-  const v = /viewBox="([^"]+)"/.exec(WORD_SVG)[1].split(/\s+/).map(Number);
-  return Math.round(h * v[2] / v[3]);
-};
-const wordmark = (h) => WORD_SVG.replace('<svg ', `<svg width="${wordWidth(h)}" height="${h}" `);
 
 // the highlight: a rounded box, R px corners
 const R = 10;
@@ -59,7 +49,7 @@ const solid = (w, h) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" he
   await write('select_e.png', solid(R, 1), R, 1);
   await write('select_c.png', solid(1, 1), 1, 1);
   fs.copyFileSync(path.join(BR, 'tessera-logo-64.png'), path.join(OUT, 'symbol.png'));
-  await write('wordmark.png', wordmark(WORD_H), wordWidth(WORD_H), WORD_H);
+  fs.copyFileSync(path.join(BR, 'tessera-plymouth-watermark.png'), path.join(OUT, 'wordmark.png'));
   await browser.close();
   console.log('boot menu pictures written');
 })();
