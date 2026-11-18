@@ -7,15 +7,15 @@ desktop-color: "#000000"
 terminal-font: "Tessera Regular 16"
 
 + image {
-  left = 50%-64
-  top = 50%-64
-  width = 128
-  height = 128
+  left = 50%-83
+  top = 50%-83
+  width = 166
+  height = 166
   file = "slots.png"
 }
 + label {
   left = 0
-  top = 100%-118
+  top = 100%-152
   width = 100%
   height = 24
   align = "center"
@@ -24,21 +24,11 @@ terminal-font: "Tessera Regular 16"
   text = "This start: the login screen (Opus).      Enter  start      O  boot options"
 }
 + image {
-  left = 50%-110
-  top = 50%+88
-  width = 219
-  height = 44
+  left = 50%-142
+  top = 100%-100
+  width = 284
+  height = 57
   file = "wordmark.png"
-}
-+ label {
-  left = 0
-  top = 50%+146
-  width = 100%
-  height = 24
-  align = "center"
-  color = "#8f8aa3"
-  font = "Tessera Regular 16"
-  text = "Designed for controllers, built by you"
 }
 + boot_menu {
   left = 100%-2
