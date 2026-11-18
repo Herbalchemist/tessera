@@ -23,21 +23,72 @@ async function load(opts) {
   });
   const handlers = {}, listeners = {}, sent = [], wc = {};
   const frame = {};
+  // The embedded browser: every WebContentsView the launcher makes (with the partition it asked
+  // for), and the sessions those partitions name. A partition is one person's browser storage.
+  const views = [];
+  const sessions = new Map();
+  const fakeSession = (name) => {
+    const key = String(name);
+    if (!sessions.has(key)) {
+      const rec = { name: key, cleared: 0, caches: 0 };
+      rec.session = new Proxy({
+        clearStorageData: async () => { rec.cleared++; },
+        clearCache: async () => { rec.caches++; },
+      }, { get: (t, k) => (k in t ? t[k] : k === 'then' ? undefined : () => deep()) });
+      sessions.set(key, rec);
+    }
+    return sessions.get(key);
+  };
+  class FakeContentsView {
+    constructor(opts) {
+      const prefsIn = (opts && opts.webPreferences) || {};
+      this.webPreferences = { ...prefsIn };
+      this.attached = false;
+      this.visible = true;
+      this.bounds = null;
+      this.webContents = {
+        session: fakeSession(prefsIn.partition || 'default').session,
+        urls: [], focused: 0, closed: false,
+        isDestroyed() { return this.closed; },
+        getURL() { return this.urls.length ? this.urls[this.urls.length - 1] : 'about:blank'; },
+        getTitle() { return ''; },
+        isLoading() { return false; },
+        navigationHistory: { canGoBack: () => false },
+        focus() { this.focused++; },
+        loadURL(u) { this.urls.push(u); return Promise.resolve(); },
+        capturePage: async () => ({ isEmpty: () => true }),
+        close() { this.closed = true; },
+        setWindowOpenHandler() {},
+        on() {},
+        sendInputEvent() {},
+        executeJavaScript: async () => {},
+      };
+      views.push(this);
+    }
+    setBounds(b) { this.bounds = b; }
+    setBackgroundColor() {}
+    setVisible(v) { this.visible = v; }
+  }
   class FakeWindow {
     constructor() {
       this.webContents = new Proxy({}, { get: (t, k) => (k === 'send' ? (ch, p) => sent.push([ch, p]) : k === 'mainFrame' ? frame : k === 'on' ? (ev, fn) => { (wc[ev] = wc[ev] || []).push(fn); } : () => deep()) });
+      // child views are attached and detached, as the launcher does with the browser
+      this.contentView = { addChildView: (v) => { if (v) v.attached = true; }, removeChildView: (v) => { if (v) v.attached = false; } };
       // any other window method (loadFile, show, on ...) does nothing
       return new Proxy(this, { get: (t, k) => (k in t ? t[k] : k === 'then' ? undefined : () => deep()) });
     }
     isDestroyed() { return false; }
     isVisible() { return true; }
+    getContentBounds() { return { x: 0, y: 0, width: 1280, height: 720 }; }
   }
   const noop = () => {};
   const app = new Proxy({}, { get: (t, k) => (k === 'whenReady' ? () => Promise.resolve() : k === 'requestSingleInstanceLock' ? () => true : k === 'getPath' ? () => tmp : k === 'isPackaged' ? false : k === 'getVersion' ? () => '0.0.0' : noop) });
   const fake = {
-    app, BrowserWindow: FakeWindow, Menu: { setApplicationMenu: noop },
+    app, BrowserWindow: FakeWindow, WebContentsView: FakeContentsView, Menu: { setApplicationMenu: noop },
     ipcMain: { handle: (c, f) => { handlers[c] = f; }, on: (c, f) => { listeners[c] = f; }, once: noop },
-    net: { fetch: (...a) => fetch(...a) }, protocol: { registerSchemesAsPrivileged: noop, handle: noop }, session: deep(), screen: deep(), shell: deep(), dialog: deep(),
+    net: { fetch: (...a) => fetch(...a) }, protocol: { registerSchemesAsPrivileged: noop, handle: noop },
+    session: new Proxy({ fromPartition: (name) => fakeSession(name).session }, { get: (t, k) => (k in t ? t[k] : k === 'then' ? undefined : () => deep()) }),
+    screen: deep(), shell: deep(), dialog: deep(),
   };
   // spawn() is recorded and never really runs a program
   const realCp = require('child_process');
@@ -57,7 +108,7 @@ async function load(opts) {
   // requests count only when they come from the launcher window's own page (main/ipcGuard.js)
   const ev = () => { const w = require(path.join(launcher, 'main', 'config')).mainWindow; return { sender: w.webContents, senderFrame: frame }; };
   return {
-    handlers, listeners, sent,
+    handlers, listeners, sent, views, sessions,
     call: (ch, ...a) => handlers[ch](ev(), ...a),
     launch: (id) => listeners.launch(ev(), id),
   };
