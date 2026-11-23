@@ -7,15 +7,15 @@ desktop-color: "#000000"
 terminal-font: "Tessera Regular 16"
 
 + image {
-  left = 50%-83
-  top = 50%-83
-  width = 166
-  height = 166
+  left = 50%-160
+  top = 50%-160
+  width = 320
+  height = 320
   file = "slots.png"
 }
 + label {
   left = 0
-  top = 100%-152
+  top = 96%-104
   width = 100%
   height = 24
   align = "center"

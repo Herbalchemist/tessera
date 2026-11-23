@@ -56,9 +56,10 @@ function symbolAt(t, count = N) {
 const ARROW = '<path d="M5 3 L5 25 L11 19.5 L15 28.5 L19 26.8 L15.2 18 L23 18 Z" fill="#ffffff" stroke="#17151f" stroke-width="2" stroke-linejoin="round"/>';
 
 const svg = (size, view, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${view}">${body}</svg>`;
-// the boot frame: 128 px, the symbol drawn 100 px wide in the middle (room for the overshoot); the
+// the boot frame: 320 px (the wait screen's symbol, 2.5x the original 128), the symbol drawn 250 px
+// wide in the middle (room for the overshoot); the
 // dashed spots are in the backdrop (render.cjs) under it, so the stones are set into them
-const bootFrame = (t) => svg(128, '-10 -10 84 84', symbolAt(t));
+const bootFrame = (t) => svg(320, '-10 -10 84 84', symbolAt(t));
 // "wait": only the symbol, building
 // the cursors are tiny: only the nine biggest stones (the little drifting ones would be specks)
 const CURSOR_STONES = 9;
@@ -123,7 +124,7 @@ const premultiplied = (rgba) => {
   const count = Math.round(LOOP * FPS);
   fs.mkdirSync(THEME, { recursive: true });
   for (const f of fs.readdirSync(THEME)) if (/^throbber-\d+\.png$/.test(f)) fs.unlinkSync(path.join(THEME, f));
-  const boot = await draw(page, Array.from({ length: count }, (_, i) => bootFrame(i / FPS)), 128, 'png');
+  const boot = await draw(page, Array.from({ length: count }, (_, i) => bootFrame(i / FPS)), 320, 'png');
   boot.forEach((b64, i) => fs.writeFileSync(path.join(THEME, `throbber-${String(i + 1).padStart(4, '0')}.png`), Buffer.from(b64, 'base64')));
 
   // ---- the busy cursors: a quicker loop, 20 frames a second, at the usual cursor sizes
@@ -160,7 +161,7 @@ const premultiplied = (rgba) => {
       const b = boot[i % count];
       await page.setContent(`<body style="margin:0;background:#000;width:960px;height:540px;position:relative">
         <img src="data:image/png;base64,${word}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
-        <img src="data:image/png;base64,${b}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:128px"></body>`);
+        <img src="data:image/png;base64,${b}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:320px"></body>`);
       await page.screenshot({ path: path.join(tmp, `f${String(i).padStart(4, '0')}.png`) });
     }
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(tmp, 'f%04d.png'), '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', path.join(OUT, 'boot-preview.mp4')]);

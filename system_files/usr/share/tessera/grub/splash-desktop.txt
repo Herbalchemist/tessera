@@ -7,21 +7,21 @@ desktop-color: "#000000"
 terminal-font: "Tessera Regular 16"
 
 + image {
-  left = 50%-83
-  top = 50%-83
-  width = 166
-  height = 166
+  left = 50%-160
+  top = 50%-160
+  width = 320
+  height = 320
   file = "slots.png"
 }
 + label {
   left = 0
-  top = 100%-152
+  top = 96%-104
   width = 100%
   height = 24
   align = "center"
   color = "#b4a7ff"
   font = "Tessera Regular 16"
-  text = "This start: the login screen (Opus).      Enter  start      O  boot options"
+  text = "This start: the login screen (Opus).      Enter  start      L  back to the normal start      O  boot options"
 }
 + image {
   left = 50%-110

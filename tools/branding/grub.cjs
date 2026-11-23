@@ -16,9 +16,9 @@ const BR = path.join(ROOT, 'system_files/usr/share/tessera/branding');
 const SYM = JSON.parse(fs.readFileSync(path.join(__dirname, 'symbol.json'), 'utf8'));
 const ACCENT = '#b4a7ff';
 
-// the four spots (slots.cjs), in the boot animation's 84-unit frame; the wait screen shows them
-// 30% bigger than the animation's own 128 px frames (128 x 1.3 = 166, see splash.txt)
-const SYMBOL = 166;
+// the four spots (slots.cjs), in the boot animation's 84-unit frame; the wait screen shows them at
+// 2.5x the animation's original 128 px frames (128 x 2.5 = 320, see splash.txt)
+const SYMBOL = 320;
 const slots = () => `<svg xmlns="http://www.w3.org/2000/svg" width="${SYMBOL}" height="${SYMBOL}" viewBox="-10 -10 84 84">${slotsBody()}</svg>`;
 
 // the highlight: a rounded box, R px corners

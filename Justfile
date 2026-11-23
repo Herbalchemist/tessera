@@ -22,6 +22,7 @@ default:
 test:
     npm --prefix system_files/usr/lib/tessera/launcher run check
     node --test system_files/usr/lib/tessera/launcher/test/*.test.js
+    node --test tools/branding/boot-theme.test.js
 
 # Check Just Syntax
 [group('Just')]

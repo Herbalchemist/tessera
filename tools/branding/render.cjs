@@ -35,14 +35,14 @@ const fit = (svg, w, h) => `<div style="width:${w}px;height:${h}px">${svg.replac
 
 
   // Plymouth's backdrop (watermark.png), centred on the screen like the animation: the dashed spots
-  // in the middle 128 px box (exactly under the throbber frames), the wordmark under them, then the
-  // tagline. Even sizes, so its centre lands on the same pixel as the 128 px throbber's.
-  const TW = 480, TH = 340, cx = TW / 2, cy = TH / 2;
+  // in the middle 320 px box (exactly under the throbber frames), the wordmark under them, then the
+  // tagline. Even sizes, so its centre lands on the same pixel as the throbber's.
+  const TW = 480, TH = 520, SYMBOL = 320, cx = TW / 2, cy = TH / 2;
   const wordH = 44, wordW = Math.round(wordH * ratio(word));
   const backdrop = `<div style="position:relative;width:${TW}px;height:${TH}px">
-      <svg style="position:absolute;left:${cx - 64}px;top:${cy - 64}px" xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="-10 -10 84 84">${slotsBody()}</svg>
-      <div style="position:absolute;left:${cx - Math.round(wordW / 2)}px;top:${cy + 88}px">${fit(word, wordW, wordH)}</div>
-      <div style="position:absolute;left:0;width:${TW}px;top:${cy + 146}px;text-align:center;font:400 15px Cantarell,Inter,'DejaVu Sans',sans-serif;letter-spacing:.3px;color:#8f8aa3">Designed for controllers, built by you</div></div>`;
+      <svg style="position:absolute;left:${cx - SYMBOL / 2}px;top:${cy - SYMBOL / 2}px" xmlns="http://www.w3.org/2000/svg" width="${SYMBOL}" height="${SYMBOL}" viewBox="-10 -10 84 84">${slotsBody()}</svg>
+      <div style="position:absolute;left:${cx - Math.round(wordW / 2)}px;top:${cy + SYMBOL / 2 + 4}px">${fit(word, wordW, wordH)}</div>
+      <div style="position:absolute;left:0;width:${TW}px;top:${cy + SYMBOL / 2 + 4 + wordH + 14}px;text-align:center;font:400 15px Cantarell,Inter,'DejaVu Sans',sans-serif;letter-spacing:.3px;color:#8f8aa3">Designed for controllers, built by you</div></div>`;
   await shoot(page, backdrop, TW, TH, path.join(ROOT, 'system_files/usr/share/plymouth/themes/tessera/watermark.png'));
 
   const icon = svgOf(path.join(OUT, 'app-icon.svg'));

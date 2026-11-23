@@ -25,5 +25,7 @@ jobs:
         run: |
           npm --prefix system_files/usr/lib/tessera/launcher test
           npm --prefix system_files/usr/lib/tessera/launcher run check
+      - name: Boot animation and wait screen agree on the symbol's size
+        run: node --test tools/branding/boot-theme.test.js
       - name: Joy-Con service tests
         run: python3 -m unittest discover tools/joycons-test
