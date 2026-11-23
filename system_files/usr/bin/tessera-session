@@ -51,6 +51,13 @@ fi
 [ -d /usr/share/icons/Tessera/cursors ] && export XCURSOR_THEME=Tessera
 
 mkdir -p "$STATE"
+# The boot intro (Plymouth's picture bursting into a mosaic) belongs to a real boot: the first Ludus
+# after the machine starts shows it; restarts, returning from Opus and the nested window do not. The
+# kernel's boot id says which boot has shown it already: it changes on every boot, this folder doesn't.
+BOOT_ID="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+INTRO_SEEN="$STATE/boot-intro"
+intro_shown=0
+
 # Keep the previous session's log for a while: what happened the last time is the first thing to look at.
 [ -f "$LOG" ] && cp -f "$LOG" "$LOG.1" 2>/dev/null
 echo "session start $(date -Is)${TESSERA_NESTED:+ (from the desktop)}" >"$LOG"
@@ -91,7 +98,17 @@ while true; do
     mapfile -t DISPLAY_ARGS < <(/usr/libexec/tessera/display-info args 2>>"$LOG")
     [ "${#DISPLAY_ARGS[@]}" -gt 0 ] && echo "screen settings: ${DISPLAY_ARGS[*]}" >>"$LOG"
   fi
-  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "${FX_ARGS[@]}" -- "${PROGRAM[@]}" >>"$LOG" 2>&1
+  # Only the first Ludus of a real boot gets the intro (Ludus asks with BootIntro.qml).
+  export TESSERA_BOOT_INTRO=""
+  if [ "$intro_shown" = 0 ] && [ -z "${TESSERA_NESTED:-}" ] && [ -n "$BOOT_ID" ] \
+      && [ "$(cat "$INTRO_SEEN" 2>/dev/null || true)" != "$BOOT_ID" ]; then
+    export TESSERA_BOOT_INTRO=1
+    intro_shown=1
+    printf '%s\n' "$BOOT_ID" >"$INTRO_SEEN" 2>/dev/null || true
+    echo "boot intro: the first Ludus of this boot" >>"$LOG"
+  fi
+
+  gamescope -f $FORCE_FULL "${SIZE_ARGS[@]}" "${DISPLAY_ARGS[@]}" "$FX_ARGS[@]" -- "${PROGRAM[@]}" >>"$LOG" 2>&1
   code=$?
   echo "launcher exited with code $code" >>"$LOG"
 

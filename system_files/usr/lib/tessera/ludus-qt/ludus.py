@@ -539,6 +539,9 @@ def main():
     engine.rootContext().setContextProperty('session', session)
     engine.rootContext().setContextProperty('guideOnly', guide_only)
     engine.rootContext().setContextProperty('shotMode', bool(shot_dir or theme_dir or qa_dir))
+    # The boot intro (BootIntro.qml) is for the first Ludus of a boot, not every restart: tessera-session
+    # keeps a boot id in its state folder and says so here.
+    engine.rootContext().setContextProperty('bootIntro', os.environ.get('TESSERA_BOOT_INTRO') == '1')
     engine.rootContext().setContextProperty('webEngine', QtWebEngineQuick is not None)
     engine.rootContext().setContextProperty('browserDir', BROWSER_DIR)
     wprof = None if guide_only else widget_profile(bridge)

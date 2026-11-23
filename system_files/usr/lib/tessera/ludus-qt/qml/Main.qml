@@ -117,7 +117,7 @@ Window {
             if (done) done(m.ok ? m.result : { ok: false, error: m.error })
         }
         function onEvent(ch, data) {
-            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { win.startOnHome(); if (!guideOnly) keepTimer.start(); if (!shotMode && !guideOnly) { startTimer.payload = data; startTimer.start() } } }
+            if (ch === "init") { var first = !win.ready; win.applyView(data); win.ready = true; if (first) { win.startOnHome(); if (!guideOnly) keepTimer.start(); if (!shotMode && !guideOnly) { if (bootIntro) intro.burst(); startTimer.payload = data; startTimer.start() } } }
             else if (ch === "flow-ui" && data) flows.flowUi(data)
             else if (ch === "drive-added" && data) flows.offerDrive(data)
             else if (ch === "display-new" && data) flows.displayNew(data)
@@ -1023,6 +1023,7 @@ Window {
     // the screen's own code calls act(a, tapped); a call from outside (ludus.py, which can only pass one thing) comes here
     function padAct(a) { setInput("pad"); padFam = flows.padFamily(); act(a, false) }
     function act(a, tapped) {
+        if (intro.running) { intro.skip(); return }     // the first press skips the boot intro
         if (a === "yup") return yUp()
         if (!ready) return
         if (captureView.visible) return captureView.press(a)
@@ -1099,6 +1100,9 @@ Window {
     Component.onCompleted: {
         if (guideOnly) { x = Screen.virtualX; y = Screen.virtualY; width = Screen.desktopAvailableWidth; height = Screen.desktopAvailableHeight }
         refresh(); keys.forceActiveFocus()
+        // the boot intro: Plymouth's last picture stays up while the main process loads, then the
+        // mosaic sets out and dissolves into Ludus (BootIntro.qml). Any press skips it (act below).
+        if (!shotMode && !guideOnly && bootIntro) { intro.open(); if (win.ready) intro.burst() }
     }
 
     // ---------------------------------------------------------------- doing things
@@ -1610,6 +1614,7 @@ Window {
     Flows { id: flows; w: win }
     Loader { id: qaFrame; active: false; width: 200; height: 100; x: -400; source: "AddonFrame.qml"; onLoaded: item.wid = "qa-hello" }     // --qa only: an add-on widget loaded the way a Home card does
     Timer { id: startTimer; interval: 700; property var payload: null; onTriggered: flows.startup(payload) }     // first run, who is playing
+    Timer { interval: 3000; running: intro.started && !win.ready && !shotMode && bootIntro && !guideOnly; onTriggered: intro.burst() }     // the main process is slow: let the mosaic go anyway, never hold the splash forever
     Timer { id: keepTimer; interval: 1200; onTriggered: flows.displayKeep() }     // after a restart on new screen settings: keep them?
     ColorWheel { id: wheel; anchors.fill: parent; th: th; z: 31 }
     Keyboard { id: keyboard; anchors.fill: parent; th: th; z: 30; keys: win.view.keys || ({ back: 2, space: 3, shift: 10, done: 9, cancel: 1 }) }
@@ -1637,5 +1642,6 @@ Window {
     Capture { id: captureView; anchors.fill: parent; th: th; z: 32 }
     PadTest { id: padTestView; anchors.fill: parent; th: th; z: 27; pad: win.view.prefs && win.view.prefs.pad ? win.view.prefs.pad : ({ deadzone: 15, trigger: 10 }) }
     Calibration { id: calib; anchors.fill: parent; th: th; z: 25; onFilter: function (c) { win.calOverrideOn = c !== undefined; win.calOverride = c === undefined ? null : c } }
+    BootIntro { id: intro }
     }
 }
