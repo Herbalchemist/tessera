@@ -1,14 +1,14 @@
-PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None} [wait: no wait screen within 60s]
-PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None} [enter: no wait screen within 60s]
-FAIL desktop-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}) [desktop-this-time: no wait screen within 60s]
-FAIL login-screen-key: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}) [login-screen-key: no wait screen within 60s]
-FAIL safe-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'safe'}) [safe-this-time: no wait screen within 60s]
-FAIL console-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:0', 'tessera_once': 'console'}) [console-this-time: no wait screen within 60s]
-FAIL previous-version: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [previous-version: no wait screen within 60s]
-PASS f2-and-scroll: {'tessera_booted': 'ostree:0', 'tessera_once': None} [f2-and-scroll: no wait screen within 60s]
-FAIL all-versions: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [all-versions: no wait screen within 60s]
-FAIL full-boot-menu: {'tessera_booted': 'ostree:0', 'tessera_once': None} (expected {'tessera_booted': 'ostree:1', 'tessera_once': None}) [full-boot-menu: no wait screen within 60s]
-PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None} [options-esc-back: no wait screen within 60s]
+PASS wait: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS enter: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS desktop-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
+PASS login-screen-key: {'tessera_booted': 'ostree:0', 'tessera_once': 'desktop'}
+PASS safe-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'safe'}
+PASS console-this-time: {'tessera_booted': 'ostree:0', 'tessera_once': 'console'}
+PASS previous-version: {'tessera_booted': 'ostree:1', 'tessera_once': None}
+PASS f2-and-scroll: {'tessera_booted': 'ostree:0', 'tessera_once': None}
+PASS all-versions: {'tessera_booted': 'ostree:1', 'tessera_once': None}
+PASS full-boot-menu: {'tessera_booted': 'ostree:1', 'tessera_once': None}
+PASS options-esc-back: {'tessera_booted': 'ostree:0', 'tessera_once': None}
 PASS failed-update-fallback: {'tessera_booted': 'ostree:1', 'tessera_once': None}
 --- boot-once on the settings file GRUB left after the last 'this time' scenario:
 tessera-boot-once: this start: repair console (no login screen)
