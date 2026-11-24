@@ -3,7 +3,9 @@
 # animation's tiles land, for two seconds. The menu itself
 # is there but not drawn: Enter starts, O or F2 opens Boot options.
 title-text: ""
-desktop-color: "#000000"
+# a black picture, not desktop-color: see splash.txt (a colour alone makes GRUB report an error
+# that stops the start until a key is pressed)
+desktop-image: "background.png"
 terminal-font: "Tessera Regular 16"
 
 + image {

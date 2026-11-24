@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Tessera's boot menu: Boot options, with a mode chosen for this start (console).
 title-text: ""
-desktop-color: "#0d0c12"
+# a picture, not desktop-color: see splash.txt (a colour alone makes GRUB report an error that
+# stops the start until a key is pressed)
+desktop-image: "background-options.png"
 terminal-font: "Tessera Regular 16"
 
 + image {
